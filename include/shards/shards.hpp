@@ -183,8 +183,8 @@ struct Type {
 
   template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys) {
     Type res;
-    if(N > 0 && N != types.len) {
-      throw std::logic_error("TableOf: keys and types length mismatch");  
+    if (N > 0 && N != types.len) {
+      throw std::logic_error("TableOf: keys and types length mismatch");
     }
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
     res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
@@ -936,6 +936,16 @@ struct Var : public SHVar {
   explicit Var(SHImage *img) : SHVar() {
     valueType = SHType::Image;
     payload.imageValue = img;
+  }
+
+  explicit Var(SHTrait *trait) : SHVar() {
+    valueType = SHType::Trait;
+    payload.traitValue = trait;
+  }
+
+  explicit Var(SHTypeInfo *type) : SHVar() {
+    valueType = SHType::Type;
+    payload.typeValue = type;
   }
 
   explicit constexpr Var(int64_t src) : SHVar() {

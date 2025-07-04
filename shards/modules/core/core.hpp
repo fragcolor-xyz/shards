@@ -2475,6 +2475,7 @@ struct TableDecl : public VariableBase {
           table->valueType = SHType::Table;
           table->payload.tableValue.api = &GetGlobals().TableInterface;
           table->payload.tableValue.opaque = new SHMap();
+          fillDefaultValues(asTable(*table), _weakType.table);
         }
       } else {
         return; // we will check during activate
@@ -2484,6 +2485,7 @@ struct TableDecl : public VariableBase {
         _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
+        fillDefaultValues(asTable(*_target), _weakType.table);
       }
       _cell = _target;
     }
@@ -2501,6 +2503,7 @@ struct TableDecl : public VariableBase {
       table->valueType = SHType::Table;
       table->payload.tableValue.api = &GetGlobals().TableInterface;
       table->payload.tableValue.opaque = new SHMap();
+      fillDefaultValues(asTable(*table), _weakType.table);
     }
   }
 
@@ -2652,6 +2655,8 @@ struct TableDecl : public VariableBase {
       // anyway you can declare nested tables within this table itself!
       // Type: @type({"x": {"y": another-type}})
       if (!_typeDesc->isNone()) {
+        // currently we copy types deeply all the time.. in the future we should optimize this, when we do that this here likely
+        // needs to change slightly, for now we just set the flag on the shallow type
         _weakType.table.fixedStructTable = deriveTableIndices(_weakType.table);
       }
 
@@ -2674,6 +2679,87 @@ struct TableDecl : public VariableBase {
     return data.inputType;
   }
 
+  void fillDefaultValues(TableVar &table, SHTableTypeInfo &tableInfo) {
+    // we need to fill the default values for the table
+    // we do this by iterating over the keys and setting the default values
+    for (uint32_t i = 0; i < tableInfo.keys.len; i++) {
+      auto key = shards::OwnedVar::Foreign(tableInfo.keys.elements[i]);
+      auto &type = tableInfo.types.elements[i];
+
+      auto &value = table[key];
+      shassert(value.valueType == SHType::None && "Table - Default value should be None");
+
+      switch (type.basicType) {
+      case SHType::None:
+      case SHType::Any:
+      case SHType::Enum:
+      case SHType::Bool:
+      case SHType::Int:
+      case SHType::Int2:
+      case SHType::Int3:
+      case SHType::Int4:
+      case SHType::Int8:
+      case SHType::Int16:
+      case SHType::Float:
+      case SHType::Float2:
+      case SHType::Float3:
+      case SHType::Float4:
+      case SHType::Color:
+      case SHType::EndOfBlittableTypes:
+      case SHType::Bytes:
+      case SHType::String:
+      case SHType::Path:
+      case SHType::ContextVar:
+      case SHType::Audio:
+      case SHType::Seq:
+      case SHType::Object: {
+        value.valueType = type.basicType;
+        memset(&value.payload, 0x0, sizeof(SHVarPayload));
+        break;
+      }
+      // following types cannot just be memset'd
+      case SHType::Table: {
+        value.valueType = SHType::Table;
+        value.payload.tableValue.api = &GetGlobals().TableInterface;
+        value.payload.tableValue.opaque = new SHMap();
+        TableVar &subTable = asTable(value);
+        fillDefaultValues(subTable, type.table);
+        break;
+      }
+      case SHType::Wire: {
+        // Point it to a static empty wire
+        static std::shared_ptr<SHWire> EmptyWire = SHWire::make("<empty>");
+        value = shards::Var(EmptyWire);
+        break;
+      }
+      case SHType::ShardRef: {
+        // Point it to a static Pass shard
+        static Shard *PassShard = shards::createShard("Pass");
+        value.valueType = SHType::ShardRef;
+        value.payload.shardValue = PassShard;
+        break;
+      }
+      case SHType::Type: {
+        // Point to static None type
+        value = shards::Var(reinterpret_cast<SHTypeInfo *>(&CoreInfo::NoneType));
+        break;
+      }
+      case SHType::Image: {
+        // Point to static empty image
+        static SHImage *emptyImage = imageNew(0);
+        value = shards::Var(emptyImage);
+        break;
+      }
+      case SHType::Trait: {
+        // Point to an empty trait
+        static SHTrait emptyTrait{};
+        value = shards::Var(&emptyTrait);
+        break;
+      }
+      }
+    }
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(_isTable)) {
       checkIfTableChanged();
@@ -2682,7 +2768,7 @@ struct TableDecl : public VariableBase {
       }
     }
 
-    if (_clear) {
+    if (_clear && !_weakType.table.fixedStructTable) {
       TableVar &table = asTable(*_cell);
       table.clear();
     }
