@@ -275,6 +275,45 @@ private:
   shards::ExposedInfo _requiredVariables;
 };
 
+template <bool Mode> struct Compose {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
+
+  PARAM(ShardsVar, _contents, "Content", "The content of the composed shard.", {CoreInfo::ShardsOrNoneSeq});
+  PARAM_VAR(_tag, "Tag", "The tag of this assertion.", {CoreInfo::NoneType, CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_tag));
+
+  bool _didCompose{};
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    _didCompose = false;
+    try {
+      _contents.compose(data);
+      _didCompose = true;
+    } catch (const std::exception &e) {
+      _didCompose = false;
+    }
+    checkThrow();
+    return data.inputType;
+  }
+
+  void checkThrow() {
+    if (_didCompose != Mode) {
+      std::string name = !_tag->isNone() ? fmt::format("Compose \"{}\"", SHSTRVIEW(_tag)) : "Compose";
+      throw std::runtime_error(fmt::format("Assert failed - {}, expected: {}, was: {}", name, //
+                                           Mode ? "success" : "failure",                      //
+                                           _didCompose ? "success" : "failure"));
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    checkThrow();
+    return input;
+  }
+};
+
 struct Break {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
@@ -331,6 +370,8 @@ SHARDS_REGISTER_FN(assert) {
   REGISTER_SHARD("Assert.IsVariable", IsVariable);
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
+  REGISTER_SHARD("Assert.Compose", Compose<true>);
+  REGISTER_SHARD("Assert.NoCompose", Compose<false>);
   REGISTER_SHARD("Debug.Break", Break);
   REGISTER_SHARD("_Callgrind.Start", CallgrindStart);
   REGISTER_SHARD("_Callgrind.Stop", CallgrindStop);
