@@ -2963,17 +2963,37 @@ struct Clear : SeqUser {
       throw ComposeError(fmt::format("Variable {} is not mutable.", _name));
     }
 
-    if (info->exposedType.basicType == SHType::Table) {
-      // cannot clear a fixed struct table
-      if (info->exposedType.table.fixedStructTable) {
-        throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
-      }
-
-      // also cannot clear tables with non dynamic keys
-      for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
-        if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
-          throw ComposeError(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
+    if (_key.isNone()) {
+      if (info->exposedType.basicType == SHType::Table) {
+        // cannot clear a fixed struct table
+        if (info->exposedType.table.fixedStructTable) {
+          throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
         }
+
+        // also cannot clear tables with non dynamic keys
+        for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+          if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
+            throw ComposeError(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
+          }
+        }
+      }
+    } else {
+      bool fail = true;
+      if (info->exposedType.table.keys.len == info->exposedType.table.types.len) {
+        for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+          auto &key = info->exposedType.table.keys.elements[i];
+          auto &type = info->exposedType.table.types.elements[i];
+          if (_key == key) {
+            if (type.basicType == SHType::Seq) {
+              fail = false; // fine to clear a sequence
+              break;
+            }
+          }
+        }
+      }
+      if (fail) {
+        throw ComposeError(fmt::format(
+            "Clear: Cannot clear a table with a known key that is not a sequence or a variable key, variable: {}", _name));
       }
     }
 
