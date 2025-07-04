@@ -2492,6 +2492,19 @@ extern "C" void shards_install_signal_handlers() { installSignalHandlers(); }
 
 // NO NAMESPACE here!
 
+void shInitLog() {
+  if (!logging::isLoggerInitialized()) {
+
+    // read env var for log file
+    auto logFile = std::getenv("SHARDS_LOG_FILE");
+    if (logFile) {
+      logging::setupDefaultLoggerConditional(logFile);
+    } else {
+      logging::setupDefaultLoggerConditional("shards.log");
+    }
+  }
+}
+
 void shInit() {
   static bool globalInitDone = false;
   if (globalInitDone)
@@ -2504,14 +2517,9 @@ void shInit() {
 #endif
 
   ZoneScopedN("shInit");
-
-  // read env var for log file
-  auto logFile = std::getenv("SHARDS_LOG_FILE");
-  if (logFile) {
-    logging::setupDefaultLoggerConditional(logFile);
-  } else {
-    logging::setupDefaultLoggerConditional("shards.log");
-  }
+  
+  // Initialize log outputs only
+  shInitLog();
 
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
@@ -2644,21 +2652,14 @@ SHContext *getWireContext(SHWireRef wireRef) {
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
-  // for now we ignore abi_version
-  if (sh_current_interface_loaded)
-    return &sh_current_interface;
-
-  // Load everything we know if we did not yet!
-  try {
-    shInit();
-  } catch (const std::exception &ex) {
-    SHLOG_ERROR("Failed to register core shards, error: {}", ex.what());
+  if (SHARDS_CURRENT_ABI != abi_version) {
+    // SHLOG_ERROR("A plugin requested an invalid ABI version.");
+    SHLOG_ERROR("Invalid ABI version requested, Formabble is at version {}, you requested {}", SHARDS_CURRENT_ABI, abi_version);
     return nullptr;
   }
 
-  if (SHARDS_CURRENT_ABI != abi_version) {
-    SHLOG_ERROR("A plugin requested an invalid ABI version.");
-    return nullptr;
+  if (sh_current_interface_loaded) {
+    return &sh_current_interface;
   }
 
   auto result = &sh_current_interface;
@@ -3172,7 +3173,17 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return SHStringWithLen{sv.data(), sv.size()};
   };
 
-  setupCoreLogging(result);
+  result->init = []() -> bool {
+    try {
+      shInit();
+      return true;
+    } catch (const std::exception &ex) {
+      SHLOG_ERROR("Failed to register core shards, error: {}", ex.what());
+      return false;
+    }
+  };
+
+  setupCoreLoggingAPI(result);
 
   return result;
 }

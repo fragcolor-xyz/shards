@@ -9,12 +9,11 @@
 #include "iterator.hpp"
 #include "defer.hpp"
 #include <spdlog/fmt/fmt.h>
+#include <magic_enum.hpp>
 #include <cassert>
 #include <future>
-#include <magic_enum.hpp>
 #include <memory>
 #include <mutex>
-#include <nameof.hpp>
 #include <string>
 #include <vector>
 #include <string.h>

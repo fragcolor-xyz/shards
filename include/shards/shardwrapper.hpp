@@ -6,6 +6,7 @@
 
 #include "shards.hpp"
 #include "utility.hpp"
+#include <nameof.hpp>
 
 namespace shards {
 inline std::string formatShardSourceLocation(Shard *blk);

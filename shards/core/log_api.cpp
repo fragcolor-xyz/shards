@@ -54,7 +54,7 @@ struct LogBindings {
   }
 };
 
-void setupCoreLogging(SHCore *result) {
+void setupCoreLoggingAPI(SHCore *result) {
   result->log = [](SHStringWithLen msg) noexcept {
     std::string_view sv(msg.string, size_t(msg.len));
     SHLOG_INFO(sv);
@@ -76,6 +76,10 @@ void setupCoreLogging(SHCore *result) {
   result->logLogger = [](SHStringWithLen cat, int level, SHStringWithLen message) {
     auto logger = LogBindings::instance().getLogger(cat);
     logger->log(static_cast<spdlog::level::level_enum>(level), "{}", message);
+  };
+
+  result->setupLogger = [](const SHLogSettings* settings) {
+    shards::logging::setupDefaultLogger(*settings);
   };
 }
 } // namespace shards

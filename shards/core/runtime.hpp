@@ -84,6 +84,35 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #define TSANCoroExit(wire)
 #endif
 
+#ifdef TRACY_ENABLE
+// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
+#include <tracy/Wrapper.hpp>
+#ifdef TRACY_FIBERS
+#define TracyCoroEnter(wire)                    \
+  {                                             \
+    if (!getCoroWireStack().empty()) {          \
+      TracyFiberLeave;                          \
+    }                                           \
+    TracyFiberEnter(wire->getTracyFiberName()); \
+    getCoroWireStack().push_back(wire);         \
+  }
+#define TracyCoroExit(wire)                                            \
+  {                                                                    \
+    getCoroWireStack().pop_back();                                     \
+    TracyFiberLeave;                                                   \
+    if (!getCoroWireStack().empty()) {                                 \
+      TracyFiberEnter(getCoroWireStack().back()->getTracyFiberName()); \
+    }                                                                  \
+  }
+#else // TRACY_FIBERS
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif // TRACY_FIBERS
+#else  // TRACY_ENABLE
+#define TracyCoroEnter(wire)
+#define TracyCoroExit(wire)
+#endif
+
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 
@@ -421,7 +450,6 @@ inline bool hasEnded(SHWire *wire) { return wire->state > SHWire::State::Iterati
 inline bool isCanceled(SHContext *context) { return context->shouldStop(); }
 
 inline void sleep(std::chrono::nanoseconds duration) {
-  // negative = no sleep
   if (duration.count() > 0) {
 #ifdef _WIN32
     HANDLE timer;
@@ -452,9 +480,12 @@ inline void sleep(std::chrono::nanoseconds duration) {
 }
 
 inline void sleep(double seconds = -1.0) {
-  // Convert seconds to nanoseconds and call the nanoseconds version
-  auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(seconds));
-  sleep(duration);
+  // negative = no sleep
+  if (seconds >= 0) {
+    // Convert seconds to nanoseconds and call the nanoseconds version
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(seconds));
+    sleep(duration);
+  }
 }
 
 struct RuntimeCallbacks {

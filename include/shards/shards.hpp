@@ -14,44 +14,18 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
+#include <stdexcept>
 
+#define ENTT_ID_TYPE std::uint64_t
+#ifdef SHARDS_WITH_ENTT
 // entt\meta\meta.hpp:768:10: note: 'meta_prop' has been explicitly marked deprecated here
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#define ENTT_ID_TYPE std::uint64_t
 #include <entt/entt.hpp>
 #pragma GCC diagnostic pop
+#endif
 
 #define SHVAR_FLAGS_COPY_MASK (SHVAR_FLAGS_USES_OBJINFO)
-
-#ifdef TRACY_ENABLE
-// profiler, will be empty macros if not enabled but valgrind build complains so we do it this way
-#include <tracy/Wrapper.hpp>
-#ifdef TRACY_FIBERS
-#define TracyCoroEnter(wire)                    \
-  {                                             \
-    if (!getCoroWireStack().empty()) {          \
-      TracyFiberLeave;                          \
-    }                                           \
-    TracyFiberEnter(wire->getTracyFiberName()); \
-    getCoroWireStack().push_back(wire);         \
-  }
-#define TracyCoroExit(wire)                                            \
-  {                                                                    \
-    getCoroWireStack().pop_back();                                     \
-    TracyFiberLeave;                                                   \
-    if (!getCoroWireStack().empty()) {                                 \
-      TracyFiberEnter(getCoroWireStack().back()->getTracyFiberName()); \
-    }                                                                  \
-  }
-#else // TRACY_FIBERS
-#define TracyCoroEnter(wire)
-#define TracyCoroExit(wire)
-#endif // TRACY_FIBERS
-#else  // TRACY_ENABLE
-#define TracyCoroEnter(wire)
-#define TracyCoroExit(wire)
-#endif
 
 namespace shards {
 constexpr uint32_t CoreCC = 'frag'; // FourCC = 1718772071 = 0x66726167
@@ -1132,7 +1106,7 @@ private:
 void abortWire(struct SHContext *context, std::string_view errorText);
 
 struct OnTrackedVarWarmup {
-  entt::id_type id;
+  ENTT_ID_TYPE id;
   std::string_view name;
   SHVar key;
   SHExposedTypeInfo info;
@@ -1140,7 +1114,7 @@ struct OnTrackedVarWarmup {
 };
 
 struct OnTrackedVarSet {
-  entt::id_type id;
+  ENTT_ID_TYPE id;
   std::string_view name;
   SHVar key;
   SHVar newValue;

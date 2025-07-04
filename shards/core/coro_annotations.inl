@@ -1,4 +1,3 @@
-
 SHARDS_COND_INLINE void coroResumed(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
