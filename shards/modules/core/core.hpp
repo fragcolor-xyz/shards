@@ -2947,8 +2947,16 @@ struct Clear : SeqUser {
     }
 
     if (info->exposedType.basicType == SHType::Table) {
+      // cannot clear a fixed struct table
       if (info->exposedType.table.fixedStructTable) {
         throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
+      }
+
+      // also cannot clear tables with non dynamic keys
+      for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+        if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
+          throw ComposeError(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
+        }
       }
     }
 
@@ -3443,8 +3451,7 @@ struct Take {
           OVERRIDE_ACTIVATE(data, activateTable);
         }
 
-        if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar &&
-            data.inputType.table.fixedStructTable) {
+        if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar) {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);
