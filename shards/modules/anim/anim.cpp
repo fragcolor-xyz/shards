@@ -180,7 +180,10 @@ struct TimerShard {
 };
 
 struct PlayShard {
-  static SHOptionalString help() { return SHCCSTR("Evaluates and interpolates the animation of the glTF model specified in the Animation parameter. The output of this shard is applied to the glTF model to play animations."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Evaluates and interpolates the animation of the glTF model specified in the Animation parameter. The output "
+                   "of this shard is applied to the glTF model to play animations.");
+  }
 
   static inline shards::Types OutputTypes{{Type::SeqOf(ShardsTypes::ValueTable)}};
 
@@ -246,8 +249,13 @@ struct PlayShard {
       } else {
         // Generic lerp
         outputValue.valueType = va.valueType;
-        Math::dispatchType<Math::DispatchType::NumberTypes>(va.valueType, Math::ApplyLerp{}, outputValue.payload, va.payload,
-                                                            vb.payload, double(phase));
+        bool failed = false;
+        Math::dispatchType<Math::DispatchType::NumberTypes>(va.valueType, &failed, Math::ApplyLerp{}, outputValue.payload,
+                                                            va.payload, vb.payload, double(phase));
+        if (failed) {
+          throw ActivationError(fmt::format("Invalid types for ApplyLerp: {} and {}", magic_enum::enum_name(va.valueType),
+                                            magic_enum::enum_name(vb.valueType)));
+        }
       }
     } else {
       outputValue = va;
@@ -299,7 +307,10 @@ struct DurationShard {
 struct InterpolateShard {
   static inline shards::Types FloatTypes{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type};
 
-  static SHOptionalString help() { return SHCCSTR("Whenever the input value is changed, this shard will interpolate between the old value and the new value over the duration of the animation and output the result."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Whenever the input value is changed, this shard will interpolate between the old value and the new value "
+                   "over the duration of the animation and output the result.");
+  }
   static SHTypesInfo inputTypes() { return FloatTypes; }
   static SHTypesInfo outputTypes() { return FloatTypes; }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to interpolate."); }
@@ -345,8 +356,13 @@ struct InterpolateShard {
     } else {
       // Generic lerp
       _lastOutput.valueType = _a.valueType;
-      Math::dispatchType<Math::DispatchType::FloatTypes>(_a.valueType, Math::ApplyLerp{}, _lastOutput.payload, _a.payload,
-                                                         _b.payload, double(phase));
+      bool failed = false;
+      Math::dispatchType<Math::DispatchType::FloatTypes>(_a.valueType, &failed, Math::ApplyLerp{}, _lastOutput.payload,
+                                                         _a.payload, _b.payload, double(phase));
+      if (failed) {
+        throw ActivationError(fmt::format("Invalid types for ApplyLerp: {} and {}", magic_enum::enum_name(_a.valueType),
+                                          magic_enum::enum_name(_b.valueType)));
+      }
     }
   }
 

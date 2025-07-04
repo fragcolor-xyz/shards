@@ -1,3 +1,18 @@
 @define(my-type @type({first: Type::Int second: {third: Type::Int}}))
+
+Assert.ComposeFailure({
+  Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
+  10 | Set(my-struct "another-field") ; this is forbidden
+})
+
 Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
-my-struct | Log
+my-struct | Log | Assert.Is({first: 0 second: {third: {first: 0 second: {third: 0}}}})
+
+10 | Update(my-struct "first")
+my-struct | Log | Assert.Is({first: 10 second: {third: {first: 0 second: {third: 0}}}})
+
+Assert.ComposeFailure({
+  Erase("first" my-struct)
+})
+
+my-struct | Take("first") | Add(10) | Assert.Is(20)

@@ -1283,6 +1283,9 @@ struct Erase : SeqUser {
 
     // Figure if we output a sequence or not
     if (isTable) {
+      if (info->exposedType.table.fixedStructTable) {
+        throw ComposeError(fmt::format("Erase: Cannot erase from a fixed struct table, variable: {}", _name));
+      }
       valid = true;
     } else if (_indices->valueType == SHType::Seq) {
       if (_indices->payload.seqValue.len > 0 && _indices->payload.seqValue.elements[0].valueType == SHType::Int) {

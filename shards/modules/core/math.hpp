@@ -235,12 +235,12 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
     return OpType::Invalid;
   }
 
-  void operateDirect(SHVar &output, const SHVar &a, const SHVar &b) {
+  void operateDirect(SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
     output.valueType = a.valueType;
-    dispatchType<DispatchType>(a.valueType, apply, output.payload, a.payload, b.payload);
+    dispatchType<DispatchType>(a.valueType, failed, apply, output.payload, a.payload, b.payload);
   }
 
-  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
+  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
     // This implements broadcast operators on float types
     const VectorTypeTraits *scalarType = _lhsVecType;
     const VectorTypeTraits *vecType = _rhsVecType;
@@ -255,15 +255,15 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
     // Expand scalars to vectors
     if (_lhsVecType->dimension == 1) {
       SHVarPayload temp = aPayload; // Need temp var if input/output are the same
-      dispatchType<DispatchType>(vecType->shType, applyBroadcast, aPayload, temp);
+      dispatchType<DispatchType>(vecType->shType, failed, applyBroadcast, aPayload, temp);
     }
     if (_rhsVecType->dimension == 1) {
       SHVarPayload temp = bPayload;
-      dispatchType<DispatchType>(vecType->shType, applyBroadcast, bPayload, temp);
+      dispatchType<DispatchType>(vecType->shType, failed, applyBroadcast, bPayload, temp);
     }
 
     output.valueType = vecType->shType;
-    dispatchType<DispatchType>(vecType->shType, apply, output.payload, aPayload, bPayload);
+    dispatchType<DispatchType>(vecType->shType, failed, apply, output.payload, aPayload, bPayload);
   }
 };
 
@@ -296,10 +296,10 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
 
   SHTypeInfo composeV2(const SHInstanceData &data) { return this->genericCompose(*this, data); }
 
-  void operate(OpType opType, SHVar &output, const SHVar &a, const SHVar &b) {
+  void operate(OpType opType, SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
     shassert(opType != OpType::Invalid);
     if (opType == Broadcast) {
-      op.operateBroadcast(output, a, b);
+      op.operateBroadcast(output, a, b, failed);
     } else if (opType == SeqSeq) {
       if (output.valueType != SHType::Seq) {
         destroyVar(output);
@@ -319,7 +319,7 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
         }
         const auto len = output.payload.seqValue.len;
         shards::arrayResize(output.payload.seqValue, len + 1);
-        operate(type, output.payload.seqValue.elements[len], sa, sb);
+        operate(type, output.payload.seqValue.elements[len], sa, sb, failed);
       }
     } else {
       if (opType == Direct && output.valueType == SHType::Seq) {
@@ -330,13 +330,13 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
                     "but potentially slow");
         destroyVar(output);
       }
-      operateFast(opType, output, a, b);
+      operateFast(opType, output, a, b, failed);
     }
   }
 
-  ALWAYS_INLINE void operateFast(OpType opType, SHVar &output, const SHVar &a, const SHVar &b) {
+  ALWAYS_INLINE void operateFast(OpType opType, SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
     if (likely(opType == Direct)) {
-      op.operateDirect(output, a, b);
+      op.operateDirect(output, a, b, failed);
     } else if (opType == Seq1) {
       if (output.valueType != SHType::Seq) {
         destroyVar(output);
@@ -347,16 +347,25 @@ template <class TOp> struct BinaryOperation : public BinaryBase {
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
         const auto len = output.payload.seqValue.len;
         shards::arrayResize(output.payload.seqValue, len + 1);
-        op.operateDirect(output.payload.seqValue.elements[len], a.payload.seqValue.elements[i], b);
+        op.operateDirect(output.payload.seqValue.elements[len], a.payload.seqValue.elements[i], b, failed);
       }
     } else {
-      operate(_opType, output, a, b);
+      operate(_opType, output, a, b, failed);
     }
+  }
+
+  NO_INLINE void cancelFlow(SHContext *context, const SHVar &a, const SHVar &b) {
+    context->cancelFlow(fmt::format("Invalid types for Math operation: {} and {}", magic_enum::enum_name(a.valueType),
+                                    magic_enum::enum_name(b.valueType)));
   }
 
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     const auto operand = _operand.get();
-    operateFast(_opType, _result, input, operand);
+    bool failed = false;
+    operateFast(_opType, _result, input, operand, &failed);
+    if (failed) {
+      cancelFlow(context, input, operand);
+    }
     return _result;
   }
 };
@@ -414,9 +423,9 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
     return opType;
   }
 
-  void operateDirect(SHVar &output, const SHVar &a) {
+  void operateDirect(SHVar &output, const SHVar &a, bool *failed) {
     output.valueType = a.valueType;
-    dispatchType<DispatchType>(a.valueType, apply, output.payload, a.payload);
+    dispatchType<DispatchType>(a.valueType, failed, apply, output.payload, a.payload);
   }
 };
 
@@ -442,9 +451,14 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
                    "operation is applied to each element of the sequence.");
   }
 
-  ALWAYS_INLINE void operate(SHVar &output, const SHVar &a) {
+  NO_INLINE void cancelFlow(SHContext *context, const SHVar &input, const SHVar &a) {
+    context->cancelFlow(fmt::format("Invalid types for unary operation: {} and {}", magic_enum::enum_name(a.valueType),
+                                    magic_enum::enum_name(input.valueType)));
+  }
+
+  ALWAYS_INLINE void operate(SHVar &output, const SHVar &a, bool *failed) {
     if (likely(_opType == OpType::Direct)) {
-      op.operateDirect(output, a);
+      op.operateDirect(output, a, failed);
     } else if (_opType == OpType::Seq1) {
       if (output.valueType != SHType::Seq) {
         destroyVar(output);
@@ -453,15 +467,19 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 
       shards::arrayResize(output.payload.seqValue, a.payload.seqValue.len);
       for (uint32_t i = 0; i < a.payload.seqValue.len; i++) {
-        op.operateDirect(output.payload.seqValue.elements[i], a.payload.seqValue.elements[i]);
+        op.operateDirect(output.payload.seqValue.elements[i], a.payload.seqValue.elements[i], failed);
       }
     } else {
-      throw std::logic_error("Invalid operation type for unary operation");
+      *failed = true;
     }
   }
 
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
-    operate(_result, input);
+    bool failed = false;
+    operate(_result, input, &failed);
+    if (failed) {
+      cancelFlow(context, input, _result);
+    }
     return _result;
   }
 };
@@ -546,7 +564,18 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
 
   void cleanup(SHContext *context) { _value.cleanup(); }
 
-  ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) { this->operate(_value.get(), _value.get()); }
+  NO_INLINE void cancelFlow(SHContext *context, const SHVar &input, const SHVar &a) {
+    context->cancelFlow(fmt::format("Invalid types for unary operation: {} and {}", magic_enum::enum_name(a.valueType),
+                                    magic_enum::enum_name(input.valueType)));
+  }
+
+  ALWAYS_INLINE void activate(SHContext *context, const SHVar &input) {
+    bool failed = false;
+    this->operate(_value.get(), _value.get(), &failed);
+    if (failed) {
+      cancelFlow(context, input, _value.get());
+    }
+  }
 };
 
 #define MATH_BINARY_OPERATION(NAME, OPERATOR, DIV_BY_ZERO) using NAME = BinaryOperation<BasicBinaryOperation<NAME##Op>>;
@@ -1503,12 +1532,21 @@ struct Lerp final {
     return SHTypeInfo{.basicType = firstType};
   }
 
+  NO_INLINE void cancelFlow(SHContext *context, const SHVar &a, const SHVar &b) {
+    context->cancelFlow(fmt::format("Invalid types for ApplyLerp: {} and {}", magic_enum::enum_name(a.valueType),
+                                    magic_enum::enum_name(b.valueType)));
+  }
+
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     SHVar a = _first.get();
     SHVar b = _second.get();
     SHVar result{.valueType = a.valueType};
-    dispatchType<DispatchType::NumberTypes>(a.valueType, ApplyLerp{}, result.payload, a.payload, b.payload,
+    bool failed = false;
+    dispatchType<DispatchType::NumberTypes>(a.valueType, &failed, ApplyLerp{}, result.payload, a.payload, b.payload,
                                             input.payload.floatValue);
+    if (failed) {
+      cancelFlow(context, a, b);
+    }
     return result;
   }
 };
@@ -1596,11 +1634,21 @@ struct Clamp final {
     return SHTypeInfo{.basicType = firstType};
   }
 
+  NO_INLINE void cancelFlow(SHContext *context, const SHVar &a, const SHVar &b) {
+    context->cancelFlow(fmt::format("Invalid types for ApplyClamp: {} and {}", magic_enum::enum_name(a.valueType),
+                                    magic_enum::enum_name(b.valueType)));
+  }
+
   ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
     SHVar a = _first.get();
     SHVar b = _second.get();
     SHVar result{.valueType = a.valueType};
-    dispatchType<DispatchType::NumberTypes>(a.valueType, ApplyClamp{}, result.payload, input.payload, a.payload, b.payload);
+    bool failed = false;
+    dispatchType<DispatchType::NumberTypes>(a.valueType, &failed, ApplyClamp{}, result.payload, input.payload, a.payload,
+                                            b.payload);
+    if (failed) {
+      cancelFlow(context, a, b);
+    }
     return result;
   }
 };

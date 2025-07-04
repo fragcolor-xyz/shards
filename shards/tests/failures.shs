@@ -223,12 +223,6 @@
 @schedule(root compose-fail-3-wrapper)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
-Assert.NoCompose({
-  @define(my-type @type({first: Type::Int second: {third: Type::Int}}))
-  Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
-  10 | Set(my-struct "another-field") ; this is forbidden
-})
-
 @wire(rename-fail {
   "Hello" = content
   "hello.txt" | FS.Write(content)

@@ -1311,8 +1311,9 @@ struct Set : public SetUpdateBase {
 
     // bake exposed types
     if (_isTable) {
-      if (_tableType.table.fixedStructTable) {
-        throw ComposeError(fmt::format("Set, variable \"{}\" is a fixed struct table, cannot be used with Set", _name));
+      if (existingExposedType && existingExposedType->exposedType.table.fixedStructTable) {
+        throw ComposeError(fmt::format(
+            "Set, variable \"{}\" is a fixed struct table, cannot be used with Set, please use Update instead", _name));
       }
 
       // we are a table!
