@@ -2690,6 +2690,11 @@ struct TableDecl : public VariableBase {
     // we do this by iterating over the keys and setting the default values
     for (uint32_t i = 0; i < tableInfo.keys.len; i++) {
       auto key = shards::OwnedVar::Foreign(tableInfo.keys.elements[i]);
+      if (key.valueType == SHType::None) {
+        // skip in this case, we don't want to fill default values for dynamic keys
+        continue;
+      }
+
       auto &type = tableInfo.types.elements[i];
 
       auto &value = table[key];
@@ -2713,9 +2718,6 @@ struct TableDecl : public VariableBase {
       case SHType::Color:
       case SHType::EndOfBlittableTypes:
       case SHType::Bytes:
-      case SHType::String:
-      case SHType::Path:
-      case SHType::ContextVar:
       case SHType::Audio:
       case SHType::Seq:
       case SHType::Object: {
@@ -2724,6 +2726,11 @@ struct TableDecl : public VariableBase {
         break;
       }
       // following types cannot just be memset'd
+      case SHType::String:
+      case SHType::Path:
+      case SHType::ContextVar:
+        value = shards::Var("");
+        break;
       case SHType::Table: {
         value.valueType = SHType::Table;
         value.payload.tableValue.api = &GetGlobals().TableInterface;
@@ -2937,6 +2944,12 @@ struct Clear : SeqUser {
 
     if (!info->isMutable) {
       throw ComposeError(fmt::format("Variable {} is not mutable.", _name));
+    }
+
+    if (info->exposedType.basicType == SHType::Table) {
+      if (info->exposedType.table.fixedStructTable) {
+        throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
+      }
     }
 
     return data.inputType;
@@ -3430,7 +3443,8 @@ struct Take {
           OVERRIDE_ACTIVATE(data, activateTable);
         }
 
-        if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar) {
+        if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar &&
+            data.inputType.table.fixedStructTable) {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);

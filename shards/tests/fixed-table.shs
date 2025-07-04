@@ -15,4 +15,12 @@ Assert.ComposeFailure({
   Erase("first" my-struct)
 })
 
+Assert.ComposeFailure({
+  Clear(my-struct)
+})
+
 my-struct | Take("first") | Add(10) | Assert.Is(20)
+
+Assert.ComposeFailure({
+  my-struct | Take("first") | Add(10.0)
+})
