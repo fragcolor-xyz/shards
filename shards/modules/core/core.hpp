@@ -21,6 +21,7 @@
 #include <cmath>
 #include <optional>
 #include <sstream>
+#include <numeric>
 
 using namespace std::chrono_literals;
 
