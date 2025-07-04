@@ -445,7 +445,7 @@ inline void sleep(std::chrono::nanoseconds duration) {
     while (nanosleep(&delay, &delay))
       (void)0;
 #endif
-  } else if (0.0) {
+  } else {
     // just yield to kernel
     std::this_thread::yield();
   }

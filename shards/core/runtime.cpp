@@ -57,6 +57,10 @@
 #include <shards/wire_dsl.hpp>
 #endif
 
+#if SH_WINDOWS
+#include <timeapi.h>
+#endif
+
 namespace fs = boost::filesystem;
 
 using namespace shards;
@@ -2493,6 +2497,11 @@ void shInit() {
   if (globalInitDone)
     return;
   globalInitDone = true;
+
+#if SH_WINDOWS
+  // Set required timer resolution for shards::sleep
+  timeBeginPeriod(1);
+#endif
 
   ZoneScopedN("shInit");
 
