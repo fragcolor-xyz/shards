@@ -2540,11 +2540,13 @@ struct TableDecl : public VariableBase {
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
   bool _clear = true;
+  bool _canClear = false;
 
   static inline Parameters tableParams{
       setterParams,
       {{"Clear",
-        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        SHCCSTR("If we should clear this table at every wire iteration; works ONLY if it's a dynamic table (no keys or only "
+                "`none` key); default: true."),
         {CoreInfo::BoolType}},
        {"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}},
   };
@@ -2679,6 +2681,21 @@ struct TableDecl : public VariableBase {
       throw ComposeError("Table - Type must be a table.");
     }
 
+    if (_weakType.table.fixedStructTable) {
+      _canClear = false;
+    } else if (_typeDesc.valueType == SHType::None) {
+      _canClear = true;
+    } else {
+      // ensure there is only a none key
+      _canClear = true;
+      for (uint32_t i = 0; i < _weakType.table.keys.len; i++) {
+        if (_weakType.table.keys.elements[i].valueType != SHType::None) {
+          _canClear = false;
+          break;
+        }
+      }
+    }
+
     // Ensure declared
     _exposedInfo._innerInfo.elements[0].declared = true;
 
@@ -2781,7 +2798,7 @@ struct TableDecl : public VariableBase {
       }
     }
 
-    if (_clear && !_weakType.table.fixedStructTable) {
+    if (_canClear && _clear) {
       TableVar &table = asTable(*_cell);
       table.clear();
     }

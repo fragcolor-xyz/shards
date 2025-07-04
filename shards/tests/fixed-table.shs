@@ -76,7 +76,7 @@ Assert.ComposeFailure({
   Clear(x21)
 })
 
-Table(dyn-tab Type: @type({none: Type::Any}))
+Table(dyn-tab)
 
 "a" = key1-var
 
