@@ -88,8 +88,6 @@ struct Produce : public Base {
     auto &receiverType = _inType.valueType == SHType::Type ? *_inType.payload.typeValue : data.inputType;
     _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, receiverType, _name.c_str());
 
-    SPDLOG_TRACE("Produce {} => {}", _name, (void*)_channel.get());
-
     return data.inputType;
   }
 
@@ -248,7 +246,6 @@ struct Consume : public Consumers {
     }
 
     _channel = get(_name);
-    SPDLOG_TRACE("Consume {} => {}", _name, (void*)_channel.get());
     _mpChannel = &getAndInitChannel<MPMCChannel>(_channel, *outTypePtr, _name.c_str());
 
     if (_bufferSize == 1) {
