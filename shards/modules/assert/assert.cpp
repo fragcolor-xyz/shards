@@ -370,8 +370,8 @@ SHARDS_REGISTER_FN(assert) {
   REGISTER_SHARD("Assert.IsVariable", IsVariable);
   REGISTER_SHARD("Assert.IsNot", IsNot);
   REGISTER_SHARD("Assert.IsAlmost", IsAlmost);
-  REGISTER_SHARD("Assert.Compose", Compose<true>);
-  REGISTER_SHARD("Assert.NoCompose", Compose<false>);
+  REGISTER_SHARD("Assert.ComposeSuccess", Compose<true>);
+  REGISTER_SHARD("Assert.ComposeFailure", Compose<false>);
   REGISTER_SHARD("Debug.Break", Break);
   REGISTER_SHARD("_Callgrind.Start", CallgrindStart);
   REGISTER_SHARD("_Callgrind.Stop", CallgrindStop);

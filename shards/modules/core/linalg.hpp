@@ -70,9 +70,13 @@ template <typename TOp> struct VectorBinaryOperation {
     return opType;
   }
 
-  void operateDirect(SHVar &output, const SHVar &a, const SHVar &b) { op.apply(output, a, b); }
+  void operateDirect(SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
+    // fine to ignore failed, as we don't inline optimize this and throwing is fine here
+    op.apply(output, a, b);
+  }
 
-  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b) {
+  void operateBroadcast(SHVar &output, const SHVar &a, const SHVar &b, bool *failed) {
+    // fine to ignore failed, as we don't inline optimize this and throwing is fine here
     throw std::logic_error("broadcast not allowed on vector operations");
   }
 };
@@ -96,7 +100,7 @@ template <typename TOp> struct VectorUnaryOperation {
     return opType;
   }
 
-  void operateDirect(SHVar &output, const SHVar &a) { op.apply(output, a); }
+  void operateDirect(SHVar &output, const SHVar &a, bool *failed) { op.apply(output, a); }
 };
 
 struct CrossOp {
@@ -273,9 +277,9 @@ struct MatMul : public BinaryBase {
 
   static SHTypesInfo outputTypes() { return CoreInfo::MatrixOrVector; }
   static SHOptionalString outputHelp() {
-    return SHCCSTR(
-        "Outputs the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
-        "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a matrix with the same dimensions as the input matrix.");
+    return SHCCSTR("Outputs the result of the matrix multiplication. If a matrix is multiplied by a vector, the result is a "
+                   "vector (depending on the dimensions of the matrix provided). If two matrices are multiplied, the result is a "
+                   "matrix with the same dimensions as the input matrix.");
   }
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     if (lhs.basicType == SHType::Seq && rhs == SHType::Seq) {
@@ -689,22 +693,20 @@ struct EulerToQuat {
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float3Type; }
-  static SHOptionalString inputHelp() { 
-    return SHCCSTR("Takes a float3 vector representing Euler angles in radians (x=yaw, y=pitch, z=roll)."); 
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Takes a float3 vector representing Euler angles in radians (x=yaw, y=pitch, z=roll).");
   }
 
   static SHTypesInfo outputTypes() { return CoreInfo::Float4Type; }
-  static SHOptionalString outputHelp() { 
-    return SHCCSTR("Outputs a float4 vector representing the rotation quaternion."); 
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a float4 vector representing the rotation quaternion."); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     using namespace linalg::aliases;
     float3 euler = toFloat3(input);
     float yaw = euler.x;
-    float pitch = euler.y; 
+    float pitch = euler.y;
     float roll = euler.z;
-    
+
     // Convert to quaternion using ZYX order (yaw-pitch-roll)
     float cy = cos(yaw * 0.5f);
     float sy = sin(yaw * 0.5f);
@@ -718,7 +720,7 @@ struct EulerToQuat {
     quat.x = sr * cp * cy - cr * sp * sy;
     quat.y = cr * sp * cy + sr * cp * sy;
     quat.z = cr * cp * sy - sr * sp * cy;
-    
+
     _output = quat;
     return _output;
   }

@@ -13,12 +13,12 @@ use crate::shardsc::{
   SHBool, SHColor, SHComposeResult, SHContext, SHEnumInfo, SHEnumTypeInfo, SHExposedTypeInfo,
   SHExposedTypesInfo, SHImage, SHInstanceData, SHMeshRef, SHObjectTypeInfo, SHOptionalString,
   SHOptionalStrings, SHParameterInfo, SHParametersInfo, SHPointer, SHSeq, SHString, SHStrings,
-  SHTable, SHTableIterator, SHTableTypeInfo, SHTraits, SHTypeInfo, SHTypeInfo_Details, SHType_Any,
-  SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar, SHType_Enum, SHType_Float,
-  SHType_Float2, SHType_Float3, SHType_Float4, SHType_Image, SHType_Int, SHType_Int16, SHType_Int2,
-  SHType_Int3, SHType_Int4, SHType_Int8, SHType_None, SHType_Object, SHType_Path, SHType_Seq,
-  SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire, SHTypesInfo, SHVar, SHVarPayload,
-  SHVarPayload__bindgen_ty_1, SHVarPayload__bindgen_ty_1__bindgen_ty_1,
+  SHTable, SHTableIndices, SHTableIterator, SHTableTypeInfo, SHTraits, SHTypeInfo,
+  SHTypeInfo_Details, SHType_Any, SHType_Bool, SHType_Bytes, SHType_Color, SHType_ContextVar,
+  SHType_Enum, SHType_Float, SHType_Float2, SHType_Float3, SHType_Float4, SHType_Image, SHType_Int,
+  SHType_Int16, SHType_Int2, SHType_Int3, SHType_Int4, SHType_Int8, SHType_None, SHType_Object,
+  SHType_Path, SHType_Seq, SHType_ShardRef, SHType_String, SHType_Table, SHType_Wire, SHTypesInfo,
+  SHVar, SHVarPayload, SHVarPayload__bindgen_ty_1, SHVarPayload__bindgen_ty_1__bindgen_ty_1,
   SHVarPayload__bindgen_ty_1__bindgen_ty_2, SHVarPayload__bindgen_ty_1__bindgen_ty_4, SHWire,
   SHWireInfo, SHWireRef, SHWireState, SHWireState_Continue, SHWireState_Rebase,
   SHWireState_Restart, SHWireState_Return, SHWireState_Stop, Shard, ShardPtr, Shards,
@@ -1232,6 +1232,7 @@ Static common type infos utility
 pub mod common_type {
   use crate::shardsc::SHSeq;
   use crate::shardsc::SHStrings;
+  use crate::shardsc::SHTableIndices;
   use crate::shardsc::SHTableTypeInfo;
   use crate::shardsc::SHType;
   use crate::shardsc::SHTypeInfo;
@@ -1327,6 +1328,12 @@ pub mod common_type {
             types: SHTypesInfo {
               elements: &$name as *const SHTypeInfo as *mut SHTypeInfo,
               len: 1,
+              cap: 0,
+            },
+            fixedStructTable: false,
+            indices: SHTableIndices {
+              elements: core::ptr::null_mut(),
+              len: 0,
               cap: 0,
             },
           },
@@ -1661,6 +1668,12 @@ impl Type {
           types: SHTypesInfo {
             elements: types.as_ptr() as *mut SHTypeInfo,
             len: types.len() as u32,
+            cap: 0,
+          },
+          fixedStructTable: false,
+          indices: SHTableIndices {
+            elements: core::ptr::null_mut(),
+            len: 0,
             cap: 0,
           },
         },

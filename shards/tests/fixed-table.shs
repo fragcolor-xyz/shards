@@ -1,0 +1,95 @@
+@define(my-type @type({first: Type::Int second: {third: Type::Int}}))
+
+Assert.ComposeFailure({
+  Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
+  10 | Set(my-struct "another-field") ; this is forbidden
+})
+
+Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
+my-struct | Log | Assert.Is({first: 0 second: {third: {first: 0 second: {third: 0}}}})
+
+10 | Update(my-struct "first")
+my-struct | Log | Assert.Is({first: 10 second: {third: {first: 0 second: {third: 0}}}})
+
+Assert.ComposeFailure({
+  Erase("first" my-struct)
+})
+
+Assert.ComposeFailure({
+  Clear(my-struct)
+})
+
+my-struct | Take("first") | Add(10) | Assert.Is(20)
+
+Assert.ComposeFailure({
+  my-struct | Take("first") | Add(10.0)
+})
+
+Assert.ComposeFailure({
+  {
+    a: 10
+    b: 20
+  } = x
+  
+  Erase("b" x)
+})
+
+Assert.ComposeFailure({
+  {
+    a: 10
+    b: 20
+  } = x0
+  
+  Clear(x0)
+})
+
+Assert.ComposeFailure({
+  {
+    a: 10
+    b: 20
+  } >= x1
+  
+  Erase("b" x1)
+})
+
+Assert.ComposeFailure({
+  {
+    a: 10
+    b: 20
+  } >= x11
+  
+  Clear(x11)
+})
+
+
+Assert.ComposeFailure({
+  10 | Set(x2 "a")
+  20 | Set(x2 "b")
+  
+  Erase("b" x2)
+})
+
+Assert.ComposeFailure({
+  10 | Set(x21 "a")
+  20 | Set(x21 "b")
+  
+  Clear(x21)
+})
+
+Table(dyn-tab)
+
+"a" = key1-var
+
+10 | Update(dyn-tab key1-var)
+
+Erase(key1-var dyn-tab)
+
+dyn-tab | Count | Assert.Is(0)
+
+"b" = key2-var
+
+20 | Update(dyn-tab key2-var)
+
+Clear(dyn-tab)
+
+dyn-tab | Count | Assert.Is(0)

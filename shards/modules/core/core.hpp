@@ -21,6 +21,7 @@
 #include <cmath>
 #include <optional>
 #include <sstream>
+#include <numeric>
 
 using namespace std::chrono_literals;
 
@@ -1310,6 +1311,11 @@ struct Set : public SetUpdateBase {
 
     // bake exposed types
     if (_isTable) {
+      if (existingExposedType && existingExposedType->exposedType.table.fixedStructTable) {
+        throw ComposeError(fmt::format(
+            "Set, variable \"{}\" is a fixed struct table, cannot be used with Set, please use Update instead", _name));
+      }
+
       // we are a table!
       _tableTypeInfo = updateTableType(_tableType, !_key.isVariable() ? &(SHVar &)_key : &Var::Empty, data.inputType,
                                        existingExposedType ? &existingExposedType->exposedType : nullptr);
@@ -2475,6 +2481,7 @@ struct TableDecl : public VariableBase {
           table->valueType = SHType::Table;
           table->payload.tableValue.api = &GetGlobals().TableInterface;
           table->payload.tableValue.opaque = new SHMap();
+          fillDefaultValues(asTable(*table), _weakType.table);
         }
       } else {
         return; // we will check during activate
@@ -2484,6 +2491,7 @@ struct TableDecl : public VariableBase {
         _target->valueType = SHType::Table;
         _target->payload.tableValue.api = &GetGlobals().TableInterface;
         _target->payload.tableValue.opaque = new SHMap();
+        fillDefaultValues(asTable(*_target), _weakType.table);
       }
       _cell = _target;
     }
@@ -2501,6 +2509,7 @@ struct TableDecl : public VariableBase {
       table->valueType = SHType::Table;
       table->payload.tableValue.api = &GetGlobals().TableInterface;
       table->payload.tableValue.opaque = new SHMap();
+      fillDefaultValues(asTable(*table), _weakType.table);
     }
   }
 
@@ -2531,11 +2540,13 @@ struct TableDecl : public VariableBase {
   OwnedVar _typeDesc{};
   SHTypeInfo _weakType{};
   bool _clear = true;
+  bool _canClear = false;
 
   static inline Parameters tableParams{
       setterParams,
       {{"Clear",
-        SHCCSTR("If we should clear this sequence at every wire iteration; works only if this is the first push; default: true."),
+        SHCCSTR("If we should clear this table at every wire iteration; works ONLY if it's a dynamic table (no keys or only "
+                "`none` key); default: true."),
         {CoreInfo::BoolType}},
        {"Type", SHCCSTR("The table type to forward declare."), {CoreInfo::NoneType, CoreInfo::TypeType}}},
   };
@@ -2562,6 +2573,38 @@ struct TableDecl : public VariableBase {
     throw SHException("Param index out of range.");
   }
 
+  static bool deriveTableIndices(SHTableTypeInfo &info) {
+    // Early validation - O(n) scan before any allocation
+    for (uint32_t i = 0; i < info.keys.len; i++) {
+      if (info.keys.elements[i].valueType == SHType::None) {
+        return false; // Cannot proceed with incomplete type info
+      }
+    }
+
+    // Proceed with optimization
+    std::vector<uint32_t> indices(info.keys.len);
+    std::iota(indices.begin(), indices.end(), 0);
+
+    std::sort(indices.begin(), indices.end(),
+              [&](uint32_t a, uint32_t b) { return ShardsKeyCompare<SHVar>{}(info.keys.elements[a], info.keys.elements[b]); });
+
+    shards::arrayResize(info.indices, info.keys.len);
+    std::copy(indices.begin(), indices.end(), info.indices.elements);
+
+    // Recurse - fail fast propagation
+    for (uint32_t i = 0; i < info.types.len; i++) {
+      auto &type = info.types.elements[i];
+      if (type.basicType == SHType::Table) {
+        if (!deriveTableIndices(type.table)) {
+          shards::arrayFree(info.indices); // Clean up on nested failure
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = SHType::Table;
@@ -2571,6 +2614,7 @@ struct TableDecl : public VariableBase {
       if (!_key.isVariable()) {
         shards::arrayPush(_tableInfo.table.keys, *_key);
       }
+
       if (_global) {
         _exposedInfo =
             ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), SHTypeInfo(_tableInfo), true));
@@ -2614,6 +2658,17 @@ struct TableDecl : public VariableBase {
     }
 
     if (!_isTable) {
+      // Check if we have all keys as fixed values in the type description, if so we can mark the table as a fixed struct table
+      // Btw this can work only in this case, not for nested tables, reason being KISS principle
+      // anyway you can declare nested tables within this table itself!
+      // Type: @type({"x": {"y": another-type}})
+      if (!_typeDesc->isNone()) {
+        // currently we copy types deeply all the time.. in the future we should optimize this, when we do that this here likely
+        // needs to change slightly, for now we just set the flag on the shallow type
+        // TODO, TODO, actually use those derived indices!
+        _weakType.table.fixedStructTable = deriveTableIndices(_weakType.table);
+      }
+
       if (_global) {
         _exposedInfo = ExposedInfo(ExposedInfo::GlobalVariable(_name.c_str(), SHCCSTR("The exposed table."), _weakType, true));
       } else {
@@ -2627,10 +2682,113 @@ struct TableDecl : public VariableBase {
       throw ComposeError("Table - Type must be a table.");
     }
 
+    if (_weakType.table.fixedStructTable) {
+      _canClear = false;
+    } else if (_typeDesc.valueType == SHType::None) {
+      _canClear = true;
+    } else {
+      // ensure there is only a none key
+      _canClear = true;
+      for (uint32_t i = 0; i < _weakType.table.keys.len; i++) {
+        if (_weakType.table.keys.elements[i].valueType != SHType::None) {
+          _canClear = false;
+          break;
+        }
+      }
+    }
+
     // Ensure declared
     _exposedInfo._innerInfo.elements[0].declared = true;
 
     return data.inputType;
+  }
+
+  void fillDefaultValues(TableVar &table, SHTableTypeInfo &tableInfo) {
+    // we need to fill the default values for the table
+    // we do this by iterating over the keys and setting the default values
+    for (uint32_t i = 0; i < tableInfo.keys.len; i++) {
+      auto key = shards::OwnedVar::Foreign(tableInfo.keys.elements[i]);
+      if (key.valueType == SHType::None) {
+        // skip in this case, we don't want to fill default values for dynamic keys
+        continue;
+      }
+
+      auto &type = tableInfo.types.elements[i];
+
+      auto &value = table[key];
+      shassert(value.valueType == SHType::None && "Table - Default value should be None");
+
+      switch (type.basicType) {
+      case SHType::None:
+      case SHType::Any:
+      case SHType::Enum:
+      case SHType::Bool:
+      case SHType::Int:
+      case SHType::Int2:
+      case SHType::Int3:
+      case SHType::Int4:
+      case SHType::Int8:
+      case SHType::Int16:
+      case SHType::Float:
+      case SHType::Float2:
+      case SHType::Float3:
+      case SHType::Float4:
+      case SHType::Color:
+      case SHType::EndOfBlittableTypes:
+      case SHType::Bytes:
+      case SHType::Audio:
+      case SHType::Seq:
+      case SHType::Object: {
+        value.valueType = type.basicType;
+        memset(&value.payload, 0x0, sizeof(SHVarPayload));
+        break;
+      }
+      // following types cannot just be memset'd
+      case SHType::String:
+      case SHType::Path:
+      case SHType::ContextVar:
+        value = shards::Var("");
+        break;
+      case SHType::Table: {
+        value.valueType = SHType::Table;
+        value.payload.tableValue.api = &GetGlobals().TableInterface;
+        value.payload.tableValue.opaque = new SHMap();
+        TableVar &subTable = asTable(value);
+        fillDefaultValues(subTable, type.table);
+        break;
+      }
+      case SHType::Wire: {
+        // Point it to a static empty wire
+        static std::shared_ptr<SHWire> EmptyWire = SHWire::make("<empty>");
+        value = shards::Var(EmptyWire);
+        break;
+      }
+      case SHType::ShardRef: {
+        // Point it to a static Pass shard
+        static Shard *PassShard = shards::createShard("Pass");
+        value.valueType = SHType::ShardRef;
+        value.payload.shardValue = PassShard;
+        break;
+      }
+      case SHType::Type: {
+        // Point to static None type
+        value = shards::Var(reinterpret_cast<SHTypeInfo *>(&CoreInfo::NoneType));
+        break;
+      }
+      case SHType::Image: {
+        // Point to static empty image
+        static SHImage *emptyImage = imageNew(0);
+        value = shards::Var(emptyImage);
+        break;
+      }
+      case SHType::Trait: {
+        // Point to an empty trait
+        static SHTrait emptyTrait{};
+        value = shards::Var(&emptyTrait);
+        break;
+      }
+      }
+    }
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -2641,7 +2799,7 @@ struct TableDecl : public VariableBase {
       }
     }
 
-    if (_clear) {
+    if (_canClear && _clear) {
       TableVar &table = asTable(*_cell);
       table.clear();
     }
@@ -2804,6 +2962,40 @@ struct Clear : SeqUser {
 
     if (!info->isMutable) {
       throw ComposeError(fmt::format("Variable {} is not mutable.", _name));
+    }
+
+    if (_key.isNone()) {
+      if (info->exposedType.basicType == SHType::Table) {
+        // cannot clear a fixed struct table
+        if (info->exposedType.table.fixedStructTable) {
+          throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
+        }
+
+        // also cannot clear tables with non dynamic keys
+        for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+          if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
+            throw ComposeError(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
+          }
+        }
+      }
+    } else {
+      bool fail = true;
+      if (info->exposedType.table.keys.len == info->exposedType.table.types.len) {
+        for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+          auto &key = info->exposedType.table.keys.elements[i];
+          auto &type = info->exposedType.table.types.elements[i];
+          if (_key == key) {
+            if (type.basicType == SHType::Seq) {
+              fail = false; // fine to clear a sequence
+              break;
+            }
+          }
+        }
+      }
+      if (fail) {
+        throw ComposeError(fmt::format(
+            "Clear: Cannot clear a table with a known key that is not a sequence or a variable key, variable: {}", _name));
+      }
     }
 
     return data.inputType;

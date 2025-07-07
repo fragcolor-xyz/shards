@@ -213,60 +213,61 @@ constexpr bool hasDispatchType(DispatchType a, DispatchType b) { return (uint8_t
       "dispatchType<{}>({})", magic_enum::enum_flags_name(static_cast<DispatchType>(dispatchType)), magic_enum::enum_name(type)));
 }
 
-template <DispatchType DispatchType, typename T, typename... TArgs> void dispatchType(SHType type, T v, TArgs &&...args) {
+template <DispatchType DispatchType, typename T, typename... TArgs>
+void dispatchType(SHType type, bool *failed, T v, TArgs &&...args) {
   switch (type) {
   case SHType::Int:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int>(std::forward<TArgs>(args)...);
     break;
   case SHType::Int2:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int2>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int2>(std::forward<TArgs>(args)...);
     break;
   case SHType::Int3:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int3>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int3>(std::forward<TArgs>(args)...);
     break;
   case SHType::Int4:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int4>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int4>(std::forward<TArgs>(args)...);
     break;
   case SHType::Int8:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int8>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int8>(std::forward<TArgs>(args)...);
     break;
   case SHType::Int16:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Int16>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Int16>(std::forward<TArgs>(args)...);
     break;
   case SHType::Color:
     if constexpr (hasDispatchType(DispatchType, DispatchType::IntTypes))
-      return v.template apply<SHType::Color>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Color>(std::forward<TArgs>(args)...);
     break;
   case SHType::Float:
     if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
-      return v.template apply<SHType::Float>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Float>(std::forward<TArgs>(args)...);
     break;
   case SHType::Float2:
     if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
-      return v.template apply<SHType::Float2>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Float2>(std::forward<TArgs>(args)...);
     break;
   case SHType::Float3:
     if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
-      return v.template apply<SHType::Float3>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Float3>(std::forward<TArgs>(args)...);
     break;
   case SHType::Float4:
     if constexpr (hasDispatchType(DispatchType, DispatchType::FloatTypes))
-      return v.template apply<SHType::Float4>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Float4>(std::forward<TArgs>(args)...);
     break;
   case SHType::Bool:
     if constexpr (hasDispatchType(DispatchType, DispatchType::BoolTypes))
-      return v.template apply<SHType::Bool>(std::forward<TArgs>(args)...);
+      v.template apply<SHType::Bool>(std::forward<TArgs>(args)...);
     break;
   default:
+    *failed = true;
     break;
   }
-  throwDispatchError(type, static_cast<int>(DispatchType));
 }
 
 struct ModOp final {

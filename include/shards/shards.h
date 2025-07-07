@@ -95,6 +95,8 @@ SH_ARRAY_DECL(SHPayloadArray, struct SHVarPayload);
 struct SHVar;
 SH_ARRAY_DECL(SHSeq, struct SHVar);
 
+SH_ARRAY_DECL(SHTableIndices, uint32_t);
+
 struct SHTableImpl;
 
 struct SHTableInterface;
@@ -314,6 +316,11 @@ typedef struct SHTableTypeInfo {
   // > 0 it is assumed that tableTypes contains a sequence with the possible
   // types in the table
   SHTypesInfo types;
+  // Fixed struct table, this is used to mark a table as a fixed struct table, this allows a lot of optimizations, basically
+  // turning a table into a struct
+  SHBool fixedStructTable;
+  // These are the indices of the keys in the table, this is used to optimize the table access
+  SHTableIndices indices;
 } SHTableTypeInfo;
 
 typedef struct SHExtendedObjectTypeInfo SHExtendedObjectTypeInfo;
@@ -625,9 +632,10 @@ struct SHVarPayload {
 #define SHVAR_FLAGS_ABORT (1 << 5) // 6
 // this marks a weak object reference
 #define SHVAR_FLAGS_WEAK_OBJECT (1 << 6) // 7
+// this marks a variable as a fixed struct table, this allows a lot of optimizations, basically turning a table into a struct
+#define SHVAR_FLAGS_FIXED_STRUCT_TABLE (1 << 7) // 8
 
 // Additional flags available
-// #define SHVAR_FLAGS_RESERVED_0 (1 << 7) // 8
 // #define SHVAR_FLAGS_RESERVED_1 (1 << 8) // 9
 // #define SHVAR_FLAGS_RESERVED_2 (1 << 9) // 10
 // #define SHVAR_FLAGS_RESERVED_3 (1 << 10) // 11

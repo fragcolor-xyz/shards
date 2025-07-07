@@ -830,7 +830,7 @@
   "0x0BAD" | HexToBytes | PrependTo(hexbytes-mut)
   hexbytes-mut | ToHex | Assert.Is("0x0badf00dc0ffee" true)
   StringToBytes | BytesToString | Assert.Is("0x0badf00dc0ffee" true)
-
+  
   "0xF00D" | HexToBytes | Split(Size: 1) | Log
   Assert.Is(([("0xF0" | HexToBytes) ("0x0D" | HexToBytes)]) true)
   
@@ -1166,7 +1166,9 @@
   Log
   Assert.Is([112 114 97 99] true)
   
-  {a: 1 b: 2 c: 3} >= table-abc
+  {a: 1 b: 2 c: 3}
+  ExpectTable ; to make it a dynamic table
+  >= table-abc
   Erase(["a" "c"] table-abc)
   table-abc | Assert.Is({b: 2} true)
   

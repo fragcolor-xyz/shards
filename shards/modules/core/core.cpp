@@ -1279,10 +1279,26 @@ struct Erase : SeqUser {
           fmt::format("Erase: Expected a SHType::Seq or SHType::Table, got {}, variable: {}", info->exposedType, _name));
     }
 
+    if (!info->isMutable) {
+      throw ComposeError(fmt::format("Erase: Variable {} is not mutable.", _name));
+    }
+
     auto isTable = info->exposedType.basicType == SHType::Table;
 
     // Figure if we output a sequence or not
     if (isTable) {
+      // cannot erase from a fixed struct table
+      if (info->exposedType.table.fixedStructTable) {
+        throw ComposeError(fmt::format("Erase: Cannot erase from a fixed struct table, variable: {}", _name));
+      }
+
+      // we also need to check if there are any non dynamic keys, in that case we forbid erasing
+      for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
+        if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
+          throw ComposeError(fmt::format("Erase: Cannot erase from a table with non dynamic keys, variable: {}", _name));
+        }
+      }
+
       valid = true;
     } else if (_indices->valueType == SHType::Seq) {
       if (_indices->payload.seqValue.len > 0 && _indices->payload.seqValue.elements[0].valueType == SHType::Int) {
