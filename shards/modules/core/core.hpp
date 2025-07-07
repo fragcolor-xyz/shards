@@ -2665,6 +2665,7 @@ struct TableDecl : public VariableBase {
       if (!_typeDesc->isNone()) {
         // currently we copy types deeply all the time.. in the future we should optimize this, when we do that this here likely
         // needs to change slightly, for now we just set the flag on the shallow type
+        // TODO, TODO, actually use those derived indices!
         _weakType.table.fixedStructTable = deriveTableIndices(_weakType.table);
       }
 
