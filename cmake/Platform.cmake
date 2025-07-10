@@ -148,6 +148,10 @@ if(SHARDS_MIN_DEBUG_INFO)
   fixup_debug_flags("CMAKE_C_FLAGS")
 endif()
 
+if(NO_FORCE_INLINE)
+  add_compile_definitions(NO_FORCE_INLINE)
+endif()
+
 if(EMSCRIPTEN)
   add_compile_options(-fdeclspec)
 
