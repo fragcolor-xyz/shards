@@ -50,6 +50,8 @@ SHARDS_REGISTER_FN(math) {
   REGISTER_SHARD_ALIAS("Acos", "Math.Acos", Acos);
   REGISTER_SHARD("Math.Atan", Atan);
   REGISTER_SHARD_ALIAS("Atan", "Math.Atan", Atan);
+  REGISTER_SHARD("Math.Atan2", Atan2);
+  REGISTER_SHARD_ALIAS("Atan2", "Math.Atan2", Atan2);
   REGISTER_SHARD("Math.Sinh", Sinh);
   REGISTER_SHARD("Math.Cosh", Cosh);
   REGISTER_SHARD("Math.Tanh", Tanh);

@@ -1441,6 +1441,23 @@ struct Pow : public BinaryOperation<BasicBinaryOperation<PowOp>> {
   static SHOptionalString outputHelp() { return SHCCSTR("The result of raising the input to the power of the operand."); }
 };
 
+struct Atan2Op final {
+  template <typename T> T apply(const T &y, const T &x) { return std::atan2(y, x); }
+};
+struct Atan2 : public BinaryOperation<BasicBinaryOperation<Atan2Op>> {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the angle in radians whose tangent is the quotient of the two inputs. The first input "
+                   "is the y-coordinate, and the second input is the x-coordinate.");
+  }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The first input is the y-coordinate, and the second input is the x-coordinate. The output is the angle in "
+                   "radians whose tangent is the quotient of the two inputs.");
+  }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("Outputs the angle in radians whose tangent is the quotient of the two inputs.");
+  }
+};
+
 struct LerpOp final {
   template <typename T> T apply(const T &lhs, const T &rhs, double t) { return T((double)lhs + (double(rhs) - double(lhs)) * t); }
 };

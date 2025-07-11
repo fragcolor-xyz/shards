@@ -237,6 +237,10 @@ struct OperatorExp {
   static inline const char *call = "exp";
 };
 
+struct OperatorAtan2 {
+  static inline const char *call = "atan2";
+};
+
 struct OperatorFloor {
   static inline const char *call = "floor";
 };
