@@ -185,8 +185,8 @@ typedef float SHFloat4 __attribute__((vector_size(16)));
 #define NO_INLINE __attribute__((noinline))
 
 #if defined(NDEBUG) && !defined(NO_FORCE_INLINE)
-#define ALWAYS_INLINE __attribute__((always_inline))
-#define FLATTEN __attribute__((flatten))
+#define ALWAYS_INLINE __attribute__((visibility("hidden"))) __attribute__((always_inline))
+#define FLATTEN __attribute__((visibility("hidden"))) __attribute__((flatten))
 #else
 #define ALWAYS_INLINE
 #define FLATTEN
