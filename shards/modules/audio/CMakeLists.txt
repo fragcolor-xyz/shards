@@ -8,9 +8,23 @@ add_shards_module(audio SOURCES ${SOURCES}
   REGISTER_SHARDS audio dsp
   EXPERIMENTAL)
 
-target_link_libraries(shards-module-audio
-  kissfft miniaudio shards-logging opus
-)
+if(SHARDS_AUDIO_LINK_WHOLE)
+  # Remove opus from normal linking
+  target_link_libraries(shards-module-audio
+    kissfft miniaudio shards-logging
+  )
+  
+  # Add opus with whole-archive using plain signature
+  target_link_libraries(shards-module-audio
+    "-Wl,--whole-archive"
+    opus
+    "-Wl,--no-whole-archive"
+  )
+else()
+  target_link_libraries(shards-module-audio
+    kissfft miniaudio shards-logging opus
+  )
+endif()
 
 # Need to compile specific files as objective-c
 if(IOS OR VISIONOS)
