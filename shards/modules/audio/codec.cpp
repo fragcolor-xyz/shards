@@ -7,6 +7,7 @@
 #include <shards/core/platform.hpp>
 #include <shards/log/log.hpp>
 #include <opus/include/opus.h>
+#include <opus/include/opus_multistream.h>
 #include <vector>
 #include <cstring>
 
@@ -54,13 +55,19 @@ struct Compress {
                  "Common values are 120, 240, 480, 960, 1920, or 2880 frames at 48kHz.",
                  {CoreInfo::IntType, CoreInfo::IntVarType});
 
-  PARAM_IMPL(PARAM_IMPL_FOR(_bitrate), PARAM_IMPL_FOR(_application), PARAM_IMPL_FOR(_complexity), PARAM_IMPL_FOR(_frameSize));
+  // UseMultistream: Enable multistream encoding for >2 channels
+  PARAM_PARAMVAR(_useMultistream, "UseMultistream", "Enable if the source is multistream encoded.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_bitrate), PARAM_IMPL_FOR(_application), PARAM_IMPL_FOR(_complexity), PARAM_IMPL_FOR(_frameSize),
+             PARAM_IMPL_FOR(_useMultistream));
 
   void setup() {
-    _bitrate = Var(64000);       // 64 kbps default bitrate
-    _application = Var("audio"); // Default to general audio
-    _complexity = Var(10);       // Default to highest complexity
-    _frameSize = Var(960);       // 20ms at 48kHz (960 frames)
+    _bitrate = Var(64000);        // 64 kbps default bitrate
+    _application = Var("audio");  // Default to general audio
+    _complexity = Var(10);        // Default to highest complexity
+    _frameSize = Var(960);        // 20ms at 48kHz (960 frames)
+    _useMultistream = Var(false); // Default to basic Opus
   }
 
   PARAM_REQUIRED_VARIABLES()
@@ -72,7 +79,9 @@ struct Compress {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _encoder = nullptr;
+    _msEncoder = nullptr;
     _encoderInitialized = false;
+    _isMultistream = false;
     _inputBuffer.clear();
     _outputPackets.clear();
   }
@@ -82,20 +91,34 @@ struct Compress {
       opus_encoder_destroy(_encoder);
       _encoder = nullptr;
     }
+    if (_msEncoder) {
+      opus_multistream_encoder_destroy(_msEncoder);
+      _msEncoder = nullptr;
+    }
     _encoderInitialized = false;
+    _isMultistream = false;
     PARAM_CLEANUP(context);
   }
 
   // Initialize or reinitialize the encoder if needed
   bool initializeEncoder(int sampleRate, int channels) {
+    bool useMultistream = _useMultistream.get().payload.boolValue || channels > 2;
+
     // Check if we need to reinitialize the encoder
-    if (_encoder && (_lastSampleRate != sampleRate || _lastChannels != channels)) {
-      opus_encoder_destroy(_encoder);
-      _encoder = nullptr;
+    if ((_encoder || _msEncoder) &&
+        (_lastSampleRate != sampleRate || _lastChannels != channels || _isMultistream != useMultistream)) {
+      if (_encoder) {
+        opus_encoder_destroy(_encoder);
+        _encoder = nullptr;
+      }
+      if (_msEncoder) {
+        opus_multistream_encoder_destroy(_msEncoder);
+        _msEncoder = nullptr;
+      }
       _encoderInitialized = false;
     }
 
-    if (!_encoder) {
+    if (!_encoder && !_msEncoder) {
       int error = 0;
       int app = OPUS_APPLICATION_AUDIO; // Default
 
@@ -111,19 +134,69 @@ struct Compress {
         SHLOG_ERROR("Invalid application type: {}. Using 'audio' instead.", appStr);
       }
 
-      // Create the encoder
-      _encoder = opus_encoder_create(sampleRate, channels, app, &error);
-      if (error != OPUS_OK || !_encoder) {
-        SHLOG_ERROR("Failed to create Opus encoder: {}", opus_strerror(error));
-        return false;
+      if (useMultistream) {
+        // Create multistream encoder
+        _isMultistream = true;
+
+        // Set up channel mapping (simple mapping for now)
+        _channelMapping.resize(channels);
+        int streams = 0;
+        int coupled_streams = 0;
+
+        if (channels == 1) {
+          streams = 1;
+          coupled_streams = 0;
+          _channelMapping[0] = 0;
+        } else if (channels == 2) {
+          streams = 1;
+          coupled_streams = 1;
+          _channelMapping[0] = 0;
+          _channelMapping[1] = 1;
+        } else {
+          // For >2 channels, use simple mapping (each channel gets its own stream)
+          streams = channels;
+          coupled_streams = 0;
+          for (int i = 0; i < channels; i++) {
+            _channelMapping[i] = i;
+          }
+        }
+
+        _msEncoder =
+            opus_multistream_encoder_create(sampleRate, channels, streams, coupled_streams, _channelMapping.data(), app, &error);
+        if (error != OPUS_OK || !_msEncoder) {
+          SHLOG_ERROR("Failed to create Opus multistream encoder: {}", opus_strerror(error));
+          return false;
+        }
+
+        // Set encoder parameters
+        int bitrate = _bitrate.get().payload.intValue;
+        opus_multistream_encoder_ctl(_msEncoder, OPUS_SET_BITRATE(bitrate));
+
+        int complexity = _complexity.get().payload.intValue;
+        opus_multistream_encoder_ctl(_msEncoder, OPUS_SET_COMPLEXITY(complexity));
+
+      } else {
+        // Create basic encoder (1-2 channels only)
+        _isMultistream = false;
+
+        if (channels > 2) {
+          SHLOG_ERROR("Basic Opus encoder supports max 2 channels. Use UseMultistream=true for {} channels.", channels);
+          return false;
+        }
+
+        _encoder = opus_encoder_create(sampleRate, channels, app, &error);
+        if (error != OPUS_OK || !_encoder) {
+          SHLOG_ERROR("Failed to create Opus encoder: {}", opus_strerror(error));
+          return false;
+        }
+
+        // Set encoder parameters
+        int bitrate = _bitrate.get().payload.intValue;
+        opus_encoder_ctl(_encoder, OPUS_SET_BITRATE(bitrate));
+
+        int complexity = _complexity.get().payload.intValue;
+        opus_encoder_ctl(_encoder, OPUS_SET_COMPLEXITY(complexity));
       }
-
-      // Set encoder parameters
-      int bitrate = _bitrate.get().payload.intValue;
-      opus_encoder_ctl(_encoder, OPUS_SET_BITRATE(bitrate));
-
-      int complexity = _complexity.get().payload.intValue;
-      opus_encoder_ctl(_encoder, OPUS_SET_COMPLEXITY(complexity));
 
       _lastSampleRate = sampleRate;
       _lastChannels = channels;
@@ -152,12 +225,15 @@ struct Compress {
   }
 
   OpusEncoder *_encoder = nullptr;
+  OpusMSEncoder *_msEncoder = nullptr; // Multistream encoder
   bool _encoderInitialized = false;
+  bool _isMultistream = false;
   int _lastSampleRate = 0;
   int _lastChannels = 0;
-  std::vector<float> _inputBuffer;           // Buffer to accumulate input samples
-  std::vector<unsigned char> _encodedBuffer; // Buffer for encoded data
-  std::vector<SHVar> _outputPackets;         // Sequence of encoded packets
+  std::vector<unsigned char> _channelMapping; // Channel mapping for multistream
+  std::vector<float> _inputBuffer;            // Buffer to accumulate input samples
+  std::vector<unsigned char> _encodedBuffer;  // Buffer for encoded data
+  std::vector<SHVar> _outputPackets;          // Sequence of encoded packets
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &audio = input.payload.audioValue;
@@ -214,9 +290,16 @@ struct Compress {
 
     // Process complete frames from the input buffer
     while (_inputBuffer.size() >= frameSizeSamples * size_t(numChannels)) {
-      // Encode the frame
-      opus_int32 encodedBytes = opus_encode_float(_encoder, _inputBuffer.data(), frameSizeSamples, _encodedBuffer.data(),
-                                                  static_cast<opus_int32>(_encodedBuffer.size()));
+      // Encode the frame using appropriate encoder
+      opus_int32 encodedBytes;
+
+      if (_isMultistream) {
+        encodedBytes = opus_multistream_encode_float(_msEncoder, _inputBuffer.data(), frameSizeSamples, _encodedBuffer.data(),
+                                                     static_cast<opus_int32>(_encodedBuffer.size()));
+      } else {
+        encodedBytes = opus_encode_float(_encoder, _inputBuffer.data(), frameSizeSamples, _encodedBuffer.data(),
+                                         static_cast<opus_int32>(_encodedBuffer.size()));
+      }
 
       if (encodedBytes < 0) {
         auto msg = fmt::format("Opus encoding failed: {}", opus_strerror(encodedBytes));
@@ -263,8 +346,12 @@ struct Decompress {
                  {CoreInfo::IntType, CoreInfo::IntVarType});
 
   // Channels: Number of audio channels
-  PARAM_PARAMVAR(_channels, "Channels", "The number of audio channels (1 for mono, 2 for stereo).",
+  PARAM_PARAMVAR(_channels, "Channels", "The number of audio channels (1 for mono, 2 for stereo, up to 255 for multistream).",
                  {CoreInfo::IntType, CoreInfo::IntVarType});
+
+  // UseMultistream: Enable multistream encoding for >2 channels
+  PARAM_PARAMVAR(_useMultistream, "UseMultistream", "Enable multistream encoding for complex channel layouts (>2 channels).",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
 
   // FrameSize: Frame size in frames (samples)
   PARAM_PARAMVAR(_frameSize, "FrameSize",
