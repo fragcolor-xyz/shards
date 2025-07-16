@@ -1277,7 +1277,6 @@ pub mod common_type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1312,7 +1311,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1339,7 +1337,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1353,7 +1350,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1367,7 +1363,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1381,7 +1376,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
     };
@@ -1621,7 +1615,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1633,7 +1626,6 @@ impl Type {
         enumeration: SHEnumTypeInfo { vendorId, typeId },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1650,7 +1642,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1679,7 +1670,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1695,7 +1685,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }

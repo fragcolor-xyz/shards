@@ -669,7 +669,6 @@ impl core::fmt::Debug for SHVar {
         },
       )
       .field("valueType", &self.valueType)
-      .field("innerType", &self.innerType)
       .finish_non_exhaustive()
   }
 }

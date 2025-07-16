@@ -41,8 +41,6 @@ using ShaderParamVariant = std::variant<NumParameter, TextureParameter, BufferPt
 
 inline ShaderParamVariant varToShaderParameter(const SHVar &var) {
   auto isTypedSeq = [&](const SHType basicType) {
-    if (var.innerType == SHType::Float4)
-      return true;
     for (size_t i = 0; i < var.payload.seqValue.len; i++) {
       if (var.payload.seqValue.elements[i].valueType != basicType)
         return false;

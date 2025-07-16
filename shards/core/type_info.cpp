@@ -93,7 +93,6 @@ SHTypeInfo deriveTypeInfo(const SHVar &value, const SHInstanceData &data, std::v
 
   SHTypeInfo varType{};
   varType.basicType = value.valueType;
-  varType.innerType = value.innerType;
   switch (value.valueType) {
   case SHType::Object: {
     varType.object.vendorId = value.payload.objectVendorId;

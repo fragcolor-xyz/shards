@@ -393,8 +393,7 @@ struct SHTypeInfo {
   // known at compose time.
   // Should not be considered when hashing this type
   uint32_t fixedSize;
-  // Used by Array type, which is still not implemented properly and unstable.
-  SH_ENUM_DECL SHType innerType;
+
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
@@ -657,11 +656,10 @@ struct SHVar {
   };
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
   SH_ENUM_DECL SHType valueType;
-  SH_ENUM_DECL SHType innerType;
 #else
   SHType valueType;
-  SHType innerType;
 #endif
+  uint8_t reserved;
   uint16_t flags;
   uint32_t refcount;
 } __attribute__((aligned(16)));

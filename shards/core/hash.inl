@@ -24,7 +24,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
 
   // this is not complete at all, missing Array and SHType::ContextVar for example
   hashUpdate<TDigest>(state, &var.valueType, sizeof(var.valueType));
-  hashUpdate<TDigest>(state, &var.innerType, sizeof(var.innerType));
 
   switch (var.valueType) {
   case SHType::Object: {
@@ -85,7 +84,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateTypeHash(const
     throw SHException("HashState maximum recursion exceeded");
 
   hashUpdate<TDigest>(state, &t.basicType, sizeof(t.basicType));
-  hashUpdate<TDigest>(state, &t.innerType, sizeof(t.innerType));
 
   switch (t.basicType) {
   case SHType::Object: {

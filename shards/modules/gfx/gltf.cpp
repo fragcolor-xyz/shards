@@ -403,7 +403,7 @@ struct GLTFShard {
   }
 
   bool isFloat4x4(const SHVar &var) {
-    return var.valueType == SHType::Seq && var.innerType == SHType::Float4 && var.payload.seqValue.len == 4;
+    return var.valueType == SHType::Seq && var.payload.seqValue.len == 4;
   }
   bool isValidPath(const SHVar &var) {
     for (auto &elem : var.payload.seqValue) {
