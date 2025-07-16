@@ -487,7 +487,7 @@ struct XPendBase {
                                            data.inputType, cons.exposedType.seqTypes.elements[0]));
           }
         }
-        if (cons.tracked) {
+        if (cons.trackingMask != 0) {
           SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be tracked.", _collection.variableName());
           throw ComposeError("AppendTo/PrependTo: Variable cannot be tracked.");
         }

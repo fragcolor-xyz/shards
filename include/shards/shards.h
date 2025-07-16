@@ -481,6 +481,15 @@ struct SHParameterInfo {
   SHBool variableSetter;
 };
 
+#define SHVAR_TRACKING_MASK_1 (1 << 0) // 1
+#define SHVAR_TRACKING_MASK_2 (1 << 1) // 2
+#define SHVAR_TRACKING_MASK_3 (1 << 2) // 4
+#define SHVAR_TRACKING_MASK_4 (1 << 3) // 8
+#define SHVAR_TRACKING_MASK_5 (1 << 4) // 16
+#define SHVAR_TRACKING_MASK_6 (1 << 5) // 32
+#define SHVAR_TRACKING_MASK_7 (1 << 6) // 64
+#define SHVAR_TRACKING_MASK_8 (1 << 7) // 128
+
 struct SHExposedTypeInfo {
   SHString name;
   SHOptionalString help;
@@ -499,11 +508,12 @@ struct SHExposedTypeInfo {
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
 
-  // If the variable is market as tracked, apps building on top will can use this feature
-  SHBool tracked;
-
   // If the variable is declared in this shard (not inherited from an inner shard)
   SHBool declared;
+
+  // If the variable is market as tracked, apps building on top will can use this feature
+  // to track the variable and its changes, 8bits mask, so up to 8 kinds of tracking
+  uint8_t trackingMask;
 };
 
 typedef struct SHStringPayload {
@@ -622,7 +632,7 @@ struct SHVarPayload {
 // it won't be destroyed automatically
 #define SHVAR_FLAGS_EXTERNAL (1 << 2) // 3
 // this marks the variable tracked, can be set inside a (Set) shard
-#define SHVAR_FLAGS_TRACKED (1 << 3) // 4
+#define SHVAR_FLAGS_RESERVED_0 (1 << 3) // 4
 // this marks the variable as a foreign variable, to prevent destruction
 // when used inside seq and table
 #define SHVAR_FLAGS_FOREIGN (1 << 4) // 5
@@ -659,7 +669,7 @@ struct SHVar {
 #else
   SHType valueType;
 #endif
-  uint8_t reserved;
+  uint8_t trackingMask; // 8bits mask, so up to 8 kinds of tracking
   uint16_t flags;
   uint32_t refcount;
 } __attribute__((aligned(16)));
@@ -888,8 +898,12 @@ typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct 
 
 typedef struct SHExternalVariable {
   struct SHVar *var;
+
   // Optional, if null, the type is derived  from the var
   const struct SHTypeInfo *type;
+
+  // tracking mask, used to track changes in the variable
+  SHInt trackingMask;
 } SHExternalVariable;
 
 // This copies the SHExternalVariable, although the var/type fields should be kept alive by the caller

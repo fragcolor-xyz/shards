@@ -1145,7 +1145,7 @@ static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHType
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHTypeInfo _tableContentInfo{};
-  bool _isExposed{false}; // notice this is used in Update only
+  bool _isTracked{false}; // notice this is used in Update only
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to be set to the variable."); }
@@ -1188,10 +1188,10 @@ struct SetBase : public VariableBase {
         throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
-      if (reference.tracked) {
-        _isExposed = true;
+      if (reference.trackingMask != 0) {
+        _isTracked = true;
       } else {
-        _isExposed = false;
+        _isTracked = false;
       }
     }
 
@@ -1262,7 +1262,8 @@ struct SetUpdateBase : public SetBase {
 };
 
 struct Set : public SetUpdateBase {
-  bool _tracked{false};
+  uint8_t _trackingMask{0};
+
   entt::scoped_connection _onStartConnection{};
   struct OnStartHandler {
     Set *shard;
@@ -1279,7 +1280,10 @@ struct Set : public SetUpdateBase {
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
   static inline Parameters setParamsInfo{
-      setterParams, {{"Tracked", SHCCSTR("If the variable should be marked as tracked."), {CoreInfo::BoolType}}}};
+      setterParams,
+      {{"TrackingMask",
+        SHCCSTR("If not 0, they variable will emit events when updated, according to the tracking mask, 8bits."),
+        {CoreInfo::IntType}}}};
 
   static SHParametersInfo parameters() { return setParamsInfo; }
 
@@ -1287,7 +1291,7 @@ struct Set : public SetUpdateBase {
     if (index < variableParamsInfoLen)
       VariableBase::setParam(index, value);
     else if (index == variableParamsInfoLen + 0) {
-      _tracked = value.payload.boolValue;
+      _trackingMask = value.payload.intValue;
     }
   }
 
@@ -1295,7 +1299,7 @@ struct Set : public SetUpdateBase {
     if (index < variableParamsInfoLen)
       return VariableBase::getParam(index);
     else if (index == variableParamsInfoLen + 0)
-      return Var(_tracked);
+      return Var(_trackingMask);
     throw SHException("Param index out of range.");
   }
 
@@ -1341,10 +1345,10 @@ struct Set : public SetUpdateBase {
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
 
-    if (_tracked) {
-      _exposedInfo._innerInfo.elements[0].tracked = true;
+    if (_trackingMask != 0) {
+      _exposedInfo._innerInfo.elements[0].trackingMask = _trackingMask;
     } else {
-      _exposedInfo._innerInfo.elements[0].tracked = false;
+      _exposedInfo._innerInfo.elements[0].trackingMask = 0;
     }
 
     // always lift this limit in a Set/Update
@@ -1373,8 +1377,8 @@ struct Set : public SetUpdateBase {
 
     shassert_extended(context, _self && "Self should be valid at this point");
 
-    if (_tracked) {
-      _target->flags |= SHVAR_FLAGS_TRACKED;
+    if (_trackingMask != 0) {
+      _target->trackingMask |= _trackingMask;
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -1388,10 +1392,10 @@ struct Set : public SetUpdateBase {
       _dispatcherPtr->trigger(ev);
     } else {
       if (!_isTable) {
-        if (_target->flags & SHVAR_FLAGS_TRACKED) {
+        if (_target->trackingMask & _trackingMask) {
           // something changed, we are no longer tracked
           // fixup activations and variable flags
-          _target->flags &= ~SHVAR_FLAGS_TRACKED;
+          _target->flags &= ~_trackingMask;
         }
       }
 
@@ -1428,7 +1432,7 @@ struct Set : public SetUpdateBase {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_tracked && "This shard should not be activated if variable not exposed");
+    assert(_trackingMask != 0 && "This shard should not be activated if variable not exposed");
 
     SHVar output;
     if (_isTable)
@@ -1705,16 +1709,16 @@ struct Update : public SetUpdateBase {
 
     shassert_extended(context, _self && "Self should be valid at this point");
 
-    if (_isExposed) {
-      if (!(_target->flags & SHVAR_FLAGS_TRACKED)) {
-        throw WarmupError(fmt::format("Update: error, variable {} is not exposed.", _name));
+    if (_isTracked) {
+      if (!(_target->trackingMask & _trackingMask)) {
+        throw WarmupError(fmt::format("Update: error, variable {} is not tracked.", _name));
       }
 
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
       setupDispatcher(context, _isGlobal);
     } else {
-      if (_target->flags & SHVAR_FLAGS_TRACKED) {
+      if (_target->trackingMask & _trackingMask) {
         throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
       }
 
@@ -1729,7 +1733,7 @@ struct Update : public SetUpdateBase {
   void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    shassert_extended(context, _isExposed && "This shard should not be activated if variable not exposed");
+    shassert_extended(context, _isTracked && "This shard should not be activated if variable not exposed");
     shassert_extended(context, _dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
     SHVar output;
@@ -2245,7 +2249,7 @@ struct Push : public SeqBase {
           throw ComposeError("Expected a table variable.");
         }
 
-        if (type->tracked) {
+        if (type->trackingMask != 0) {
           // cannot push into exposed variables
           throw ComposeError("Cannot push into exposed variables");
         }
@@ -2278,7 +2282,7 @@ struct Push : public SeqBase {
           throw ComposeError(fmt::format("Cannot mutate a protected variable: {}", _name));
         }
 
-        if (type->tracked) {
+        if (type->trackingMask != 0) {
           // cannot push into exposed variables
           throw ComposeError(fmt::format("Cannot push into exposed variables: {}", _name));
         }
@@ -2849,7 +2853,7 @@ struct SeqUser : VariableBase {
       throw ComposeError(fmt::format("Variable {} not found.", _name));
     }
 
-    if (info->tracked) {
+    if (info->trackingMask != 0) {
       throw ComposeError(fmt::format("Variable {} is tracked and can only be updated using Update.", _name));
     }
 

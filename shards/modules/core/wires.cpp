@@ -857,7 +857,7 @@ struct SwitchTo : public WireBase {
       dataCopy.requiredVariables = &wire->requirements;
       for (auto &req : dataCopy.shared) {
         if (!req.global)
-          req.tracked = false;
+          req.trackingMask = 0;
       }
 
       WireBase::compose(dataCopy);

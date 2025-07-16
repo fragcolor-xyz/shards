@@ -636,7 +636,7 @@ struct Server {
     dataCopy.requiredVariables = &wire->requirements;
     for (auto &req : dataCopy.shared) {
       if (!req.global)
-        req.tracked = false;
+        req.trackingMask = 0;
     }
 
     dataCopy.wire = wire.get();
