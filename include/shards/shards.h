@@ -486,7 +486,7 @@ struct SHParameterInfo {
 #define SHVAR_TRACKING_MASK_3 (1 << 2) // 4
 #define SHVAR_TRACKING_MASK_4 (1 << 3) // 8
 #define SHVAR_TRACKING_MASK_5 (1 << 4) // 16 // fyi, Formabble uses this for the CRDT
-#define SHVAR_TRACKING_MASK_6 (1 << 5) // 32
+#define SHVAR_TRACKING_MASK_6 (1 << 5) // 32 // fyi, Formabble uses this Internally
 #define SHVAR_TRACKING_MASK_7 (1 << 6) // 64
 #define SHVAR_TRACKING_MASK_8 (1 << 7) // 128
 

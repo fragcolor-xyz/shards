@@ -23,6 +23,7 @@
 #include <optional>
 #include <sstream>
 #include <numeric>
+#include <sys/types.h>
 
 using namespace std::chrono_literals;
 
@@ -1146,7 +1147,8 @@ static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHType
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHTypeInfo _tableContentInfo{};
-  uint8_t _trackingMask{0}; // notice this is used in Update only
+  uint8_t _trackingMaskInternal{
+      0}; // notice this is used in Update only, added Internal suffix to avoid confusion with Set parameter
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to be set to the variable."); }
@@ -1189,7 +1191,7 @@ struct SetBase : public VariableBase {
         throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
-      _trackingMask = reference.trackingMask;
+      _trackingMaskInternal = reference.trackingMask;
     }
 
     return existingExposedType;
@@ -1259,6 +1261,8 @@ struct SetUpdateBase : public SetBase {
 };
 
 struct Set : public SetUpdateBase {
+  uint8_t _trackingMask{0}; // 8 bits tracking mask, 0 means no tracking
+
   entt::scoped_connection _onStartConnection{};
   struct OnStartHandler {
     Set *shard;
@@ -1345,6 +1349,7 @@ struct Set : public SetUpdateBase {
     } else {
       _exposedInfo._innerInfo.elements[0].trackingMask = 0;
     }
+    _trackingMaskInternal = _trackingMask;
 
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
@@ -1695,7 +1700,7 @@ struct Update : public SetUpdateBase {
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
 
     // update the tracking mask
-    _trackingMask = _exposedInfo._innerInfo.elements[0].trackingMask;
+    _trackingMaskInternal = _exposedInfo._innerInfo.elements[0].trackingMask;
 
     return data.inputType;
   }
@@ -1707,8 +1712,8 @@ struct Update : public SetUpdateBase {
 
     shassert_extended(context, _self && "Self should be valid at this point");
 
-    if (_trackingMask != 0) {
-      shassert_extended(context, (_target->trackingMask & _trackingMask) != 0 && "Target variable masks are not correct");
+    if (_trackingMaskInternal != 0) {
+      shassert_extended(context, (_target->trackingMask & _trackingMaskInternal) != 0 && "Target variable masks are not correct");
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -1726,7 +1731,7 @@ struct Update : public SetUpdateBase {
   void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    shassert_extended(context, _trackingMask != 0 && "This shard should not be activated if variable is not tracked");
+    shassert_extended(context, _trackingMaskInternal != 0 && "This shard should not be activated if variable is not tracked");
     shassert_extended(context, _dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
     SHVar output;
