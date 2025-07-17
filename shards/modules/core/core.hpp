@@ -4,6 +4,7 @@
 #ifndef SH_CORE_SHARDS_CORE
 #define SH_CORE_SHARDS_CORE
 
+#include <cstdint>
 #include <shards/core/shards_macros.hpp>
 #include <shards/core/foundation.hpp>
 #include <shards/core/ops_internal.hpp>
@@ -1145,7 +1146,7 @@ static const SHTypeInfo &updateSeqType(SHTypeInfo &typeInfoStorage, const SHType
 struct SetBase : public VariableBase {
   Type _tableTypeInfo{};
   SHTypeInfo _tableContentInfo{};
-  bool _isTracked{false}; // notice this is used in Update only
+  uint8_t _trackingMask{0}; // notice this is used in Update only
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to be set to the variable."); }
@@ -1188,11 +1189,7 @@ struct SetBase : public VariableBase {
         throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
-      if (reference.trackingMask != 0) {
-        _isTracked = true;
-      } else {
-        _isTracked = false;
-      }
+      _trackingMask = reference.trackingMask;
     }
 
     return existingExposedType;
@@ -1262,8 +1259,6 @@ struct SetUpdateBase : public SetBase {
 };
 
 struct Set : public SetUpdateBase {
-  uint8_t _trackingMask{0};
-
   entt::scoped_connection _onStartConnection{};
   struct OnStartHandler {
     Set *shard;
@@ -1699,6 +1694,9 @@ struct Update : public SetUpdateBase {
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
 
+    // update the tracking mask
+    _trackingMask = _exposedInfo._innerInfo.elements[0].trackingMask;
+
     return data.inputType;
   }
 
@@ -1709,19 +1707,14 @@ struct Update : public SetUpdateBase {
 
     shassert_extended(context, _self && "Self should be valid at this point");
 
-    if (_isTracked) {
-      if (!(_target->trackingMask & _trackingMask)) {
-        throw WarmupError(fmt::format("Update: error, variable {} is not tracked.", _name));
-      }
+    if (_trackingMask != 0) {
+      shassert_extended(context, (_target->trackingMask & _trackingMask) != 0 && "Target variable masks are not correct");
 
+      // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
 
       setupDispatcher(context, _isGlobal);
     } else {
-      if (_target->trackingMask & _trackingMask) {
-        throw WarmupError(fmt::format("Update: error, variable {} is exposed.", _name));
-      }
-
       // restore any possible deferred change here
       if (_isTable)
         const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateTable;

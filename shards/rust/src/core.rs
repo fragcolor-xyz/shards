@@ -455,6 +455,7 @@ impl WireRef {
       let ev = SHExternalVariable {
         var: &var.0 as *const _ as *mut _,
         type_: std::ptr::null(),
+        trackingMask: 0,
       };
       (*Core).setExternalVariable.unwrap_unchecked()(self.0, name, &ev as *const _ as *mut _);
     }

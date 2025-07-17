@@ -2438,7 +2438,7 @@ void setString(uint32_t crc, SHString str) {
 void abortWire(SHContext *ctx, std::string_view errorText) { ctx->cancelFlow(errorText); }
 
 void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
-  if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
+  if (var->trackingMask == 0)
     return;
 
   auto &w = context->main;
@@ -2448,7 +2448,7 @@ void triggerVarValueChange(SHContext *context, const SHVar *name, const SHVar *k
 }
 
 void triggerVarValueChange(SHWire *w, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
-  if ((var->flags & SHVAR_FLAGS_TRACKED) == 0)
+  if (var->trackingMask == 0)
     return;
 
   auto nameStr = SHSTRVIEW((*name));
