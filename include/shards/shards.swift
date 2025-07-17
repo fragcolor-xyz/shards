@@ -1461,13 +1461,11 @@ public class ExposedTypeInfo {
     var isMutable: Bool
     var isProtected: Bool
     var global: Bool
-    var tracked: Bool
     var declared: Bool
 
     init(
         name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false,
-        isProtected: Bool = false, global: Bool = false, tracked: Bool = false,
-        declared: Bool = false
+        isProtected: Bool = false, global: Bool = false, declared: Bool = false
     ) {
         self.name = name.utf8CString
         self.help = help.utf8CString
@@ -1475,7 +1473,6 @@ public class ExposedTypeInfo {
         self.isMutable = isMutable
         self.isProtected = isProtected
         self.global = global
-        self.tracked = tracked
         self.declared = declared
     }
 
@@ -1493,7 +1490,6 @@ public class ExposedTypeInfo {
         result.isMutable = isMutable
         result.isProtected = isProtected
         result.global = global
-        result.tracked = tracked
         result.declared = declared
 
         return result
@@ -1638,7 +1634,7 @@ extension IShard {}
 @inlinable public func bridgeDestroy<T: IShard>(_: T.Type, shard: ShardPtr) {
     let swiftShardPtr = UnsafeRawPointer(shard!).assumingMemoryBound(to: SwiftShard.self)
     let instance = unsafeBitCast(swiftShardPtr.pointee.swiftClass, to: UnsafeMutableRawPointer.self)
-    let _ = Unmanaged<T>.fromOpaque(instance).takeRetainedValue()
+    _ = Unmanaged<T>.fromOpaque(instance).takeRetainedValue()
     shard!.deallocate()
 }
 
