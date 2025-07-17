@@ -106,6 +106,25 @@ impl ReadEnv {
     return Err(format!("File not found: {}", name).to_string());
   }
 
+  fn resolve_all_include_paths(&self, name: &str, out: &mut HashSet<PathBuf>) {
+    for dir in &self.include_directories {
+      let script_dir = Path::new(&dir);
+      let file_path = script_dir.join(name);
+      let canonical = dunce::canonicalize(&file_path);
+      if let Ok(canonical) = canonical {
+        shlog_debug!("Found include {:?} (many)", file_path);
+        out.insert(canonical);
+      } else {
+        shlog_debug!("Tried include {:?} (many, not found)", file_path);
+      }
+    }
+    if let Some(parent) = self.parent {
+      unsafe {
+        (*parent).resolve_all_include_paths(name, out);
+      }
+    }
+  }
+
   fn find_inline_template(&self, name: &Identifier) -> Option<&InlineTemplate> {
     if let Some(itempl) = self.inline_templates.get(name) {
       return Some(itempl);
@@ -254,7 +273,7 @@ fn process_assignment(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Assignment,
 enum FunctionValue {
   Const(Value),
   Function(Function),
-  Program(Program),
+  Programs(Vec<Program>),
 }
 
 fn extract_params_from_pairs<'a>(
@@ -351,7 +370,7 @@ fn convert_to_function_value<'a>(
         process_program(root, env)
       })?;
 
-    return Ok(FunctionValue::Program(prog));
+    return Ok(FunctionValue::Programs(vec![prog]));
   };
 
   Ok(FunctionValue::Function(Function {
@@ -525,67 +544,144 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
               })
               .transpose()?;
 
-            let file_path = env
-              .resolve_file(file_name)
-              .or_else(|_| {
-                fallback.map(|fb| env.resolve_file(fb)).unwrap_or(Err(
-                  format!("File {} not found and no fallback provided", file_name).to_string(),
-                ))
+            let many_param = params
+              .iter()
+              .find(|param| param.name.as_deref() == Some("Many"));
+            let many_param = many_param
+              .map(|param| match &param.value {
+                Value::Boolean(s) => Ok(s),
+                _ => Err(("Expected a boolean value for Many", pos).into()),
               })
-              .map_err(|x| (x, pos).into())?;
+              .transpose()?
+              .unwrap_or(&false);
 
-            let file_path_str = file_path
-              .to_str()
-              .ok_or_else(|| ("Failed to convert file path to string", pos).into())?
-              .to_owned();
+            if *many_param {
+              let mut programs = Vec::new();
+              let mut include_paths = HashSet::new();
+              env.resolve_all_include_paths(file_name, &mut include_paths);
 
-            let rc_path = file_path_str.into();
+              for file_path in include_paths {
+                let file_path_str = file_path
+                  .to_str()
+                  .ok_or_else(|| ("Failed to convert file path to string", pos).into())?
+                  .to_owned();
 
-            if once && check_included(&rc_path, env) {
-              return Ok(FunctionValue::Const(Value::None(())));
-            }
+                let rc_path = file_path_str.into();
 
-            shlog_trace!("Including file {:?}", file_path);
-            {
-              // Insert this into the root map so it gets tracked globally
-              let root_env = get_root_env(env);
-              root_env.dependencies.borrow_mut().push(rc_path.to_string());
-              root_env.included.borrow_mut().insert(rc_path);
-            }
+                if once && check_included(&rc_path, env) {
+                  continue;
+                }
 
-            // read string from file
-            let mut code = std::fs::read_to_string(&file_path)
-              .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
-            // add new line at the end of the file to be able to parse it correctly
-            code.push('\n');
+                shlog_trace!("Including file {:?} (many)", file_path);
+                {
+                  // Insert this into the root map so it gets tracked globally
+                  let root_env = get_root_env(env);
+                  root_env.dependencies.borrow_mut().push(rc_path.to_string());
+                  root_env.included.borrow_mut().insert(rc_path);
+                }
 
-            let parent = file_path.parent().unwrap_or(Path::new("."));
-            let successful_parse = ShardsParser::parse(Rule::Program, &code)
-              .map_err(|e| (format!("Failed to parse file {:?}: {}", file_path, e), pos).into())?;
-            let mut sub_env: ReadEnv = ReadEnv::new(
-              file_path.to_str().unwrap(), // should be qed...
-              parent
+                // read string from file
+                let mut code = std::fs::read_to_string(&file_path).map_err(|e| {
+                  (format!("Failed to read file {:?}: {}", file_path, e), pos).into()
+                })?;
+                // add new line at the end of the file to be able to parse it correctly
+                code.push('\n');
+
+                let parent = file_path.parent().unwrap_or(Path::new("."));
+                let successful_parse = ShardsParser::parse(Rule::Program, &code).map_err(|e| {
+                  (format!("Failed to parse file {:?}: {}", file_path, e), pos).into()
+                })?;
+                let mut sub_env: ReadEnv = ReadEnv::new(
+                  file_path.to_str().unwrap(), // should be qed...
+                  parent
+                    .to_str()
+                    .ok_or_else(|| {
+                      (
+                        format!("Failed to convert file path {:?} to string", parent),
+                        pos,
+                      )
+                        .into()
+                    })?
+                    .into(),
+                  Vec::new(),
+                );
+                sub_env.set_parent(env);
+                let program = process_program(
+                  successful_parse.into_iter().next().unwrap(), // should be qed because of success parse
+                  &mut sub_env,
+                )?;
+
+                // Merge inline templates into parent
+                env.inline_templates.extend(sub_env.inline_templates);
+
+                programs.push(program);
+              }
+
+              Ok(FunctionValue::Programs(programs))
+            } else {
+              let file_path = env
+                .resolve_file(file_name)
+                .or_else(|_| {
+                  fallback.map(|fb| env.resolve_file(fb)).unwrap_or(Err(
+                    format!("File {} not found and no fallback provided", file_name).to_string(),
+                  ))
+                })
+                .map_err(|x| (x, pos).into())?;
+
+              let file_path_str = file_path
                 .to_str()
-                .ok_or_else(|| {
-                  (
-                    format!("Failed to convert file path {:?} to string", parent),
-                    pos,
-                  )
-                    .into()
-                })?
-                .into(),
-              Vec::new(),
-            );
-            sub_env.set_parent(env);
-            let program = process_program(
-              successful_parse.into_iter().next().unwrap(), // should be qed because of success parse
-              &mut sub_env,
-            )?;
+                .ok_or_else(|| ("Failed to convert file path to string", pos).into())?
+                .to_owned();
 
-            // Merge inline templates into parent
-            env.inline_templates.extend(sub_env.inline_templates);
+              let rc_path = file_path_str.into();
 
-            Ok(FunctionValue::Program(program))
+              if once && check_included(&rc_path, env) {
+                return Ok(FunctionValue::Const(Value::None(())));
+              }
+
+              shlog_trace!("Including file {:?}", file_path);
+              {
+                // Insert this into the root map so it gets tracked globally
+                let root_env = get_root_env(env);
+                root_env.dependencies.borrow_mut().push(rc_path.to_string());
+                root_env.included.borrow_mut().insert(rc_path);
+              }
+
+              // read string from file
+              let mut code = std::fs::read_to_string(&file_path)
+                .map_err(|e| (format!("Failed to read file {:?}: {}", file_path, e), pos).into())?;
+              // add new line at the end of the file to be able to parse it correctly
+              code.push('\n');
+
+              let parent = file_path.parent().unwrap_or(Path::new("."));
+              let successful_parse = ShardsParser::parse(Rule::Program, &code).map_err(|e| {
+                (format!("Failed to parse file {:?}: {}", file_path, e), pos).into()
+              })?;
+              let mut sub_env: ReadEnv = ReadEnv::new(
+                file_path.to_str().unwrap(), // should be qed...
+                parent
+                  .to_str()
+                  .ok_or_else(|| {
+                    (
+                      format!("Failed to convert file path {:?} to string", parent),
+                      pos,
+                    )
+                      .into()
+                  })?
+                  .into(),
+                Vec::new(),
+              );
+              sub_env.set_parent(env);
+              let program = process_program(
+                successful_parse.into_iter().next().unwrap(), // should be qed because of success parse
+                &mut sub_env,
+              )?;
+
+              // Merge inline templates into parent
+              env.inline_templates.extend(sub_env.inline_templates);
+
+              Ok(FunctionValue::Programs(vec![program]))
+            }
           }
           "env" => {
             // read from environment variable
@@ -807,11 +903,15 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
             line_info: Some(line_info),
             custom_state: CustomStateContainer::new(),
           }),
-          FunctionValue::Program(program) => blocks.push(Block {
-            content: BlockContent::Program(program),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
+          FunctionValue::Programs(programs) => {
+            for program in programs {
+              blocks.push(Block {
+                content: BlockContent::Program(program),
+                line_info: Some(line_info),
+                custom_state: CustomStateContainer::new(),
+              });
+            }
+          }
         }
       }
       Rule::Func => match process_function(pair, env)? {
@@ -825,11 +925,15 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
           line_info: Some(line_info),
           custom_state: CustomStateContainer::new(),
         }),
-        FunctionValue::Program(program) => blocks.push(Block {
-          content: BlockContent::Program(program),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
+        FunctionValue::Programs(programs) => {
+          for program in programs {
+            blocks.push(Block {
+              content: BlockContent::Program(program),
+              line_info: Some(line_info),
+              custom_state: CustomStateContainer::new(),
+            });
+          }
+        }
       },
       Rule::TakeTable => blocks.push(Block {
         content: {
