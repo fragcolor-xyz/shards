@@ -1211,7 +1211,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
 
       shassert(key.payload.stringValue && "Key must be a valid string");
       SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
-      expInfo.trackingMask = extVar.trackingMask;
+      expInfo.trackingMask = var.trackingMask;
       std::string_view sName(key.payload.stringValue, key.payload.stringLen);
       ctx.sharedContext->inherited.insert(sName, expInfo);
     }

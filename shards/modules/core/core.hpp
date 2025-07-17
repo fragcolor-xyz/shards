@@ -1726,7 +1726,7 @@ struct Update : public SetUpdateBase {
   void cleanup(SHContext *context) { SetBase::cleanup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    shassert_extended(context, _isTracked && "This shard should not be activated if variable not exposed");
+    shassert_extended(context, _trackingMask != 0 && "This shard should not be activated if variable is not tracked");
     shassert_extended(context, _dispatcherPtr != nullptr && "Dispatcher should be valid at this point");
 
     SHVar output;
