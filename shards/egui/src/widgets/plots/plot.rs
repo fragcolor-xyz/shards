@@ -177,8 +177,8 @@ impl LegacyShard for Plot {
       isMutable: false,
       isProtected: true, // don't allow to be used in code/wires
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     };
     shared.push(ctx_info);
     // update shared

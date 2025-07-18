@@ -1010,8 +1010,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     }
   }
 
@@ -1026,8 +1026,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     }
   }
 
@@ -1039,8 +1039,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     }
   }
 
@@ -1057,8 +1057,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     }
   }
 
@@ -1075,8 +1075,8 @@ impl ExposedInfo {
       isMutable: false,
       isProtected: false,
       global: false,
-      tracked: false,
       declared: false,
+      trackingMask: 0,
     }
   }
 }
@@ -1277,7 +1277,6 @@ pub mod common_type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1312,7 +1311,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1339,7 +1337,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1353,7 +1350,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1367,7 +1363,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
 
@@ -1381,7 +1376,6 @@ pub mod common_type {
           },
         },
         fixedSize: 0,
-        innerType: SHType_None,
         recursiveSelf: false,
       };
     };
@@ -1621,7 +1615,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1633,7 +1626,6 @@ impl Type {
         enumeration: SHEnumTypeInfo { vendorId, typeId },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1650,7 +1642,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1679,7 +1670,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -1695,7 +1685,6 @@ impl Type {
         },
       },
       fixedSize: 0,
-      innerType: SHType_None,
       recursiveSelf: false,
     }
   }
@@ -3125,7 +3114,7 @@ macro_rules! ref_counted_object_type_impl {
           let rc = arg1 as *mut shards::types::RefCounted<$type>;
           (*rc).inc_ref();
         }
- 
+
         unsafe extern "C" fn release(arg1: *mut std::os::raw::c_void) {
           let rc = arg1 as *mut shards::types::RefCounted<$type>;
           (*rc).dec_ref();

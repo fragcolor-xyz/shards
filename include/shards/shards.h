@@ -393,8 +393,7 @@ struct SHTypeInfo {
   // known at compose time.
   // Should not be considered when hashing this type
   uint32_t fixedSize;
-  // Used by Array type, which is still not implemented properly and unstable.
-  SH_ENUM_DECL SHType innerType;
+
   // used internally to make our live easy when types are recursive (aka Self is
   // inside the seqTypes or so)
   // Should not be considered when hashing this type
@@ -482,6 +481,15 @@ struct SHParameterInfo {
   SHBool variableSetter;
 };
 
+#define SHVAR_TRACKING_MASK_1 (1 << 0) // 1
+#define SHVAR_TRACKING_MASK_2 (1 << 1) // 2
+#define SHVAR_TRACKING_MASK_3 (1 << 2) // 4
+#define SHVAR_TRACKING_MASK_4 (1 << 3) // 8
+#define SHVAR_TRACKING_MASK_5 (1 << 4) // 16 // fyi, Formabble uses this for the CRDT
+#define SHVAR_TRACKING_MASK_6 (1 << 5) // 32 // fyi, Formabble uses this Internally
+#define SHVAR_TRACKING_MASK_7 (1 << 6) // 64
+#define SHVAR_TRACKING_MASK_8 (1 << 7) // 128
+
 struct SHExposedTypeInfo {
   SHString name;
   SHOptionalString help;
@@ -500,11 +508,12 @@ struct SHExposedTypeInfo {
   // If the exposed variable should be available to all wires in the mesh
   SHBool global;
 
-  // If the variable is market as tracked, apps building on top will can use this feature
-  SHBool tracked;
-
   // If the variable is declared in this shard (not inherited from an inner shard)
   SHBool declared;
+
+  // If the variable is market as tracked, apps building on top will can use this feature
+  // to track the variable and its changes, 8bits mask, so up to 8 kinds of tracking
+  uint8_t trackingMask;
 };
 
 typedef struct SHStringPayload {
@@ -623,7 +632,7 @@ struct SHVarPayload {
 // it won't be destroyed automatically
 #define SHVAR_FLAGS_EXTERNAL (1 << 2) // 3
 // this marks the variable tracked, can be set inside a (Set) shard
-#define SHVAR_FLAGS_TRACKED (1 << 3) // 4
+#define SHVAR_FLAGS_RESERVED_0 (1 << 3) // 4
 // this marks the variable as a foreign variable, to prevent destruction
 // when used inside seq and table
 #define SHVAR_FLAGS_FOREIGN (1 << 4) // 5
@@ -657,11 +666,10 @@ struct SHVar {
   };
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
   SH_ENUM_DECL SHType valueType;
-  SH_ENUM_DECL SHType innerType;
 #else
   SHType valueType;
-  SHType innerType;
 #endif
+  uint8_t trackingMask; // 8bits mask, so up to 8 kinds of tracking
   uint16_t flags;
   uint32_t refcount;
 } __attribute__((aligned(16)));
@@ -890,6 +898,7 @@ typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct 
 
 typedef struct SHExternalVariable {
   struct SHVar *var;
+
   // Optional, if null, the type is derived  from the var
   const struct SHTypeInfo *type;
 } SHExternalVariable;

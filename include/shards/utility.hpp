@@ -834,7 +834,6 @@ template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_arra
 // Assigns only the variable value, not it's flags and internal properties
 ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
   v.valueType = other.valueType;
-  v.innerType = other.innerType;
   v.payload = other.payload;
   v.flags = (v.flags & ~SHVAR_FLAGS_COPY_MASK) | (other.flags & SHVAR_FLAGS_COPY_MASK);
 

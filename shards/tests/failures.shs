@@ -149,7 +149,7 @@
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(exposed-failure1 exposed-failure-wrapper1 {
-  [] | Set(a Tracked: true)
+  [] | Set(a TrackingMask: 1)
   1 >> a
 })
 
@@ -157,7 +157,7 @@
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(exposed-failure2 exposed-failure-wrapper2 {
-  [1] | Set(a Tracked: true)
+  [1] | Set(a TrackingMask: 1)
   1 | AppendTo(a)
 })
 
@@ -165,7 +165,7 @@
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(exposed-failure3 exposed-failure-wrapper3 {
-  [] | Set(tab Tracked: true)
+  [] | Set(tab TrackingMask: 1)
   1 | Push(tab "x")
 })
 
@@ -188,7 +188,7 @@
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(append-type1 append-type1-wrapper {
-  ["x"] | Set(a Tracked: true)
+  ["x"] | Set(a TrackingMask: 1)
   1 | AppendTo(a)
 })
 

@@ -361,8 +361,8 @@ private:
     _innerInfo.isMutable = other.isMutable;
     _innerInfo.isProtected = other.isProtected;
     _innerInfo.global = other.global;
-    _innerInfo.tracked = other.tracked;
     _innerInfo.declared = other.declared;
+    _innerInfo.trackingMask = other.trackingMask;
   }
 
   void clean() {

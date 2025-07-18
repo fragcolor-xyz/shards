@@ -126,7 +126,7 @@ public:
 
     // Clear exposed flags, since these are copies
     for (auto &req : _mergedRequirements._innerInfo) {
-      req.tracked = false;
+      req.trackingMask = 0;
     }
 
     // Copy shared
