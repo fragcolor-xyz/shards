@@ -697,7 +697,7 @@ ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjus
 
 NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
   auto &err = context->getErrorMessage();
-  auto msg = fmt::format("{} -> Error: {}, Line: {}, Column: {}", blk->name(blk), err, blk->line, blk->column);
+  auto msg = fmt::format("{} -> Error: {}, {}", blk->name(blk), err, formatShardSourceLocation<InternalCore>(blk));
   SHLOG_ERROR(msg);
   context->pushError(std::move(msg));
   auto wire = context->currentWire();
@@ -900,7 +900,7 @@ void validateConnection(InternalCompositionContext &ctx) {
 
   if (!inputMatches) {
     const auto msg =
-        fmt::format("Could not find a matching input type, shard: {} (line: {}, column: {}) expected: {}. Found instead: {}",
+        fmt::format("Could not find a matching input type, shard: {} ({}) expected: {}. Found instead: {}",
                     ctx.bottom->name(ctx.bottom), ctx.bottom->line, ctx.bottom->column, inputInfos, ctx.previousOutputType);
 #if SH_DEBUG_TYPE_MATCHING
     // Put a breakpoint here to debug
@@ -1149,8 +1149,17 @@ thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
 
-  SHLOG_TRACE("Composing wire: {}, shard: {}, line: {}", data.wire ? data.wire->name : "(unwired)",
-              data.shard ? data.shard->name(data.shard) : "(null shard)", data.shard ? data.shard->line : 0);
+  if (data.shard) {
+    SHLOG_TRACE("Composing wire: {}, shard: {}, {}", data.wire ? data.wire->name : "(unwired)", data.shard->name(data.shard),
+                formatShardSourceLocation<InternalCore>(data.shard));
+  } else {
+    if (wire.size() > 0) {
+      SHLOG_TRACE("Composing wire: {}, ", data.wire ? data.wire->name : "(unwired)",
+                  formatShardSourceLocation<InternalCore>(wire.front()));
+    } else {
+      SHLOG_TRACE("Composing wire: {}", data.wire ? data.wire->name : "(unwired)");
+    }
+  }
 
   if (data.wire) {
     ZoneText(data.wire->name.data(), data.wire->name.size());
@@ -1245,8 +1254,9 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       try {
         validateConnection(ctx);
       } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error composing shard: {}, line: {}, column: {}, wire: {}, error: {}", blk->name(blk),
-                                      blk->line, blk->column, ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+        auto verboseMsg =
+            fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
+                        formatShardSourceLocation<InternalCore>(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         // error log it
         SHLOG_ERROR("{}", verboseMsg);
         // send error if we can

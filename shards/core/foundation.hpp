@@ -1382,6 +1382,9 @@ struct InternalCore {
   }
 
   static SHWireState suspend(SHContext *ctx, double seconds) { return shards::suspend(ctx, seconds); }
+
+  static uint32_t getSourceFileId(SHStringWithLen path);
+  static SHStringWithLen getSourceFileName(uint32_t file_id);
 };
 
 typedef TParamVar<InternalCore> ParamVar;
