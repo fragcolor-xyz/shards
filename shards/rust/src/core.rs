@@ -36,20 +36,6 @@ const ABI_VERSION: u32 = 0x20200101;
 pub const MIN_STACK_SIZE: usize = crate::shardsc::SH_MIN_STACK_SIZE as usize;
 
 pub static mut Core: *mut SHCore = core::ptr::null_mut();
-pub static mut ScriptEnvCreate: Option<
-  unsafe extern "C" fn(path: *const ::std::os::raw::c_char) -> *mut ::core::ffi::c_void,
-> = None;
-pub static mut ScriptEnvCreateSub: Option<
-  unsafe extern "C" fn(parent_env: *mut ::core::ffi::c_void) -> *mut ::core::ffi::c_void,
-> = None;
-pub static mut ScriptEnvDestroy: Option<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)> = None;
-pub static mut ScriptEval: Option<
-  unsafe extern "C" fn(
-    env: *mut ::core::ffi::c_void,
-    script: *const ::std::os::raw::c_char,
-    output: *mut SHVar,
-  ) -> bool,
-> = None;
 static mut init_done: bool = false;
 
 #[cfg(feature = "dllshard")]
@@ -74,41 +60,6 @@ mod internal_core_init {
 
   pub static mut SHDLL: Option<Library> = None;
 
-  pub unsafe fn initScripting(lib: &Library) {
-    let fun = lib.symbol::<unsafe extern "C" fn(
-      path: *const ::std::os::raw::c_char,
-    ) -> *mut ::core::ffi::c_void>("shLispCreate");
-    if let Ok(fun) = fun {
-      ScriptEnvCreate = Some(*fun);
-    } else {
-      // short circuit here
-      return;
-    }
-
-    let fun = lib.symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void)>("shLispDestroy");
-    ScriptEnvDestroy = Some(*fun.unwrap());
-
-    let fun = lib
-      .symbol::<unsafe extern "C" fn(env: *mut ::core::ffi::c_void) -> *mut ::core::ffi::c_void>(
-        "shLispCreateSub",
-      );
-    ScriptEnvCreateSub = Some(*fun.unwrap());
-
-    let fun = lib.symbol::<unsafe extern "C" fn(
-      env: *mut ::core::ffi::c_void,
-      script: *const ::std::os::raw::c_char,
-      output: *mut SHVar,
-    ) -> bool>("shLispEval");
-    ScriptEval = Some(*fun.unwrap());
-
-    // trigger initializations... fix me in the future to something more elegant
-    let current_dir = std::env::current_dir().unwrap();
-    let current_dir = current_dir.to_str().unwrap();
-    let current_dir = std::ffi::CString::new(current_dir).unwrap();
-    let env = ScriptEnvCreate.unwrap()(current_dir.as_ptr());
-    ScriptEnvDestroy.unwrap()(env);
-  }
-
   pub unsafe fn initInternal() {
     let exe = Library::open_self().ok().unwrap();
 
@@ -116,22 +67,18 @@ mod internal_core_init {
       .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut SHCore>("shardsInterface")
       .ok();
     if let Some(fun) = exefun {
-      // init scripting first if possible!
-      initScripting(&exe);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
-        panic!("Failed to aquire shards interface, version not compatible.");
+        panic!("Failed to acquire shards interface, version not compatible.");
       }
     } else {
       let lib = try_load_dlls().unwrap();
       let fun = lib
         .symbol::<unsafe extern "C" fn(abi_version: u32) -> *mut SHCore>("shardsInterface")
         .unwrap();
-      // init scripting first if possible!
-      initScripting(&lib);
       Core = fun(ABI_VERSION);
       if Core.is_null() {
-        panic!("Failed to aquire shards interface, version not compatible.");
+        panic!("Failed to acquire shards interface, version not compatible.");
       }
       SHDLL = Some(lib);
     }
