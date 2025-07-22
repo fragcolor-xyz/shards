@@ -5948,7 +5948,7 @@ impl Seq {
     }
   }
 
-  pub fn iter(&self) -> SeqIterator {
+  pub fn iter(&self) -> SeqIterator<'_> {
     SeqIterator { s: self, i: 0 }
   }
 }
