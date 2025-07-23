@@ -18,6 +18,7 @@
 namespace shards::Animations {
 using namespace linalg::aliases;
 using shards::Time::DeltaTimer;
+using shards::Time::DoubleSecDuration;
 
 static auto getKeyframeTime(const SHVar &keyframe) { return (float)((TableVar &)keyframe).get<Var>(Var("Time")); };
 static auto getKeyframeValue(const SHVar &keyframe) { return ((TableVar &)keyframe).get<Var>(Var("Value")); };
@@ -64,8 +65,9 @@ struct TimerShard {
                  {CoreInfo::NoneType, CoreInfo::FloatVarType});
   PARAM(ShardsVar, _action, "Action", "The shards to execute whenever the shard reached the specified duration.",
         {CoreInfo::Shards, {CoreInfo::NoneType}});
+  PARAM_VAR(_maxDeltaTime, "MaxDeltaTime", "The maximum delta time", {CoreInfo::FloatType});
   PARAM_IMPL(PARAM_IMPL_FOR(_animation), PARAM_IMPL_FOR(_duration), PARAM_IMPL_FOR(_looped), PARAM_IMPL_FOR(_rate),
-             PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_variable));
+             PARAM_IMPL_FOR(_offset), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_variable), PARAM_IMPL_FOR(_maxDeltaTime));
 
   double _internalTime{};
   bool _hasCallback{};
@@ -77,12 +79,14 @@ struct TimerShard {
   TimerShard() {
     _looped = Var{true};
     _rate = Var{1.0f};
+    _maxDeltaTime = Var(1.0f / 15.0f);
   }
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _internalTime = 0.0f;
     _deltaTimer.reset();
+    _deltaTimer.maxDeltaTime = DoubleSecDuration(_maxDeltaTime.payload.floatValue);
   }
 
   double &getTime() { return _variable.isVariable() ? _variable.get().payload.floatValue : _internalTime; }
