@@ -12,12 +12,14 @@ struct Now {
   static inline ProcessClock _clock{};
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard outputs the amount of time that has elapsed since the shards application or script was launched in seconds.");
+        "This shard outputs the amount of time that has elapsed since the shards application or script started in seconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in seconds."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  void warmup(SHContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
@@ -28,11 +30,14 @@ struct Now {
 
 struct NowMs : public Now {
   static SHOptionalString help() {
-    return SHCCSTR("This shard outputs the amount of time that has elapsed since the shards application or script was launched "
-                   "in milliseconds.");
+    return SHCCSTR(
+        "This shard outputs the amount of time that has elapsed since the shards application or script started in milliseconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in milliseconds."); }
+
+  void warmup(SHContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
