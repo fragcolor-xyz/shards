@@ -12,12 +12,14 @@ struct Now {
   static inline ProcessClock _clock{};
   static SHOptionalString help() {
     return SHCCSTR(
-        "This shard outputs the amount of time that has elapsed since the shards application or script was launched in seconds.");
+        "This shard outputs the amount of time that has elapsed since the shards application or script started in seconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in seconds."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
+
+  void warmup(SHContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
@@ -28,11 +30,14 @@ struct Now {
 
 struct NowMs : public Now {
   static SHOptionalString help() {
-    return SHCCSTR("This shard outputs the amount of time that has elapsed since the shards application or script was launched "
-                   "in milliseconds.");
+    return SHCCSTR(
+        "This shard outputs the amount of time that has elapsed since the shards application or script started in milliseconds.");
   }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the amount of time that has elapsed in milliseconds."); }
+
+  void warmup(SHContext *context) { _clock.Start = std::chrono::high_resolution_clock::now(); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto tnow = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> dt = tnow - _clock.Start;
@@ -42,6 +47,8 @@ struct NowMs : public Now {
 
 struct Delta {
   DeltaTimer _deltaTimer;
+
+  Delta() { _maxDeltaTime = Var(1.0f / 15.0f); }
 
   static SHOptionalString help() {
     return SHCCSTR(R"(Outputs the time between the last call of this shard and the current call in seconds, capped to a limit)");
@@ -54,11 +61,14 @@ struct Delta {
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
   PARAM_VAR(_uncapped, "Uncapped", "If true, returns uncapped delta time", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_uncapped))
+  PARAM_VAR(_maxDeltaTime, "MaxDeltaTime", "The maximum delta time", {CoreInfo::FloatType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_uncapped), PARAM_IMPL_FOR(_maxDeltaTime))
 
   SHTypeInfo composeV2(SHInstanceData &data) {
     if (_uncapped.payload.boolValue) {
       OVERRIDE_ACTIVATE(data, activateUncapped);
+    } else {
+      OVERRIDE_ACTIVATE(data, activate);
     }
     return CoreInfo::FloatType;
   }
@@ -66,6 +76,7 @@ struct Delta {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
     _deltaTimer.reset();
+    _deltaTimer.maxDeltaTime = DoubleSecDuration(_maxDeltaTime.payload.floatValue);
   }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }

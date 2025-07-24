@@ -17,14 +17,14 @@ struct ProcessClock {
 using namespace std::chrono_literals;
 struct DeltaTimer {
   // Limit delta time to avoid jumps after unpausing wires
-  static inline const auto MaxDeltaTime = DoubleSecDuration(1.0f / 15.0f);
+  DoubleSecDuration maxDeltaTime = DoubleSecDuration(1.0f / 15.0f);
 
   TimePoint lastActivation;
 
   void reset() { lastActivation = Clock::now(); }
 
   template <typename TDur = DoubleSecDuration> typename TDur::rep update() {
-    return std::min<TDur>(std::chrono::duration_cast<TDur>(MaxDeltaTime), updateRaw()).count();
+    return std::min<TDur>(std::chrono::duration_cast<TDur>(maxDeltaTime), updateRaw()).count();
   }
   template <typename TDur = DoubleSecDuration> TDur updateRaw() {
     auto now = Clock::now();
