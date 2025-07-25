@@ -1,6 +1,4 @@
-This shard compares the input to its `:Value` parameter and outputs `true` if they are equal or same, else outputs `false`.
-
-If the input and `:Value` parameter have different data types they will be assessed as inequal by default even if they are numerically equal (for example `int 5` is not equal to `float 5.0`).
+This shard also is type sensitive (e.g., 1 | Is(1.0) will return false).
 
 Note that for two sequences to be considered equal or identical they must both contain the same elements and in the same order.
 

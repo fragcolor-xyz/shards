@@ -7,7 +7,7 @@ There are multiple ways to use this shard.
 ### Static code
 
 ```clojure
-  (Shader.Literal :Source "
+  Shader.Literal(Source: "
     let color = vec4<f32>(1.0, 0.5, 0.25, 1.0);
     return color; ")
 ```
@@ -16,10 +16,10 @@ This insertes the given WGSL source code directly into the current entry point.
 
 ### Static header code
 
-When defining WGSL functions, specify the `:Type ShaderLiteralType.Header` parameter:
+When defining WGSL functions, specify the `Type: ShaderLiteralType::Header` parameter:
 
 ```clojure
-  (Shader.Literal :Type ShaderLiteralType.Header :Source "
+  Shader.Literal(Type: ShaderLiteralType::Header Source: "
     fn scale(val: f32) -> f32 {
       return val * 0.5;
     }")

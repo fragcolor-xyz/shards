@@ -1,3 +1,3 @@
-This shard can be used to update specific member elements within a sequence or a table with new values.
+The input sequence should contain pairs of elements: the first in each pair specifies the index or key to update, and the second provides the new value. Therefore, the input sequence must always have an even number of elements.
 
-The input sequence identifies which elements are to be updated and their new/ updated values. To achieve this, the member elements of this input sequence are parsed in pairs. The 1st element of each pair gives the index of the target element to update, and the 2nd element of that pair gives the new value for the target element. Due to this, the input sequence must always contain an even number of elements.
+For example, `[0 1]` will update the value at index 0 in the sequence to 1. Similarly, `["firstkey" 1]` will update key "firstkey" in the table with the value of 1. When using `Assoc` to update the values of a table, if the key specified in the input sequence does not exist, it will add it as a new key.
