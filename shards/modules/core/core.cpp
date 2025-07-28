@@ -78,9 +78,9 @@ struct JointOp {
 
       // Setup multi-sort columns if not already done
       if (_multiSortColumns.size() == 0) {
-        if (join.get().valueType == SHType::Seq) {
+        if ((*join).valueType == SHType::Seq) {
           // Multiple columns case
-          for (const auto &col : join.get()) {
+          for (const auto &col : (*join)) {
             if (col.valueType == SHType::ContextVar) {
               ParamVar columnVar;
               columnVar = col;
@@ -98,10 +98,10 @@ struct JointOp {
               _multiSortColumns.emplace_back(std::move(columnVar));
             }
           }
-        } else if (join.get().valueType == SHType::ContextVar) {
+        } else if ((*join).valueType == SHType::ContextVar) {
           // Single column case
           ParamVar columnVar;
-          columnVar = join.get();
+          columnVar = (*join);
           columnVar.warmup(context);
 
           // Validate the column sequence length
