@@ -602,6 +602,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     }
   }
 
+  bool isClear() const { return _isClear.load(); }
+
   template <class Observer> bool tick(Observer &observer) {
     ZoneScoped;
 
@@ -612,6 +614,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     // schedule next
     _scheduled.insert(_pendingSchedule.begin(), _pendingSchedule.end());
     _pendingSchedule.clear();
+
+    // update isClear atomically
+    _isClear = _scheduled.empty() && variables.empty();
 
     if (shards::GetGlobals().SigIntTerm > 0) {
       terminate();
@@ -705,6 +710,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     }
     variables.clear();
     variablesMetadata.clear();
+
+    _isClear = true;
   }
 
   void terminate() {
@@ -732,8 +739,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   }
 
   bool empty() { return _scheduledSet.empty(); }
-
-  bool isCleared() { return _scheduled.empty() && variables.empty(); }
 
   size_t scheduledSetCount() { return _scheduledSet.size(); }
   size_t scheduledCount() { return _scheduled.size(); }
@@ -893,6 +898,7 @@ private:
   std::vector<std::string> _errors;
   std::vector<SHWire *> _failedWires;
   std::string label;
+  std::atomic<bool> _isClear{false};
 };
 
 namespace shards {
