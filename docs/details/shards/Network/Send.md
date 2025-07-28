@@ -1,0 +1,1 @@
+This shard converts the input into a bytes sequence before sending it over the network.

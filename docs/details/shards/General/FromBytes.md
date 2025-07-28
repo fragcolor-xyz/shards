@@ -1,0 +1,1 @@
+Do note that this shard can only convert serialized byte sequences to its original value. This means that it can only convert values that were previously converted to a byte sequence using the `ToBytes` shard and not other shards like `ToLEB128` or `IntsToBytes`.

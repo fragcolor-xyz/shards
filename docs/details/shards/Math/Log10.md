@@ -1,0 +1,3 @@
+If a sequence of floats was provided as input, the shard will calculate `Log10(x)` for each element in the sequence and output a sequence.
+
+If a sequence of vectors was provided as input, the shard will calculate `Log10(x)` for each component in each vector in the sequence and output a sequence of vectors where each component in each vector is the result of the logarithmic calculation of the corresponding component in the input sequence.

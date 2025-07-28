@@ -1,0 +1,3 @@
+If a sequence of integers was provided as input, the shard will calculate the absolute value for each element in the sequence and output a sequence.
+
+If a sequence of vectors was provided as input, the shard will calculate the absolute value for each component in each vector in the sequence and output a sequence of vectors where each component in each vector is the absolute value of the corresponding component in the input sequence.

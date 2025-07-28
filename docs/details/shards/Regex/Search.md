@@ -1,0 +1,2 @@
+If there are no occurrences of the regex expression in the input string, an empty sequence is returned.
+The shard is by default case-sensitive. Searching for "Hello" in "hello" will return an empty sequence.

@@ -1,0 +1,1 @@
+If an invalid URL string was provided as input, the shard will not open the browser.

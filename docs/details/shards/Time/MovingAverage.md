@@ -1,0 +1,1 @@
+Each frame the shard is called, it stores the value provided as input and returns the average. The number of samples it stores is specified by the number of frames given in the Window parameter.

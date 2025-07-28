@@ -1,0 +1,1 @@
+This shard expects a 4-byte header that contains the original data size present in the input bytes sequence to be able to decompress it. If the 4-byte header is not present (If the input is not compressed or was compressed in a way other than Brotli.Compress which results in a compressed output that does not contain this header), the shard will throw an error.

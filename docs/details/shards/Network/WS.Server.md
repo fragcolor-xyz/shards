@@ -1,0 +1,1 @@
+When a new client connects to the server, this shard schedules a new copy of the wire specified in the `Handler` parameter.

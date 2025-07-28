@@ -1,0 +1,1 @@
+The render pass object created by this shard can be placed in a sequence with other render pass objects (created by `GFX.DrawablePass` and `GFX.EffectPass`). This sequence of render pass objects can then be used in conjuction with a view object (created by `GFX.View`) and passed to `GFX.Render` to produce a scene.

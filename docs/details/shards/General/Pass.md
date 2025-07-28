@@ -1,0 +1,1 @@
+This shard is useful for placeholding, debugging or "skipping". For example, using `Pass` in the `Then` parameter of the conditional shard `If`,  `If(Predicate: some-condition Then: {do-something} Else: Pass)`, this means that nothing will happen when the condition set in the `Predicate` parameter is not met.
