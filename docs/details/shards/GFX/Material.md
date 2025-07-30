@@ -9,5 +9,4 @@ The `Params` parameter can accept a table with keys representing the shader para
     aoStrength: 0.5
   })
   ```
-
 The `Features` parameter can accept a sequence of feature objects, created either with the `GFX.Feature` or `GFX.BuiltinFeature` shard.
