@@ -1,4 +1,4 @@
-This shard also is type sensitive (e.g., 1 | Is(1.0) will return false).
+This shard also is type sensitive and will only compare between input and operands of the same type. (e.g., 1 | Is(1.0) will throw a validation error).
 
 Note that for two sequences to be considered equal or identical they must both contain the same elements and in the same order.
 

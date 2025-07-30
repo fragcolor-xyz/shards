@@ -1,4 +1,4 @@
-If the input and `Value` parameter have different data types they will be assessed as inequal by default even if they are numerically equal (for example `int 5` is not equal to `float 5.0`).
+This shard also is type sensitive and will only compare between input and operands of the same type. (e.g., 1 | IsNot(1.0) will throw a validation error).
 
 !!! note "See also"
     - [`Is`](../Is)
