@@ -25,7 +25,7 @@ The input table can include keys representing nodes to modify. The keys can be a
   - "scale": A float3 value for node scaling
   - "params": A table of node-specific parameters (if applicable)
 
-```shard
+```shards
 ... GFX.glTF(...) >= other-gltf-drawable
 {transform:... copy: other-gltf-drawable} | GFX.glTF >= drawable
 ```
