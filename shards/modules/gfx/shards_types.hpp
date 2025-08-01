@@ -14,20 +14,14 @@ namespace gfx {
 namespace detail {
 using namespace shards;
 struct ShardsTypes {
-// NOTE: This needs to be a struct ensure correct initialization order under clang
-#define OBJECT(_id, _displayName, _definedAs, ...)                                                                              \
-  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                                      \
-  static inline Type _definedAs{{SHType::Object, {.object = {.vendorId = VendorId, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
-  static inline ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, VendorId, SH_CONCAT(_definedAs, TypeId)};
-
-  OBJECT('draw', "GFX.Drawable", Drawable, SHDrawable, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('mesh', "GFX.Mesh", Mesh, MeshPtr)
-  OBJECT('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('tex_', "GFX.Texture2D", Texture, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('texc', "GFX.TextureCube", TextureCube, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('smpl', "GFX.Sampler", Sampler, SHSampler)
-  OBJECT('gbuf', "GFX.Buffer", Buffer, SHBuffer, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
-  OBJECT('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
+  SHVAR_OBJECT_DECL('draw', "GFX.Drawable", Drawable, SHDrawable, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  SHVAR_OBJECT_DECL('mesh', "GFX.Mesh", Mesh, MeshPtr)
+  SHVAR_OBJECT_DECL('dque', "GFX.DrawQueue", DrawQueue, SHDrawQueue, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  SHVAR_OBJECT_DECL('tex_', "GFX.Texture2D", Texture, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  SHVAR_OBJECT_DECL('texc', "GFX.TextureCube", TextureCube, TexturePtr, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  SHVAR_OBJECT_DECL('smpl', "GFX.Sampler", Sampler, SHSampler)
+  SHVAR_OBJECT_DECL('gbuf', "GFX.Buffer", Buffer, SHBuffer, nullptr, nullptr, nullptr, /*ThreadSafe*/ true)
+  SHVAR_OBJECT_DECL('__RT', "GFX.RenderTarget", RenderTarget, SHRenderTarget)
 
   DECL_ENUM_INFO(gfx::WindingOrder, WindingOrder,
                  "Specifies the order in which vertices are defined to determine the front face of a polygon. Affects how faces "
@@ -290,18 +284,18 @@ struct ShardsTypes {
                  "optimized by the GPU.",
                  '_e18');
 
-  OBJECT('feat', "GFX.Feature", Feature, FeaturePtr)
+  SHVAR_OBJECT_DECL('feat', "GFX.Feature", Feature, FeaturePtr)
   static inline Type FeatureSeq = Type::SeqOf(Feature);
   static inline Type FeatureVarType = Type::VariableOf(Feature);
   static inline Type FeatureVarSeq = Type::SeqOf(FeatureVarType);
 
-  OBJECT('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
+  SHVAR_OBJECT_DECL('pips', "GFX.PipelineStep", PipelineStep, PipelineStepPtr)
   static inline Type PipelineStepSeq = Type::SeqOf(PipelineStep);
 
-  OBJECT('view', "GFX.View", View, SHView, &SHView::serialize, &SHView::deserialize, nullptr);
+  SHVAR_OBJECT_DECL('view', "GFX.View", View, SHView, &SHView::serialize, &SHView::deserialize, nullptr);
   static inline Type ViewSeq = Type::SeqOf(View);
 
-  OBJECT('mat_', "GFX.Material", Material, SHMaterial)
+  SHVAR_OBJECT_DECL('mat_', "GFX.Material", Material, SHMaterial)
 
   static inline Types TextureTypes = {{
       Texture,
@@ -334,7 +328,6 @@ struct ShardsTypes {
       "Name", SHCCSTR("A name for this pass, to aid in debugging"), {CoreInfo::NoneType, CoreInfo::StringType}};
 
 #undef ENUM
-#undef OBJECT
 };
 } // namespace detail
 using detail::ShardsTypes;

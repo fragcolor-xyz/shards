@@ -749,8 +749,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
     len = shards.size();
   } else {
-    len = 0;
-    SHLOG_FATAL("Unreachable shardsActivation case");
+    shassert(false && "Unreachable shardsActivation case");
   }
 
   for (size_t i = 0; i < len; i++) {
@@ -762,8 +761,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
       blk = shards[i];
     } else {
-      blk = nullptr;
-      SHLOG_FATAL("Unreachable shardsActivation case");
+      shassert(false && "Unreachable shardsActivation case");
     }
 
     {
