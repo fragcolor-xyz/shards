@@ -370,6 +370,17 @@ template <class T> struct ShardWrapper {
     }                                                                                                                    \
   })
 
+#define OVERRIDE_ACTIVATE2(__data__, __func__)                                                                           \
+  __data__.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * { \
+    auto self = reinterpret_cast<shards::ShardWrapper<typename std::remove_pointer<decltype(this)>::type> *>(b);         \
+    try {                                                                                                                \
+      return &self->shard.__func__(ctx, *v);                                                                             \
+    } catch (std::exception & e) {                                                                                       \
+      shards::abortWire(ctx, e.what());                                                                                  \
+      return &self->outputStorage;                                                                                       \
+    }                                                                                                                    \
+  })
+
 template <typename SHCORE, Parameters &Params, size_t NPARAMS, Type &InputType, Type &OutputType> struct TSimpleShard {
   static SHTypesInfo inputTypes() { return InputType; }
   static SHTypesInfo outputTypes() { return OutputType; }

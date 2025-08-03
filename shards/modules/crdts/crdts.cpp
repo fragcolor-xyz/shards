@@ -191,28 +191,29 @@ struct CRDTSet {
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
-  bool _isMany{false};
-
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo composeV2(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     shassert(data.privateContext && "Private context should be valid");
     auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    bool isMany = false;
     if (_keys.isVariable()) {
       auto info = findExposedVariablePtr(inherited->inherited, _keys.variableName());
       if (info->exposedType.basicType == SHType::Seq) {
-        _isMany = true;
+        isMany = true;
       } else {
-        _isMany = false;
+        isMany = false;
       }
     } else {
-      _isMany = _keys->valueType == SHType::Seq;
+      isMany = _keys->valueType == SHType::Seq;
     }
 
-    if (_isMany) {
+    if (isMany) {
+      OVERRIDE_ACTIVATE2(data, activateMany);
       return CRDTTypes::ChangesTableSeqType;
     } else {
+      OVERRIDE_ACTIVATE2(data, activate);
       return CRDTTypes::ChangesTableType;
     }
   }
@@ -222,40 +223,41 @@ struct CRDTSet {
   CrdtVector<Change<OwnedVar, OwnedVar>> _changes;
   CrdtVector<std::pair<OwnedVar, OwnedVar>> _pairs;
 
-  SHVar activate(SHContext *shContext, const SHVar &input) {
+  SHVar &activateMany(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
-    if (!_isMany) {
-      _changes.clear();
-      crdt.insert_or_update(_recordId.get(), _changes, std::make_pair(_keys.get(), input));
-      shassert(_changes.size() == 1 && "Expected single change");
+    _changes.clear();
+    _output.clear();
+    _pairs.clear();
 
-      intoVar(std::move(_changes[0]), _changeCache);
-
-      return _changeCache;
-    } else {
-      _changes.clear();
-      _output.clear();
-      _pairs.clear();
-
-      auto &keys = asSeq(_keys.get());
-      auto &values = asSeq(input);
-      if (keys.size() != values.size()) {
-        throw ActivationError("Keys and values must have the same size");
-      }
-
-      for (size_t i = 0; i < keys.size(); ++i) {
-        _pairs.emplace_back(keys[i], values[i]);
-      }
-
-      crdt.insert_or_update_from_container(_recordId.get(), _pairs, _changes);
-
-      for (auto &change : _changes) {
-        intoVar(std::move(change), _changeCache);
-        _output.push_back(_changeCache);
-      }
-
-      return _output;
+    auto &keys = asSeq(_keys.get());
+    auto &values = asSeq(input);
+    if (keys.size() != values.size()) {
+      throw ActivationError("Keys and values must have the same size");
     }
+
+    for (size_t i = 0; i < keys.size(); ++i) {
+      _pairs.emplace_back(keys[i], values[i]);
+    }
+
+    crdt.insert_or_update_from_container(_recordId.get(), _pairs, _changes);
+
+    for (auto &change : _changes) {
+      intoVar(std::move(change), _changeCache);
+      _output.push_back(_changeCache);
+    }
+
+    return _output;
+  }
+
+  SHVar &activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    _changes.clear();
+    crdt.insert_or_update(_recordId.get(), _changes, std::make_pair(_keys.get(), input));
+    shassert(_changes.size() == 1 && "Expected single change");
+
+    intoVar(std::move(_changes[0]), _changeCache);
+
+    return _changeCache;
   }
 };
 
