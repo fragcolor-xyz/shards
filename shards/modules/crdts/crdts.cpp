@@ -9,9 +9,10 @@
 
 using CrdtKey = shards::OwnedVar;
 using CrdtNodeId = SHVar; // Int16/uuid
+// this seems the best combination for containers btw!, we tried boost unordered_flat_map for the rest but it was slower
 template <typename T> using CrdtVector = boost::container::small_vector<T, 4>;
-template <typename K, typename V> using CrdtMap = boost::unordered_flat_map<K, V, std::hash<K>>;
-template <typename K> using CrdtSet = boost::unordered_flat_set<K, std::hash<K>>;
+template <typename K, typename V> using CrdtMap = std::unordered_map<K, V>;
+template <typename K> using CrdtSet = std::unordered_set<K, std::hash<K>>;
 template <typename T, typename Comparator> using CrdtSortedSet = boost::container::flat_set<T, Comparator>;
 template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat_map<K, V, std::hash<K>>;
 
@@ -24,9 +25,10 @@ namespace crdts {
 struct ShardsCRDT : CRDT<OwnedVar, OwnedVar> {
   ShardsCRDT() : CRDT<OwnedVar, OwnedVar>(Var::Empty) {}
 
-  void init(SHVar id) {
+  void init(SHVar id, int64_t preallocate) {
     shassert(node_id_.valueType == SHType::None && "CRDT already initialized");
     node_id_ = id;
+    data_.reserve(preallocate);
   }
 };
 
@@ -61,8 +63,11 @@ struct CRDTNew {
   static SHTypesInfo outputTypes() { return CRDTTypes::CRDT; }
   static SHOptionalString help() { return SHCCSTR("Creates a new crdt"); }
 
+  CRDTNew() : _preallocate(Var(10000)) {}
+
   PARAM_PARAMVAR(_id, "ID", "The current client's node id", {CoreInfo::Int16Type});
-  PARAM_IMPL(PARAM_IMPL_FOR(_id));
+  PARAM_VAR(_preallocate, "Preallocate", "The number of records to preallocate", {CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_id), PARAM_IMPL_FOR(_preallocate));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
@@ -93,7 +98,7 @@ struct CRDTNew {
     }
     _crdt = CRDTTypes::CRDTObjectVar.New();
 
-    _crdt->init(_id.get());
+    _crdt->init(_id.get(), _preallocate.payload.intValue);
 
     return CRDTTypes::CRDTObjectVar.Get(_crdt);
   }
@@ -210,6 +215,9 @@ struct CRDTSet {
     }
 
     if (isMany) {
+      if (data.inputType.basicType != SHType::Seq) {
+        throw ComposeError("Input must be a sequence if keys are a sequence");
+      }
       OVERRIDE_ACTIVATE2(data, activateMany);
       return CRDTTypes::ChangesTableSeqType;
     } else {
@@ -355,6 +363,32 @@ struct CRDTGet {
     return _output;
   }
 };
+
+struct CRDTDelete {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Deletes a record from the crdt"); }
+
+  PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to delete the record from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::AnyType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    auto recordId = OwnedVar::Foreign(input); // avoid copy, this makes it CoW
+    crdt.delete_record(recordId);
+    return input;
+  }
+};
 } // namespace crdts
 
 SHARDS_REGISTER_FN(crdts) {
@@ -363,5 +397,6 @@ SHARDS_REGISTER_FN(crdts) {
   REGISTER_SHARD("CRDT.Set", CRDTSet);
   REGISTER_SHARD("CRDT.Apply", CRDTApply);
   REGISTER_SHARD("CRDT.Get", CRDTGet);
+  REGISTER_SHARD("CRDT.Delete", CRDTDelete);
 }
 } // namespace shards

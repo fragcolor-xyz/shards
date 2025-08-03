@@ -1,0 +1,40 @@
+CRDT.New(@i16(77) Preallocate: 1000000) = crdt
+
+Sequence(records)
+
+; insert 1000000 records
+Msg("Inserting 1000000 records")
+Profile(Repeat({
+  UUID >> records = record
+  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: "K1")
+} Times: 1000000))
+
+Msg("Reading 1000000 records")
+Profile({
+  records | ForEach({
+    CRDT.Get(CRDT: crdt Keys: ["K1"])
+  })
+})
+
+Msg("Deleting 1000000 records")
+Profile({
+  records | ForEach({
+    CRDT.Delete(CRDT: crdt)
+  })
+})
+
+Clear(records)
+
+; insert again 1000000 records
+Msg("Inserting 1000000 records again")
+Profile(Repeat({
+  UUID >> records = record
+  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: "K1")
+} Times: 1000000))
+
+Msg("Reading 1000000 records again")
+Profile({
+  records | ForEach({
+    CRDT.Get(CRDT: crdt Keys: ["K1"])
+  })
+})
