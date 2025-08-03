@@ -171,37 +171,91 @@ inline void intoChange(const SHVar *input, Change<OwnedVar, OwnedVar> &output) {
 }
 
 struct CRDTSet {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CRDTTypes::ChangesTableType; }
+  static inline Types InputTypes{CoreInfo::AnyType, CoreInfo::AnySeqType};
+  static inline Types OutputTypes{CRDTTypes::ChangesTableType, CRDTTypes::ChangesTableSeqType};
+
+  static SHTypesInfo inputTypes() { return InputTypes; }
+  static SHTypesInfo outputTypes() { return OutputTypes; }
   static SHOptionalString help() { return SHCCSTR("Inserts or updates a record in the crdt"); }
 
   PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to insert or update the record in",
                  {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
   PARAM_PARAMVAR(_recordId, "Record", "The id of the record to insert or update", {CoreInfo::AnyType});
-  PARAM_PARAMVAR(_key, "Key", "The field's key to insert or update the record with", {CoreInfo::AnyType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_crdt), PARAM_IMPL_FOR(_recordId), PARAM_IMPL_FOR(_key));
+  PARAM_PARAMVAR(_keys, "Keys",
+                 "A single key or a sequence of keys to insert or update the record with, when it is a sequence, the input must "
+                 "be a sequence of the corresponding values",
+                 {CoreInfo::AnyType, CoreInfo::AnySeqType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt), PARAM_IMPL_FOR(_recordId), PARAM_IMPL_FOR(_keys));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
+  bool _isMany{false};
+
   PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
+  SHTypeInfo composeV2(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CRDTTypes::ChangesTableType;
+
+    shassert(data.privateContext && "Private context should be valid");
+    auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
+    if (_keys.isVariable()) {
+      auto info = findExposedVariablePtr(inherited->inherited, _keys.variableName());
+      if (info->exposedType.basicType == SHType::Seq) {
+        _isMany = true;
+      } else {
+        _isMany = false;
+      }
+    } else {
+      _isMany = _keys->valueType == SHType::Seq;
+    }
+
+    if (_isMany) {
+      return CRDTTypes::ChangesTableSeqType;
+    } else {
+      return CRDTTypes::ChangesTableType;
+    }
   }
 
   ChangesFixedTable _changeCache;
+  SeqVar _output;
+  CrdtVector<Change<OwnedVar, OwnedVar>> _changes;
+  CrdtVector<std::pair<OwnedVar, OwnedVar>> _pairs;
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
-    boost::container::small_vector<Change<OwnedVar, OwnedVar>, 1> changes;
-    crdt.insert_or_update(_recordId.get(), changes, std::make_pair(_key.get(), input));
-    shassert(changes.size() == 1 && "Expected single change");
+    if (!_isMany) {
+      _changes.clear();
+      crdt.insert_or_update(_recordId.get(), _changes, std::make_pair(_keys.get(), input));
+      shassert(_changes.size() == 1 && "Expected single change");
 
-    intoVar(std::move(changes[0]), _changeCache);
+      intoVar(std::move(_changes[0]), _changeCache);
 
-    return _changeCache;
+      return _changeCache;
+    } else {
+      _changes.clear();
+      _output.clear();
+      _pairs.clear();
+
+      auto &keys = asSeq(_keys.get());
+      auto &values = asSeq(input);
+      if (keys.size() != values.size()) {
+        throw ActivationError("Keys and values must have the same size");
+      }
+
+      for (size_t i = 0; i < keys.size(); ++i) {
+        _pairs.emplace_back(keys[i], values[i]);
+      }
+
+      crdt.insert_or_update_from_container(_recordId.get(), _pairs, _changes);
+
+      for (auto &change : _changes) {
+        intoVar(std::move(change), _changeCache);
+        _output.push_back(_changeCache);
+      }
+
+      return _output;
+    }
   }
 };
 
