@@ -158,6 +158,8 @@ jobs:
           ./shards new ../shards/tests/llm.shs
           ./shards new ../shards/tests/stdio.shs <<< "Hello world"
           ./shards new ../shards/tests/jinja.shs
+          ./shards new ../shards/tests/crdts.shs
+          ./shards new ../shards/tests/crdt-benchmarks.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
