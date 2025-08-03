@@ -3,14 +3,17 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
+#include <boost/container/small_vector.hpp>
 
 using CrdtKey = shards::OwnedVar;
 using CrdtNodeId = SHVar; // Int16/uuid
-template <typename T> using CrdtVector = std::vector<T>;
-template <typename K, typename V> using CrdtMap = std::unordered_map<K, V>;
-template <typename K> using CrdtSet = std::unordered_set<K>;
+template <typename T> using CrdtVector = boost::container::small_vector<T, 4>;
+template <typename K, typename V> using CrdtMap = boost::unordered_flat_map<K, V, std::hash<K>>;
+template <typename K> using CrdtSet = boost::unordered_flat_set<K, std::hash<K>>;
 template <typename T, typename Comparator> using CrdtSortedSet = boost::container::flat_set<T, Comparator>;
-template <typename K, typename V> using CrdtTombstoneMap = std::unordered_map<K, V>;
+template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat_map<K, V, std::hash<K>>;
 
 #define CRDT_COLLECTIONS_DEFINED
 #include "crdt.hpp"
