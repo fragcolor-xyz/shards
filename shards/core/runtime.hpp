@@ -338,9 +338,9 @@ inline void prepare(SHWire *wire) {
 
 #if SH_CORO_NEED_STACK_MEM
   if (!wire->stackMem) {
-    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
+    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize()];
   }
-  wire->coro.emplace(SHStackAllocator{wire->stackSize, wire->stackMem});
+  wire->coro.emplace(SHStackAllocator{wire->stackSize(), wire->stackMem});
 #else
   wire->coro.emplace();
 #endif

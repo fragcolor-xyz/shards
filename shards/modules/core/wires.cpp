@@ -207,7 +207,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
 #if SH_CORO_NEED_STACK_MEM
   // Propagate stack size
-  data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
+  data.wire->setStackSize(std::max<size_t>(data.wire->stackSize(), wire->stackSize()));
 #endif
 
   auto outputType = data.inputType;

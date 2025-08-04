@@ -677,30 +677,21 @@ SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
   return context->getState();
 }
 
-ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, size_t hard_max, size_t recursion_buffer) {
-  if (stack_start_address == nullptr) {
+ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, size_t adjusted_max) {
+  if (stack_start_address == nullptr) [[likely]] {
     return true;
   }
 
-  // Create a local variable
-  volatile uint8_t local_var;
-  // Get the address of the local variable
-  uintptr_t local_var_address = reinterpret_cast<uintptr_t>(&local_var);
+  uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
   uintptr_t start_address = reinterpret_cast<uintptr_t>(stack_start_address);
 
-  // Calculate the approximate stack size
-  size_t stack_size;
 #ifdef EMSCRIPTEN
-  // Emscripten stack grows upward
-  stack_size = local_var_address - start_address;
+  constexpr int direction = 1;
 #else
-  // Normal stack grows downward
-  stack_size = start_address - local_var_address;
+  constexpr int direction = -1;
 #endif
 
-  // Adjust hard max to accommodate recursion buffer
-  size_t adjusted_max = hard_max - recursion_buffer;
-
+  size_t stack_size = (current_sp - start_address) * direction;
   return stack_size <= adjusted_max;
 }
 
@@ -722,16 +713,9 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
-  // check for stack overflow
+// check for stack overflow
 #if SH_CORO_NEED_STACK_MEM
-#if SH_USE_UBSAN
-  // Slightly bigger for assertions, etc.
-  const uint32_t padding = 16 * 1024;
-#else
-  const uint32_t padding = 8 * 1024;
-#endif
-  if (!is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
-    // we let the top level handle this
+  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
@@ -2899,7 +2883,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->setWireStackSize = [](SHWireRef wireref, uint64_t size) noexcept {
 #if SH_CORO_NEED_STACK_MEM
     auto &sc = SHWire::sharedFromRef(wireref);
-    sc->stackSize = size;
+    sc->setStackSize(size);
 #endif
   };
 
