@@ -40,10 +40,8 @@ struct ShardsRenderer {
   bool _ignoreCompilationErrors{};
 
   void compose(SHInstanceData &data) {
-#if SH_CORO_NEED_STACK_MEM
     // Require extra stack space for the wire containing the renderer
     data.wire->setStackSize(std::max<size_t>(data.wire->stackSize(), 4 * 1024 * 1024));
-#endif
   }
 
   void getExposedContextVariables(shards::ExposedInfo &outExposedInfo) {

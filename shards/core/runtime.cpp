@@ -714,7 +714,7 @@ template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
 // check for stack overflow
-#if SH_CORO_NEED_STACK_MEM
+#if SH_CORO_NEED_STACK_MEM || SH_EMSCRIPTEN
   if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
@@ -2881,10 +2881,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setWireStackSize = [](SHWireRef wireref, uint64_t size) noexcept {
-#if SH_CORO_NEED_STACK_MEM
     auto &sc = SHWire::sharedFromRef(wireref);
     sc->setStackSize(size);
-#endif
   };
 
   result->setWireTraits = [](SHWireRef wireref, SHSeq traits) noexcept {

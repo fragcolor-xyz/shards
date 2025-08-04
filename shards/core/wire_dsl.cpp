@@ -44,9 +44,7 @@ Wire &Wire::unsafe(bool unsafe) {
 }
 
 Wire &Wire::stackSize(size_t stackSize) {
-#if SH_CORO_NEED_STACK_MEM
   _wire->setStackSize(stackSize);
-#endif
   return *this;
 }
 
