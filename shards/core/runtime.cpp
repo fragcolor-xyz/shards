@@ -777,12 +777,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 #undef ZoneNoCallstack
 #endif
 
-      if (blk->inlineShardId != InlineShard::NotInline) {
-        output = activateShardInline(blk, context, *input);
-        shassert(output && "activateShardInline returned nullptr");
-      } else {
-        output = blk->activate(blk, context, input);
-      }
+      output = activateShardInline(blk, context, *input);
+      shassert(output && "activateShardInline returned nullptr");
     }
 
     // Deal with aftermath of activation
