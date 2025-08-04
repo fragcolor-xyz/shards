@@ -730,7 +730,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 #else
   const uint32_t padding = 8 * 1024;
 #endif
-  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
+  if (!is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
     // we let the top level handle this
     SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
     context->cancelFlow("Stack overflow detected");
