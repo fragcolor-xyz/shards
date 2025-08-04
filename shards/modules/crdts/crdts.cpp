@@ -7,6 +7,7 @@
 #include <boost/unordered/unordered_flat_set.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 using CrdtKey = shards::OwnedVar;
 using CrdtNodeId = boost::uuids::uuid; // Int16/uuid
