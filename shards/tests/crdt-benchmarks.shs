@@ -1,11 +1,11 @@
 CRDT.New(@i16(77) Preallocate: 1000000) = crdt
 
-Sequence(records)
+Sequence(records Type: @type([Type::Int16]))
 
 ; insert 1000000 records
 Msg("Inserting 1000000 records")
 Profile(Repeat({
-  UUID >> records = record
+  UUID = record >> records 
   RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: "K1")
 } Times: 1000000))
 

@@ -6,9 +6,10 @@
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/uuid/uuid.hpp>
 
 using CrdtKey = shards::OwnedVar;
-using CrdtNodeId = SHVar; // Int16/uuid
+using CrdtNodeId = boost::uuids::uuid; // Int16/uuid
 // this seems the best combination for containers btw!, we tried boost unordered_flat_map for the rest but it was slower
 template <typename T> using CrdtVector = boost::container::small_vector<T, 4>;
 template <typename K, typename V> using CrdtMap = std::unordered_map<K, V>;
@@ -22,11 +23,25 @@ template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat
 namespace shards {
 namespace crdts {
 
-struct ShardsCRDT : CRDT<OwnedVar, OwnedVar> {
-  ShardsCRDT() : CRDT<OwnedVar, OwnedVar>(Var::Empty) {}
+inline SHVar uuid2Var(const boost::uuids::uuid &uuid) {
+  SHVar vUuid{};
+  vUuid.valueType = SHType::Int16;
+  memcpy(&vUuid.payload.int16Value, uuid.data, 16);
+  return vUuid;
+}
 
-  void init(SHVar id, int64_t preallocate) {
-    shassert(node_id_.valueType == SHType::None && "CRDT already initialized");
+inline boost::uuids::uuid var2Uuid(const SHVar &v) {
+  shassert(v.valueType == SHType::Int16 || v == Var::Empty);
+  boost::uuids::uuid uuid;
+  memcpy(uuid.data, &v.payload.int16Value, 16);
+  return uuid;
+}
+
+struct ShardsCRDT : CRDT<boost::uuids::uuid, OwnedVar> {
+  ShardsCRDT() : CRDT<boost::uuids::uuid, OwnedVar>(var2Uuid(Var::Empty)) {}
+
+  void init(boost::uuids::uuid id, int64_t preallocate) {
+    shassert(node_id_ == var2Uuid(Var::Empty) && "CRDT already initialized");
     node_id_ = id;
     data_.reserve(preallocate);
   }
@@ -50,7 +65,7 @@ struct CRDTTypes {
       CoreInfo::IntType,   //
       CoreInfo::IntType,   //
       CoreInfo::Int16Type, //
-      CoreInfo::AnyType,   //
+      CoreInfo::Int16Type, //
       CoreInfo::AnyType,   //
   };
   static inline Type ChangesTableType = Type::TableOf(ChangesTableTypes, ChangesTableKeys);
@@ -65,7 +80,7 @@ struct CRDTNew {
 
   CRDTNew() : _preallocate(Var(10000)) {}
 
-  PARAM_PARAMVAR(_id, "ID", "The current client's node id", {CoreInfo::Int16Type});
+  PARAM_PARAMVAR(_id, "ID", "The current client's node id", {CoreInfo::Int16Type, CoreInfo::Int16VarType});
   PARAM_VAR(_preallocate, "Preallocate", "The number of records to preallocate", {CoreInfo::IntType});
   PARAM_IMPL(PARAM_IMPL_FOR(_id), PARAM_IMPL_FOR(_preallocate));
 
@@ -98,7 +113,7 @@ struct CRDTNew {
     }
     _crdt = CRDTTypes::CRDTObjectVar.New();
 
-    _crdt->init(_id.get(), _preallocate.payload.intValue);
+    _crdt->init(var2Uuid(_id.get()), _preallocate.payload.intValue);
 
     return CRDTTypes::CRDTObjectVar.Get(_crdt);
   }
@@ -150,27 +165,27 @@ struct ChangesFixedTable : TableVar {
   const OwnedVar &value() const { return map().tree().nth(6)->second; }
 };
 
-inline void intoVar(Change<OwnedVar, OwnedVar> &&change, ChangesFixedTable &output) {
-  output.record_id() = std::move(change.record_id);
+inline void intoVar(Change<boost::uuids::uuid, OwnedVar> &&change, ChangesFixedTable &output) {
+  output.record_id() = uuid2Var(change.record_id);
   output.col_name() = change.col_name.has_value() ? std::move(change.col_name.value()) : Var::Empty;
   output.value() = change.value.has_value() ? std::move(change.value.value()) : Var::Empty;
   output.col_version() = Var(static_cast<int64_t>(change.col_version));
   output.db_version() = Var(static_cast<int64_t>(change.db_version));
-  output.node_id() = change.node_id;
+  output.node_id() = uuid2Var(change.node_id);
   output.flags() = Var((int64_t)change.flags);
 }
 
-inline void intoChange(const ChangesFixedTable &input, Change<OwnedVar, OwnedVar> &output) {
-  output.record_id = input.record_id();
+inline void intoChange(const ChangesFixedTable &input, Change<boost::uuids::uuid, OwnedVar> &output) {
+  output.record_id = var2Uuid(input.record_id());
   output.col_name = input.col_name();
   output.value = input.value();
   output.col_version = input.col_version().payload.intValue;
   output.db_version = input.db_version().payload.intValue;
-  output.node_id = input.node_id();
+  output.node_id = var2Uuid(input.node_id());
   output.flags = input.flags().payload.intValue;
 }
 
-inline void intoChange(const SHVar *input, Change<OwnedVar, OwnedVar> &output) {
+inline void intoChange(const SHVar *input, Change<boost::uuids::uuid, OwnedVar> &output) {
   auto *changeTable = reinterpret_cast<const ChangesFixedTable *>(input);
   intoChange(*changeTable, output);
 }
@@ -185,11 +200,11 @@ struct CRDTSet {
 
   PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to insert or update the record in",
                  {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
-  PARAM_PARAMVAR(_recordId, "Record", "The id of the record to insert or update", {CoreInfo::AnyType});
+  PARAM_PARAMVAR(_recordId, "Record", "The id of the record to insert or update", {CoreInfo::Int16Type, CoreInfo::Int16VarType});
   PARAM_PARAMVAR(_keys, "Keys",
                  "A single key or a sequence of keys to insert or update the record with, when it is a sequence, the input must "
                  "be a sequence of the corresponding values",
-                 {CoreInfo::AnyType, CoreInfo::AnySeqType});
+                 {CoreInfo::AnyType, CoreInfo::AnySeqType, CoreInfo::AnyVarType, CoreInfo::AnyVarSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_crdt), PARAM_IMPL_FOR(_recordId), PARAM_IMPL_FOR(_keys));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -199,6 +214,13 @@ struct CRDTSet {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo composeV2(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_recordId.isNone()) {
+      throw ComposeError("Record ID is required");
+    }
+    if (_keys.isNone()) {
+      throw ComposeError("Keys are required");
+    }
 
     shassert(data.privateContext && "Private context should be valid");
     auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
@@ -228,8 +250,8 @@ struct CRDTSet {
 
   ChangesFixedTable _changeCache;
   SeqVar _output;
-  CrdtVector<Change<OwnedVar, OwnedVar>> _changes;
-  CrdtVector<std::pair<OwnedVar, OwnedVar>> _pairs;
+  CrdtVector<Change<boost::uuids::uuid, OwnedVar>> _changes;
+  CrdtVector<std::pair<CrdtKey, OwnedVar>> _pairs;
 
   SHVar &activateMany(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
@@ -247,7 +269,7 @@ struct CRDTSet {
       _pairs.emplace_back(keys[i], values[i]);
     }
 
-    crdt.insert_or_update_from_container(_recordId.get(), _pairs, _changes);
+    crdt.insert_or_update_from_container(var2Uuid(_recordId.get()), _pairs, _changes);
 
     for (auto &change : _changes) {
       intoVar(std::move(change), _changeCache);
@@ -260,7 +282,7 @@ struct CRDTSet {
   SHVar &activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     _changes.clear();
-    crdt.insert_or_update(_recordId.get(), _changes, std::make_pair(_keys.get(), input));
+    crdt.insert_or_update(var2Uuid(_recordId.get()), _changes, std::make_pair(_keys.get(), input));
     shassert(_changes.size() == 1 && "Expected single change");
 
     intoVar(std::move(_changes[0]), _changeCache);
@@ -297,10 +319,10 @@ struct CRDTApply {
 
     auto &changes = asSeq(input);
 
-    CrdtVector<Change<OwnedVar, OwnedVar>> crdtChanges;
+    CrdtVector<Change<boost::uuids::uuid, OwnedVar>> crdtChanges;
 
     for (auto change : changes) {
-      Change<OwnedVar, OwnedVar> crdtChange;
+      Change<boost::uuids::uuid, OwnedVar> crdtChange;
       intoChange(&change, crdtChange);
       crdtChanges.emplace_back(std::move(crdtChange));
     }
@@ -324,12 +346,12 @@ struct CRDTApply {
 };
 
 struct CRDTGet {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int16Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Gets a record from the crdt"); }
 
   PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to get the record from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
-  PARAM_PARAMVAR(_keys, "Keys", "The field's keys to get from the record", {CoreInfo::AnySeqType});
+  PARAM_PARAMVAR(_keys, "Keys", "The field's keys to get from the record", {CoreInfo::AnySeqType, CoreInfo::AnyVarSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_crdt), PARAM_IMPL_FOR(_keys));
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -339,6 +361,11 @@ struct CRDTGet {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_keys.isNone()) {
+      throw ComposeError("Keys are required");
+    }
+
     return CoreInfo::AnyType;
   }
 
@@ -348,7 +375,7 @@ struct CRDTGet {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     auto recordId = OwnedVar::Foreign(input); // avoid copy, this makes it CoW
     auto &keys = asSeq(_keys.get());
-    auto record = crdt.get_record(recordId);
+    auto record = crdt.get_record(var2Uuid(recordId));
     _output.clear();
     if (record) {
       for (auto &key : keys) {
@@ -365,7 +392,7 @@ struct CRDTGet {
 };
 
 struct CRDTDelete {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::Int16Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Deletes a record from the crdt"); }
 
@@ -385,7 +412,7 @@ struct CRDTDelete {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     auto recordId = OwnedVar::Foreign(input); // avoid copy, this makes it CoW
-    crdt.delete_record(recordId);
+    crdt.delete_record(var2Uuid(recordId));
     return input;
   }
 };
