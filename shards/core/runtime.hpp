@@ -115,7 +115,7 @@ struct SHContext {
   bool onLastResume{false};
   bool onWorkerThread{false};
   uint64_t stepCounter{};
-  volatile void *stackStart{nullptr};
+  void *stackStart{nullptr};
 
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};

@@ -677,7 +677,7 @@ SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
   return context->getState();
 }
 
-ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, size_t adjusted_max) {
+ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjusted_max) {
   if (stack_start_address == nullptr) [[likely]] {
     return true;
   }
@@ -1634,8 +1634,6 @@ run_wire_logic:
 }
 
 void run(SHWire *wire, shards::Coroutine *coro) {
-  // store stack start address here
-  volatile void *stackStart = nullptr;
   auto running = true;
 
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
@@ -1648,7 +1646,7 @@ void run(SHWire *wire, shards::Coroutine *coro) {
 
   // Create a new context and copy the sink in
   SHContext context(coro, wire);
-  context.stackStart = &stackStart;
+  context.stackStart = __builtin_frame_address(0);
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
