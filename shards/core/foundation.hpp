@@ -749,7 +749,6 @@ private:
   uint64_t uniqueId;
   static inline std::atomic_uint64_t idCounter{0};
 
-#if SH_CORO_NEED_STACK_MEM
   // this is the eventual coroutine stack memory buffer
   size_t _stackSize{SH_BASE_STACK_SIZE};
   size_t _stackLimit = _stackSize -
@@ -757,7 +756,6 @@ private:
                        16 * 1024;
 #else
                        8 * 1024;
-#endif
 #endif
 
 public:
