@@ -7,16 +7,17 @@
 #include <thread>
 #include "platform.hpp"
 
-// TODO make it into a run-time param
-#if SH_EMSCRIPTEN
-#define SH_BASE_STACK_SIZE 2 * 1024 * 1024
-#else
 #ifndef NDEBUG
 #define SH_BASE_STACK_SIZE 1024 * 1024
 #else
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
-#endif // SH_EMSCRIPTEN
+
+#if SH_EMSCRIPTEN
+#define SH_STACK_SIZE_MULTIPLIER 3
+#else
+#define SH_STACK_SIZE_MULTIPLIER 1
+#endif
 
 // Enable to assert on consistent resuming
 // this is required to pass for the emscripten version to work correctly
@@ -57,8 +58,8 @@ private:
   std::atomic_bool isRunning;
 
   std::optional<boost::thread> thread;
-  logging::LogContext* srcLogContext{};
-  logging::LogContext* logContext;
+  logging::LogContext *srcLogContext{};
+  logging::LogContext *logContext;
 
 public:
   ThreadFiber() = default;
@@ -84,7 +85,7 @@ using Fiber = ThreadFiber;
 #include <shards/log/log.hpp>
 namespace shards {
 struct SHStackAllocator {
-  size_t size{SH_BASE_STACK_SIZE};
+  size_t size{SH_BASE_STACK_SIZE * SH_STACK_SIZE_MULTIPLIER};
   uint8_t *mem{nullptr};
 
   boost::context::stack_context allocate() {
@@ -132,7 +133,7 @@ struct Fiber {
   size_t stack_size;
   static constexpr int as_stack_size = 32770;
 
-  Fiber() : stack_size(SH_BASE_STACK_SIZE) {}
+  Fiber() : stack_size(SH_BASE_STACK_SIZE * SH_STACK_SIZE_MULTIPLIER) {}
   Fiber(size_t size) : stack_size(size) {}
   ~Fiber() {
     if (c_stack)

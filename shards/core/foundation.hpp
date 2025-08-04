@@ -718,8 +718,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   constexpr size_t stackSize() const { return _stackSize; }
 
   constexpr void setStackSize(size_t size) {
-    _stackSize = size;
-    _stackLimit = size -
+    _stackSize = (size * SH_STACK_SIZE_MULTIPLIER + 15) & ~15; // Align to 16 bytes
+    _stackLimit = _stackSize -
 #if SH_USE_UBSAN
                   16 * 1024;
 #else
@@ -750,7 +750,7 @@ private:
   static inline std::atomic_uint64_t idCounter{0};
 
   // this is the eventual coroutine stack memory buffer
-  size_t _stackSize{SH_BASE_STACK_SIZE};
+  size_t _stackSize{SH_BASE_STACK_SIZE * SH_STACK_SIZE_MULTIPLIER};
   size_t _stackLimit = _stackSize -
 #if SH_USE_UBSAN
                        16 * 1024;
