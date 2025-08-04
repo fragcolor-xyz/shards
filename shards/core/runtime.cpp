@@ -685,7 +685,7 @@ ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, siz
   uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
   uintptr_t start_address = reinterpret_cast<uintptr_t>(stack_start_address);
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   constexpr int direction = 1;
 #else
   constexpr int direction = -1;
