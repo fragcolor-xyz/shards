@@ -716,7 +716,10 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 // check for stack overflow
 #if !SH_USE_THREAD_FIBER
   if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
-    SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
+    uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+    uintptr_t start_address = reinterpret_cast<uintptr_t>(context->stackStart);
+    SHLOG_ERROR("Stack overflow detected, wire: {} current sp: {} start address: {} stack size: {}", context->currentWire()->name,
+                current_sp, start_address, current_sp - start_address);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
