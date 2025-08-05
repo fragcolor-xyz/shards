@@ -14,7 +14,7 @@
 #endif
 
 #if SH_EMSCRIPTEN
-#define SH_STACK_SIZE_MULTIPLIER 3
+#define SH_STACK_SIZE_MULTIPLIER 4
 #else
 #define SH_STACK_SIZE_MULTIPLIER 1
 #endif
