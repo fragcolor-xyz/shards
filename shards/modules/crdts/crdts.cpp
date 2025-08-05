@@ -8,6 +8,7 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/nil_generator.hpp>
 
 using CrdtKey = shards::OwnedVar;
 using CrdtNodeId = boost::uuids::uuid; // Int16/uuid
@@ -39,10 +40,10 @@ inline boost::uuids::uuid var2Uuid(const SHVar &v) {
 }
 
 struct ShardsCRDT : CRDT<boost::uuids::uuid, OwnedVar> {
-  ShardsCRDT() : CRDT<boost::uuids::uuid, OwnedVar>(var2Uuid(Var::Empty)) {}
+  ShardsCRDT() : CRDT<boost::uuids::uuid, OwnedVar>(boost::uuids::nil_uuid()) {}
 
   void init(boost::uuids::uuid id, int64_t preallocate) {
-    shassert(node_id_ == var2Uuid(Var::Empty) && "CRDT already initialized");
+    shassert(node_id_ == boost::uuids::nil_uuid() && "CRDT already initialized");
     node_id_ = id;
     data_.reserve(preallocate);
   }
