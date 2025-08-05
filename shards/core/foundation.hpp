@@ -719,7 +719,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   constexpr void setStackSize(size_t size) {
     // make sure we are at least the base stack size
-    size = std::min(size, static_cast<size_t>(SH_BASE_STACK_SIZE));
+    size = std::max(size, static_cast<size_t>(SH_BASE_STACK_SIZE));
     // align to 16 bytes
     _stackSize = (size + 15) & ~15;
     _stackLimit = _stackSize -
