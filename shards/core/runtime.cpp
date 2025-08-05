@@ -714,7 +714,7 @@ template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
 // check for stack overflow
-#if !SH_USE_THREAD_FIBER
+#if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
   if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
     uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
     uintptr_t start_address = reinterpret_cast<uintptr_t>(context->stackStart);
