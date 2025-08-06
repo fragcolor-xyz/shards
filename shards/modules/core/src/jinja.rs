@@ -34,6 +34,29 @@ impl JinjaShard {
       },
     );
 
+    // Add strftime_now function to format current date/time
+    env.add_function(
+      "strftime_now",
+      |format: String| -> Result<String, minijinja::Error> {
+        use std::time::SystemTime;
+        let now = SystemTime::now()
+          .duration_since(SystemTime::UNIX_EPOCH)
+          .map_err(|e| minijinja::Error::new(
+            minijinja::ErrorKind::InvalidOperation,
+            format!("Failed to get current time: {}", e)
+          ))?;
+        
+        // Convert to chrono DateTime for formatting
+        let datetime = chrono::DateTime::from_timestamp(now.as_secs() as i64, now.subsec_nanos())
+          .ok_or_else(|| minijinja::Error::new(
+            minijinja::ErrorKind::InvalidOperation,
+            "Failed to create datetime from timestamp"
+          ))?;
+        
+        Ok(datetime.format(&format).to_string())
+      },
+    );
+
     minijinja_contrib::add_to_environment(env);
 
     env.set_unknown_method_callback(|state, value, method, args| {
