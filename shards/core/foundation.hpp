@@ -40,6 +40,10 @@
 #include "tracking.hpp"
 #endif
 
+namespace shards {
+inline std::string formatShardSourceLocation(Shard *blk);
+}
+
 #include <shards/shardwrapper.hpp>
 
 // Needed specially for win32/32bit
@@ -522,10 +526,16 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::string name{"unnamed"};
   entt::id_type id{entt::null};
-  uint64_t debugId{0};            // used for debugging
+  uint64_t debugId{0}; // used for debugging
+
   shards::OwnedVar astObject;     // optional, used for debugging
   std::shared_ptr<SHWire> parent; // used in doppelganger pool, we keep track of the template wire
   int priority{0};                // used in scheduler
+
+#if SHARDS_DEBUGGER
+  static inline std::atomic_uint64_t debuggerIdCounter;
+  uint64_t debuggerId = debuggerIdCounter++;
+#endif
 
   // The wire's running coroutine
   shards::Coroutine coro;
@@ -1386,6 +1396,8 @@ struct InternalCore {
   static uint32_t getSourceFileId(SHStringWithLen path);
   static SHStringWithLen getSourceFileName(uint32_t file_id);
 };
+
+inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<InternalCore>(blk); }
 
 typedef TParamVar<InternalCore> ParamVar;
 

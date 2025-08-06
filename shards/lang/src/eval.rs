@@ -2644,7 +2644,7 @@ fn shard_with_id_ex(shard: AutoShardRef, e: &mut EvalEnv, x: DebugPtr) -> AutoSh
   let id = get_program(e).map(|p| {
     let mut debug_info = p.metadata.debug_info.borrow_mut();
     debug_info.id_counter += 1;
-    let id = debug_info.id_counter;
+    let id: u64 = debug_info.id_counter;
     debug_info.id_to_functions.insert(id, x);
     id
   });

@@ -707,7 +707,7 @@ struct SHInstanceData {
 
   // Info related to our activation
   struct SHTypeInfo inputType;
-  SHExposedTypesInfo shared;
+  SHExposedTypesInfo shared; 
 
   // if this activation might happen in a worker thread
   // for example cos this shard is within an Await shard
@@ -793,8 +793,11 @@ struct Shard {
   uint32_t column;
   uint32_t file;
 
-  // internal use only, to optionally identify the shard
+  // internal use only, to optionally identify the shard within a single program
   uint64_t id;
+
+  // internal use only, to uniquely identify the shard
+  uint64_t debuggerId;
 
   // Optional compile time defined metadata
   struct ShardMetadata *metadata;

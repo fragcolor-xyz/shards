@@ -6,7 +6,8 @@
 #include <shards/core/hash.inl>
 #include <shards/modules/core/time.hpp>
 #include <shards/utility.hpp>
-#include "core.hpp"
+#include <shards/inlined.hpp>
+#include <shards/modules/core/core.hpp>
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <shards/core/params.hpp>

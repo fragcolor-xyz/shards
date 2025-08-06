@@ -104,6 +104,10 @@ struct SHStateSnapshot {
   std::string errorMessage;
 };
 
+namespace shards::dbg {
+struct ContextTracking;
+}
+
 struct SHContext {
   SHContext(shards::Coroutine *coro, const SHWire *starter) : main(starter), continuation(coro) {
     wireStack.push_back(const_cast<SHWire *>(starter));
@@ -116,6 +120,10 @@ struct SHContext {
   bool onWorkerThread{false};
   uint64_t stepCounter{};
   void *stackStart{nullptr};
+
+#if SHARDS_DEBUGGER
+  shards::dbg::ContextTracking *debugContextTracking{nullptr};
+#endif
 
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};

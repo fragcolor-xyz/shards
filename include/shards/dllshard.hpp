@@ -463,6 +463,7 @@ inline void registerShard(const char *fullName, SHShardConstructor constructor, 
 inline void abortWire(SHContext *ctx, struct SHStringWithLen msg) { Core::abortWire(ctx, msg); }
 inline void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, toSWL(msg)); }
 inline void log(std::string_view msg) { Core::log(toSWL(msg)); }
+inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<Core>(blk); }
 }; // namespace shards
 
 #endif

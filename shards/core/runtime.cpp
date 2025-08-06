@@ -45,6 +45,10 @@
 #include "lang_api.hpp"
 #include "log_api.hpp"
 
+#if SHARDS_DEBUGGER
+#include <shards/modules/debugger/interface.hpp>
+#endif
+
 #if SH_APPLE || SH_LINUX
 #include <dlfcn.h>
 #endif
@@ -298,6 +302,9 @@ Shard *createShard(std::string_view name) {
   auto shard = it->second();
 
   shard->nameLength = uint32_t(name.length());
+
+  static std::atomic_uint64_t idCounter;
+  shard->debuggerId = idCounter++;
 
 #ifndef NDEBUG
   auto props = shard->properties(shard);
@@ -697,7 +704,12 @@ ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjus
 
 NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
   auto &err = context->getErrorMessage();
-  auto msg = fmt::format("{} -> Error: {}, {}", blk->name(blk), err, formatShardSourceLocation<InternalCore>(blk));
+  auto msg = fmt::format("{} -> Error: {}, {}", blk->name(blk), err, formatShardSourceLocation(blk));
+
+#if SHARDS_DEBUGGER
+  shards::dbg::onError(context, blk, err);
+#endif
+
   SHLOG_ERROR(msg);
   context->pushError(std::move(msg));
   auto wire = context->currentWire();
@@ -739,6 +751,11 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     shassert(false && "Unreachable shardsActivation case");
   }
 
+#if SHARDS_DEBUGGER
+  shards::dbg::onEnterActivation(shards, context, &input, &output);
+  DEFER({ shards::dbg::onExitActivation(shards, context); });
+#endif
+
   for (size_t i = 0; i < len; i++) {
     ShardPtr blk;
     if constexpr (std::is_same<T, Shards>::value) {
@@ -752,6 +769,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     }
 
     {
+
 #ifdef TRACY_ENABLE
 #define ZoneNoCallstack(varname, name, active)                                                                               \
   static constexpr tracy::SourceLocationData TracyConcat(__tracy_source_location, TracyLine){name, TracyFunction, TracyFile, \
@@ -762,6 +780,10 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
       ZoneName(blk->name(blk), blk->nameLength);
 
 #undef ZoneNoCallstack
+#endif
+
+#if SHARDS_DEBUGGER
+      shards::dbg::onShard(context, blk);
 #endif
 
       output = activateShardInline(blk, context, *input);
@@ -901,7 +923,7 @@ void validateConnection(InternalCompositionContext &ctx) {
   if (!inputMatches) {
     const auto msg =
         fmt::format("Could not find a matching input type, shard: {} ({}) expected: {}. Found instead: {}",
-                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation<InternalCore>(ctx.bottom), inputInfos,
+                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation(ctx.bottom), inputInfos,
                     ctx.previousOutputType);
 #if SH_DEBUG_TYPE_MATCHING
     // Put a breakpoint here to debug
@@ -1152,11 +1174,11 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
 
   if (data.shard) {
     SHLOG_TRACE("Composing wire: {}, shard: {}, {}", data.wire ? data.wire->name : "(unwired)", data.shard->name(data.shard),
-                formatShardSourceLocation<InternalCore>(data.shard));
+                formatShardSourceLocation(data.shard));
   } else {
     if (wire.size() > 0) {
-      SHLOG_TRACE("Composing wire: {}, {}", data.wire ? data.wire->name : "(unwired)",
-                  formatShardSourceLocation<InternalCore>(wire.front()));
+      SHLOG_TRACE("Composing wire: {}, ", data.wire ? data.wire->name : "(unwired)",
+                  formatShardSourceLocation(wire.front()));
     } else {
       SHLOG_TRACE("Composing wire: {}", data.wire ? data.wire->name : "(unwired)");
     }
@@ -1257,7 +1279,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       } catch (std::exception &ex) {
         auto verboseMsg =
             fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
-                        formatShardSourceLocation<InternalCore>(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+                        formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         // error log it
         SHLOG_ERROR("{}", verboseMsg);
         // send error if we can
@@ -1710,6 +1732,10 @@ void run(SHWire *wire, shards::Coroutine *coro) {
     goto endOfWire;
   }
 
+#if SHARDS_DEBUGGER
+  dbg::onWireRunStart(&context);
+#endif
+
   // yield after warming up
   coroSuspended(&context);
   coroutineSuspend(*context.continuation);
@@ -1788,6 +1814,10 @@ endOfWire:
   } else {
     wire->finishedOutput = wire->previousOutput; // cloning over! (OwnedVar)
   }
+
+#if SHARDS_DEBUGGER
+  dbg::onWireRunEnd(&context);
+#endif
 
   // run cleanup on all the shards
   // ensure stop state is set
