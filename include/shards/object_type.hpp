@@ -10,22 +10,17 @@
 namespace shards {
 namespace detail {
 
-template <typename T, typename = void>
-struct has_static_match : std::false_type {};
+template <typename T, typename = void> struct has_static_match : std::false_type {};
 
 template <typename T>
-struct has_static_match<T, 
-    std::void_t<decltype(T::match(std::declval<const T&>(), std::declval<const T&>()))>> 
+struct has_static_match<T, std::void_t<decltype(T::match(std::declval<const T &>(), std::declval<const T &>()))>>
     : std::true_type {};
 
-template <typename T, typename = void>
-struct has_static_hash : std::false_type {};
+template <typename T, typename = void> struct has_static_hash : std::false_type {};
 
 template <typename T>
 struct has_static_hash<T,
-    std::void_t<decltype(T::hash(std::declval<const T&>(), 
-                                std::declval<void*>(), 
-                                std::declval<size_t>()))>>
+                       std::void_t<decltype(T::hash(std::declval<const T &>(), std::declval<void *>(), std::declval<size_t>()))>>
     : std::true_type {};
 
 } // namespace detail
@@ -206,7 +201,7 @@ public:
   static inline T &makeExtended(TypeInfo &dst) {
     TypeInfo old;
     std::swap(old, dst);
-    return makeExtended(dst, &(SHTypeInfo&)old);
+    return makeExtended(dst, &(SHTypeInfo &)old);
   }
 
   static inline T &makeExtended(TypeInfo &dst, const SHTypeInfo *original) {
@@ -246,6 +241,15 @@ public:
   ObjectVar(const char *name, int32_t vendorId, int32_t objectId)
       : TObjectVar<InternalCore, E, Serializer, Deserializer, BeforeDelete, ThreadSafe>(name, vendorId, objectId) {}
 };
+
+// NOTE: This needs to be a struct ensure correct initialization order under clang
+#define SHVAR_OBJECT_DECL(_id, _displayName, _definedAs, ...)                                               \
+  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                  \
+  static inline Type _definedAs{                                                                            \
+      {SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
+  static inline ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, shards::CoreCC,       \
+                                                                        SH_CONCAT(_definedAs, TypeId)};
+
 #endif
 
 }; // namespace shards

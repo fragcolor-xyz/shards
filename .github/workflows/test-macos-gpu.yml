@@ -136,6 +136,11 @@ jobs:
           build/shards new shards/tests/audio.shs test-device:true
           build/shards new shards/tests/audio2.shs test-device:true
 
+          echo "Running crdts"
+          build/shards new shards/tests/crdts.shs
+          echo "Running crdt-benchmarks"
+          build/shards new shards/tests/crdt-benchmarks.shs
+
       - name: Test Physics
         env:
           RUST_BACKTRACE: full

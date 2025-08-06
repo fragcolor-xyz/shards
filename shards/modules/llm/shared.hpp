@@ -18,7 +18,8 @@ struct ModelData {
   static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
   static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
-  static inline shards::ObjectVar<ModelData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
+  static inline shards::ObjectVar<ModelData, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
+                                                                                        RawType.object.typeId};
 
   static inline std::atomic_uint32_t usageCounter;
 

@@ -20,7 +20,7 @@
 
 ; we use this to test stack overflow protection
 @wire(run {
-  Profile({100 | Do(fib4)})
+  Profile({256000000 | Do(fib4)})
   Log("result")
 })
 

@@ -277,6 +277,10 @@ jobs:
           ./shards new ../shards/tests/llm.shs
           echo "Running jinja"
           ./shards new ../shards/tests/jinja.shs
+          echo "Running crdts"
+          ./shards new ../shards/tests/crdts.shs
+          echo "Running crdt-benchmarks"
+          ./shards new ../shards/tests/crdt-benchmarks.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

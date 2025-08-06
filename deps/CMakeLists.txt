@@ -283,3 +283,6 @@ set(OPUS_BUILD_FRAMEWORK OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
 add_subdirectory(opus)
+
+add_library(crdt_lite INTERFACE)
+target_include_directories(crdt_lite INTERFACE crdt-lite)

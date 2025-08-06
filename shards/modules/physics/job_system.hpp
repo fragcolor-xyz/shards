@@ -37,7 +37,7 @@ struct TidePoolJobSystem final : public JPH::JobSystemWithBarrier {
   /// RemoveDependency causes the dependency counter to reach 0.
   virtual JPH::JobHandle CreateJob(const char *inName, JPH::ColorArg inColor, const JobFunction &inJobFunction,
                                    uint32_t inNumDependencies = 0) {
-    int jobIndex = jobs.ConstructObject(inName, inColor, this, inJobFunction, inNumDependencies);
+    uint32_t jobIndex = jobs.ConstructObject(inName, inColor, this, inJobFunction, inNumDependencies);
     shassert(jobIndex != decltype(jobs)::cInvalidObjectIndex);
 
     auto *job = &jobs.Get(jobIndex);

@@ -17,6 +17,7 @@ if(NOT EMSCRIPTEN)
 
   target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/whisper.cpp/include)
   target_link_libraries(shards-module-llm llama)
+  target_compile_definitions(shards-module-llm PRIVATE WHISPER_VERSION="shards-whisper-0.1")
   
   # Make sure clip.h is in the include path
   target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common)

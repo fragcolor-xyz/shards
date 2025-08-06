@@ -281,7 +281,8 @@ struct Context {
   static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
   static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
-  static inline shards::ObjectVar<ContextData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
+  static inline shards::ObjectVar<ContextData, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
+                                                                                          RawType.object.typeId};
 
   static SHTypesInfo inputTypes() { return ModelData::Type; }
   static SHTypesInfo outputTypes() { return Type; }

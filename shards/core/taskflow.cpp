@@ -6,14 +6,18 @@ namespace shards {
 struct TaskFlowDebugInterface : tf::WorkerInterface {
   std::string debugName;
 #if SH_DEBUG_THREAD_NAMES
+  std::mutex debugThreadNameStackMutex;
   std::list<NativeString> debugThreadNameStack;
 #endif
 
   TaskFlowDebugInterface(std::string debugName) : debugName(debugName) {}
   void scheduler_prologue(tf::Worker &worker) {
 #if SH_DEBUG_THREAD_NAMES
-    auto& v = debugThreadNameStack.emplace_back(fmt::format("<idle> tf::Executor ({}, {})", debugName, worker.id()));
-    pushThreadName(v);
+    {
+      std::lock_guard<std::mutex> lock(debugThreadNameStackMutex);
+      auto &v = debugThreadNameStack.emplace_back(fmt::format("<idle> tf::Executor ({}, {})", debugName, worker.id()));
+      pushThreadName(v);
+    }
 #endif
     SHLOG_TRACE("TaskFlow: \"{}\" Worker {} starting", debugName, worker.id());
   }

@@ -150,7 +150,8 @@ struct Chat {
   static inline ::shards::Type Type = ::shards::Type::Object(CoreCC, ObjectId);
   static inline SHTypeInfo RawType = Type;
   static inline ::shards::Type VarType = ::shards::Type::VariableOf(Type);
-  static inline shards::ObjectVar<ChatData> ObjectVar{VariableName, RawType.object.vendorId, RawType.object.typeId};
+  static inline shards::ObjectVar<ChatData, nullptr, nullptr, nullptr, true> ObjectVar{VariableName, RawType.object.vendorId,
+                                                                                       RawType.object.typeId};
 
   Chat() {
     _contextSize = Var(1024);
@@ -220,7 +221,7 @@ struct Chat {
       auto mmproj_path = SHSTRING_PREFER_SHSTRVIEW(mmproj);
       if (!mmproj_path.empty()) {
         _data->mmproj_path = mmproj_path;
-        
+
         // Create MTMD context parameters
         mtmd_context_params ctx_params = mtmd_context_params_default();
         ctx_params.use_gpu = true;
@@ -228,7 +229,7 @@ struct Chat {
         ctx_params.n_threads = _data->n_threads;
         ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
         ctx_params.image_marker = MTMD_DEFAULT_IMAGE_MARKER;
-        
+
         // Initialize MTMD context
         _data->mtmd_ctx = mtmd_init_from_file(mmproj_path.c_str(), model, ctx_params);
         if (!_data->mtmd_ctx) {
@@ -457,7 +458,7 @@ struct ChatAddImage {
     const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
 
     // Create a mtmd_bitmap from the image data
-    mtmd_bitmap* bitmap = mtmd_bitmap_init(image->width, image->height, image->data);
+    mtmd_bitmap *bitmap = mtmd_bitmap_init(image->width, image->height, image->data);
     if (!bitmap) {
       throw ActivationError("Failed to create image bitmap");
     }
@@ -470,24 +471,24 @@ struct ChatAddImage {
     text.parse_special = true;
 
     // Create input chunks container
-    mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+    mtmd_input_chunks *chunks = mtmd_input_chunks_init();
     if (!chunks) {
       throw ActivationError("Failed to create input chunks");
     }
     DEFER({ mtmd_input_chunks_free(chunks); });
 
     // Tokenize the input with the image
-    const mtmd_bitmap* bitmap_ptr = bitmap;
+    const mtmd_bitmap *bitmap_ptr = bitmap;
     if (mtmd_tokenize(chatData.mtmd_ctx, chunks, &text, &bitmap_ptr, 1) != 0) {
       throw ActivationError("Failed to tokenize image input");
     }
 
     // Find the image chunk
-    const mtmd_input_chunk* image_chunk = nullptr;
+    const mtmd_input_chunk *image_chunk = nullptr;
     size_t chunks_size = mtmd_input_chunks_size(chunks);
-    
+
     for (size_t i = 0; i < chunks_size; i++) {
-      const mtmd_input_chunk* chunk = mtmd_input_chunks_get(chunks, i);
+      const mtmd_input_chunk *chunk = mtmd_input_chunks_get(chunks, i);
       if (chunk && mtmd_input_chunk_get_type(chunk) == MTMD_INPUT_CHUNK_TYPE_IMAGE) {
         image_chunk = chunk;
         break;
@@ -541,7 +542,7 @@ struct ChatAddImage {
       // Determine if we need to use M-RoPE positions
       bool use_mrope = mtmd_decode_use_mrope(chatData.mtmd_ctx);
       int n_pos_per_embd = use_mrope ? 4 : 1;
-      
+
       // Get the embedding dimension from the model
       int n_mmproj_embd = llama_model_n_embd(model);
 
@@ -716,7 +717,10 @@ struct ChatReset {
 
     // Reset the context
     chatData.n_past = 0;
-    llama_kv_self_clear(chatData.ctx.get());
+    auto *kv = llama_get_memory(chatData.ctx.get());
+    if (kv) {
+      llama_memory_clear(kv, true);
+    }
   }
 };
 

@@ -115,7 +115,7 @@ struct SHContext {
   bool onLastResume{false};
   bool onWorkerThread{false};
   uint64_t stepCounter{};
-  volatile void *stackStart{nullptr};
+  void *stackStart{nullptr};
 
   // Used within the coro& stack! (suspend, etc)
   shards::Coroutine *continuation{nullptr};
@@ -313,7 +313,6 @@ extern GlobalTracy &GetTracy();
 std::vector<SHWire *> &getCoroWireStack();
 #endif
 
-
 #if SHARDS_INLINE_EVERYTHING
 #define SHARDS_COND_INLINE ALWAYS_INLINE inline
 #include "coro_annotations.inl"
@@ -338,9 +337,11 @@ inline void prepare(SHWire *wire) {
 
 #if SH_CORO_NEED_STACK_MEM
   if (!wire->stackMem) {
-    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize];
+    wire->stackMem = new (std::align_val_t{16}) uint8_t[wire->stackSize()];
   }
-  wire->coro.emplace(SHStackAllocator{wire->stackSize, wire->stackMem});
+  wire->coro.emplace(SHStackAllocator{wire->stackSize(), wire->stackMem});
+#elif __EMSCRIPTEN__
+  wire->coro.emplace(wire->stackSize());
 #else
   wire->coro.emplace();
 #endif

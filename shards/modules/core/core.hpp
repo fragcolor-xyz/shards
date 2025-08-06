@@ -1378,6 +1378,8 @@ struct Set : public SetUpdateBase {
     shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_trackingMask != 0) {
+      SHLOG_DEBUG("Warmup Set: {} tracking mask: {}", _name, _trackingMaskInternal);
+
       _target->trackingMask |= _trackingMask;
 
       // override shard default behavior
@@ -1636,6 +1638,7 @@ struct Update : public SetUpdateBase {
           }
         }
         _isGlobal = type->global;
+        _trackingMaskInternal = type->trackingMask;
       }
 
       if (!originalTableType) {
@@ -1686,6 +1689,7 @@ struct Update : public SetUpdateBase {
           throw ComposeError("Update: error, update is changing the variable type.");
         }
         _isGlobal = type->global;
+        _trackingMaskInternal = type->trackingMask;
       } else {
         throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
@@ -1699,9 +1703,6 @@ struct Update : public SetUpdateBase {
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
 
-    // update the tracking mask
-    _trackingMaskInternal = _exposedInfo._innerInfo.elements[0].trackingMask;
-
     return data.inputType;
   }
 
@@ -1713,6 +1714,8 @@ struct Update : public SetUpdateBase {
     shassert_extended(context, _self && "Self should be valid at this point");
 
     if (_trackingMaskInternal != 0) {
+      SHLOG_DEBUG("Warmup Update: {} tracking mask: {}", _name, _trackingMaskInternal);
+
       shassert_extended(context, (_target->trackingMask & _trackingMaskInternal) != 0 && "Target variable masks are not correct");
 
       // override shard default behavior

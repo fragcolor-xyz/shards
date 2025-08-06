@@ -161,7 +161,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
     if (mode == RunWireMode::Async && !capturing) {
       // keep only globals
       for (auto &x : IterableExposedInfo(data.shared)) {
-        if(x.global) {
+        if (x.global) {
           sharedCopy.push_back(x);
         }
       }
@@ -205,10 +205,8 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
   SHLOG_TRACE("Marking as composed: {} ptr: {} inputType: {} outputType: {}", wire->name, (void *)wire.get(), *wire->inputType,
               *wire->outputType);
 
-#if SH_CORO_NEED_STACK_MEM
   // Propagate stack size
-  data.wire->stackSize = std::max<size_t>(data.wire->stackSize, wire->stackSize);
-#endif
+  data.wire->setStackSize(std::max<size_t>(data.wire->stackSize(), wire->stackSize()));
 
   auto outputType = data.inputType;
 

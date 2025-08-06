@@ -143,13 +143,13 @@ thread_local ThreadState threadState{};
 struct ShardsSink : public spdlog::sinks::dist_sink_mt {
   void sink_it_(const spdlog::details::log_msg &msg) override {
     auto &threadState_ = threadState;
-    LogContext *pp = threadState_.current;
+    std::atomic<LogContext *> pp = threadState_.current;
     while (pp) {
-      if (pp->intercept) {
-        if (!pp->intercept(msg))
+      if (pp.load()->intercept) {
+        if (!pp.load()->intercept(msg))
           return;
       }
-      pp = pp->prev;
+      pp = pp.load()->prev.load();
     }
 
     spdlog::sinks::dist_sink_mt::sink_it_(msg);
@@ -169,9 +169,7 @@ void LogContext::linkRootTo(LogContext *other) {
   prev = other;
 }
 
-void LogContext::unlink() {
-  prev = nullptr;
-}
+void LogContext::unlink() { prev = nullptr; }
 
 void LogContext::push() {
   prev = threadState.current;

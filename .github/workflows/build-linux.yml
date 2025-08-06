@@ -164,6 +164,8 @@ jobs:
           ./shards new ../shards/tests/table-recurse.shs
           ./shards new ../shards/tests/global-init.shs
           ./shards new ../shards/tests/jinja.shs
+          ./shards new ../shards/tests/crdts.shs
+          ./shards new ../shards/tests/crdt-benchmarks.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

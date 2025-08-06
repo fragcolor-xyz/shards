@@ -1,58 +1,21 @@
-CRDT.Open(@i16(77)) = crdt
-CRDT.Open(@i16(99)) = crdt-copy
-CRDT.Open(@i16(88)) = crdt-copy2
-10 | CRDT.Set(crdt "K1") | Log >> crdt-ops = op-1
-"Hello World" | CRDT.Set(crdt "K2") | Log >> crdt-ops = op-2
+CRDT.New(@i16(77)) = crdt
+UUID = r1
+10 | CRDT.Set(CRDT: crdt Record: r1 Keys: "K1") | Log >> changes
+"K2" = key2
+1.0 | CRDT.Set(CRDT: crdt Record: r1 Keys: key2) | Log >> changes
+20 | CRDT.Set(CRDT: crdt Record: r1 Keys: "K1") | Log >> changes
 
-CRDT.Save(crdt) | Log("pre delete") = crdt-snapshot-1
+CRDT.New(@i16(78)) = crdt2
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(0)
 
-CRDT.Open(@i16(77)) = crdt2
+r1 | CRDT.Get(CRDT: crdt Keys: ["K1"]) | Log | Assert.Is([20])
+r1 | CRDT.Get(CRDT: crdt2 Keys: ["K1" "K2"]) | Log | Assert.Is([20 1.0])
 
-crdt-snapshot-1 | CRDT.Load(crdt2)
-CRDT.Save(crdt2) | Log("post load")
-CRDT.Get(crdt2 "K1") | Assert.Is(10)
-CRDT.Get(crdt2 "K2") | Assert.Is("Hello World")
+["a" "a" "a"] | CRDT.Set(CRDT: crdt Record: r1 Keys: ["A" "B" "C"]) | Log > changes
+["A" "B" "C"] = keys
+["a" "b" "c"] | CRDT.Set(CRDT: crdt Record: r1 Keys: keys) | Log > changes
 
-CRDT.Get(crdt "K2") | Assert.Is("Hello World")
-CRDT.Delete(crdt "K2") | Log >> crdt-ops = op-3
-CRDT.Get(crdt "K2") | Assert.Is(none)
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
 
-CRDT.Save(crdt) | Log("post delete") = crdt-snapshot-2
-
-11 | CRDT.Set(crdt "K2") | Log >> crdt-ops = op-4
-
-CRDT.Save(crdt) | Log("post set")
-
-CRDT.Open(@i16(77)) = crdt3
-
-crdt-snapshot-2 | CRDT.Load(crdt3)
-
-CRDT.Save(crdt2) | Log("pre merge")
-CRDT.Get(crdt2 "K2") | Assert.Is("Hello World")
-
-CRDT.Merge(crdt2 crdt3)
-
-CRDT.Save(crdt2) | Log("post merge")
-CRDT.Get(crdt2 "K2") | Assert.Is(none)
-
-crdt-ops | Log("ops")
-Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
-Shuffle(crdt-ops) ; shuffle the operations to test the order of operations
-crdt-ops | Log("shuffled ops")
-
-crdt-ops | ForEach({
-  Log("applying")
-  CRDT.Apply(crdt-copy)
-  CRDT.Save(crdt-copy) | Log("post apply")
-})
-
-CRDT.Save(crdt) = crdt-final-snapshot | Log("pre apply final")
-CRDT.Save(crdt-copy) | Log("post apply final") | Is(crdt-final-snapshot) | Assert.Is(true)
-
-; on purpose apply delete op last, and others in inverse order
-op-4 | Log("op-4") | CRDT.Apply(crdt-copy2)
-op-2 | Log("op-2") | CRDT.Apply(crdt-copy2)
-op-1 | Log("op-1") | CRDT.Apply(crdt-copy2)
-op-3 | Log("op-3") | CRDT.Apply(crdt-copy2)
-
-CRDT.Save(crdt-copy2) | Log("post apply final") | Is(crdt-final-snapshot) | Assert.Is(true)
+r1 | CRDT.Get(CRDT: crdt2 Keys: ["A" "B" "C"]) | Log | Assert.Is(["a" "b" "c"])

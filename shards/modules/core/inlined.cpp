@@ -150,7 +150,7 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     return &shard->shard.activate(context, input);
   }
   case InlineShard::NotInline:
-    return nullptr; // fail
+    return blk->activate(blk, context, &input);
     // default:
     // Don't add default case, we want to catch all cases
   }

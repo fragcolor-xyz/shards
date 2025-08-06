@@ -32,7 +32,7 @@ struct LogContext {
 private:
   void push();
   void pop();
-  LogContext *prev{};
+  std::atomic<LogContext *> prev{};
   friend struct ::shards::logging::ShardsSink;
 };
 

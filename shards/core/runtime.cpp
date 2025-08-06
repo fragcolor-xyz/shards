@@ -677,30 +677,21 @@ SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
   return context->getState();
 }
 
-ALWAYS_INLINE bool is_stack_within_limit(volatile void *stack_start_address, size_t hard_max, size_t recursion_buffer) {
-  if (stack_start_address == nullptr) {
+ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjusted_max) {
+  if (stack_start_address == nullptr) [[likely]] {
     return true;
   }
 
-  // Create a local variable
-  volatile uint8_t local_var;
-  // Get the address of the local variable
-  uintptr_t local_var_address = reinterpret_cast<uintptr_t>(&local_var);
+  uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
   uintptr_t start_address = reinterpret_cast<uintptr_t>(stack_start_address);
 
-  // Calculate the approximate stack size
-  size_t stack_size;
-#ifdef EMSCRIPTEN
-  // Emscripten stack grows upward
-  stack_size = local_var_address - start_address;
+#ifdef __EMSCRIPTEN__
+  constexpr int direction = 1;
 #else
-  // Normal stack grows downward
-  stack_size = start_address - local_var_address;
+  constexpr int direction = -1;
 #endif
 
-  // Adjust hard max to accommodate recursion buffer
-  size_t adjusted_max = hard_max - recursion_buffer;
-
+  size_t stack_size = (current_sp - start_address) * direction;
   return stack_size <= adjusted_max;
 }
 
@@ -722,17 +713,13 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <typename T, bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
-  // check for stack overflow
-#if SH_CORO_NEED_STACK_MEM
-#if SH_USE_UBSAN
-  // Slightly bigger for assertions, etc.
-  const uint32_t padding = 16 * 1024;
-#else
-  const uint32_t padding = 8 * 1024;
-#endif
-  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackSize, padding)) {
-    // we let the top level handle this
-    SHLOG_ERROR("Stack overflow detected, wire: {}", context->currentWire()->name);
+// check for stack overflow
+#if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
+  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
+    uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
+    uintptr_t start_address = reinterpret_cast<uintptr_t>(context->stackStart);
+    SHLOG_ERROR("Stack overflow detected, wire: {} current sp: {} start address: {} stack size: {}", context->currentWire()->name,
+                current_sp, start_address, current_sp - start_address);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
@@ -749,8 +736,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
     len = shards.size();
   } else {
-    len = 0;
-    SHLOG_FATAL("Unreachable shardsActivation case");
+    shassert(false && "Unreachable shardsActivation case");
   }
 
   for (size_t i = 0; i < len; i++) {
@@ -762,8 +748,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
       blk = shards[i];
     } else {
-      blk = nullptr;
-      SHLOG_FATAL("Unreachable shardsActivation case");
+      shassert(false && "Unreachable shardsActivation case");
     }
 
     {
@@ -779,12 +764,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
 #undef ZoneNoCallstack
 #endif
 
-      if (blk->inlineShardId != InlineShard::NotInline) {
-        output = activateShardInline(blk, context, *input);
-        shassert(output && "activateShardInline returned nullptr");
-      } else {
-        output = blk->activate(blk, context, input);
-      }
+      output = activateShardInline(blk, context, *input);
+      shassert(output && "activateShardInline returned nullptr");
     }
 
     // Deal with aftermath of activation
@@ -1656,8 +1637,6 @@ run_wire_logic:
 }
 
 void run(SHWire *wire, shards::Coroutine *coro) {
-  // store stack start address here
-  volatile void *stackStart = nullptr;
   auto running = true;
 
   // we need this cos by the end of this call we might get suspended/resumed and state changes! this wont
@@ -1670,7 +1649,7 @@ void run(SHWire *wire, shards::Coroutine *coro) {
 
   // Create a new context and copy the sink in
   SHContext context(coro, wire);
-  context.stackStart = &stackStart;
+  context.stackStart = __builtin_frame_address(0);
 
   // if the wire had a context (Stepped wires in wires.cpp)
   // copy some stuff from it
@@ -2903,10 +2882,8 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->setWireStackSize = [](SHWireRef wireref, uint64_t size) noexcept {
-#if SH_CORO_NEED_STACK_MEM
     auto &sc = SHWire::sharedFromRef(wireref);
-    sc->stackSize = size;
-#endif
+    sc->setStackSize(size);
   };
 
   result->setWireTraits = [](SHWireRef wireref, SHSeq traits) noexcept {

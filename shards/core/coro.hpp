@@ -7,7 +7,6 @@
 #include <thread>
 #include "platform.hpp"
 
-// TODO make it into a run-time param
 #if SH_EMSCRIPTEN
 #define SH_BASE_STACK_SIZE 2 * 1024 * 1024
 #else

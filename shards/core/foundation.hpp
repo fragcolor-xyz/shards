@@ -576,7 +576,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 #if SH_CORO_NEED_STACK_MEM
   // this is the eventual coroutine stack memory buffer
   uint8_t *stackMem{nullptr};
-  size_t stackSize{SH_BASE_STACK_SIZE};
 #endif
 
   ~SHWire();
@@ -715,6 +714,22 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   // this allows us to regenerate when acquiring from pools in order to keep adding new wires at the end of the list
   uint64_t regenerateId() { return uniqueId = idCounter.fetch_add(1); }
 
+  constexpr size_t stackLimit() const { return _stackLimit; }
+  constexpr size_t stackSize() const { return _stackSize; }
+
+  constexpr void setStackSize(size_t size) {
+    // make sure we are at least the base stack size
+    size = std::max(size, static_cast<size_t>(SH_BASE_STACK_SIZE));
+    // align to 16 bytes
+    _stackSize = (size + 15) & ~15;
+    _stackLimit = _stackSize -
+#if SH_USE_UBSAN
+                  16 * 1024;
+#else
+                  8 * 1024;
+#endif
+  }
+
 private:
   SHWire(std::string_view wire_name) : name(wire_name) {
     SHLOG_TRACE("Creating wire: {}", name);
@@ -736,6 +751,15 @@ private:
 
   uint64_t uniqueId;
   static inline std::atomic_uint64_t idCounter{0};
+
+  // this is the eventual coroutine stack memory buffer
+  size_t _stackSize{SH_BASE_STACK_SIZE};
+  size_t _stackLimit = _stackSize -
+#if SH_USE_UBSAN
+                       16 * 1024;
+#else
+                       8 * 1024;
+#endif
 
 public:
 #if TRACY_FIBERS
@@ -1753,20 +1777,12 @@ inline void swlFree(SHStringWithLen &in) {
 
 }; // namespace shards
 
-inline auto format_as(SHWire::State state) {
-  return magic_enum::enum_name(state);
-}
+inline auto format_as(SHWire::State state) { return magic_enum::enum_name(state); }
 
-inline const SHVar& format_as(const shards::SeqVar& v) {
-  return (SHVar&)v;
-}
+inline const SHVar &format_as(const shards::SeqVar &v) { return (SHVar &)v; }
 
-inline const SHVar& format_as(const shards::TableVar& v) {
-  return (SHVar&)v;
-}
+inline const SHVar &format_as(const shards::TableVar &v) { return (SHVar &)v; }
 
-inline const SHVar& format_as(const shards::Var& v) {
-  return (SHVar&)v;
-}
+inline const SHVar &format_as(const shards::Var &v) { return (SHVar &)v; }
 
 #endif // SH_CORE_FOUNDATION
