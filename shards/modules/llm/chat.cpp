@@ -717,7 +717,10 @@ struct ChatReset {
 
     // Reset the context
     chatData.n_past = 0;
-    llama_kv_self_clear(chatData.ctx.get());
+    auto *kv = llama_get_memory(chatData.ctx.get());
+    if (kv) {
+      llama_memory_clear(kv, true);
+    }
   }
 };
 
