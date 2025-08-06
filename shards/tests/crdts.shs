@@ -1,7 +1,8 @@
 CRDT.New(@i16(77)) = crdt
 UUID = r1
 10 | CRDT.Set(CRDT: crdt Record: r1 Keys: "K1") | Log >> changes
-1.0 | CRDT.Set(CRDT: crdt Record: r1 Keys: "K2") | Log >> changes
+"K2" = key2
+1.0 | CRDT.Set(CRDT: crdt Record: r1 Keys: key2) | Log >> changes
 20 | CRDT.Set(CRDT: crdt Record: r1 Keys: "K1") | Log >> changes
 
 CRDT.New(@i16(78)) = crdt2
@@ -11,7 +12,9 @@ changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(0)
 r1 | CRDT.Get(CRDT: crdt Keys: ["K1"]) | Log | Assert.Is([20])
 r1 | CRDT.Get(CRDT: crdt2 Keys: ["K1" "K2"]) | Log | Assert.Is([20 1.0])
 
-["a" "b" "c"] | CRDT.Set(CRDT: crdt Record: r1 Keys: ["A" "B" "C"]) | Log > changes
+["a" "a" "a"] | CRDT.Set(CRDT: crdt Record: r1 Keys: ["A" "B" "C"]) | Log > changes
+["A" "B" "C"] = keys
+["a" "b" "c"] | CRDT.Set(CRDT: crdt Record: r1 Keys: keys) | Log > changes
 
 changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
 
