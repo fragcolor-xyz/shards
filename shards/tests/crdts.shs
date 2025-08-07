@@ -19,3 +19,8 @@ r1 | CRDT.Get(CRDT: crdt2 Keys: ["K1" "K2"]) | Log | Assert.Is([20 1.0])
 changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
 
 r1 | CRDT.Get(CRDT: crdt2 Keys: ["A" "B" "C"]) | Log | Assert.Is(["a" "b" "c"])
+
+Clear(changes)
+r1 | CRDT.Delete(CRDT: crdt) | Log >> changes
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(1)
+r1 | CRDT.Get(CRDT: crdt2 Keys: ["A" "B" "C"]) | Log | Assert.Is([])

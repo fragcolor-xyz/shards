@@ -433,7 +433,7 @@ struct CRDTGet {
 
 struct CRDTDelete {
   static SHTypesInfo inputTypes() { return CoreInfo::Int16Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CRDTTypes::ChangesTableType; }
   static SHOptionalString help() { return SHCCSTR("Deletes a record from the crdt"); }
 
   PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to delete the record from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
@@ -446,14 +446,19 @@ struct CRDTDelete {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CoreInfo::AnyType;
+    return CRDTTypes::ChangesTableType;
   }
+
+  ChangesFixedTable _changeCache;
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     auto recordId = OwnedVar::Foreign(input); // avoid copy, this makes it CoW
-    crdt.delete_record(var2Uuid(recordId));
-    return input;
+    CrdtVector<Change<boost::uuids::uuid, OwnedVar>> changes;
+    crdt.delete_record(var2Uuid(recordId), changes);
+    shassert(changes.size() == 1 && "Expected single change");
+    intoVar(std::move(changes[0]), _changeCache);
+    return _changeCache;
   }
 };
 } // namespace crdts
