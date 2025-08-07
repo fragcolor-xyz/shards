@@ -30,23 +30,25 @@ struct ShardsCRDT : CRDT<boost::uuids::uuid, OwnedVar> {
 struct CRDTTypes {
   SHVAR_OBJECT_DECL('crdt', "CRDT", CRDT, ShardsCRDT);
 
-  static inline std::array<SHVar, 7> ChangesTableKeys{
-      Var("col-name"),    //
-      Var("col-version"), //
-      Var("db-version"),  //
-      Var("flags"),       //
-      Var("node-id"),     //
-      Var("record-id"),   //
-      Var("value"),       //
+  static inline std::array<SHVar, 8> ChangesTableKeys{
+      Var("col-name"),     //
+      Var("col-name-key"), //
+      Var("col-version"),  //
+      Var("db-version"),   //
+      Var("flags"),        //
+      Var("node-id"),      //
+      Var("record-id"),    //
+      Var("value"),        //
   };
   static inline Types ChangesTableTypes{
-      CoreInfo::AnyType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::Int16Type, //
-      CoreInfo::Int16Type, //
-      CoreInfo::AnyType,   //
+      CoreInfo::AnyType, //
+      CoreInfo::AnyType,    //
+      CoreInfo::IntType,    //
+      CoreInfo::IntType,    //
+      CoreInfo::IntType,    //
+      CoreInfo::Int16Type,  //
+      CoreInfo::Int16Type,  //
+      CoreInfo::AnyType,    //
   };
   static inline Type ChangesTableType = Type::TableOf(ChangesTableTypes, ChangesTableKeys);
   static inline Type ChangesTableVarType = Type::VariableOf(ChangesTableType);
