@@ -43,3 +43,7 @@ changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
 
 r2 | CRDT.Get(CRDT: crdt2 Keys: [10]) | Log | Assert.Is([{a: "x" b: @f3(0 0 1)}])
 r3 | CRDT.Get(CRDT: crdt2 Keys: [["A" "B"] ["A" 1]]) | Log | Assert.Is([[1 2 3 4] [{} none]])
+
+crdt2 | CRDT.Version | Log | Assert.Is(14)
+
+11 | CRDT.ChangesSince(CRDT: crdt2) | Log | Count | Assert.Is(3)

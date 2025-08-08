@@ -41,14 +41,14 @@ struct CRDTTypes {
       Var("value"),        //
   };
   static inline Types ChangesTableTypes{
-      CoreInfo::AnyType, //
-      CoreInfo::AnyType,    //
-      CoreInfo::IntType,    //
-      CoreInfo::IntType,    //
-      CoreInfo::IntType,    //
-      CoreInfo::Int16Type,  //
-      CoreInfo::Int16Type,  //
-      CoreInfo::AnyType,    //
+      CoreInfo::AnyType,   //
+      CoreInfo::AnyType,   //
+      CoreInfo::IntType,   //
+      CoreInfo::IntType,   //
+      CoreInfo::IntType,   //
+      CoreInfo::Int16Type, //
+      CoreInfo::Int16Type, //
+      CoreInfo::AnyType,   //
   };
   static inline Type ChangesTableType = Type::TableOf(ChangesTableTypes, ChangesTableKeys);
   static inline Type ChangesTableVarType = Type::VariableOf(ChangesTableType);
@@ -463,6 +463,59 @@ struct CRDTDelete {
     return _changeCache;
   }
 };
+
+struct CRDTGetVersion {
+  static SHTypesInfo inputTypes() { return CRDTTypes::CRDT; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString help() {
+    return SHCCSTR("Gets the version of the crdt, notice that internally it's a uint64, but shards Int is signed, "
+                   "so it might go negative if it's over 2^63, that does not mean the value is not correct.");
+  }
+
+  PARAM_IMPL();
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(input, CRDTTypes::CRDT);
+    auto version = crdt.get_clock().current_time();
+    return Var(static_cast<int64_t>(version));
+  }
+};
+
+struct CRDTChangesSince {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CRDTTypes::ChangesTableSeqType; }
+  static SHOptionalString help() { return SHCCSTR("Gets the changes since the given version"); }
+
+  PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to get the changes from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CRDTTypes::ChangesTableSeqType;
+  }
+
+  SeqVar _output;
+  ChangesFixedTable _changeCache;
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    auto changes = crdt.get_changes_since(input.payload.intValue);
+    for (auto &change : changes) {
+      intoVar(std::move(change), _changeCache);
+      _output.push_back(_changeCache);
+    }
+    return _output;
+  }
+};
 } // namespace crdts
 
 SHARDS_REGISTER_FN(crdts) {
@@ -472,5 +525,7 @@ SHARDS_REGISTER_FN(crdts) {
   REGISTER_SHARD("CRDT.Apply", CRDTApply);
   REGISTER_SHARD("CRDT.Get", CRDTGet);
   REGISTER_SHARD("CRDT.Delete", CRDTDelete);
+  REGISTER_SHARD("CRDT.Version", CRDTGetVersion);
+  REGISTER_SHARD("CRDT.ChangesSince", CRDTChangesSince);
 }
 } // namespace shards
