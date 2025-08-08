@@ -509,6 +509,7 @@ struct CRDTChangesSince {
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     auto changes = crdt.get_changes_since(input.payload.intValue);
+    _output.clear();
     for (auto &change : changes) {
       intoVar(std::move(change), _changeCache);
       _output.push_back(_changeCache);
