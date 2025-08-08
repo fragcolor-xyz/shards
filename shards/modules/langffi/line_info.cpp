@@ -15,16 +15,16 @@ struct FileRegistry {
   std::shared_mutex mtx;
 
   uint32_t map(std::string_view path) {
-    std::shared_lock lock(mtx);
-    boost::filesystem::path p(path);
-    auto npath = p.lexically_normal();
-    auto gpath = npath.generic_string();
-
-    if (!boost::filesystem::exists(npath)) {
-      SPDLOG_WARN("line_info: File {} does not exist", gpath);
+    if (path.empty()) {
+      SPDLOG_WARN("line_info: File path {} is invalid", path);
       return 0;
     }
 
+    boost::filesystem::path p(path);
+    auto npath = p.lexically_normal();
+    auto gpath = npath.generic_string();
+    
+    std::shared_lock lock(mtx);
     auto it = pathToId.find(gpath);
     if (it == pathToId.end()) {
       auto s = XXH3_createState();
