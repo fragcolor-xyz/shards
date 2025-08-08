@@ -1,26 +1,4 @@
-#include <shards/shards.hpp>
-#include <shards/utility.hpp>
-#include <shards/core/shared.hpp>
-#include <shards/core/params.hpp>
-#include <shards/common_types.hpp>
-#include <boost/unordered/unordered_flat_map.hpp>
-#include <boost/unordered/unordered_flat_set.hpp>
-#include <boost/container/small_vector.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/nil_generator.hpp>
-
-using CrdtKey = shards::OwnedVar;
-using CrdtNodeId = boost::uuids::uuid; // Int16/uuid
-// this seems the best combination for containers btw!, we tried boost unordered_flat_map for the rest but it was slower
-template <typename T> using CrdtVector = boost::container::small_vector<T, 4>;
-template <typename K, typename V> using CrdtMap = std::unordered_map<K, V>;
-template <typename K> using CrdtSet = std::unordered_set<K, std::hash<K>>;
-template <typename T, typename Comparator> using CrdtSortedSet = boost::container::flat_set<T, Comparator>;
-template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat_map<K, V, std::hash<K>>;
-
-#define CRDT_COLLECTIONS_DEFINED
-#include "crdt.hpp"
+#include "crdts.hpp"
 
 namespace shards {
 namespace crdts {
@@ -52,16 +30,18 @@ struct ShardsCRDT : CRDT<boost::uuids::uuid, OwnedVar> {
 struct CRDTTypes {
   SHVAR_OBJECT_DECL('crdt', "CRDT", CRDT, ShardsCRDT);
 
-  static inline std::array<SHVar, 7> ChangesTableKeys{
-      Var("col-name"),    //
-      Var("col-version"), //
-      Var("db-version"),  //
-      Var("flags"),       //
-      Var("node-id"),     //
-      Var("record-id"),   //
-      Var("value"),       //
+  static inline std::array<SHVar, 8> ChangesTableKeys{
+      Var("col-name"),     //
+      Var("col-name-key"), //
+      Var("col-version"),  //
+      Var("db-version"),   //
+      Var("flags"),        //
+      Var("node-id"),      //
+      Var("record-id"),    //
+      Var("value"),        //
   };
   static inline Types ChangesTableTypes{
+      CoreInfo::AnyType,   //
       CoreInfo::AnyType,   //
       CoreInfo::IntType,   //
       CoreInfo::IntType,   //
@@ -130,6 +110,7 @@ struct ChangesFixedTable : TableVar {
   ChangesFixedTable() {
     //! Lexigraphically sorted at compile time!!
     insert("col-name", Var::Empty);
+    insert("col-name-key", Var::Empty);
     insert("col-version", Var::Empty);
     insert("db-version", Var::Empty);
     insert("flags", Var::Empty);
@@ -142,34 +123,44 @@ struct ChangesFixedTable : TableVar {
 
   const OwnedVar &col_name() const { return map().tree().nth(0)->second; }
 
-  OwnedVar &col_version() { return map().tree().nth(1)->second; }
+  OwnedVar &col_name_key() { return map().tree().nth(1)->second; }
 
-  const OwnedVar &col_version() const { return map().tree().nth(1)->second; }
+  const OwnedVar &col_name_key() const { return map().tree().nth(1)->second; }
 
-  OwnedVar &db_version() { return map().tree().nth(2)->second; }
+  OwnedVar &col_version() { return map().tree().nth(2)->second; }
 
-  const OwnedVar &db_version() const { return map().tree().nth(2)->second; }
+  const OwnedVar &col_version() const { return map().tree().nth(2)->second; }
 
-  OwnedVar &flags() { return map().tree().nth(3)->second; }
+  OwnedVar &db_version() { return map().tree().nth(3)->second; }
 
-  const OwnedVar &flags() const { return map().tree().nth(3)->second; }
+  const OwnedVar &db_version() const { return map().tree().nth(3)->second; }
 
-  OwnedVar &node_id() { return map().tree().nth(4)->second; }
+  OwnedVar &flags() { return map().tree().nth(4)->second; }
 
-  const OwnedVar &node_id() const { return map().tree().nth(4)->second; }
+  const OwnedVar &flags() const { return map().tree().nth(4)->second; }
 
-  OwnedVar &record_id() { return map().tree().nth(5)->second; }
+  OwnedVar &node_id() { return map().tree().nth(5)->second; }
 
-  const OwnedVar &record_id() const { return map().tree().nth(5)->second; }
+  const OwnedVar &node_id() const { return map().tree().nth(5)->second; }
 
-  OwnedVar &value() { return map().tree().nth(6)->second; }
+  OwnedVar &record_id() { return map().tree().nth(6)->second; }
 
-  const OwnedVar &value() const { return map().tree().nth(6)->second; }
+  const OwnedVar &record_id() const { return map().tree().nth(6)->second; }
+
+  OwnedVar &value() { return map().tree().nth(7)->second; }
+
+  const OwnedVar &value() const { return map().tree().nth(7)->second; }
 };
 
 inline void intoVar(Change<boost::uuids::uuid, OwnedVar> &&change, ChangesFixedTable &output) {
   output.record_id() = uuid2Var(change.record_id);
-  output.col_name() = change.col_name.has_value() ? std::move(change.col_name.value()) : Var::Empty;
+  if (change.col_name) {
+    output.col_name() = shards::Var(change.col_name->name);
+    output.col_name_key() = change.col_name->key ? shards::Var(std::move(*change.col_name->key)) : Var::Empty;
+  } else {
+    output.col_name() = Var::Empty;
+    output.col_name_key() = Var::Empty;
+  }
   output.value() = change.value.has_value() ? std::move(change.value.value()) : Var::Empty;
   output.col_version() = Var(static_cast<int64_t>(change.col_version));
   output.db_version() = Var(static_cast<int64_t>(change.db_version));
@@ -179,7 +170,15 @@ inline void intoVar(Change<boost::uuids::uuid, OwnedVar> &&change, ChangesFixedT
 
 inline void intoChange(const ChangesFixedTable &input, Change<boost::uuids::uuid, OwnedVar> &output) {
   output.record_id = var2Uuid(input.record_id());
-  output.col_name = input.col_name();
+  if (input.col_name().valueType == SHType::String) {
+    if (input.col_name_key().valueType != SHType::None) {
+      output.col_name = std::make_optional(CrdtKey(SHSTRVIEW(input.col_name()), input.col_name_key()));
+    } else {
+      output.col_name = std::make_optional(CrdtKey(SHSTRVIEW(input.col_name())));
+    }
+  } else {
+    output.col_name = std::nullopt;
+  }
   output.value = input.value();
   output.col_version = input.col_version().payload.intValue;
   output.db_version = input.db_version().payload.intValue;
@@ -268,7 +267,19 @@ struct CRDTSet {
     }
 
     for (size_t i = 0; i < keys.size(); ++i) {
-      _pairs.emplace_back(keys[i], values[i]);
+      auto &crdtKey = keys[i];
+      if (crdtKey.valueType == SHType::String) {
+        _pairs.emplace_back(CrdtKey(SHSTRVIEW(crdtKey)), values[i]);
+      } else if (crdtKey.valueType == SHType::Seq) {
+        auto &keys = asSeq(crdtKey);
+        if (keys.size() != 2 || keys[0].valueType != SHType::String) {
+          throw ActivationError("Keys must be a pair of string and anything");
+        }
+        _pairs.emplace_back(CrdtKey(SHSTRVIEW(keys[0]), keys[1]), values[i]);
+      } else {
+        // empty string + anything
+        _pairs.emplace_back(CrdtKey("", crdtKey), values[i]);
+      }
     }
 
     crdt.insert_or_update_from_container(var2Uuid(_recordId.get()), _pairs, _changes);
@@ -283,8 +294,23 @@ struct CRDTSet {
 
   SHVar &activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+
     _changes.clear();
-    crdt.insert_or_update(var2Uuid(_recordId.get()), _changes, std::make_pair(_keys.get(), input));
+
+    auto &crdtKey = _keys.get();
+    if (crdtKey.valueType == SHType::String) {
+      crdt.insert_or_update(var2Uuid(_recordId.get()), _changes, std::make_pair(CrdtKey(SHSTRVIEW(crdtKey)), input));
+    } else if (crdtKey.valueType == SHType::Seq) {
+      auto &keys = asSeq(crdtKey);
+      if (keys.size() != 2 || keys[0].valueType != SHType::String) {
+        throw ActivationError("Keys must be a pair of string and anything");
+      }
+      crdt.insert_or_update(var2Uuid(_recordId.get()), _changes, std::make_pair(CrdtKey(SHSTRVIEW(keys[0]), keys[1]), input));
+    } else {
+      // empty string + anything
+      crdt.insert_or_update(var2Uuid(_recordId.get()), _changes, std::make_pair(CrdtKey("", crdtKey), input));
+    }
+
     shassert(_changes.size() == 1 && "Expected single change");
 
     intoVar(std::move(_changes[0]), _changeCache);
@@ -381,7 +407,21 @@ struct CRDTGet {
     _output.clear();
     if (record) {
       for (auto &key : keys) {
-        auto it = record->fields.find(key);
+        auto crdtKey = [&]() {
+          if (key.valueType == SHType::String) {
+            return CrdtKey(SHSTRVIEW(key));
+          } else if (key.valueType == SHType::Seq) {
+            auto &keys = asSeq(key);
+            if (keys.size() != 2 || keys[0].valueType != SHType::String) {
+              throw ActivationError("Keys must be a pair of string and anything");
+            }
+            return CrdtKey(SHSTRVIEW(keys[0]), keys[1]);
+          } else {
+            // empty string + anything
+            return CrdtKey("", key);
+          }
+        }();
+        auto it = record->fields.find(crdtKey);
         if (it != record->fields.end()) {
           _output.push_back(it->second);
         } else {
@@ -395,7 +435,7 @@ struct CRDTGet {
 
 struct CRDTDelete {
   static SHTypesInfo inputTypes() { return CoreInfo::Int16Type; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CRDTTypes::ChangesTableType; }
   static SHOptionalString help() { return SHCCSTR("Deletes a record from the crdt"); }
 
   PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to delete the record from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
@@ -408,14 +448,73 @@ struct CRDTDelete {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return CoreInfo::AnyType;
+    return CRDTTypes::ChangesTableType;
   }
+
+  ChangesFixedTable _changeCache;
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
     auto recordId = OwnedVar::Foreign(input); // avoid copy, this makes it CoW
-    crdt.delete_record(var2Uuid(recordId));
-    return input;
+    CrdtVector<Change<boost::uuids::uuid, OwnedVar>> changes;
+    crdt.delete_record(var2Uuid(recordId), changes);
+    shassert(changes.size() == 1 && "Expected single change");
+    intoVar(std::move(changes[0]), _changeCache);
+    return _changeCache;
+  }
+};
+
+struct CRDTGetVersion {
+  static SHTypesInfo inputTypes() { return CRDTTypes::CRDT; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString help() {
+    return SHCCSTR("Gets the version of the crdt, notice that internally it's a uint64, but shards Int is signed, "
+                   "so it might go negative if it's over 2^63, that does not mean the value is not correct.");
+  }
+
+  PARAM_IMPL();
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(input, CRDTTypes::CRDT);
+    auto version = crdt.get_clock().current_time();
+    return Var(static_cast<int64_t>(version));
+  }
+};
+
+struct CRDTChangesSince {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CRDTTypes::ChangesTableSeqType; }
+  static SHOptionalString help() { return SHCCSTR("Gets the changes since the given version"); }
+
+  PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to get the changes from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CRDTTypes::ChangesTableSeqType;
+  }
+
+  SeqVar _output;
+  ChangesFixedTable _changeCache;
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    auto changes = crdt.get_changes_since(input.payload.intValue);
+    _output.clear();
+    for (auto &change : changes) {
+      intoVar(std::move(change), _changeCache);
+      _output.push_back(_changeCache);
+    }
+    return _output;
   }
 };
 } // namespace crdts
@@ -427,5 +526,7 @@ SHARDS_REGISTER_FN(crdts) {
   REGISTER_SHARD("CRDT.Apply", CRDTApply);
   REGISTER_SHARD("CRDT.Get", CRDTGet);
   REGISTER_SHARD("CRDT.Delete", CRDTDelete);
+  REGISTER_SHARD("CRDT.Version", CRDTGetVersion);
+  REGISTER_SHARD("CRDT.ChangesSince", CRDTChangesSince);
 }
 } // namespace shards

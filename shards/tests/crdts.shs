@@ -19,3 +19,31 @@ r1 | CRDT.Get(CRDT: crdt2 Keys: ["K1" "K2"]) | Log | Assert.Is([20 1.0])
 changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
 
 r1 | CRDT.Get(CRDT: crdt2 Keys: ["A" "B" "C"]) | Log | Assert.Is(["a" "b" "c"])
+
+Clear(changes)
+r1 | CRDT.Delete(CRDT: crdt) | Log >> changes
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(1)
+r1 | CRDT.Get(CRDT: crdt2 Keys: ["A" "B" "C"]) | Log | Assert.Is([])
+
+Clear(changes)
+; test other kind of field keys
+UUID = r2
+; a Int key
+{a: "x" b: @f3(0 0 1)} | CRDT.Set(CRDT: crdt Record: r2 Keys: 10) | Log >> changes
+r2 | CRDT.Get(CRDT: crdt Keys: [10]) | Log | Assert.Is([{a: "x" b: @f3(0 0 1)}])
+
+UUID = r3
+; a pair [String Any] key, notice to disambiguate from a pair of strings, we need to nest it in a list
+[[1 2 3 4]] | CRDT.Set(CRDT: crdt Record: r3 Keys: [["A" "B"]]) | Log | Extend(changes)
+[[{} none]] | CRDT.Set(CRDT: crdt Record: r3 Keys: [["A" 1]]) | Log | Extend(changes)
+
+r3 | CRDT.Get(CRDT: crdt Keys: [["A" "B"] ["A" 1]]) | Log | Assert.Is([[1 2 3 4] [{} none]])
+
+changes | CRDT.Apply(CRDT: crdt2 OutputApplied: true) | Count | Assert.Is(3)
+
+r2 | CRDT.Get(CRDT: crdt2 Keys: [10]) | Log | Assert.Is([{a: "x" b: @f3(0 0 1)}])
+r3 | CRDT.Get(CRDT: crdt2 Keys: [["A" "B"] ["A" 1]]) | Log | Assert.Is([[1 2 3 4] [{} none]])
+
+crdt2 | CRDT.Version | Log | Assert.Is(14)
+
+11 | CRDT.ChangesSince(CRDT: crdt2) | Log | Count | Assert.Is(3)
