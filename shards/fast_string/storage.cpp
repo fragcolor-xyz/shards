@@ -158,4 +158,7 @@ std::string_view load(uint64_t id) {
   ZoneScopedN("fast_string::load");
   return storage->load(id);
 }
+
+#endif // FAST_STRING_USE_TBB
+
 } // namespace shards::fast_string
