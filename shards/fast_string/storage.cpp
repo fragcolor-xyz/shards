@@ -27,7 +27,7 @@ struct SimpleFastString {
 
   static uint64_t store(std::string_view str) {
     auto [it, inserted] = map.emplace(std::string(str), 0);
-    
+
     if (inserted) {
       auto rIt = reverse.emplace_back(it->first);
       it->second = rIt - reverse.begin();
@@ -35,10 +35,10 @@ struct SimpleFastString {
     return it->second;
   }
 
-  static std::string_view load(uint64_t id) { 
-    return reverse[id]; 
-  }
+  static std::string_view load(uint64_t id) { return reverse[id]; }
 };
+
+void init() {}
 
 uint64_t store(std::string_view sv) {
   ZoneScopedN("fast_string::store");
