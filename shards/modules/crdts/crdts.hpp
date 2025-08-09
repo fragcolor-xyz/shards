@@ -26,12 +26,13 @@ struct CrdtString {
   }
 
   static inline oneapi::tbb::concurrent_unordered_map<uint32_t, std::string> reverse;
-  
+
   static uint32_t store(std::string_view str) {
     uint32_t hash = adler32(str);
-    auto [it, inserted] = reverse.emplace(hash, std::string(str));
-    // Assert no collisions for simplicity - Adler32 is pretty good
-    assert(it->second == str && "Hash collision detected");
+    auto [it, _inserted] = reverse.emplace(hash, std::string(str));
+    if (it->second != str) {
+      throw std::runtime_error("Hash collision detected");
+    }
     return hash;
   }
 
@@ -42,9 +43,9 @@ struct CrdtString {
 };
 
 struct CrdtKey {
-  CrdtKey(std::string_view name) : name(name) {}
+  CrdtKey(std::string_view name) : nameHash(CrdtString::store(name)) {}
   CrdtKey(std::string_view name, shards::OwnedVar key)
-      : name(name), key(key->isNone() ? std::nullopt : std::make_optional(key)) {}
+      : nameHash(CrdtString::store(name)), key(key->isNone() ? std::nullopt : std::make_optional(key)) {}
 
   // Template constructor for const char[N], enabled only when N > 1
   template <std::size_t N, typename = std::enable_if_t<(N > 1)>>
@@ -53,17 +54,21 @@ struct CrdtKey {
   // Constructor for empty string literals
   CrdtKey(const char (&src)[1]) : CrdtKey(std::string_view(src, 0)) {}
 
-  bool operator==(const CrdtKey &other) const { return name == other.name && key == other.key; }
-  bool operator==(const std::string_view &other) const { return name == other; }
+  // Compatibility operator for name access
+  std::string_view name() const { return CrdtString::load(nameHash); }
+  operator std::string_view() const { return name(); }
+
+  bool operator==(const CrdtKey &other) const { return nameHash == other.nameHash && key == other.key; }
+  bool operator==(const std::string_view &other) const { return name() == other; }
   template <std::size_t N, typename = std::enable_if_t<(N > 1)>> bool operator==(const char (&other)[N]) const {
-    return name == std::string_view(other, N - 1);
+    return name() == std::string_view(other, N - 1);
   }
 
   // less than operator for behavior key
-  bool operator<(const CrdtKey &other) const { return std::tie(name, key) < std::tie(other.name, other.key); }
+  bool operator<(const CrdtKey &other) const { return std::tie(nameHash, key) < std::tie(other.nameHash, other.key); }
 
 public:
-  std::string name;
+  uint32_t nameHash;
   std::optional<shards::OwnedVar> key;
 };
 
@@ -71,7 +76,7 @@ public:
 namespace std {
 template <> struct hash<CrdtKey> {
   std::size_t operator()(const CrdtKey &key) const {
-    std::size_t result = std::hash<std::string>{}(key.name);
+    std::size_t result = std::hash<uint32_t>{}(key.nameHash);
     if (key.key) {
       result ^= std::hash<shards::OwnedVar>{}(*key.key);
     }

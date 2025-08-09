@@ -155,7 +155,7 @@ struct ChangesFixedTable : TableVar {
 inline void intoVar(Change<boost::uuids::uuid, OwnedVar> &&change, ChangesFixedTable &output) {
   output.record_id() = uuid2Var(change.record_id);
   if (change.col_name) {
-    output.col_name() = shards::Var(change.col_name->name);
+    output.col_name() = shards::Var(change.col_name->name());
     output.col_name_key() = change.col_name->key ? shards::Var(std::move(*change.col_name->key)) : Var::Empty;
   } else {
     output.col_name() = Var::Empty;
