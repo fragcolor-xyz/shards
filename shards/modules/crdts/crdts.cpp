@@ -101,57 +101,6 @@ struct CRDTNew {
   }
 };
 
-struct ChangesFixedTable : TableVar {
-  using MapType = ShardsAlignedMap<OwnedVar, OwnedVar>;
-
-  constexpr MapType &map() { return *static_cast<MapType *>(payload.tableValue.opaque); }
-  constexpr const MapType &map() const { return *static_cast<const MapType *>(payload.tableValue.opaque); }
-
-  ChangesFixedTable() {
-    //! Lexigraphically sorted at compile time!!
-    insert("col-name", Var::Empty);
-    insert("col-name-key", Var::Empty);
-    insert("col-version", Var::Empty);
-    insert("db-version", Var::Empty);
-    insert("flags", Var::Empty);
-    insert("node-id", Var::Empty);
-    insert("record-id", Var::Empty);
-    insert("value", Var::Empty);
-  }
-
-  OwnedVar &col_name() { return map().tree().nth(0)->second; }
-
-  const OwnedVar &col_name() const { return map().tree().nth(0)->second; }
-
-  OwnedVar &col_name_key() { return map().tree().nth(1)->second; }
-
-  const OwnedVar &col_name_key() const { return map().tree().nth(1)->second; }
-
-  OwnedVar &col_version() { return map().tree().nth(2)->second; }
-
-  const OwnedVar &col_version() const { return map().tree().nth(2)->second; }
-
-  OwnedVar &db_version() { return map().tree().nth(3)->second; }
-
-  const OwnedVar &db_version() const { return map().tree().nth(3)->second; }
-
-  OwnedVar &flags() { return map().tree().nth(4)->second; }
-
-  const OwnedVar &flags() const { return map().tree().nth(4)->second; }
-
-  OwnedVar &node_id() { return map().tree().nth(5)->second; }
-
-  const OwnedVar &node_id() const { return map().tree().nth(5)->second; }
-
-  OwnedVar &record_id() { return map().tree().nth(6)->second; }
-
-  const OwnedVar &record_id() const { return map().tree().nth(6)->second; }
-
-  OwnedVar &value() { return map().tree().nth(7)->second; }
-
-  const OwnedVar &value() const { return map().tree().nth(7)->second; }
-};
-
 inline void intoVar(Change<boost::uuids::uuid, OwnedVar> &&change, ChangesFixedTable &output) {
   output.record_id() = uuid2Var(change.record_id);
   if (change.col_name) {

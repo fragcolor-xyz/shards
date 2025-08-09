@@ -12,34 +12,6 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/nil_generator.hpp>
-#include <oneapi/tbb/concurrent_unordered_map.h>
-
-// Multiplatform-safe Adler32 hash
-struct CrdtString {
-  static uint32_t adler32(std::string_view str) {
-    uint32_t a = 1, b = 0;
-    for (char c : str) {
-      a = (a + static_cast<uint8_t>(c)) % 65521;
-      b = (b + a) % 65521;
-    }
-    return (b << 16) | a;
-  }
-
-  static inline oneapi::tbb::concurrent_unordered_map<uint32_t, std::string> reverse;
-  
-  static uint32_t store(std::string_view str) {
-    uint32_t hash = adler32(str);
-    auto [it, inserted] = reverse.emplace(hash, std::string(str));
-    // Assert no collisions for simplicity - Adler32 is pretty good
-    assert(it->second == str && "Hash collision detected");
-    return hash;
-  }
-
-  static std::string_view load(uint32_t hash) {
-    auto it = reverse.find(hash);
-    return it != reverse.end() ? std::string_view(it->second) : std::string_view{};
-  }
-};
 
 struct CrdtKey {
   CrdtKey(std::string_view name) : name(name) {}
@@ -90,5 +62,30 @@ template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat
 
 #define CRDT_COLLECTIONS_DEFINED
 #include "crdt.hpp"
+
+namespace shards {
+namespace crdts {
+#define FIELDS                       \
+  FIXED_TABLE_FIELD(col_name, 0)     \
+  FIXED_TABLE_FIELD(col_name_key, 1) \
+  FIXED_TABLE_FIELD(col_version, 2)  \
+  FIXED_TABLE_FIELD(db_version, 3)   \
+  FIXED_TABLE_FIELD(flags, 4)        \
+  FIXED_TABLE_FIELD(node_id, 5)      \
+  FIXED_TABLE_FIELD(record_id, 6)    \
+  FIXED_TABLE_FIELD(value, 7)
+
+DEFINE_FIXED_TABLE(ChangesFixedTable,                  //
+                   insert("col-name", Var::Empty);     //
+                   insert("col-name-key", Var::Empty); //
+                   insert("col-version", Var::Empty);  //
+                   insert("db-version", Var::Empty);   //
+                   insert("flags", Var::Empty);        //
+                   insert("node-id", Var::Empty);      //
+                   insert("record-id", Var::Empty);    //
+                   insert("value", Var::Empty);)
+#undef FIELDS
+} // namespace crdts
+} // namespace shards
 
 #endif // SHARDS_CRDTS_HPP
