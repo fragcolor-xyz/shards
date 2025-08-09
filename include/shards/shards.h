@@ -1119,6 +1119,9 @@ typedef bool(__cdecl *SHEvalAst)(const struct SHVar *ast, struct SHStringWithLen
 typedef void(__cdecl *SHFreeWire)(struct SHLWire *wire);
 typedef void(__cdecl *SHFreeAst)(struct SHLAst *wire);
 
+typedef uint64_t(__cdecl *SHFastStringStore)(struct SHStringWithLen str);
+typedef struct SHStringWithLen(__cdecl *SHFastStringLoad)(uint64_t id);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1308,6 +1311,10 @@ typedef struct _SHCore {
   // To be used within shards, to reference global variables
   // We never needed it before but actually useful to expose for rust and swift shards
   SHReferenceVariable referenceGlobalVariable;
+
+  // Fast string utilities, string interning
+  SHFastStringStore fastStringStore;
+  SHFastStringLoad fastStringLoad;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

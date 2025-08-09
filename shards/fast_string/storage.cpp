@@ -9,6 +9,8 @@
 #include <boost/container/scoped_allocator.hpp>
 #include <tracy/Wrapper.hpp>
 
+#define FAST_STRING_USE_TBB 1
+
 #ifdef FAST_STRING_USE_TBB
 #include <oneapi/tbb/concurrent_unordered_map.h>
 #include <oneapi/tbb/concurrent_vector.h>

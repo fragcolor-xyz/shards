@@ -3116,6 +3116,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     (*smesh)->unregisterErrorEvent(userData);
   };
 
+  result->fastStringStore = [](SHStringWithLen str) {
+    std::string_view sv(str.string, size_t(str.len));
+    return shards::fast_string::store(sv);
+  };
+  result->fastStringLoad = [](uint64_t id) {
+    auto sv = shards::fast_string::load(id);
+    return SHStringWithLen{sv.data(), sv.size()};
+  };
+
   setupCoreLogging(result);
 
   return result;

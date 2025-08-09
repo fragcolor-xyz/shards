@@ -12,6 +12,26 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/nil_generator.hpp>
+#include "oneapi/tbb/concurrent_unordered_map.h"
+#include "oneapi/tbb/concurrent_vector.h"
+
+struct CrdtString {
+  static inline oneapi::tbb::concurrent_unordered_map<std::string, uint64_t> map;
+  static inline oneapi::tbb::concurrent_vector<std::string_view> reverse;
+
+  static uint64_t store(std::string_view str) {
+    // Just do the emplace directly - it will find existing or insert new
+    auto [it, inserted] = map.emplace(std::string(str), 0); // 0 is a placeholder for the index
+
+    if (inserted) {
+      auto rIt = reverse.emplace_back(it->first);
+      it->second = rIt - reverse.begin(); // write the actual index to the map
+    }
+    return it->second;
+  }
+
+  static std::string_view load(uint64_t id) { return reverse[id]; }
+};
 
 struct CrdtKey {
   CrdtKey(std::string_view name) : name(name) {}
