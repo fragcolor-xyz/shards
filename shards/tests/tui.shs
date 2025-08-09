@@ -1,0 +1,4 @@
+TUI.VBox({
+  TUI.Text("Hello" Bold: true)
+  TUI.Text("World")
+}) | TUI.Render | Process.StdOut
