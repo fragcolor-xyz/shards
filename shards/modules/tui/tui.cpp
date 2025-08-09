@@ -29,108 +29,58 @@ struct TUITypes {
   SHVAR_OBJECT_DECL('tuie', "TUI.InnerElements", InnerElements, TUIInnerElements);
 };
 
-struct HBox {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return TUITypes::Element; }
-  static SHOptionalString help() { return SHCCSTR("Creates a horizontal box"); }
-
-  PARAM(ShardsVar, _contents, "Contents", "The contents of the horizontal box.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_contents));
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return TUITypes::Element;
-  }
-
-  TUIElement *_element = nullptr;
-
-  void warmup(SHContext *shContext) {
-    _innerElementsVar.warmup(shContext);
-    assignVariableValue(_innerElementsVar.get(), Var::Object(&_innerElements, TUITypes::InnerElements));
-
-    _element = TUITypes::ElementObjectVar.New();
-
-    _contents.warmup(shContext);
-  }
-
-  void cleanup(SHContext *shContext) {
-    _contents.cleanup(shContext);
-
-    _innerElements.reset();
-
-    if (_element) {
-      TUITypes::ElementObjectVar.Release(_element);
-      _element = nullptr;
-    }
-
-    _innerElementsVar.cleanup(shContext);
-  }
-
-  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
-  TUIInnerElements _innerElements;
-  ShardsVar _action;
-
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    _innerElements.clear();
-    SHVar output{};
-    _contents.activate(shContext, input, output);
-    _element->element = ftxui::hbox(_innerElements);
-    return TUITypes::ElementObjectVar.Get(_element);
-  }
+#define DEFINE_BOX_SHARD(ClassName, Direction, HelpText, FtxuiFunc) \
+struct ClassName { \
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; } \
+  static SHTypesInfo outputTypes() { return TUITypes::Element; } \
+  static SHOptionalString help() { return SHCCSTR(HelpText); } \
+\
+  PARAM(ShardsVar, _contents, "Contents", "The contents of the " Direction " box.", {CoreInfo::ShardsOrNone}); \
+  PARAM_IMPL(PARAM_IMPL_FOR(_contents)); \
+\
+  PARAM_REQUIRED_VARIABLES(); \
+  SHTypeInfo compose(SHInstanceData &data) { \
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data); \
+    _contents.compose(data); \
+    return TUITypes::Element; \
+  } \
+\
+  TUIElement *_element = nullptr; \
+\
+  void warmup(SHContext *shContext) { \
+    _innerElementsVar.warmup(shContext); \
+    _element = TUITypes::ElementObjectVar.New(); \
+    _contents.warmup(shContext); \
+  } \
+\
+  void cleanup(SHContext *shContext) { \
+    _contents.cleanup(shContext); \
+    _innerElements.reset(); \
+    if (_element) { \
+      TUITypes::ElementObjectVar.Release(_element); \
+      _element = nullptr; \
+    } \
+    _innerElementsVar.cleanup(shContext); \
+  } \
+\
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")}; \
+  TUIInnerElements _innerElements; \
+  ShardsVar _action; \
+\
+  SHVar activate(SHContext *shContext, const SHVar &input) { \
+    _innerElements.clear(); \
+    SHVar currentInnerElements = _innerElementsVar.get(); \
+    assignVariableValue(_innerElementsVar.get(), Var::Object(&_innerElements, TUITypes::InnerElements)); \
+    DEFER(assignVariableValue(_innerElementsVar.get(), currentInnerElements)); \
+    SHVar output{}; \
+    _contents.activate(shContext, input, output); \
+    _element->element = ftxui::FtxuiFunc(_innerElements); \
+    return TUITypes::ElementObjectVar.Get(_element); \
+  } \
 };
 
-struct VBox {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return TUITypes::Element; }
-  static SHOptionalString help() { return SHCCSTR("Creates a vertical box"); }
-
-  PARAM(ShardsVar, _contents, "Contents", "The contents of the horizontal box.", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_contents));
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _contents.compose(data);
-    return TUITypes::Element;
-  }
-
-  TUIElement *_element = nullptr;
-
-  void warmup(SHContext *shContext) {
-    _innerElementsVar.warmup(shContext);
-    assignVariableValue(_innerElementsVar.get(), Var::Object(&_innerElements, TUITypes::InnerElements));
-
-    _element = TUITypes::ElementObjectVar.New();
-
-    _contents.warmup(shContext);
-  }
-
-  void cleanup(SHContext *shContext) {
-    _contents.cleanup(shContext);
-
-    _innerElements.reset();
-
-    if (_element) {
-      TUITypes::ElementObjectVar.Release(_element);
-      _element = nullptr;
-    }
-
-    _innerElementsVar.cleanup(shContext);
-  }
-
-  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
-  TUIInnerElements _innerElements;
-  ShardsVar _action;
-
-  SHVar activate(SHContext *shContext, const SHVar &input) {
-    _innerElements.clear();
-    SHVar output{};
-    _contents.activate(shContext, input, output);
-    _element->element = ftxui::vbox(_innerElements);
-    return TUITypes::ElementObjectVar.Get(_element);
-  }
-};
+DEFINE_BOX_SHARD(VBox, "vertical", "Creates a vertical box", vbox)
+DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox)
 
 struct TUIText {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -159,13 +109,22 @@ struct Render {
   static SHOptionalString help() { return SHCCSTR("Renders a TUI element into a string"); }
 
   ftxui::Screen _screen = ftxui::Screen::Create(ftxui::Dimension::Full(), ftxui::Dimension::Full());
-  OwnedVar _output;
+
+  std::string _resetPosition;
+  std::string _output;
+
+  void cleanup(SHContext *shContext) {
+    _resetPosition = "";
+    _output = "";
+  }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    _output.assign(_resetPosition);
     ftxui::Render(_screen, element.element);
-    _output = shards::Var(_screen.ToString());
-    return _output;
+    _output = _screen.ToString();
+    _resetPosition = _screen.ResetPosition();
+    return Var(_output);
   }
 };
 } // namespace tui

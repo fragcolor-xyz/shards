@@ -2,7 +2,7 @@
   TUI.VBox({
     "Hello" | TUI.Text
     "World" | TUI.Text
-  }) | TUI.Render | Log
+  }) | TUI.Render | Process.StdOut
 } Looped: true)
 
 @mesh(root)
