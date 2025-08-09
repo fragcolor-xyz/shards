@@ -37,7 +37,11 @@ struct HBox {
     }
   }
 
+  ftxui::Elements _innerElements;
+
   SHVar activate(SHContext *shContext, const SHVar &input) {
+    _innerElements.clear();
+    // push _innerElements to context
     _element->element = ftxui::hbox({});
     return TUITypes::ElementObjectVar.Get(_element);
   }
