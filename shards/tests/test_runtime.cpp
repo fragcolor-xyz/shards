@@ -2211,14 +2211,22 @@ TEST_CASE("FastString") {
   }
   auto storeEnd = std::chrono::high_resolution_clock::now();
 
-  // Measure load performance
+  // Measure load performance and verify correctness
   auto loadStart = std::chrono::high_resolution_clock::now();
   for (int i = 0; i < 1000000; i++) {
     auto id = ids[i];
     auto sv = shards::fast_string::load(id);
-    REQUIRE(!sv.empty());
+    const auto& originalStr = testStrings[i % testStrings.size()];
+    REQUIRE(sv == originalStr); // Verify round-trip correctness
   }
   auto loadEnd = std::chrono::high_resolution_clock::now();
+
+  // Test deduplication - same string should return same ID
+  auto id1 = shards::fast_string::store("dedup-test");
+  auto id2 = shards::fast_string::store("dedup-test");
+  REQUIRE(id1 == id2);
+  REQUIRE(shards::fast_string::load(id1) == "dedup-test");
+  REQUIRE(shards::fast_string::load(id2) == "dedup-test");
 
   auto storeDuration = std::chrono::duration_cast<std::chrono::microseconds>(storeEnd - storeStart);
   auto loadDuration = std::chrono::duration_cast<std::chrono::microseconds>(loadEnd - loadStart);
