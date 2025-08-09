@@ -1,4 +1,10 @@
-TUI.VBox({
-  TUI.Text("Hello" Bold: true)
-  TUI.Text("World")
-}) | TUI.Render | Process.StdOut
+@wire(main {
+  TUI.VBox({
+    "Hello" | TUI.Text
+    "World" | TUI.Text
+  }) | TUI.Render | Log
+} Looped: true)
+
+@mesh(root)
+@schedule(root main)
+@run(root FPS: 10)
