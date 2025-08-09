@@ -9,7 +9,48 @@
 #include <boost/container/scoped_allocator.hpp>
 #include <tracy/Wrapper.hpp>
 
+#ifdef FAST_STRING_USE_TBB
+#include <oneapi/tbb/concurrent_unordered_map.h>
+#include <oneapi/tbb/concurrent_vector.h>
+#endif
+
 namespace shards::fast_string {
+
+#ifdef FAST_STRING_USE_TBB
+
+// Simple TBB-based implementation
+struct SimpleFastString {
+  static inline oneapi::tbb::concurrent_unordered_map<std::string, uint64_t> map;
+  static inline oneapi::tbb::concurrent_vector<std::string_view> reverse;
+
+  static uint64_t store(std::string_view str) {
+    auto [it, inserted] = map.emplace(std::string(str), 0);
+    
+    if (inserted) {
+      auto rIt = reverse.emplace_back(it->first);
+      it->second = rIt - reverse.begin();
+    }
+    return it->second;
+  }
+
+  static std::string_view load(uint64_t id) { 
+    return reverse[id]; 
+  }
+};
+
+uint64_t store(std::string_view sv) {
+  ZoneScopedN("fast_string::store");
+  return SimpleFastString::store(sv);
+}
+
+std::string_view load(uint64_t id) {
+  ZoneScopedN("fast_string::load");
+  return SimpleFastString::load(id);
+}
+
+#else
+
+// Original complex implementation
 
 static constexpr size_t Megabyte = 1 << 20;
 static constexpr size_t InitialPoolSize = Megabyte * 8;
