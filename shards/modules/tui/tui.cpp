@@ -207,9 +207,14 @@ struct Tick {
   }
 
   void activate(SHContext *context, const SHVar &input) {
+    if (_loop->HasQuitted()) {
+      SHLOG_DEBUG("Application quit");
+      context->stopFlow(Var::Empty);
+      return;
+    }
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
     _element = &element;
-    _loop->RunOnceBlocking();
+    _loop->RunOnce();
   }
 };
 } // namespace tui
