@@ -202,10 +202,14 @@ struct Button {
   SHVar activate(SHContext *context, const SHVar &input) {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
-    _button = ftxui::Button(_text, [&]() {
-                          SHVar output{};
-                          _action.activate(context, input, output);
-                        });
+    auto option = ftxui::ButtonOption::Animated();
+    _button = ftxui::Button(
+        _text,
+        [&]() {
+          SHVar output{};
+          _action.activate(context, input, output);
+        },
+        option);
     _element->element = (*_button)->Render();
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
