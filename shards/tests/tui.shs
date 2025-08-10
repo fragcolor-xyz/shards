@@ -1,7 +1,10 @@
 @wire(main {
   TUI.VBox({
-    "Hello" | TUI.Text
-    "World" | TUI.Text
+    TUI.HBox({
+      "Hello" | TUI.Text
+      TUI.Separator
+      "World" | TUI.Text
+    })
   }) | TUI.Render | Process.StdOut
 } Looped: true)
 

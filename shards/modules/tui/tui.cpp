@@ -31,55 +31,59 @@ struct TUITypes {
   SHVAR_OBJECT_DECL('tuie', "TUI.InnerElements", InnerElements, TUIInnerElements);
 };
 
-#define DEFINE_BOX_SHARD(ClassName, Direction, HelpText, FtxuiFunc)                                              \
-  struct ClassName {                                                                                             \
-    static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }                                                \
-    static SHTypesInfo outputTypes() { return TUITypes::Element; }                                               \
-    static SHOptionalString help() { return SHCCSTR(HelpText); }                                                 \
-                                                                                                                 \
-    PARAM(ShardsVar, _contents, "Contents", "The contents of the " Direction " box.", {CoreInfo::ShardsOrNone}); \
-    PARAM_IMPL(PARAM_IMPL_FOR(_contents));                                                                       \
-                                                                                                                 \
-    PARAM_REQUIRED_VARIABLES();                                                                                  \
-    SHTypeInfo compose(SHInstanceData &data) {                                                                   \
-      PARAM_COMPOSE_REQUIRED_VARIABLES(data);                                                                    \
-      _contents.compose(data);                                                                                   \
-      return TUITypes::Element;                                                                                  \
-    }                                                                                                            \
-                                                                                                                 \
-    TUIElement *_element = nullptr;                                                                              \
-                                                                                                                 \
-    void warmup(SHContext *context) {                                                                            \
-      _innerElementsVar.warmup(context);                                                                         \
-      _element = TUITypes::ElementObjectVar.New();                                                               \
-      _contents.warmup(context);                                                                                 \
-    }                                                                                                            \
-                                                                                                                 \
-    void cleanup(SHContext *context) {                                                                           \
-      _contents.cleanup(context);                                                                                \
-      _innerElements.reset();                                                                                    \
-      if (_element) {                                                                                            \
-        TUITypes::ElementObjectVar.Release(_element);                                                            \
-        _element = nullptr;                                                                                      \
-      }                                                                                                          \
-      _innerElementsVar.cleanup(context);                                                                        \
-    }                                                                                                            \
-                                                                                                                 \
-    ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};                                           \
-    TUIInnerElements _innerElements;                                                                             \
-    ShardsVar _action;                                                                                           \
-                                                                                                                 \
-    SHVar activate(SHContext *context, const SHVar &input) {                                                     \
-      _innerElements.clear();                                                                                    \
-      SHVar currentInnerElements = _innerElementsVar.get();                                                      \
-      assignVariableValue(_innerElementsVar.get(), Var::Object(&_innerElements, TUITypes::InnerElements));       \
-      DEFER(assignVariableValue(_innerElementsVar.get(), currentInnerElements));                                 \
-      SHVar output{};                                                                                            \
-      _contents.activate(context, input, output);                                                                \
-      SHLOG_TRACE("Inner elements: {}", _innerElements.elements.size());                                         \
-      _element->element = ftxui::FtxuiFunc(_innerElements.elements);                                                      \
-      return TUITypes::ElementObjectVar.Get(_element);                                                           \
-    }                                                                                                            \
+#define DEFINE_BOX_SHARD(ClassName, Direction, HelpText, FtxuiFunc)                                                \
+  struct ClassName {                                                                                               \
+    static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }                                                  \
+    static SHTypesInfo outputTypes() { return TUITypes::Element; }                                                 \
+    static SHOptionalString help() { return SHCCSTR(HelpText); }                                                   \
+                                                                                                                   \
+    PARAM(ShardsVar, _contents, "Contents", "The contents of the " Direction " box.", {CoreInfo::ShardsOrNone});   \
+    PARAM_IMPL(PARAM_IMPL_FOR(_contents));                                                                         \
+                                                                                                                   \
+    PARAM_REQUIRED_VARIABLES();                                                                                    \
+    SHTypeInfo compose(SHInstanceData &data) {                                                                     \
+      PARAM_COMPOSE_REQUIRED_VARIABLES(data);                                                                      \
+      _contents.compose(data);                                                                                     \
+      return TUITypes::Element;                                                                                    \
+    }                                                                                                              \
+                                                                                                                   \
+    TUIElement *_element = nullptr;                                                                                \
+                                                                                                                   \
+    void warmup(SHContext *context) {                                                                              \
+      _innerElementsVar.warmup(context);                                                                           \
+      _element = TUITypes::ElementObjectVar.New();                                                                 \
+      _contents.warmup(context);                                                                                   \
+    }                                                                                                              \
+                                                                                                                   \
+    void cleanup(SHContext *context) {                                                                             \
+      _contents.cleanup(context);                                                                                  \
+      _innerElements.reset();                                                                                      \
+      if (_element) {                                                                                              \
+        TUITypes::ElementObjectVar.Release(_element);                                                              \
+        _element = nullptr;                                                                                        \
+      }                                                                                                            \
+      _innerElementsVar.cleanup(context);                                                                          \
+    }                                                                                                              \
+                                                                                                                   \
+    ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};                                             \
+    TUIInnerElements _innerElements;                                                                               \
+    ShardsVar _action;                                                                                             \
+                                                                                                                   \
+    SHVar activate(SHContext *context, const SHVar &input) {                                                       \
+      _innerElements.clear();                                                                                      \
+      SHVar currentInnerElements = _innerElementsVar.get();                                                        \
+      assignVariableValue(_innerElementsVar.get(), Var::Object(&_innerElements, TUITypes::InnerElements));         \
+      DEFER(assignVariableValue(_innerElementsVar.get(), currentInnerElements));                                   \
+      SHVar output{};                                                                                              \
+      _contents.activate(context, input, output);                                                                  \
+      SHLOG_TRACE("Inner elements: {}", _innerElements.elements.size());                                           \
+      _element->element = ftxui::FtxuiFunc(_innerElements.elements);                                               \
+      if (currentInnerElements.valueType == SHType::Object) {                                                      \
+        auto &innerElements = varAsObjectChecked<TUIInnerElements>(currentInnerElements, TUITypes::InnerElements); \
+        innerElements.elements.push_back(_element->element);                                                       \
+      }                                                                                                            \
+      return TUITypes::ElementObjectVar.Get(_element);                                                             \
+    }                                                                                                              \
   };
 
 DEFINE_BOX_SHARD(VBox, "vertical", "Creates a vertical box", vbox)
@@ -87,22 +91,70 @@ DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox)
 
 struct TUIText {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Adds a text element to the TUI context"); }
 
   ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
 
-  void warmup(SHContext *context) { _innerElementsVar.warmup(context); }
+  TUIElement *_element = nullptr;
 
-  void cleanup(SHContext *context) { _innerElementsVar.cleanup(context); }
+  void warmup(SHContext *context) {
+    _innerElementsVar.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
 
   std::string _text;
 
-  void activate(SHContext *context, const SHVar &input) {
+  SHVar activate(SHContext *context, const SHVar &input) {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
-    auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-    innerElements.elements.push_back(ftxui::text(_text));
+
+    _element->element = ftxui::text(_text);
+
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.elements.push_back(_element->element);
+    }
+
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
+struct Separator {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Adds a separator element to the TUI context"); }
+
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
+
+  TUIElement *_element = nullptr;
+
+  void warmup(SHContext *context) { _innerElementsVar.warmup(context); _element = TUITypes::ElementObjectVar.New(); }
+
+  void cleanup(SHContext *context) {
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _element = TUITypes::ElementObjectVar.New();
+    _element->element = ftxui::separator();
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.elements.push_back(_element->element);
+    }
+    return TUITypes::ElementObjectVar.Get(_element);
   }
 };
 
@@ -137,5 +189,6 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.VBox", VBox);
   REGISTER_SHARD("TUI.Text", TUIText);
   REGISTER_SHARD("TUI.Render", Render);
+  REGISTER_SHARD("TUI.Separator", Separator);
 }
 } // namespace shards
