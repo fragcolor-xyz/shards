@@ -77,7 +77,7 @@ struct TUITypes {
       SHVar output{};                                                                                            \
       _contents.activate(context, input, output);                                                                \
       SHLOG_TRACE("Inner elements: {}", _innerElements.elements.size());                                         \
-      _element->element = ftxui::FtxuiFunc(_innerElements);                                                      \
+      _element->element = ftxui::FtxuiFunc(_innerElements.elements);                                                      \
       return TUITypes::ElementObjectVar.Get(_element);                                                           \
     }                                                                                                            \
   };
