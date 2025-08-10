@@ -165,7 +165,7 @@ struct Separator {
 struct Button {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
-  static SHOptionalString help() { return SHCCSTR("Adds a button element to the TUI context"); }
+  static SHOptionalString help() { return SHCCSTR("Adds a button element to the TUI context."); }
 
   ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
 
@@ -241,7 +241,7 @@ struct Render {
 struct Tick {
   static SHTypesInfo inputTypes() { return TUITypes::Element; }
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
-  static SHOptionalString help() { return SHCCSTR("Renders a TUI element into a string"); }
+  static SHOptionalString help() { return SHCCSTR("Handles interactive rendering and event loop management for a TUI element."); }
 
   ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::Fullscreen();
   std::unique_ptr<ftxui::Loop> _loop;
