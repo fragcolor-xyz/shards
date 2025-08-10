@@ -249,7 +249,7 @@ struct Tick {
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Handles interactive rendering and event loop management for a TUI element."); }
 
-  ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::Fullscreen();
+  ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::TerminalOutput();
   std::unique_ptr<ftxui::Loop> _loop;
   std::optional<TUIElement *> _element;
 
