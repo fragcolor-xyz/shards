@@ -137,7 +137,10 @@ struct Separator {
 
   TUIElement *_element = nullptr;
 
-  void warmup(SHContext *context) { _innerElementsVar.warmup(context); _element = TUITypes::ElementObjectVar.New(); }
+  void warmup(SHContext *context) {
+    _innerElementsVar.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
 
   void cleanup(SHContext *context) {
     _innerElementsVar.cleanup(context);
@@ -148,7 +151,6 @@ struct Separator {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _element = TUITypes::ElementObjectVar.New();
     _element->element = ftxui::separator();
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
