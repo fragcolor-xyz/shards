@@ -5,7 +5,8 @@
       TUI.Separator
       "World" | TUI.Text
     })
-  }) | TUI.Render | Process.StdOut
+  }) ; | TUI.Render | Process.StdOut
+  TUI.Tick
 } Looped: true)
 
 @mesh(root)

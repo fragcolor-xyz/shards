@@ -1,7 +1,9 @@
-#include "ftxui/component/captured_mouse.hpp"     // for ftxui
-#include "ftxui/component/component.hpp"          // for Button, Horizontal, Renderer
-#include "ftxui/component/component_base.hpp"     // for ComponentBase
+#include "ftxui/component/captured_mouse.hpp" // for ftxui
+#include "ftxui/component/component.hpp"      // for Button, Horizontal, Renderer
+#include "ftxui/component/component_base.hpp" // for ComponentBase
+
 #include "ftxui/component/screen_interactive.hpp" // for ScreenInteractive
+#include "ftxui/component/loop.hpp"               // for Loop
 #include "ftxui/dom/elements.hpp"                 // for separator, gauge, text, Element, operator|, vbox, border
 
 #include <shards/shards.hpp>
@@ -184,6 +186,32 @@ struct Render {
     return Var(_output);
   }
 };
+
+struct Tick {
+  static SHTypesInfo inputTypes() { return TUITypes::Element; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Renders a TUI element into a string"); }
+
+  ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::Fullscreen();
+  std::unique_ptr<ftxui::Loop> _loop;
+  std::optional<TUIElement *> _element;
+
+  void warmup(SHContext *context) {
+    auto component = ftxui::Renderer([&]() { return _element.value()->element; });
+    _loop = std::make_unique<ftxui::Loop>(&_screen, component);
+  }
+
+  void cleanup(SHContext *context) {
+    _loop.reset();
+    _element.reset();
+  }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    _element = &element;
+    _loop->RunOnceBlocking();
+  }
+};
 } // namespace tui
 SHARDS_REGISTER_FN(tui) {
   using namespace tui;
@@ -192,5 +220,6 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Text", TUIText);
   REGISTER_SHARD("TUI.Render", Render);
   REGISTER_SHARD("TUI.Separator", Separator);
+  REGISTER_SHARD("TUI.Tick", Tick);
 }
 } // namespace shards
