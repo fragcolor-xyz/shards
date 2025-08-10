@@ -197,14 +197,16 @@ struct Button {
   }
 
   std::string _text;
+  std::optional<ftxui::Component> _button;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
-    _element->element = ftxui::Button(_text, [&]() {
+    _button = ftxui::Button(_text, [&]() {
                           SHVar output{};
                           _action.activate(context, input, output);
-                        })->Render();
+                        });
+    _element->element = (*_button)->Render();
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
       innerElements.elements.push_back(_element->element);
@@ -247,9 +249,11 @@ struct Tick {
   std::unique_ptr<ftxui::Loop> _loop;
   std::optional<TUIElement *> _element;
 
+  ftxui::Element getElement() { return _element.value()->element; }
+
   void warmup(SHContext *context) {
-    auto component = ftxui::Renderer([&]() { return _element.value()->element; });
-    _loop = std::make_unique<ftxui::Loop>(&_screen, component);
+    auto component = ftxui::Renderer([&]() { return getElement(); });
+    _loop = std::make_unique<ftxui::Loop>(&_screen, std::move(component));
   }
 
   void cleanup(SHContext *context) {
