@@ -17,15 +17,24 @@ namespace tui {
 
 struct TUIElement {
   ftxui::Element element;
+  ftxui::Components components;
 
   ~TUIElement() { SHLOG_TRACE("TUIElement destroyed"); }
 };
 
 struct TUIInnerElements {
   ftxui::Elements elements;
+  ftxui::Components components;
 
-  void reset() { elements = {}; }
-  void clear() { elements.clear(); }
+  void reset() {
+    elements = {};
+    components = {};
+  }
+
+  void clear() {
+    elements.clear();
+    components.clear();
+  }
 };
 
 struct TUITypes {
@@ -84,6 +93,7 @@ struct TUITypes {
         auto &innerElements = varAsObjectChecked<TUIInnerElements>(currentInnerElements, TUITypes::InnerElements); \
         innerElements.elements.push_back(_element->element);                                                       \
       }                                                                                                            \
+      _element->components = _innerElements.components;                                                            \
       return TUITypes::ElementObjectVar.Get(_element);                                                             \
     }                                                                                                              \
   };
@@ -214,6 +224,7 @@ struct Button {
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
       innerElements.elements.push_back(_element->element);
+      innerElements.components.push_back(*_button);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -253,10 +264,12 @@ struct Tick {
   std::unique_ptr<ftxui::Loop> _loop;
   std::optional<TUIElement *> _element;
 
+  ftxui::Component _rootComponent = ftxui::Container::Vertical({});
+
   ftxui::Element getElement() { return _element.value()->element; }
 
   void warmup(SHContext *context) {
-    auto component = ftxui::Renderer([&]() { return getElement(); });
+    auto component = ftxui::Renderer(_rootComponent, [&]() { return getElement(); });
     _loop = std::make_unique<ftxui::Loop>(&_screen, std::move(component));
   }
 
@@ -273,6 +286,10 @@ struct Tick {
     }
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
     _element = &element;
+    _rootComponent->DetachAllChildren();
+    for (auto &component : element.components) {
+      _rootComponent->Add(component);
+    }
     _loop->RunOnce();
   }
 };
