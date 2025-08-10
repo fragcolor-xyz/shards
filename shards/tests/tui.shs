@@ -1,9 +1,16 @@
 @wire(main {
+  Once({
+    "Hello" >= hello-text
+  })
+
   TUI.VBox({
     TUI.HBox({
-      "Hello" | TUI.Text
+      hello-text | TUI.Text
       TUI.Separator
       "World" | TUI.Text
+    })
+    "Click me" | TUI.Button({
+      "Ciao" > hello-text
     })
   }) ; | TUI.Render | Process.StdOut
   TUI.Tick

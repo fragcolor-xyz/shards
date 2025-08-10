@@ -162,6 +162,57 @@ struct Separator {
   }
 };
 
+struct Button {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Adds a button element to the TUI context"); }
+
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
+
+  PARAM(ShardsVar, _action, "Action", "The action to perform when the button is pressed.", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_action));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    _action.compose(data);
+    return TUITypes::Element;
+  }
+
+  TUIElement *_element = nullptr;
+
+  void warmup(SHContext *context) {
+    _innerElementsVar.warmup(context);
+    _action.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+    _action.cleanup(context);
+  }
+
+  std::string _text;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto text = SHSTRVIEW(input);
+    _text.assign(text.data(), text.data() + text.size());
+    _element->element = ftxui::Button(_text, [&]() {
+                          SHVar output{};
+                          _action.activate(context, input, output);
+                        })->Render();
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.elements.push_back(_element->element);
+    }
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
 struct Render {
   static SHTypesInfo inputTypes() { return TUITypes::Element; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -226,5 +277,6 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Render", Render);
   REGISTER_SHARD("TUI.Separator", Separator);
   REGISTER_SHARD("TUI.Tick", Tick);
+  REGISTER_SHARD("TUI.Button", Button);
 }
 } // namespace shards
