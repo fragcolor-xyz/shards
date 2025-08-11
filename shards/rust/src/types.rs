@@ -645,7 +645,7 @@ unsafe extern "C" fn error_cb(
 }
 
 impl AutoShardRef {
-  pub fn create(name: &str, debug_info: Option<(u32, u32)>) -> Option<Self> {
+  pub fn create(name: &str, debug_info: Option<(u32, u32, u32)>) -> Option<Self> {
     unsafe {
       let ptr = (*Core).createShard.unwrap_unchecked()(SHStringWithLen {
         string: name.as_ptr() as *const c_char,
@@ -657,6 +657,7 @@ impl AutoShardRef {
         if let Some(debug_info) = debug_info {
           (*ptr).line = debug_info.0;
           (*ptr).column = debug_info.1;
+          (*ptr).file = debug_info.2;
         }
         (*ptr).setup.unwrap_unchecked()(ptr);
         Some(AutoShardRef(ShardRef(ptr)))
@@ -876,8 +877,8 @@ impl ShardRef {
     unsafe { (*self.0).getParam.unwrap_unchecked()(self.0, index) }
   }
 
-  pub fn get_line_info(&self) -> (u32, u32) {
-    unsafe { ((*self.0).line, (*self.0).column) }
+  pub fn get_line_info(&self) -> (u32, u32, u32) {
+    unsafe { ((*self.0).line, (*self.0).column, (*self.0).file) }
   }
 
   pub fn properties(&self) -> Option<Table> {

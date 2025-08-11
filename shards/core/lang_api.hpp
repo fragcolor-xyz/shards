@@ -2,6 +2,8 @@
 #define EB4DB1E9_73CD_4620_931A_E9A2D5A4A6CD
 
 #include <shards/shards.h>
+#include <shards/modules/langffi/line_info.hpp>
+#include "foundation.hpp"
 
 namespace shards {
 extern "C" {
@@ -18,6 +20,16 @@ bool shards_eval_ast(const SHVar *ast, SHStringWithLen name, SHLWire *out_wire);
 void shards_free_wire(SHLWire *wire);
 void shards_free_ast(SHLAst *ast);
 }
+
+uint32_t InternalCore::getSourceFileId(SHStringWithLen path) {
+  static SHFileRegistryHandle *frh = shlang_fr_static();
+  return shlang_fr_get_file_id(frh, path);
+}
+SHStringWithLen InternalCore::getSourceFileName(uint32_t file_id) {
+  static SHFileRegistryHandle *frh = shlang_fr_static();
+  return shlang_fr_get_file_name(frh, file_id);
+}
+
 inline void setupCoreLang(SHCore *result) {
   result->read = [](SHStringWithLen name, SHStringWithLen code, SHStringWithLen basePath, const SHStringWithLen *includeDirs,
                     uint32_t numIncludeDirs,
@@ -48,6 +60,9 @@ inline void setupCoreLang(SHCore *result) {
   result->freeWire = [](SHLWire *wire) { shards_free_wire(wire); };
 
   result->freeAst = [](SHLAst *ast) { shards_free_ast(ast); };
+
+  result->getSourceFileId = InternalCore::getSourceFileId;
+  result->getSourceFileName = InternalCore::getSourceFileName;
 }
 } // namespace shards
 

@@ -29,5 +29,8 @@ add_rust_library(
 )
 
 add_shards_module(langffi
+  SOURCES line_info.cpp
   RUST_TARGETS shards-langffi-rust
   REGISTER_SHARDS langffi)
+
+target_link_libraries(shards-module-langffi xxHash Boost::filesystem shards-core spdlog)

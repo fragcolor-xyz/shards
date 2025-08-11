@@ -372,6 +372,8 @@ struct Serialization {
         // also get line and column
         read((uint8_t *)&blk->line, sizeof(uint32_t));
         read((uint8_t *)&blk->column, sizeof(uint32_t));
+        read((uint8_t *)&blk->file, sizeof(uint32_t));
+
         // read shard id
         read((uint8_t *)&blk->id, sizeof(uint64_t));
       }
@@ -672,6 +674,8 @@ struct Serialization {
         write((const uint8_t *)&blk->line, sizeof(uint32_t));
         total += sizeof(uint32_t);
         write((const uint8_t *)&blk->column, sizeof(uint32_t));
+        total += sizeof(uint32_t);
+        write((const uint8_t *)&blk->file, sizeof(uint32_t));
         total += sizeof(uint32_t);
         // serialize shard id
         write((const uint8_t *)&blk->id, sizeof(uint64_t));

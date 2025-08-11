@@ -791,6 +791,7 @@ struct Shard {
   // some debug/utility info
   uint32_t line;
   uint32_t column;
+  uint32_t file;
 
   // internal use only, to optionally identify the shard
   uint64_t id;
@@ -1122,6 +1123,9 @@ typedef void(__cdecl *SHFreeAst)(struct SHLAst *wire);
 typedef uint64_t(__cdecl *SHFastStringStore)(struct SHStringWithLen str);
 typedef struct SHStringWithLen(__cdecl *SHFastStringLoad)(uint64_t id);
 
+typedef uint32_t(__cdecl *SHGetSourceFileId)(SHStringWithLen path);
+typedef SHStringWithLen(__cdecl *SHGetSourceFileName)(uint32_t file_id);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1315,6 +1319,10 @@ typedef struct _SHCore {
   // Fast string utilities, string interning
   SHFastStringStore fastStringStore;
   SHFastStringLoad fastStringLoad;
+
+  // Source file utilities
+  SHGetSourceFileId getSourceFileId;
+  SHGetSourceFileName getSourceFileName;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
