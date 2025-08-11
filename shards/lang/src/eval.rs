@@ -1466,6 +1466,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
           LineInfo {
             line: line_info.0,
             column: line_info.1,
+            file: line_info.2,
           },
         )
           .into(),
@@ -1495,6 +1496,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
           LineInfo {
             line: line_info.0,
             column: line_info.1,
+            file: line_info.2,
           },
         )
           .into(),
@@ -1506,6 +1508,7 @@ fn eval_eval_expr(seq: &Sequence, env: &mut EvalEnv) -> Result<(ClonedVar, LineI
         LineInfo {
           line: line_info.0,
           column: line_info.1,
+          file: line_info.2,
         },
       ))
     }
@@ -1835,6 +1838,7 @@ impl<'e> VariableResolver<'e> {
           let line_info = LineInfo {
             line: line_info.0,
             column: line_info.1,
+            file: line_info.2,
           };
           add_assignment_shard_no_suffix("Ref", &tmp_name, line_info, &mut sub_env)
             .map_err(|e| (format!("{:?}", e), line_info).into())?;

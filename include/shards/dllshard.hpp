@@ -264,6 +264,9 @@ public:
 
   static uint64_t getStepCount(SHContext *context) { return sCore._core->getStepCount(context); }
 
+  static uint32_t getSourceFileId(SHStringWithLen path) { return sCore._core->getSourceFileId(path); }
+  static SHStringWithLen getSourceFileName(uint32_t file_id) { return sCore._core->getSourceFileName(file_id); }
+
 private:
   static inline CoreLoader sCore{};
 };
