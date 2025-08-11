@@ -1120,6 +1120,9 @@ typedef bool(__cdecl *SHEvalAst)(const struct SHVar *ast, struct SHStringWithLen
 typedef void(__cdecl *SHFreeWire)(struct SHLWire *wire);
 typedef void(__cdecl *SHFreeAst)(struct SHLAst *wire);
 
+typedef uint64_t(__cdecl *SHFastStringStore)(struct SHStringWithLen str);
+typedef struct SHStringWithLen(__cdecl *SHFastStringLoad)(uint64_t id);
+
 typedef uint32_t(__cdecl *SHGetSourceFileId)(SHStringWithLen path);
 typedef SHStringWithLen(__cdecl *SHGetSourceFileName)(uint32_t file_id);
 
@@ -1313,6 +1316,11 @@ typedef struct _SHCore {
   // We never needed it before but actually useful to expose for rust and swift shards
   SHReferenceVariable referenceGlobalVariable;
 
+  // Fast string utilities, string interning
+  SHFastStringStore fastStringStore;
+  SHFastStringLoad fastStringLoad;
+
+  // Source file utilities
   SHGetSourceFileId getSourceFileId;
   SHGetSourceFileName getSourceFileName;
 

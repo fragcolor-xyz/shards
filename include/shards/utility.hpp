@@ -859,4 +859,16 @@ template <typename T> struct hash<shards::TOwnedVar<T>> {
 
 template <typename SH_CORE> auto format_as(const shards::TOwnedVar<SH_CORE> &ov) { return (SHVar &)ov; }
 
+#define FIXED_TABLE_FIELD(name, index)                         \
+  OwnedVar &name() { return map().tree().nth(index)->second; } \
+  const OwnedVar &name() const { return map().tree().nth(index)->second; }
+
+#define DEFINE_FIXED_TABLE(ClassName, ...)                                                                    \
+  struct ClassName : TableVar {                                                                               \
+    using MapType = ShardsAlignedMap<OwnedVar, OwnedVar>;                                                     \
+    constexpr MapType &map() { return *static_cast<MapType *>(payload.tableValue.opaque); }                   \
+    constexpr const MapType &map() const { return *static_cast<const MapType *>(payload.tableValue.opaque); } \
+    ClassName(){__VA_ARGS__} FIELDS                                                                           \
+  };
+
 #endif

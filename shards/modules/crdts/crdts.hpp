@@ -63,4 +63,29 @@ template <typename K, typename V> using CrdtTombstoneMap = boost::unordered_flat
 #define CRDT_COLLECTIONS_DEFINED
 #include "crdt.hpp"
 
+namespace shards {
+namespace crdts {
+#define FIELDS                       \
+  FIXED_TABLE_FIELD(col_name, 0)     \
+  FIXED_TABLE_FIELD(col_name_key, 1) \
+  FIXED_TABLE_FIELD(col_version, 2)  \
+  FIXED_TABLE_FIELD(db_version, 3)   \
+  FIXED_TABLE_FIELD(flags, 4)        \
+  FIXED_TABLE_FIELD(node_id, 5)      \
+  FIXED_TABLE_FIELD(record_id, 6)    \
+  FIXED_TABLE_FIELD(value, 7)
+
+DEFINE_FIXED_TABLE(ChangesFixedTable,                  //
+                   insert("col-name", Var::Empty);     //
+                   insert("col-name-key", Var::Empty); //
+                   insert("col-version", Var::Empty);  //
+                   insert("db-version", Var::Empty);   //
+                   insert("flags", Var::Empty);        //
+                   insert("node-id", Var::Empty);      //
+                   insert("record-id", Var::Empty);    //
+                   insert("value", Var::Empty);)
+#undef FIELDS
+} // namespace crdts
+} // namespace shards
+
 #endif // SHARDS_CRDTS_HPP

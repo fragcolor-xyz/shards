@@ -1,4 +1,5 @@
 CRDT.New(@i16(77) Preallocate: 1000000) = crdt
+@define(crdt-key "ThisIsAKey")
 
 Sequence(records Type: @type([Type::Int16]))
 
@@ -6,13 +7,13 @@ Sequence(records Type: @type([Type::Int16]))
 Msg("Inserting 1000000 records")
 Profile(Repeat({
   UUID = record >> records 
-  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: "K1")
+  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: @crdt-key)
 } Times: 1000000))
 
 Msg("Reading 1000000 records")
 Profile({
   records | ForEach({
-    CRDT.Get(CRDT: crdt Keys: ["K1"])
+    CRDT.Get(CRDT: crdt Keys: [@crdt-key])
   })
 })
 
@@ -29,12 +30,12 @@ Clear(records)
 Msg("Inserting 1000000 records again")
 Profile(Repeat({
   UUID >> records = record
-  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: "K1")
+  RandomFloat | CRDT.Set(CRDT: crdt Record: record Keys: @crdt-key)
 } Times: 1000000))
 
 Msg("Reading 1000000 records again")
 Profile({
   records | ForEach({
-    CRDT.Get(CRDT: crdt Keys: ["K1"])
+    CRDT.Get(CRDT: crdt Keys: [@crdt-key])
   })
 })

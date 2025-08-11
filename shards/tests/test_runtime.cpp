@@ -2179,3 +2179,58 @@ TEST_CASE("Test-All-Shards-Constructors") {
     shard->destroy(shard);
   }
 }
+
+TEST_CASE("FastString") {
+  // Generate random strings for realistic testing
+  std::vector<std::string> testStrings;
+  std::mt19937 rng(42); // Fixed seed for reproducible results
+  std::uniform_int_distribution<int> lengthDist(5, 50);
+  std::uniform_int_distribution<int> charDist('a', 'z'); // int, not char
+
+  // Create 10k unique strings
+  for (int i = 0; i < 10000; i++) {
+    int length = lengthDist(rng);
+    std::string str;
+    str.reserve(length);
+    for (int j = 0; j < length; j++) {
+      str += static_cast<char>(charDist(rng)); // Cast to char
+    }
+    str += std::to_string(i); // Ensure uniqueness
+    testStrings.push_back(std::move(str));
+  }
+
+  // Measure store performance
+  std::vector<uint64_t> ids;
+  ids.reserve(1000000);
+
+  auto storeStart = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < 1000000; i++) {
+    // Mix of unique and duplicate strings (realistic workload)
+    const auto &str = testStrings[i % testStrings.size()];
+    ids.push_back(shards::fast_string::store(str));
+  }
+  auto storeEnd = std::chrono::high_resolution_clock::now();
+
+  // Measure load performance and verify correctness
+  auto loadStart = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < 1000000; i++) {
+    auto id = ids[i];
+    auto sv = shards::fast_string::load(id);
+    const auto& originalStr = testStrings[i % testStrings.size()];
+    REQUIRE(sv == originalStr); // Verify round-trip correctness
+  }
+  auto loadEnd = std::chrono::high_resolution_clock::now();
+
+  // Test deduplication - same string should return same ID
+  auto id1 = shards::fast_string::store("dedup-test");
+  auto id2 = shards::fast_string::store("dedup-test");
+  REQUIRE(id1 == id2);
+  REQUIRE(shards::fast_string::load(id1) == "dedup-test");
+  REQUIRE(shards::fast_string::load(id2) == "dedup-test");
+
+  auto storeDuration = std::chrono::duration_cast<std::chrono::microseconds>(storeEnd - storeStart);
+  auto loadDuration = std::chrono::duration_cast<std::chrono::microseconds>(loadEnd - loadStart);
+
+  std::cout << "Store: " << storeDuration.count() << "μs (" << (1000000.0 / storeDuration.count()) << " ops/μs)\\n";
+  std::cout << "Load:  " << loadDuration.count() << "μs (" << (1000000.0 / loadDuration.count()) << " ops/μs)\\n";
+}
