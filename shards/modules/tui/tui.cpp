@@ -229,6 +229,7 @@ struct TUIInput {
   TUIInput() {
     _placeholder = Var("Type here...");
     _password = Var(false);
+    _multiline = Var(true);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -239,7 +240,10 @@ struct TUIInput {
   PARAM_PARAMVAR(_placeholder, "Placeholder", "The placeholder text for the input",
                  {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_password, "Password", "Whether the input is a password", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_placeholder), PARAM_IMPL_FOR(_password));
+  PARAM_PARAMVAR(_multiline, "Multiline", "Whether the input is multiline", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM(ShardsVar, _onEnter, "OnEnter", "The action to perform when the input is submitted", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_placeholder), PARAM_IMPL_FOR(_password), PARAM_IMPL_FOR(_multiline),
+             PARAM_IMPL_FOR(_onEnter));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -248,6 +252,8 @@ struct TUIInput {
     if (_value.isNone()) {
       throw ComposeError("TUI.Input requires a Value variable");
     }
+
+    _onEnter.compose(data);
 
     return TUITypes::Element;
   }
@@ -284,10 +290,19 @@ struct TUIInput {
     auto placeholderStr = SHSTRVIEW(_placeholder.get());
     option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
     option.password = _password.get().payload.boolValue;
+    option.multiline = _multiline.get().payload.boolValue;
     option.on_change = [this]() {
       auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
       cloneVar(_value.get(), tmp);
       SHLOG_TRACE("on_change: {}", _value.get());
+    };
+    option.on_enter = [&, context, input]() {
+      SHVar output{};
+      _onEnter.activate(context, input, output);
+      _buffer = "";
+      _cursorPosition = 0;
+      auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
+      cloneVar(_value.get(), tmp);
     };
     option.content = &_buffer;
     option.cursor_position = &_cursorPosition;

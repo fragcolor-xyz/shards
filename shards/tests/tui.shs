@@ -21,7 +21,9 @@
       "Click me 2" | TUI.Button({
         "Ciao 2" > hello-text | Log
       })
-      TUI.Input(text)
+      TUI.Input(text OnEnter: {
+        text > hello-text
+      })
     })
   }) | TUI.RunOnce
   
