@@ -16,25 +16,17 @@ namespace shards {
 namespace tui {
 
 struct TUIElement {
-  ftxui::Element element;
-  ftxui::Components components;
+  ftxui::Component component;
 
   ~TUIElement() { SHLOG_TRACE("TUIElement destroyed"); }
 };
 
 struct TUIInnerElements {
-  ftxui::Elements elements;
   ftxui::Components components;
 
-  void reset() {
-    elements = {};
-    components = {};
-  }
+  void reset() { components = {}; }
 
-  void clear() {
-    elements.clear();
-    components.clear();
-  }
+  void clear() { components.clear(); }
 };
 
 struct TUITypes {
@@ -42,7 +34,7 @@ struct TUITypes {
   SHVAR_OBJECT_DECL('tuie', "TUI.InnerElements", InnerElements, TUIInnerElements);
 };
 
-#define DEFINE_BOX_SHARD(ClassName, Direction, HelpText, FtxuiFunc)                                                \
+#define DEFINE_BOX_SHARD(ClassName, Direction, HelpText, FtxuiFunc, FtxuiContainer)                                \
   struct ClassName {                                                                                               \
     static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }                                                  \
     static SHTypesInfo outputTypes() { return TUITypes::Element; }                                                 \
@@ -79,6 +71,7 @@ struct TUITypes {
     ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};                                             \
     TUIInnerElements _innerElements;                                                                               \
     ShardsVar _action;                                                                                             \
+    ftxui::Component _container = ftxui::Container::FtxuiContainer({});                                            \
                                                                                                                    \
     SHVar activate(SHContext *context, const SHVar &input) {                                                       \
       _innerElements.clear();                                                                                      \
@@ -87,19 +80,22 @@ struct TUITypes {
       DEFER(assignVariableValue(_innerElementsVar.get(), currentInnerElements));                                   \
       SHVar output{};                                                                                              \
       _contents.activate(context, input, output);                                                                  \
-      SHLOG_TRACE("Inner elements: {}", _innerElements.elements.size());                                           \
-      _element->element = ftxui::FtxuiFunc(_innerElements.elements);                                               \
+      SHLOG_TRACE("Inner components: {}", _innerElements.components.size());                                       \
+      _container->DetachAllChildren();                                                                             \
+      for (auto &component : _innerElements.components) {                                                          \
+        _container->Add(component);                                                                                \
+      }                                                                                                            \
+      _element->component = _container;                                                                            \
       if (currentInnerElements.valueType == SHType::Object) {                                                      \
         auto &innerElements = varAsObjectChecked<TUIInnerElements>(currentInnerElements, TUITypes::InnerElements); \
-        innerElements.elements.push_back(_element->element);                                                       \
+        innerElements.components.push_back(_element->component);                                                   \
       }                                                                                                            \
-      _element->components = _innerElements.components;                                                            \
       return TUITypes::ElementObjectVar.Get(_element);                                                             \
     }                                                                                                              \
   };
 
-DEFINE_BOX_SHARD(VBox, "vertical", "Creates a vertical box", vbox)
-DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox)
+DEFINE_BOX_SHARD(VBox, "vertical", "Creates a vertical box", vbox, Vertical)
+DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox, Horizontal)
 
 struct TUIText {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -129,11 +125,11 @@ struct TUIText {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
 
-    _element->element = ftxui::text(_text);
+    _element->component = ftxui::Renderer([this]() { return ftxui::text(_text); });
 
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.elements.push_back(_element->element);
+      innerElements.components.push_back(_element->component);
     }
 
     return TUITypes::ElementObjectVar.Get(_element);
@@ -163,10 +159,10 @@ struct Separator {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _element->element = ftxui::separator();
+    _element->component = ftxui::Renderer([]() { return ftxui::separator(); });
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.elements.push_back(_element->element);
+      innerElements.components.push_back(_element->component);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -220,11 +216,44 @@ struct Button {
           _action.activate(context, input, output);
         },
         option);
-    _element->element = (*_button)->Render();
+    _element->component = *_button;
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.elements.push_back(_element->element);
-      innerElements.components.push_back(*_button);
+      innerElements.components.push_back(_element->component);
+    }
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
+struct TUIInput {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Adds a separator element to the TUI context"); }
+
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
+
+  TUIElement *_element = nullptr;
+
+  void warmup(SHContext *context) {
+    _innerElementsVar.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    ftxui::InputOption option;
+    option.placeholder = "Type here...";
+    _element->component = ftxui::Input(option);
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.components.push_back(_element->component);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -245,14 +274,12 @@ struct Render {
     _output = "";
   }
 
-  void warmup(SHContext *context) {
-    shards::logging::setStdErrLogLevel(spdlog::level::off);
-  }
+  void warmup(SHContext *context) { shards::logging::setStdErrLogLevel(spdlog::level::off); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
     _output.assign(_resetPosition);
-    ftxui::Render(_screen, element.element);
+    ftxui::Render(_screen, element.component->Render());
     _output = _screen.ToString();
     _resetPosition = _screen.ResetPosition();
     return Var(_output);
@@ -266,24 +293,17 @@ struct Tick {
 
   ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::TerminalOutput();
   std::unique_ptr<ftxui::Loop> _loop;
-  std::optional<TUIElement *> _element;
 
   ftxui::Component _rootComponent = ftxui::Container::Vertical({});
 
-  ftxui::Element getElement() { return _element.value()->element; }
-
   void warmup(SHContext *context) {
-    auto component = ftxui::Renderer(_rootComponent, [&]() { return getElement(); });
-    _loop = std::make_unique<ftxui::Loop>(&_screen, std::move(component));
+    _loop = std::make_unique<ftxui::Loop>(&_screen, _rootComponent);
 
     // Disable terminal output
     shards::logging::setStdErrLogLevel(spdlog::level::off);
   }
 
-  void cleanup(SHContext *context) {
-    _loop.reset();
-    _element.reset();
-  }
+  void cleanup(SHContext *context) { _loop.reset(); }
 
   void activate(SHContext *context, const SHVar &input) {
     if (_loop->HasQuitted()) {
@@ -292,12 +312,8 @@ struct Tick {
       return;
     }
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
-    _element = &element;
     _rootComponent->DetachAllChildren();
-    for (auto &component : element.components) {
-      _rootComponent->Add(component);
-    }
-    _screen.RequestAnimationFrame(); // force a redraw
+    _rootComponent->Add(element.component);
     _loop->RunOnce();
   }
 };
@@ -309,7 +325,8 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Text", TUIText);
   REGISTER_SHARD("TUI.Render", Render);
   REGISTER_SHARD("TUI.Separator", Separator);
-  REGISTER_SHARD("TUI.Tick", Tick);
+  REGISTER_SHARD("TUI.RunOnce", Tick);
   REGISTER_SHARD("TUI.Button", Button);
+  REGISTER_SHARD("TUI.Input", TUIInput);
 }
 } // namespace shards

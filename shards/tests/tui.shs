@@ -1,19 +1,44 @@
 @wire(main {
   Once({
-    "Hello" >= hello-text | Log
+    "Hello" | Set(hello-text TrackingMask: 1)
+    0 >= counter
   })
   
-  TUI.VBox({
-    TUI.HBox({
-      hello-text | TUI.Text
-      TUI.Separator
-      "World" | TUI.Text
+  Track([hello-text] {
+    Inc(counter)
+    TUI.VBox({
+      TUI.HBox({
+        hello-text | TUI.Text
+        TUI.Separator
+        "World" | TUI.Text
+        TUI.Separator
+        counter | ToString | TUI.Text
+      })
+      "Click me 1" | TUI.Button({
+        "Ciao 1" > hello-text | Log
+      })
+      "Click me 2" | TUI.Button({
+        "Ciao 2" > hello-text | Log
+      })
+      TUI.Input
     })
-    "Click me" | TUI.Button({
-      "Ciao" > hello-text | Log
-    })
-  }) ; | TUI.Render | Process.StdOut
-  TUI.Tick
+  }) | TUI.RunOnce
+  
+  ; hello-text | Memoize(TUI.VBox({
+  ;   TUI.HBox({
+  ;     hello-text | TUI.Text
+  ;     TUI.Separator
+  ;     "World" | TUI.Text
+  ;   })
+  ;   "Click me 1" | TUI.Button({
+  ;     "Ciao 1" > hello-text | Log
+  ;   })
+  ;   "Click me 2" | TUI.Button({
+  ;     "Ciao 2" > hello-text | Log
+  ;   })
+  ; })) | TUI.Tick
+  
+  ; | TUI.Render | Process.StdOut
   
   ; Once({
   ;   RandomInt | ToString = text | Log
@@ -31,6 +56,6 @@
 
 @mesh(root)
 @schedule(root main)
-@run(root FPS: 10
+@run(root FPS: 30
 ; Iterations: 10
 )
