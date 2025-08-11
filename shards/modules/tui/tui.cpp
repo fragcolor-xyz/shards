@@ -226,30 +226,75 @@ struct Button {
 };
 
 struct TUIInput {
+  TUIInput() {
+    _placeholder = Var("Type here...");
+    _password = Var(false);
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Adds a separator element to the TUI context"); }
+
+  PARAM_PARAMVAR(_value, "Value", "The value of the input", {CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_placeholder, "Placeholder", "The placeholder text for the input",
+                 {CoreInfo::StringType, CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_password, "Password", "Whether the input is a password", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_value), PARAM_IMPL_FOR(_placeholder), PARAM_IMPL_FOR(_password));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (_value.isNone()) {
+      throw ComposeError("TUI.Input requires a Value variable");
+    }
+
+    return TUITypes::Element;
+  }
 
   ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
 
   TUIElement *_element = nullptr;
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
     _innerElementsVar.warmup(context);
     _element = TUITypes::ElementObjectVar.New();
   }
 
   void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
     _innerElementsVar.cleanup(context);
     if (_element) {
       TUITypes::ElementObjectVar.Release(_element);
       _element = nullptr;
     }
+
+    _buffer = "";
+    _cursorPosition = 0;
   }
+
+  std::string _buffer;
+  int _cursorPosition = 0;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     ftxui::InputOption option;
-    option.placeholder = "Type here...";
+    auto placeholderStr = SHSTRVIEW(_placeholder.get());
+    option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
+    option.password = _password.get().payload.boolValue;
+    option.on_change = [this]() {
+      auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
+      cloneVar(_value.get(), tmp);
+      SHLOG_TRACE("on_change: {}", _value.get());
+    };
+    option.content = &_buffer;
+    option.cursor_position = &_cursorPosition;
+    auto currentValue = SHSTRVIEW(_value.get());
+    if (!currentValue.empty()) {
+      _buffer.assign(currentValue.data(), currentValue.data() + currentValue.size());
+    }
     _element->component = ftxui::Input(option);
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);

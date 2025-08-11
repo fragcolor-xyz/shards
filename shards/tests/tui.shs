@@ -2,6 +2,7 @@
   Once({
     "Hello" | Set(hello-text TrackingMask: 1)
     0 >= counter
+    "" >= text
   })
   
   Track([hello-text] {
@@ -20,9 +21,11 @@
       "Click me 2" | TUI.Button({
         "Ciao 2" > hello-text | Log
       })
-      TUI.Input
+      TUI.Input(text)
     })
   }) | TUI.RunOnce
+  
+  text | Memoize(Log)
   
   ; hello-text | Memoize(TUI.VBox({
   ;   TUI.HBox({
