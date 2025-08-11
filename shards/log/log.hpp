@@ -60,6 +60,8 @@ void redirectAll(const std::vector<spdlog::sink_ptr> &sinks);
 spdlog::level::level_enum getSinkLevel();
 void setSinkLevel(spdlog::level::level_enum level);
 
+void setStdErrLogLevel(spdlog::level::level_enum level);
+
 // Setup the default logger if it's not setup already
 void setupDefaultLoggerConditional(std::string fileName);
 

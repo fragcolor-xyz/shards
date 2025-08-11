@@ -215,7 +215,7 @@ struct Button {
     auto option = ftxui::ButtonOption::Animated();
     _button = ftxui::Button(
         _text,
-        [&]() {
+        [=, this]() {
           SHVar output{};
           _action.activate(context, input, output);
         },
@@ -245,6 +245,10 @@ struct Render {
     _output = "";
   }
 
+  void warmup(SHContext *context) {
+    shards::logging::setStdErrLogLevel(spdlog::level::off);
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
     _output.assign(_resetPosition);
@@ -271,6 +275,9 @@ struct Tick {
   void warmup(SHContext *context) {
     auto component = ftxui::Renderer(_rootComponent, [&]() { return getElement(); });
     _loop = std::make_unique<ftxui::Loop>(&_screen, std::move(component));
+
+    // Disable terminal output
+    shards::logging::setStdErrLogLevel(spdlog::level::off);
   }
 
   void cleanup(SHContext *context) {
