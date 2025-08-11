@@ -297,6 +297,7 @@ struct Tick {
     for (auto &component : element.components) {
       _rootComponent->Add(component);
     }
+    _screen.RequestAnimationFrame(); // force a redraw
     _loop->RunOnce();
   }
 };

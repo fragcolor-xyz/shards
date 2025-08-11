@@ -14,6 +14,19 @@
     })
   }) ; | TUI.Render | Process.StdOut
   TUI.Tick
+  
+  ; Once({
+  ;   RandomInt | ToString = text | Log
+  ; } Every: 2.0)
+  
+  ; text | Memoize(TUI.VBox({
+  ;   TUI.HBox({
+  ;     text | TUI.Text
+  ;     TUI.Separator
+  ;     "World" | TUI.Text
+  ;   })
+  ; })) ;  | TUI.Render | Process.StdOut
+  ; TUI.Tick
 } Looped: true)
 
 @mesh(root)
