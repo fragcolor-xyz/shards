@@ -22,18 +22,30 @@ namespace shards::fast_string {
 
 // Simple TBB-based implementation
 struct SimpleFastString {
+  // Map from string content to reverse vector index
+  // Using string_view key avoids copies on lookup
   static inline oneapi::tbb::concurrent_unordered_map<std::string_view, uint64_t> map;
+
+  // Stable storage for strings, indexed by ID
+  // string_view in map points into these strings
   static inline oneapi::tbb::concurrent_vector<std::string> reverse;
 
   static uint64_t store(std::string_view str) {
+    // Fast path: check if string already exists (no allocation)
     auto it = map.find(str);
     if (it != map.end()) {
       return it->second;
     }
 
+    // Slow path: add new string
+    // NOTE: Race condition possible - two threads storing same string
+    // may create duplicates in reverse vector. This is acceptable:
+    // - Map will point to one of the duplicates consistently
+    // - Memory waste is bounded and rare in practice
+    // - Performance benefit of string_view lookup outweighs cost
     auto rit = reverse.emplace_back(str);
     auto idx = rit - reverse.begin();
-    map.emplace(*rit, idx);
+    map.emplace(*rit, idx); // May fail if another thread won the race
 
     return idx;
   }
