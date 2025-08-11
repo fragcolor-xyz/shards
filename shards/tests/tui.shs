@@ -1,19 +1,25 @@
 @wire(main {
+  ; Once({
+  ;   "Hello" >= hello-text | Log
+  ; })
+  
+  ; TUI.VBox({
+  ;   TUI.HBox({
+  ;     hello-text | TUI.Text
+  ;     TUI.Separator
+  ;     "World" | TUI.Text
+  ;   })
+  ;   "Click me" | TUI.Button({
+  ;     "Ciao" > hello-text | Log
+  ;   })
+  ; }) ; | TUI.Render | Process.StdOut
+  ; TUI.Tick
+  
   Once({
-    "Hello" >= hello-text | Log
+    TUI.Block(TopTitle: "Hello" BottomTitle: "World") >> elements
   })
   
-  TUI.VBox({
-    TUI.HBox({
-      hello-text | TUI.Text
-      TUI.Separator
-      "World" | TUI.Text
-    })
-    "Click me" | TUI.Button({
-      "Ciao" > hello-text | Log
-    })
-  }) ; | TUI.Render | Process.StdOut
-  TUI.Tick
+  elements | TUI.Draw
 } Looped: true)
 
 @mesh(root)

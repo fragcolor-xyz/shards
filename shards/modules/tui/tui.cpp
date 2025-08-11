@@ -17,7 +17,7 @@ namespace tui {
 
 struct TUIElement {
   ftxui::Element element;
-  ftxui::Components components;
+  ftxui::Components innerComponents;
 
   ~TUIElement() { SHLOG_TRACE("TUIElement destroyed"); }
 };
@@ -93,7 +93,7 @@ struct TUITypes {
         auto &innerElements = varAsObjectChecked<TUIInnerElements>(currentInnerElements, TUITypes::InnerElements); \
         innerElements.elements.push_back(_element->element);                                                       \
       }                                                                                                            \
-      _element->components = _innerElements.components;                                                            \
+      _element->innerComponents = _innerElements.components;                                                            \
       return TUITypes::ElementObjectVar.Get(_element);                                                             \
     }                                                                                                              \
   };
@@ -287,7 +287,7 @@ struct Tick {
     auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
     _element = &element;
     _rootComponent->DetachAllChildren();
-    for (auto &component : element.components) {
+    for (auto &component : element.innerComponents) {
       _rootComponent->Add(component);
     }
     _loop->RunOnce();

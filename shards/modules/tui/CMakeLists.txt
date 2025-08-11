@@ -1,9 +1,7 @@
-set(SOURCES
-  tui.cpp
-)
+add_rust_library(NAME shards-tui
+  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
 
-add_shards_module(tui SOURCES ${SOURCES}
-REGISTER_SHARDS tui)
-
-target_include_directories(shards-module-tui PRIVATE ${SHARDS_DIR}/deps/FTXUI/include)
-target_link_libraries(shards-module-tui ftxui::screen ftxui::dom ftxui::component)
+add_shards_module(tui
+  RUST_TARGETS shards-tui-rust
+  REGISTER_SHARDS rust
+  EXPERIMENTAL)
