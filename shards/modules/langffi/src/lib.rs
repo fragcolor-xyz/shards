@@ -358,6 +358,7 @@ pub extern "C" fn shards_propagate_error(
   shard_id: u64,
   line: u32,
   column: u32,
+  file: u32,
   error: &Var,
 ) {
   profiling::scope!("shards_propagate_error");
@@ -381,7 +382,7 @@ pub extern "C" fn shards_propagate_error(
           let msg: &str = error.try_into().unwrap();
           let error = ShardsError {
             message: msg.to_owned(),
-            loc: LineInfo { line, column },
+            loc: LineInfo { line, column, file },
           };
           f.custom_state.set(error)
         }
@@ -390,7 +391,7 @@ pub extern "C" fn shards_propagate_error(
           let msg: &str = error.try_into().unwrap();
           let error = ShardsError {
             message: msg.to_owned(),
-            loc: LineInfo { line, column },
+            loc: LineInfo { line, column, file },
           };
           i.custom_state.set(error)
         }

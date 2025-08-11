@@ -5,7 +5,7 @@ use core::{fmt, hash::Hash};
 use pest::{iterators::Pair, Position};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use shards::{
-  types::Var, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String,
+  types::Var, SHStringWithLen, SHType_Bool, SHType_Bytes, SHType_Float, SHType_Int, SHType_None, SHType_String
 };
 use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Debug, hash::Hasher};
 
@@ -13,46 +13,30 @@ use std::{borrow::Cow, cell::RefCell, collections::HashMap, fmt::Debug, hash::Ha
 #[grammar = "shards.pest"]
 pub struct ShardsParser;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Default, PartialEq)]
 pub struct LineInfo {
   pub line: u32,
   pub column: u32,
+  pub file: u32,
+}
+
+impl Debug for LineInfo {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    unsafe {
+      let core = &(*shards::core::Core);
+      let mut file = core.getSourceFileName.unwrap_unchecked()(self.file);
+      if file.string.is_null() {
+        file = SHStringWithLen::from("<unknown>");
+      }
+      write!(f, "{}:{}:{}", file.static_str(), self.line, self.column)
+    }
+  }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShardsError {
   pub message: String,
   pub loc: LineInfo,
-}
-
-impl<'a> Into<ShardsError> for (&str, Position<'a>) {
-  fn into(self) -> ShardsError {
-    let (message, pos) = self;
-    let line = pos.line_col().0;
-    let column = pos.line_col().1;
-    ShardsError {
-      message: message.to_string(),
-      loc: LineInfo {
-        line: line as u32,
-        column: column as u32,
-      },
-    }
-  }
-}
-
-impl<'a> Into<ShardsError> for (String, Position<'a>) {
-  fn into(self) -> ShardsError {
-    let (message, pos) = self;
-    let line = pos.line_col().0;
-    let column = pos.line_col().1;
-    ShardsError {
-      message,
-      loc: LineInfo {
-        line: line as u32,
-        column: column as u32,
-      },
-    }
-  }
 }
 
 impl<'a> Into<ShardsError> for (&str, LineInfo) {
@@ -72,31 +56,9 @@ impl<'a> Into<ShardsError> for (String, LineInfo) {
   }
 }
 
-impl<'a> Into<LineInfo> for Position<'a> {
-  fn into(self) -> LineInfo {
-    let line = self.line_col().0;
-    let column = self.line_col().1;
-    LineInfo {
-      line: line as u32,
-      column: column as u32,
-    }
-  }
-}
-
-impl<'a> Into<LineInfo> for &Pair<'a, Rule> {
-  fn into(self) -> LineInfo {
-    // let pos = self.as_span().start_pos();
-    let (line, column) = self.line_col();
-    LineInfo {
-      line: line as u32,
-      column: column as u32,
-    }
-  }
-}
-
-impl Into<(u32, u32)> for LineInfo {
-  fn into(self) -> (u32, u32) {
-    (self.line, self.column)
+impl Into<(u32, u32, u32)> for LineInfo {
+  fn into(self) -> (u32, u32, u32) {
+    (self.line, self.column, self.file)
   }
 }
 

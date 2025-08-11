@@ -791,6 +791,7 @@ struct Shard {
   // some debug/utility info
   uint32_t line;
   uint32_t column;
+  uint32_t file;
 
   // internal use only, to optionally identify the shard
   uint64_t id;
@@ -1119,6 +1120,9 @@ typedef bool(__cdecl *SHEvalAst)(const struct SHVar *ast, struct SHStringWithLen
 typedef void(__cdecl *SHFreeWire)(struct SHLWire *wire);
 typedef void(__cdecl *SHFreeAst)(struct SHLAst *wire);
 
+typedef uint32_t(__cdecl *SHGetSourceFileId)(SHStringWithLen path);
+typedef SHStringWithLen(__cdecl *SHGetSourceFileName)(uint32_t file_id);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1308,6 +1312,9 @@ typedef struct _SHCore {
   // To be used within shards, to reference global variables
   // We never needed it before but actually useful to expose for rust and swift shards
   SHReferenceVariable referenceGlobalVariable;
+
+  SHGetSourceFileId getSourceFileId;
+  SHGetSourceFileName getSourceFileName;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
