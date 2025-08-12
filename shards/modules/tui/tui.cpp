@@ -98,20 +98,38 @@ DEFINE_BOX_SHARD(VBox, "vertical", "Creates a vertical box", vbox, Vertical)
 DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox, Horizontal)
 
 struct TUIText {
+  TUIText() {
+    _border = Var(false);
+    _flex = Var(false);
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Adds a text element to the TUI context"); }
+
+  PARAM_PARAMVAR(_border, "Border", "Whether to draw a border around the text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_flex, "Flex", "Whether to expand proportionally to the space left in a container",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return TUITypes::Element;
+  }
 
   ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
 
   TUIElement *_element = nullptr;
 
   void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
     _innerElementsVar.warmup(context);
     _element = TUITypes::ElementObjectVar.New();
   }
 
   void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
     _innerElementsVar.cleanup(context);
     if (_element) {
       TUITypes::ElementObjectVar.Release(_element);
@@ -125,7 +143,18 @@ struct TUIText {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
 
-    _element->component = ftxui::Renderer([this]() { return ftxui::text(_text); });
+    auto border = _border.get().payload.boolValue;
+    auto flex = _flex.get().payload.boolValue;
+    _element->component = ftxui::Renderer([this, border, flex]() {
+      auto element = ftxui::text(_text);
+      if (border) {
+        element = element | ftxui::border;
+      }
+      if (flex) {
+        element = element | ftxui::flex;
+      }
+      return element;
+    });
 
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
@@ -301,19 +330,19 @@ struct TUIInput {
       while (!_buffer.empty() && (_buffer.back() == '\n' || _buffer.back() == '\r')) {
         _buffer.pop_back();
       }
-      
+
       // Update value variable with cleaned buffer content
       auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
       cloneVar(_value.get(), tmp);
-      
+
       // Execute the OnEnter action
       SHVar output{};
       _onEnter.activate(context, input, output);
-      
+
       // Clear buffer for next input
       _buffer.clear();
       _cursorPosition = 0;
-      
+
       // Update value variable to reflect cleared state
       tmp = Var("");
       cloneVar(_value.get(), tmp);

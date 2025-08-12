@@ -9,11 +9,9 @@
     Inc(counter)
     TUI.VBox({
       TUI.HBox({
-        hello-text | TUI.Text
-        TUI.Separator
-        "World" | TUI.Text
-        TUI.Separator
-        counter | ToString | TUI.Text
+        hello-text | TUI.Text(Border: true)
+        "World" | TUI.Text(Border: true Flex: true)
+        counter | ToString | TUI.Text(Border: true)
       })
       "Click me 1" | TUI.Button({
         "Ciao 1" > hello-text | Log
