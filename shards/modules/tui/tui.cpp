@@ -212,7 +212,7 @@ struct TUIParagraph {
     auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
     ftxui::Color backgroundColor =
         ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
-    
+
     _element->component = ftxui::Renderer([this, color, backgroundColor]() {
       auto element = ftxui::paragraph(_text);
       element = element | ftxui::color(color);
@@ -610,6 +610,45 @@ struct TUIBorder : TUIModifierBase {
   }
 };
 
+struct TUIFrame : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a frame"); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    elem.component = elem.component | ftxui::frame;
+  }
+};
+
+struct TUIScrollable : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a vertical scrollable container"); }
+
+  TUIScrollable() { _vertical = Var(true); }
+
+  PARAM_PARAMVAR(_vertical, "Vertical",
+                 "Whether the input element is scrollable vertically, if false, it will be scrollable horizontally",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_vertical));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return TUITypes::Element;
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    if (_vertical.get().payload.boolValue) {
+      elem.component = elem.component | ftxui::vscroll_indicator;
+    } else {
+      elem.component = elem.component | ftxui::hscroll_indicator;
+    }
+  }
+};
+
 struct Render {
   static SHTypesInfo inputTypes() { return TUITypes::Element; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -696,5 +735,7 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Centered", TUICentered);
   REGISTER_SHARD("TUI.AlignedRight", TUIAlignedRight);
   REGISTER_SHARD("TUI.Border", TUIBorder);
+  REGISTER_SHARD("TUI.Scrollable", TUIScrollable);
+  REGISTER_SHARD("TUI.Frame", TUIFrame);
 }
 } // namespace shards
