@@ -315,7 +315,7 @@ struct TUIInput {
   int _cursorPosition = 0;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ftxui::InputOption option;
+    ftxui::InputOption option = ftxui::InputOption::Spacious();
     auto placeholderStr = SHSTRVIEW(_placeholder.get());
     option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
     option.password = _password.get().payload.boolValue;
@@ -325,28 +325,30 @@ struct TUIInput {
       cloneVar(_value.get(), tmp);
       SHLOG_TRACE("on_change: {}", _value.get());
     };
-    option.on_enter = [&, context, input]() {
-      // Remove trailing newlines (handles both \n and \r\n)
-      while (!_buffer.empty() && (_buffer.back() == '\n' || _buffer.back() == '\r')) {
-        _buffer.pop_back();
-      }
+    if (_onEnter) {
+      option.on_enter = [&, context, input]() {
+        // Remove trailing newlines (handles both \n and \r\n)
+        while (!_buffer.empty() && (_buffer.back() == '\n' || _buffer.back() == '\r')) {
+          _buffer.pop_back();
+        }
 
-      // Update value variable with cleaned buffer content
-      auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
-      cloneVar(_value.get(), tmp);
+        // Update value variable with cleaned buffer content
+        auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
+        cloneVar(_value.get(), tmp);
 
-      // Execute the OnEnter action
-      SHVar output{};
-      _onEnter.activate(context, input, output);
+        // Execute the OnEnter action
+        SHVar output{};
+        _onEnter.activate(context, input, output);
 
-      // Clear buffer for next input
-      _buffer.clear();
-      _cursorPosition = 0;
+        // Clear buffer for next input
+        _buffer.clear();
+        _cursorPosition = 0;
 
-      // Update value variable to reflect cleared state
-      tmp = Var("");
-      cloneVar(_value.get(), tmp);
-    };
+        // Update value variable to reflect cleared state
+        tmp = Var("");
+        cloneVar(_value.get(), tmp);
+      };
+    }
     option.content = &_buffer;
     option.cursor_position = &_cursorPosition;
     auto currentValue = SHSTRVIEW(_value.get());
