@@ -15,7 +15,7 @@ namespace tui {
 
 class ScrollerBase : public ftxui::ComponentBase {
 public:
-  ScrollerBase(ftxui::Component child) { Add(child); }
+  ScrollerBase(ftxui::Component child, int selected, int size) : selected_(selected), size_(size) { Add(child); }
 
 private:
   ftxui::Element OnRender() final {
@@ -677,9 +677,17 @@ struct TUIFrame : TUIModifierBase {
 struct TUIScrollable : TUIModifierBase {
   static SHOptionalString help() { return SHCCSTR("Wraps the input element in a scrollable container"); }
 
+  int _selected = 0;
+  int _size = 0;
+
+  void warmup(SHContext *context) {
+    _selected = 0;
+    _size = 0;
+  }
+
   void activate(SHContext *context, const SHVar &input) {
     auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
-    elem.component = ftxui::Make<ScrollerBase>(elem.component);
+    elem.component = ftxui::Make<ScrollerBase>(elem.component, _selected, _size);
   }
 };
 
