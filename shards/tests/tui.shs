@@ -13,12 +13,21 @@
         "World" | TUI.Text(Border: true Flex: true AlignRight: true Color: @color(0xFF0000FF))
         counter | ToString | TUI.Text(Border: true)
       })
+
+      TUI.Separator
+      
       "Click me 1" | TUI.Button({
         "Ciao 1" > hello-text | Log
       })
+
+      TUI.Separator
+
       "Click me 2" | TUI.Button({
         "Ciao 2" > hello-text | Log
       })
+      
+      TUI.Separator
+
       TUI.Input(text OnEnter: {
         text > hello-text
       })

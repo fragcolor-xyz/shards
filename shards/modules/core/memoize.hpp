@@ -92,7 +92,7 @@ struct Track {
   }
 
   void handleTrackedVarSet(OnTrackedVarSet &event) {
-    if (_varNames.contains(event.name)) {
+    if (!_shouldActivate && _varNames.contains(event.name)) {
       _shouldActivate = true;
     }
   }
