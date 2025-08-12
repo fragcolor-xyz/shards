@@ -1,0 +1,1 @@
+With each call of the shard, the center of the patch is moved along the x-axis by the number of pixels specified in the `Step` parameter. When it reaches the end of the image on that row, it wraps around to the beginning of the next row.

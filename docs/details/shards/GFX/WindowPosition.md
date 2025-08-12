@@ -1,0 +1,1 @@
+If no window is specified in the `Window` parameter, the window of the current context (set by `GFX.MainWindow`) is used.

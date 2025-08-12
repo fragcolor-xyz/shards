@@ -1,0 +1,1 @@
+Unlike the `Network.Send` shard, `Network.SendRaw` does not convert the input into a bytes sequence before sending it over the network and thus is faster. However, it can only accept a bytes sequence or string as input.

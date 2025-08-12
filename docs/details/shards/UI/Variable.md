@@ -1,0 +1,1 @@
+Any changes to the value of the variable made through the UI element created by this shard will be reflected on the parent wire. Vice versa, any changes made to the variable on the parent wire will be reflected on the UI element created by this shard.

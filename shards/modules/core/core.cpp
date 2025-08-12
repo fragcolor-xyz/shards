@@ -523,7 +523,7 @@ struct XPendBase {
 };
 
 struct AppendTo : public XPendBase {
-  static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `:Collection`."); }
+  static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `Collection:`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to append to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 
@@ -1225,7 +1225,7 @@ private:
 };
 
 struct Erase : SeqUser {
-  static SHOptionalString help() { return SHCCSTR("Deletes an index or indices from a sequence or a key or keys from a table."); }
+  static SHOptionalString help() { return SHCCSTR("Deletes specific elements from a sequence or keys from a table."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Any input is ignored."); }
@@ -1400,8 +1400,7 @@ struct Assoc : public VariableBase {
   static SHParametersInfo parameters() { return params; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Updates a sequence (array) or a table (associative array/ "
-                   "dictionary) on the basis of an input sequence.");
+    return SHCCSTR("Updates a sequence or a table based on the input sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }

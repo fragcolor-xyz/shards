@@ -1,0 +1,1 @@
+The BLAKE2 algorithm is a cryptographic hash function that's designed to be fast and secure. The 128-bit variant (BLAKE2b-128) is a truncated version of the full BLAKE2b algorithm, providing a shorter output while maintaining many of the security properties of the larger variants.

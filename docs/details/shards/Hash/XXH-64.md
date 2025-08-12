@@ -1,0 +1,1 @@
+XXH64 is a non-cryptographic hash algorithm, designed for speed rather than cryptographic security.
