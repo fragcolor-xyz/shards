@@ -100,6 +100,7 @@ struct TUIText {
     _border = Var(false);
     _flex = Var(false);
     _alignRight = Var(false);
+    _centered = Var(false);
     _color = Var::ColorFromInt(0xFFFFFFFF);
     _backgroundColor = Var::ColorFromInt(0x00000000);
   }
@@ -113,11 +114,12 @@ struct TUIText {
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_alignRight, "AlignRight", "Whether to align the text to the right",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_centered, "Centered", "Whether to center the text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_color, "Color", "The color of the text", {CoreInfo::ColorType, CoreInfo::ColorVarType});
   PARAM_PARAMVAR(_backgroundColor, "BackgroundColor", "The background color of the text",
                  {CoreInfo::ColorType, CoreInfo::ColorVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight), PARAM_IMPL_FOR(_color),
-             PARAM_IMPL_FOR(_backgroundColor));
+  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight), PARAM_IMPL_FOR(_centered),
+             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -153,15 +155,19 @@ struct TUIText {
     auto border = _border.get().payload.boolValue;
     auto flex = _flex.get().payload.boolValue;
     auto alignRight = _alignRight.get().payload.boolValue;
+    auto centered = _centered.get().payload.boolValue;
     auto colorValue = _color.get().payload.colorValue;
     ftxui::Color color = ftxui::Color::RGBA(colorValue.r, colorValue.g, colorValue.b, colorValue.a);
     auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
     ftxui::Color backgroundColor =
         ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
-    _element->component = ftxui::Renderer([this, border, flex, alignRight, color, backgroundColor]() {
+    _element->component = ftxui::Renderer([this, border, flex, alignRight, centered, color, backgroundColor]() {
       auto element = ftxui::text(_text);
       if (alignRight) {
         element = element | ftxui::align_right;
+      }
+      if (centered) {
+        element = element | ftxui::center;
       }
       if (border) {
         element = element | ftxui::border;
@@ -333,16 +339,40 @@ struct TUIInput {
   int _cursorPosition = 0;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    ftxui::InputOption option = ftxui::InputOption::Spacious();
+    ftxui::InputOption option{};
+
+    option.transform = [](ftxui::InputState state) {
+      state.element |= ftxui::borderEmpty;
+      state.element |= ftxui::color(ftxui::Color::White);
+
+      if (state.is_placeholder) {
+        state.element |= ftxui::dim;
+      }
+
+      if (state.focused) {
+        state.element |= ftxui::bgcolor(ftxui::Color::Black);
+      }
+
+      if (state.hovered) {
+        state.element |= ftxui::bgcolor(ftxui::Color::GrayDark);
+      }
+
+      return state.element;
+    };
+
     auto placeholderStr = SHSTRVIEW(_placeholder.get());
     option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
+
     option.password = _password.get().payload.boolValue;
+
     option.multiline = _multiline.get().payload.boolValue;
+
     option.on_change = [this]() {
       auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
       cloneVar(_value.get(), tmp);
       SHLOG_TRACE("on_change: {}", _value.get());
     };
+
     if (_onEnter) {
       option.on_enter = [&, context, input]() {
         // Remove trailing newlines (handles both \n and \r\n)
@@ -367,17 +397,22 @@ struct TUIInput {
         cloneVar(_value.get(), tmp);
       };
     }
+
     option.content = &_buffer;
+
     option.cursor_position = &_cursorPosition;
+
     auto currentValue = SHSTRVIEW(_value.get());
     if (!currentValue.empty()) {
       _buffer.assign(currentValue.data(), currentValue.data() + currentValue.size());
     }
+
     _element->component = ftxui::Input(option);
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
       innerElements.components.push_back(_element->component);
     }
+
     return TUITypes::ElementObjectVar.Get(_element);
   }
 };
