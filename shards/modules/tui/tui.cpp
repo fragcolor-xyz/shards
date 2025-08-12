@@ -158,7 +158,8 @@ struct TUIText {
     auto colorValue = _color.get().payload.colorValue;
     ftxui::Color color = ftxui::Color::RGBA(colorValue.r, colorValue.g, colorValue.b, colorValue.a);
     auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
-    ftxui::Color backgroundColor = ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
+    ftxui::Color backgroundColor =
+        ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
     _element->component = ftxui::Renderer([this, border, flex, alignRight, color, backgroundColor]() {
       auto element = ftxui::text(_text);
       if (alignRight) {
@@ -383,6 +384,88 @@ struct TUIInput {
   }
 };
 
+struct TUISplit {
+  TUISplit() { _size = Var(20, 20, 20, 20); }
+
+  static SHTypesInfo inputTypes() { return TUITypes::Element; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Surrounds the input element with multiple panes"); }
+
+  PARAM_PARAMVAR(_top, "Top", "The contents of the top part",
+                 {CoreInfo::NoneType, TUITypes::Element, Type::VariableOf(TUITypes::Element)});
+  PARAM_PARAMVAR(_left, "Left", "The contents of the left part",
+                 {CoreInfo::NoneType, TUITypes::Element, Type::VariableOf(TUITypes::Element)});
+  PARAM_PARAMVAR(_right, "Right", "The contents of the right part",
+                 {CoreInfo::NoneType, TUITypes::Element, Type::VariableOf(TUITypes::Element)});
+  PARAM_PARAMVAR(_bottom, "Bottom", "The contents of the bottom part",
+                 {CoreInfo::NoneType, TUITypes::Element, Type::VariableOf(TUITypes::Element)});
+  PARAM_VAR(_size, "InitialSize", "The initial size of the panes (left, right, top, bottom as Int4)", {CoreInfo::Int4Type});
+  PARAM_IMPL(PARAM_IMPL_FOR(_top), PARAM_IMPL_FOR(_left), PARAM_IMPL_FOR(_right), PARAM_IMPL_FOR(_bottom), PARAM_IMPL_FOR(_size));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return TUITypes::Element;
+  }
+
+  std::array<ftxui::Component, 5> _components;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    left_size = _size.payload.int4Value[0];
+    right_size = _size.payload.int4Value[1];
+    top_size = _size.payload.int4Value[2];
+    bottom_size = _size.payload.int4Value[3];
+
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
+
+  ftxui::Component _splitComponent;
+
+  TUIElement *_element = nullptr;
+
+  int left_size = 0;
+  int right_size = 0;
+  int top_size = 0;
+  int bottom_size = 0;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &middleElem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    _splitComponent = middleElem.component;
+
+    if (!_left.isNone()) {
+      auto &leftElem = varAsObjectChecked<TUIElement>(_left.get(), TUITypes::Element);
+      _splitComponent = ftxui::ResizableSplitLeft(leftElem.component, _splitComponent, &left_size);
+    }
+
+    if (!_right.isNone()) {
+      auto &rightElem = varAsObjectChecked<TUIElement>(_right.get(), TUITypes::Element);
+      _splitComponent = ftxui::ResizableSplitRight(rightElem.component, _splitComponent, &right_size);
+    }
+
+    if (!_top.isNone()) {
+      auto &topElem = varAsObjectChecked<TUIElement>(_top.get(), TUITypes::Element);
+      _splitComponent = ftxui::ResizableSplitTop(topElem.component, _splitComponent, &top_size);
+    }
+
+    if (!_bottom.isNone()) {
+      auto &bottomElem = varAsObjectChecked<TUIElement>(_bottom.get(), TUITypes::Element);
+      _splitComponent = ftxui::ResizableSplitBottom(bottomElem.component, _splitComponent, &bottom_size);
+    }
+
+    _element->component = _splitComponent;
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
 struct Render {
   static SHTypesInfo inputTypes() { return TUITypes::Element; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -452,5 +535,6 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.RunOnce", Tick);
   REGISTER_SHARD("TUI.Button", Button);
   REGISTER_SHARD("TUI.Input", TUIInput);
+  REGISTER_SHARD("TUI.Split", TUISplit);
 }
 } // namespace shards
