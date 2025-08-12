@@ -99,6 +99,8 @@ struct TUIText {
   TUIText() {
     _color = Var::ColorFromInt(0xFFFFFFFF);
     _backgroundColor = Var::ColorFromInt(0x00000000);
+    _maxWidth = Var(0); // 0 means no wrapping
+    _splitNewlines = Var(false);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -108,7 +110,9 @@ struct TUIText {
   PARAM_PARAMVAR(_color, "Color", "The color of the text", {CoreInfo::ColorType, CoreInfo::ColorVarType});
   PARAM_PARAMVAR(_backgroundColor, "BackgroundColor", "The background color of the text",
                  {CoreInfo::ColorType, CoreInfo::ColorVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor));
+  PARAM_PARAMVAR(_maxWidth, "MaxWidth", "Maximum width for text wrapping (0 = no wrapping)", {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_splitNewlines, "SplitNewlines", "Split text on newlines into separate elements", {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor), PARAM_IMPL_FOR(_maxWidth), PARAM_IMPL_FOR(_splitNewlines));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
