@@ -684,6 +684,7 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.HBox", HBox);
   REGISTER_SHARD("TUI.VBox", VBox);
   REGISTER_SHARD("TUI.Text", TUIText);
+  REGISTER_SHARD("TUI.Paragraph", TUIParagraph);
   REGISTER_SHARD("TUI.Render", Render);
   REGISTER_SHARD("TUI.Separator", Separator);
   REGISTER_SHARD("TUI.RunOnce", Tick);
