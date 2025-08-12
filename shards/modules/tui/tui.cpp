@@ -20,7 +20,7 @@ struct TUIElement {
 };
 
 struct TUIInnerElements {
-  ftxui::Components components;
+  std::vector<TUIElement *> components;
 
   void reset() { components = {}; }
 
@@ -81,12 +81,12 @@ struct TUITypes {
       SHLOG_TRACE("Inner components: {}", _innerElements.components.size());                                       \
       _container->DetachAllChildren();                                                                             \
       for (auto &component : _innerElements.components) {                                                          \
-        _container->Add(component);                                                                                \
+        _container->Add(component->component);                                                                     \
       }                                                                                                            \
       _element->component = _container;                                                                            \
       if (currentInnerElements.valueType == SHType::Object) {                                                      \
         auto &innerElements = varAsObjectChecked<TUIInnerElements>(currentInnerElements, TUITypes::InnerElements); \
-        innerElements.components.push_back(_element->component);                                                   \
+        innerElements.components.push_back(_element);                                                              \
       }                                                                                                            \
       return TUITypes::ElementObjectVar.Get(_element);                                                             \
     }                                                                                                              \
@@ -97,10 +97,6 @@ DEFINE_BOX_SHARD(HBox, "horizontal", "Creates a horizontal box", hbox, Horizonta
 
 struct TUIText {
   TUIText() {
-    _border = Var(false);
-    _flex = Var(false);
-    _alignRight = Var(false);
-    _centered = Var(false);
     _color = Var::ColorFromInt(0xFFFFFFFF);
     _backgroundColor = Var::ColorFromInt(0x00000000);
   }
@@ -109,17 +105,10 @@ struct TUIText {
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Adds a text element to the TUI context"); }
 
-  PARAM_PARAMVAR(_border, "Border", "Whether to draw a border around the text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_flex, "Flex", "Whether to expand proportionally to the space left in a container",
-                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_alignRight, "AlignRight", "Whether to align the text to the right",
-                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_centered, "Centered", "Whether to center the text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_color, "Color", "The color of the text", {CoreInfo::ColorType, CoreInfo::ColorVarType});
   PARAM_PARAMVAR(_backgroundColor, "BackgroundColor", "The background color of the text",
                  {CoreInfo::ColorType, CoreInfo::ColorVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight), PARAM_IMPL_FOR(_centered),
-             PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor));
+  PARAM_IMPL(PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -152,29 +141,13 @@ struct TUIText {
     auto text = SHSTRVIEW(input);
     _text.assign(text.data(), text.data() + text.size());
 
-    auto border = _border.get().payload.boolValue;
-    auto flex = _flex.get().payload.boolValue;
-    auto alignRight = _alignRight.get().payload.boolValue;
-    auto centered = _centered.get().payload.boolValue;
     auto colorValue = _color.get().payload.colorValue;
     ftxui::Color color = ftxui::Color::RGBA(colorValue.r, colorValue.g, colorValue.b, colorValue.a);
     auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
     ftxui::Color backgroundColor =
         ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
-    _element->component = ftxui::Renderer([this, border, flex, alignRight, centered, color, backgroundColor]() {
+    _element->component = ftxui::Renderer([this, color, backgroundColor]() {
       auto element = ftxui::text(_text);
-      if (alignRight) {
-        element = element | ftxui::align_right;
-      }
-      if (centered) {
-        element = element | ftxui::center;
-      }
-      if (border) {
-        element = element | ftxui::border;
-      }
-      if (flex) {
-        element = element | ftxui::flex;
-      }
       element = element | ftxui::color(color);
       element = element | ftxui::bgcolor(backgroundColor);
       return element;
@@ -182,7 +155,7 @@ struct TUIText {
 
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.components.push_back(_element->component);
+      innerElements.components.push_back(_element);
     }
 
     return TUITypes::ElementObjectVar.Get(_element);
@@ -215,7 +188,7 @@ struct Separator {
     _element->component = ftxui::Renderer([]() { return ftxui::separator(); });
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.components.push_back(_element->component);
+      innerElements.components.push_back(_element);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -247,7 +220,7 @@ struct Filler {
     _element->component = ftxui::Renderer([]() { return ftxui::filler(); });
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.components.push_back(_element->component);
+      innerElements.components.push_back(_element);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -304,7 +277,7 @@ struct Button {
     _element->component = *_button;
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.components.push_back(_element->component);
+      innerElements.components.push_back(_element);
     }
     return TUITypes::ElementObjectVar.Get(_element);
   }
@@ -442,7 +415,7 @@ struct TUIInput {
     _element->component = ftxui::Input(option);
     if (_innerElementsVar.get().valueType == SHType::Object) {
       auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
-      innerElements.components.push_back(_element->component);
+      innerElements.components.push_back(_element);
     }
 
     return TUITypes::ElementObjectVar.Get(_element);
@@ -472,8 +445,6 @@ struct TUISplit {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return TUITypes::Element;
   }
-
-  std::array<ftxui::Component, 5> _components;
 
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
@@ -528,6 +499,47 @@ struct TUISplit {
 
     _element->component = _splitComponent;
     return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
+struct TUIModifierBase {
+  static SHTypesInfo inputTypes() { return TUITypes::Element; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+};
+
+struct TUIFlex : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a flex container"); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    elem.component = elem.component | ftxui::flex;
+  }
+};
+
+struct TUICentered : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Centers the input element"); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    elem.component = elem.component | ftxui::center;
+  }
+};
+
+struct TUIAlignedRight : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Aligns the input element to the right"); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    elem.component = elem.component | ftxui::align_right;
+  }
+};
+
+struct TUIBorder : TUIModifierBase {
+  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a border"); }
+
+  void activate(SHContext *context, const SHVar &input) {
+    auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+    elem.component = elem.component | ftxui::border;
   }
 };
 
@@ -612,5 +624,9 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Input", TUIInput);
   REGISTER_SHARD("TUI.Split", TUISplit);
   REGISTER_SHARD("TUI.Filler", Filler);
+  REGISTER_SHARD("TUI.Flex", TUIFlex);
+  REGISTER_SHARD("TUI.Centered", TUICentered);
+  REGISTER_SHARD("TUI.AlignedRight", TUIAlignedRight);
+  REGISTER_SHARD("TUI.Border", TUIBorder);
 }
 } // namespace shards

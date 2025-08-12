@@ -9,55 +9,55 @@
     Inc(counter)
     TUI.VBox({
       TUI.HBox({
-        hello-text | TUI.Text(Border: true BackgroundColor: @color(0x01010190))
-        "World" | TUI.Text(Border: true Flex: true AlignRight: true Color: @color(0xFF0000FF))
-        counter | ToString | TUI.Text(Border: true)
+        hello-text | TUI.Text(BackgroundColor: @color(0x01010190)) | TUI.Flex | TUI.Border
+        "World" | TUI.Text(Color: @color(0xFF0000FF)) | TUI.AlignedRight | TUI.Flex | TUI.Border
+        counter | ToString | TUI.Text | TUI.Flex | TUI.Border
       })
-  
+      
       TUI.Filler
-  
+      
       "Click me 1" | TUI.Button({
         "Ciao 1" > hello-text | Log
       })
-  
+      
       TUI.Filler
-  
+      
       "Click me 2" | TUI.Button({
         "Ciao 2" > hello-text | Log
       })
-  
+      
       TUI.Filler
-  
+      
       TUI.Input(text OnEnter: {
         text > hello-text
       })
-
+      
       TUI.Filler
     })
   }) | TUI.RunOnce
   
   ; Track([hello-text] {
   ;   Inc(counter)
-    
+  
   ;   TUI.HBox({
   ;     hello-text | TUI.Text(Border: true BackgroundColor: @color(0x01010190))
   ;     "World" | TUI.Text(Border: true Flex: true AlignRight: true Color: @color(0xFF0000FF))
   ;     counter | ToString | TUI.Text(Border: true)
   ;   }) = top
-    
+  
   ;   TUI.VBox({
   ;     "Click me 1" | TUI.Button({
   ;       "Ciao 1" > hello-text | Log
   ;     })
-      
+  
   ;     TUI.Separator
-      
+  
   ;     "Click me 2" | TUI.Button({
   ;       "Ciao 2" > hello-text | Log
   ;     })
-      
+  
   ;     TUI.Separator
-      
+  
   ;     TUI.Input(text OnEnter: {
   ;       text > hello-text
   ;     })
