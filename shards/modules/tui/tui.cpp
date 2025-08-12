@@ -297,11 +297,25 @@ struct TUIInput {
       SHLOG_TRACE("on_change: {}", _value.get());
     };
     option.on_enter = [&, context, input]() {
+      // Remove trailing newlines (handles both \n and \r\n)
+      while (!_buffer.empty() && (_buffer.back() == '\n' || _buffer.back() == '\r')) {
+        _buffer.pop_back();
+      }
+      
+      // Update value variable with cleaned buffer content
+      auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
+      cloneVar(_value.get(), tmp);
+      
+      // Execute the OnEnter action
       SHVar output{};
       _onEnter.activate(context, input, output);
-      _buffer = "";
+      
+      // Clear buffer for next input
+      _buffer.clear();
       _cursorPosition = 0;
-      auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
+      
+      // Update value variable to reflect cleared state
+      tmp = Var("");
       cloneVar(_value.get(), tmp);
     };
     option.content = &_buffer;
