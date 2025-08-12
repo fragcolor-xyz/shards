@@ -17,31 +17,32 @@ Shader parameters and the drawable transform can be set as either constant param
 
 Constant parameters are passed through the input table. They are read and stay the same until this function is called again.
 
-```clojure
-{:Mesh .mesh :Transform .transform} (GFX.Drawable) >= .my-drawable
+```shards
+{mesh: mesh transform: transform} | GFX.Drawable >= my-drawable
 ```
 
 ### Dynamic parameters
 
 Dynamic parameters are passed as parameters to the shard. You can set the same fields as you can when setting constant parameters, with the exception of the mesh. The variables are referenced by the `Drawable` so that changes in their value will be reflect in the rendered result.
 
-```clojure
-.. >= .dynamic-color
-.. >= .dynamic-transform
-{:Mesh .mesh} (Drawable :Transform .dynamic-transform :Params {:baseColor .dynamic-color}) >= .my-drawable
+```shards
+.. >= dynamic-color
+.. >= dynamic-transform
+{mesh: mesh} Drawable(Transform: dynamic-transform Params: {baseColor: dynamic-color}) >= my-drawable
 ```
 
 ## Intended usage
 
 To avoid re-creating Drawables for objects with minor or no changes, you should set up Drawables from within a [Setup](../../General/Once) block and pass their dynamic parameters to the shard.
 
-```clojure
+```shards
 ; Only done once
-(Setup
-  ... = .const-transform
-  (Float4 1.0) >= .dynamic-color
-  {:Mesh .mesh :Transform .const-transform} (Drawable :Params {:baseColor .dynamic-color}) >= .my-drawable)
+Once({
+  ... = const-transform
+  Float4(1.0) >= dynamic-color
+  {:Mesh .mesh :Transform .const-transform} (Drawable :Params {:baseColor .dynamic-color}) >= .my-drawable
+})
 
 ; Update color every time this wire runs
-... > .dynamic-color
+... > dynamic-color
 ```

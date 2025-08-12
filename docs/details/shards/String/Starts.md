@@ -1,0 +1,1 @@
+The shard parses the input string from the left to right. Eg. "Hello World" and "Hello2 World" will both return true if "Hello" is checked for. "2Hello World" however will return false.

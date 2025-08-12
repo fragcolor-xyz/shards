@@ -1,0 +1,1 @@
+The mesh object output created by this shard can be passed to the `Mesh` parameter of the `GFX.DrawablePass` shard to be added to the render pipeline and subsequently rendered.

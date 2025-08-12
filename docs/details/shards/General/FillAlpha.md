@@ -1,0 +1,1 @@
+If the input image already has 4 channels, the shard will return the image unchanged.

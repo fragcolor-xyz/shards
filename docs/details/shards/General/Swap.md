@@ -1,5 +1,1 @@
-`Swap` swaps the values of the two variables passed to it, one via the `First` parameter, the other via the `Second` parameter.
-
-This shard works on all kinds of variables and across types. So you can not only swap between two integers, two strings, two sequences, two tables etc., but also between a string and a number, a table and a sequence and so on.
-
-Any input to this shard is ignored and instead passed through as its output.
+This shard is type sensitive and can only swap the values of variables with similar types.

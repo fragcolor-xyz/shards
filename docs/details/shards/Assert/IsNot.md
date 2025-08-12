@@ -1,8 +1,6 @@
- In this shard it's the inequality that's asserted. This means the assertion is considered successful if input to this shard does **not** match the `:Value` parameter of this shard.
+Returns true if the input is not equal to the `Value` parameter and false otherwise. The shard also is type sensitive (e.g., 1 | IsNot(1.0) will return true).
 
-The rest of behaviour of this shard (including the impact of the value of the `:Break` parameter) is identical to [`Assert.Is`](../Is).
-
-Just like [`Assert.Is`](../Is), this shard too can be used for writing (inline) unit test cases.
+If the `Break` parameter is set to false - logs an assertion validation error but continues running the programme.
 
 !!! note "See also"
     - [`Assert.Is`](../Is)

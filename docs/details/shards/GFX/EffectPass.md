@@ -1,0 +1,3 @@
+The render pass object created by this shard can be placed in a sequence with other render pass objects (created by `GFX.DrawablePass` and `GFX.CopyPass`). This sequence of render pass objects can then be used in conjunction with a view object (created by `GFX.View`) and passed to `GFX.Render` to produce a scene.
+
+Values given to the pixels in the Fragment stage are interpolated. Meaning, if different values are given to different parameters of two vertices, the value of that parameter for all the pixels drawn in between those two vertices will be interpolated appropriately.

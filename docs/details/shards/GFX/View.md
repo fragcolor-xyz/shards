@@ -1,0 +1,1 @@
+This view object output of this shard can be used in conjunction with a sequence of render pass objects (created by `GFX.DrawablePass`, `GFX.EffectPass` and `GFX.CopyPass`) and `GFX.Render` to render a scene.

@@ -1,0 +1,1 @@
+If both a bytes sequence is provided as input and a a file path was provided in the `File` parameter, the file path will supersede the input and the shard will load the image from the file path.

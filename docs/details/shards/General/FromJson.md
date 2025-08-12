@@ -1,0 +1,1 @@
+If the input JSON string is a Shards-specific JSON string and not a standard JSON string, if the `Pure` parameter is set to true, the shard will lose the original type information and always return a table.
