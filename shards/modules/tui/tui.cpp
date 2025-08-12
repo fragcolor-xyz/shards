@@ -102,6 +102,8 @@ struct TUIText {
     _border = Var(false);
     _flex = Var(false);
     _alignRight = Var(false);
+    _color = Var::ColorFromInt(0xFFFFFFFF);
+    _backgroundColor = Var::ColorFromInt(0x00000000);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -113,7 +115,11 @@ struct TUIText {
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_alignRight, "AlignRight", "Whether to align the text to the right",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight));
+  PARAM_PARAMVAR(_color, "Color", "The color of the text", {CoreInfo::ColorType, CoreInfo::ColorVarType});
+  PARAM_PARAMVAR(_backgroundColor, "BackgroundColor", "The background color of the text",
+                 {CoreInfo::ColorType, CoreInfo::ColorVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight), PARAM_IMPL_FOR(_color),
+             PARAM_IMPL_FOR(_backgroundColor));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -149,7 +155,11 @@ struct TUIText {
     auto border = _border.get().payload.boolValue;
     auto flex = _flex.get().payload.boolValue;
     auto alignRight = _alignRight.get().payload.boolValue;
-    _element->component = ftxui::Renderer([this, border, flex, alignRight]() {
+    auto colorValue = _color.get().payload.colorValue;
+    ftxui::Color color = ftxui::Color::RGBA(colorValue.r, colorValue.g, colorValue.b, colorValue.a);
+    auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
+    ftxui::Color backgroundColor = ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
+    _element->component = ftxui::Renderer([this, border, flex, alignRight, color, backgroundColor]() {
       auto element = ftxui::text(_text);
       if (alignRight) {
         element = element | ftxui::align_right;
@@ -160,6 +170,8 @@ struct TUIText {
       if (flex) {
         element = element | ftxui::flex;
       }
+      element = element | ftxui::color(color);
+      element = element | ftxui::bgcolor(backgroundColor);
       return element;
     });
 
