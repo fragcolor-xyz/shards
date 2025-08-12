@@ -221,6 +221,38 @@ struct Separator {
   }
 };
 
+struct Filler {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Adds a filler element to the TUI context"); }
+
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
+
+  TUIElement *_element = nullptr;
+
+  void warmup(SHContext *context) {
+    _innerElementsVar.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _element->component = ftxui::Renderer([]() { return ftxui::filler(); });
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.components.push_back(_element->component);
+    }
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
+
 struct Button {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
@@ -531,13 +563,13 @@ struct Tick {
   static SHTypesInfo outputTypes() { return TUITypes::Element; }
   static SHOptionalString help() { return SHCCSTR("Handles interactive rendering and event loop management for a TUI element."); }
 
-  ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::TerminalOutput();
+  ftxui::ScreenInteractive _screen = ftxui::ScreenInteractive::Fullscreen();
   std::unique_ptr<ftxui::Loop> _loop;
 
-  ftxui::Component _rootComponent = ftxui::Container::Vertical({});
+  ftxui::Component _currentComponent;
 
   void warmup(SHContext *context) {
-    _loop = std::make_unique<ftxui::Loop>(&_screen, _rootComponent);
+    _loop = std::make_unique<ftxui::Loop>(&_screen, _currentComponent);
 
     // Disable terminal output
     shards::logging::setStdErrLogLevel(spdlog::level::off);
@@ -546,14 +578,24 @@ struct Tick {
   void cleanup(SHContext *context) { _loop.reset(); }
 
   void activate(SHContext *context, const SHVar &input) {
+    auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
+
+    if (_currentComponent != element.component) {
+      _currentComponent = element.component;
+      _loop = std::make_unique<ftxui::Loop>(&_screen, _currentComponent);
+      SHLOG_DEBUG("New component: {}", input);
+    }
+
+    if (!_currentComponent) {
+      throw ActivationError("TUI.RunOnce requires a TUI.Element input");
+    }
+
     if (_loop->HasQuitted()) {
       SHLOG_DEBUG("Application quit");
       context->stopFlow(Var::Empty);
       return;
     }
-    auto &element = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
-    _rootComponent->DetachAllChildren();
-    _rootComponent->Add(element.component);
+
     _loop->RunOnce();
   }
 };
@@ -569,5 +611,6 @@ SHARDS_REGISTER_FN(tui) {
   REGISTER_SHARD("TUI.Button", Button);
   REGISTER_SHARD("TUI.Input", TUIInput);
   REGISTER_SHARD("TUI.Split", TUISplit);
+  REGISTER_SHARD("TUI.Filler", Filler);
 }
 } // namespace shards
