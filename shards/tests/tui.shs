@@ -10,7 +10,7 @@
     TUI.VBox({
       TUI.HBox({
         hello-text | TUI.Text(Border: true)
-        "World" | TUI.Text(Border: true Flex: true)
+        "World" | TUI.Text(Border: true Flex: true AlignRight: true)
         counter | ToString | TUI.Text(Border: true)
       })
       "Click me 1" | TUI.Button({

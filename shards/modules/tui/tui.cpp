@@ -101,6 +101,7 @@ struct TUIText {
   TUIText() {
     _border = Var(false);
     _flex = Var(false);
+    _alignRight = Var(false);
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -110,7 +111,9 @@ struct TUIText {
   PARAM_PARAMVAR(_border, "Border", "Whether to draw a border around the text", {CoreInfo::BoolType, CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_flex, "Flex", "Whether to expand proportionally to the space left in a container",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex));
+  PARAM_PARAMVAR(_alignRight, "AlignRight", "Whether to align the text to the right",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_border), PARAM_IMPL_FOR(_flex), PARAM_IMPL_FOR(_alignRight));
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -145,8 +148,12 @@ struct TUIText {
 
     auto border = _border.get().payload.boolValue;
     auto flex = _flex.get().payload.boolValue;
-    _element->component = ftxui::Renderer([this, border, flex]() {
+    auto alignRight = _alignRight.get().payload.boolValue;
+    _element->component = ftxui::Renderer([this, border, flex, alignRight]() {
       auto element = ftxui::text(_text);
+      if (alignRight) {
+        element = element | ftxui::align_right;
+      }
       if (border) {
         element = element | ftxui::border;
       }
