@@ -13,6 +13,61 @@
 namespace shards {
 namespace tui {
 
+class ScrollerBase : public ftxui::ComponentBase {
+public:
+  ScrollerBase(ftxui::Component child) { Add(child); }
+
+private:
+  ftxui::Element OnRender() final {
+    auto focused = Focused() ? ftxui::focus : ftxui::select;
+    auto style = Focused() ? ftxui::inverted : ftxui::nothing;
+
+    ftxui::Element background = ComponentBase::Render();
+    background->ComputeRequirement();
+    size_ = background->requirement().min_y;
+    return ftxui::dbox({
+               std::move(background),
+               ftxui::vbox({
+                   ftxui::text("") | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, selected_),
+                   ftxui::text("") | style | focused,
+               }),
+           }) |
+           ftxui::vscroll_indicator | ftxui::yframe | ftxui::yflex | ftxui::reflect(box_);
+  }
+
+  bool OnEvent(ftxui::Event event) final {
+    if (event.is_mouse() && box_.Contain(event.mouse().x, event.mouse().y))
+      TakeFocus();
+
+    int selected_old = selected_;
+    if (event == ftxui::Event::ArrowUp || event == ftxui::Event::Character('k') ||
+        (event.is_mouse() && event.mouse().button == ftxui::Mouse::WheelUp)) {
+      selected_--;
+    }
+    if ((event == ftxui::Event::ArrowDown || event == ftxui::Event::Character('j') ||
+         (event.is_mouse() && event.mouse().button == ftxui::Mouse::WheelDown))) {
+      selected_++;
+    }
+    if (event == ftxui::Event::PageDown)
+      selected_ += box_.y_max - box_.y_min;
+    if (event == ftxui::Event::PageUp)
+      selected_ -= box_.y_max - box_.y_min;
+    if (event == ftxui::Event::Home)
+      selected_ = 0;
+    if (event == ftxui::Event::End)
+      selected_ = size_;
+
+    selected_ = std::max(0, std::min(size_ - 1, selected_));
+    return selected_old != selected_;
+  }
+
+  bool Focusable() const final { return true; }
+
+  int selected_ = 0;
+  int size_ = 0;
+  ftxui::Box box_;
+};
+
 struct TUIElement {
   ftxui::Component component;
 
@@ -620,32 +675,11 @@ struct TUIFrame : TUIModifierBase {
 };
 
 struct TUIScrollable : TUIModifierBase {
-  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a vertical scrollable container"); }
-
-  TUIScrollable() { _vertical = Var(true); }
-
-  PARAM_PARAMVAR(_vertical, "Vertical",
-                 "Whether the input element is scrollable vertically, if false, it will be scrollable horizontally",
-                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_vertical));
-
-  PARAM_REQUIRED_VARIABLES();
-  SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    return TUITypes::Element;
-  }
-
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  static SHOptionalString help() { return SHCCSTR("Wraps the input element in a scrollable container"); }
 
   void activate(SHContext *context, const SHVar &input) {
     auto &elem = varAsObjectChecked<TUIElement>(input, TUITypes::Element);
-    if (_vertical.get().payload.boolValue) {
-      elem.component = elem.component | ftxui::vscroll_indicator;
-    } else {
-      elem.component = elem.component | ftxui::hscroll_indicator;
-    }
+    elem.component = ftxui::Make<ScrollerBase>(elem.component);
   }
 };
 
