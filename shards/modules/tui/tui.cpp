@@ -1,16 +1,14 @@
-#include "ftxui/component/captured_mouse.hpp" // for ftxui
-#include "ftxui/component/component.hpp"      // for Button, Horizontal, Renderer
-#include "ftxui/component/component_base.hpp" // for ComponentBase
-
-#include "ftxui/component/screen_interactive.hpp" // for ScreenInteractive
-#include "ftxui/component/loop.hpp"               // for Loop
-#include "ftxui/dom/elements.hpp"                 // for separator, gauge, text, Element, operator|, vbox, border
-
 #include <shards/shards.hpp>
 #include <shards/utility.hpp>
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
 #include <shards/common_types.hpp>
+
+#include "ftxui/component/component.hpp"          // for Button, Horizontal, Renderer
+#include "ftxui/component/component_base.hpp"     // for ComponentBase
+#include "ftxui/component/screen_interactive.hpp" // for ScreenInteractive
+#include "ftxui/component/loop.hpp"               // for Loop
+#include "ftxui/dom/elements.hpp"                 // for separator, gauge, text, Element, operator|, vbox, border
 
 namespace shards {
 namespace tui {
