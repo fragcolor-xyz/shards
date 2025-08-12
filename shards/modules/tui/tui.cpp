@@ -161,6 +161,73 @@ struct TUIText {
     return TUITypes::ElementObjectVar.Get(_element);
   }
 };
+struct TUIParagraph {
+  TUIParagraph() {
+    _color = Var::ColorFromInt(0xFFFFFFFF);
+    _backgroundColor = Var::ColorFromInt(0x00000000);
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return TUITypes::Element; }
+  static SHOptionalString help() { return SHCCSTR("Adds a paragraph element with text wrapping to the TUI context"); }
+
+  PARAM_PARAMVAR(_color, "Color", "The color of the text", {CoreInfo::ColorType, CoreInfo::ColorVarType});
+  PARAM_PARAMVAR(_backgroundColor, "BackgroundColor", "The background color of the text",
+                 {CoreInfo::ColorType, CoreInfo::ColorVarType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_color), PARAM_IMPL_FOR(_backgroundColor));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return TUITypes::Element;
+  }
+
+  ParamVar _innerElementsVar{Var::ContextVar("_TUI.InnerElements")};
+
+  TUIElement *_element = nullptr;
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+    _innerElementsVar.warmup(context);
+    _element = TUITypes::ElementObjectVar.New();
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _innerElementsVar.cleanup(context);
+    if (_element) {
+      TUITypes::ElementObjectVar.Release(_element);
+      _element = nullptr;
+    }
+  }
+
+  std::string _text;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto text = SHSTRVIEW(input);
+    _text.assign(text.data(), text.data() + text.size());
+
+    auto colorValue = _color.get().payload.colorValue;
+    ftxui::Color color = ftxui::Color::RGBA(colorValue.r, colorValue.g, colorValue.b, colorValue.a);
+    auto backgroundColorValue = _backgroundColor.get().payload.colorValue;
+    ftxui::Color backgroundColor =
+        ftxui::Color::RGBA(backgroundColorValue.r, backgroundColorValue.g, backgroundColorValue.b, backgroundColorValue.a);
+    
+    _element->component = ftxui::Renderer([this, color, backgroundColor]() {
+      auto element = ftxui::paragraph(_text);
+      element = element | ftxui::color(color);
+      element = element | ftxui::bgcolor(backgroundColor);
+      return element;
+    });
+
+    if (_innerElementsVar.get().valueType == SHType::Object) {
+      auto &innerElements = varAsObjectChecked<TUIInnerElements>(_innerElementsVar.get(), TUITypes::InnerElements);
+      innerElements.components.push_back(_element);
+    }
+
+    return TUITypes::ElementObjectVar.Get(_element);
+  }
+};
 
 struct Separator {
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
