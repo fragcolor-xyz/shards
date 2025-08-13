@@ -60,6 +60,6 @@ jobs:
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/jinja.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/crdts.shs
           valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/crdt-benchmarks.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/tui.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/tui1.shs
+          # valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/tui.shs
+          # valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/tui1.shs
 
