@@ -487,41 +487,28 @@ struct TUIInput {
       return state.element;
     };
 
-    auto placeholderStr = SHSTRVIEW(_placeholder.get());
-    option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
+    auto currentValue = SHSTRVIEW(_value.get());
+
+    if (currentValue.empty()) {
+      auto placeholderStr = SHSTRVIEW(_placeholder.get());
+      option.placeholder->assign(placeholderStr.data(), placeholderStr.data() + placeholderStr.size());
+    }
 
     option.password = _password.get().payload.boolValue;
 
     option.multiline = _multiline.get().payload.boolValue;
 
     option.on_change = [this]() {
+      SHLOG_TRACE("on_change: {}", _value.get());
       auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
       cloneVar(_value.get(), tmp);
-      SHLOG_TRACE("on_change: {}", _value.get());
     };
 
     if (_onEnter) {
       option.on_enter = [&, context, input]() {
-        // Remove trailing newlines (handles both \n and \r\n)
-        while (!_buffer.empty() && (_buffer.back() == '\n' || _buffer.back() == '\r')) {
-          _buffer.pop_back();
-        }
-
-        // Update value variable with cleaned buffer content
-        auto tmp = Var(std::string_view(_buffer.data(), _buffer.size()));
-        cloneVar(_value.get(), tmp);
-
         // Execute the OnEnter action
         SHVar output{};
         _onEnter.activate(context, input, output);
-
-        // Clear buffer for next input
-        _buffer.clear();
-        _cursorPosition = 0;
-
-        // Update value variable to reflect cleared state
-        tmp = Var("");
-        cloneVar(_value.get(), tmp);
       };
     }
 
@@ -529,10 +516,7 @@ struct TUIInput {
 
     option.cursor_position = &_cursorPosition;
 
-    auto currentValue = SHSTRVIEW(_value.get());
-    if (!currentValue.empty()) {
-      _buffer.assign(currentValue.data(), currentValue.data() + currentValue.size());
-    }
+    _buffer.assign(currentValue.data(), currentValue.data() + currentValue.size());
 
     _element->component = ftxui::Input(option);
     if (_innerElementsVar.get().valueType == SHType::Object) {
