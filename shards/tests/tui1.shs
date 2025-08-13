@@ -1,7 +1,7 @@
 @wire(main {
   TUI.VBox({
     TUI.HBox({
-      "north-west" | TUI.Text
+      "north-west" | TUI.Paragraph
       TUI.Filler
       "north-east" | TUI.Text
     })
@@ -23,4 +23,5 @@
 
 @mesh(root)
 @schedule(root main)
-@run(root FPS: 30)
+@run(root FPS: 30
+Iterations: 10)

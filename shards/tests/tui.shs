@@ -99,5 +99,4 @@
 @mesh(root)
 @schedule(root main)
 @run(root FPS: 30
-; Iterations: 10
-)
+Iterations: 10)
