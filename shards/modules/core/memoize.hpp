@@ -41,6 +41,74 @@ struct Memoize {
     return _lastOutput;
   }
 };
+
+struct Track {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Tracks the variables and executes the action when they change."); }
+
+  PARAM_VAR(_variables, "Variables", "The variables to track for changes.", {CoreInfo::AnySeqType});
+  PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::ShardsOrNoneSeq});
+  PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto res = _action.compose(data);
+    if (res.failed)
+      throw ComposeError("Failed to compose Track action");
+    return res.outputType;
+  }
+
+  std::unordered_set<std::string_view> _varNames;
+  bool _shouldActivate = false;
+
+  SHExposedTypesInfo requiredVariables() { return _action.composeResult().requiredInfo; }
+  SHExposedTypesInfo exposedVariables() { return _action.composeResult().exposedInfo; }
+
+  void cleanup(SHContext *context) {
+    _action.cleanup(context);
+
+    _varNames.clear();
+
+    if (context) {
+      auto mesh = context->rootWire()->mesh.lock();
+      if (mesh) {
+        mesh->dispatcher.sink<shards::OnTrackedVarSet>().disconnect<&Track::handleTrackedVarSet>(this);
+      }
+    }
+  }
+
+  void warmup(SHContext *context) {
+    _action.warmup(context);
+
+    for (auto &variable : _variables) {
+      auto name = SHSTRVIEW(variable);
+      _varNames.insert(name);
+    }
+
+    auto mesh = context->rootWire()->mesh.lock();
+    mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSet>(this);
+
+    _shouldActivate = true; // always trigger the first time
+  }
+
+  void handleTrackedVarSet(OnTrackedVarSet &event) {
+    if (!_shouldActivate && _varNames.contains(event.name)) {
+      _shouldActivate = true;
+    }
+  }
+
+  OwnedVar _output;
+
+  SHVar &activate(SHContext *context, const SHVar &input) {
+    if (_shouldActivate) {
+      _shouldActivate = false;
+
+      _action.activate(context, input, _output);
+    }
+
+    return _output;
+  }
+};
 } // namespace shards
 
 #endif /* CFB9369D_F72D_4EA0_BD57_F57DF65999C2 */

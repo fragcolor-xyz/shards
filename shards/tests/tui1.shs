@@ -1,0 +1,27 @@
+@wire(main {
+  TUI.VBox({
+    TUI.HBox({
+      "north-west" | TUI.Paragraph
+      TUI.Filler
+      "north-east" | TUI.Text
+    })
+    TUI.Filler
+    TUI.HBox({
+      TUI.Filler
+      "center" | TUI.Text
+      TUI.Filler
+    })
+    TUI.Filler
+    TUI.HBox({
+      "south-west" | TUI.Text
+      TUI.Filler
+      "south-east" | TUI.Text
+    })
+  }) | TUI.RunOnce
+  ; TUI.Render | Process.StdOut
+} Looped: true)
+
+@mesh(root)
+@schedule(root main)
+@run(root FPS: 30
+Iterations: 10)

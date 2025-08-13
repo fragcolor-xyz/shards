@@ -365,6 +365,8 @@ spdlog::level::level_enum getSinkLevel() { return globalSinks().mainSink->level(
 
 void setSinkLevel(spdlog::level::level_enum level) { globalSinks().mainSink->set_level(level); }
 
+void setStdErrLogLevel(spdlog::level::level_enum level) { globalSinks().stdErrSink->set_level(level); }
+
 static void setupDefaultLogger(const std::string &fileName) {
   auto &sinks = globalSinks();
 

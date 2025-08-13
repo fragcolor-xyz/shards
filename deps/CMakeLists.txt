@@ -286,3 +286,5 @@ add_subdirectory(opus)
 
 add_library(crdt_lite INTERFACE)
 target_include_directories(crdt_lite INTERFACE crdt-lite)
+
+add_subdirectory(FTXUI)
