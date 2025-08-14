@@ -15,24 +15,6 @@ Every shard has a role and is usually named after it. For example, the shard `Ma
 
 ![The Math.Add shard.](assets/math-add-example.png)
 
-Shards can be grouped up to form another shard. 
-
-For example, you might have a `meow` shard that prints a "meow" to the user's screen, and a `mew` shard that prints a "mew" instead. 
-
-![The meow and mew shards.](assets/meow-mew-shard.png)
-
-If you wanted your program to be able to make cat noises, you might have a bunch of `meow` and `mew` shards... which could end up being rather cluttered:
-
-![A gathering of meow and mew shards.](assets/ungrouped-shards.png)
-
-To keep our work organized, we can group shards up to form a new shard. In our example, we can create a new `meows` shard that is made up of a few `meow` shards, and create a `mews` shard for our `mew` shards.
-
-![Grouping shards up to for a new shard.](assets/grouping-shards-up.png)
-
-When our shards are grouped up into logical segments, our program becomes more readable and orderly.
-
-![Grouping shards up into new shards helps to keep the program organized.](assets/grouped-shards.png)
-
 ## The Wire
 In the flow of a Shards program, each shard is queued for execution and will be run in the order they are presented in. The order goes from left to right, top to bottom.
 
@@ -43,16 +25,6 @@ When shards are queued, they form a sequence know as a **Wire**.
 Wires can be set to be loopable. This is called a **Looped Wire**.
 
 ![A Looped Wire.](assets/what-is-a-looped-wire.png)
-
-You may look at this and wonder - is this the same as grouping shards together? When shards are grouped up to form a new shard, they are still executed from left to right, top to bottom after all.
-
-The answer is... no! A Wire is not the same as a shard containing shards. 
-
-A Wire queues shards for a **purpose**, while grouping shards up are for **organization**. In the earlier example, we were trying to create a program that makes cat noises. We can achieve that by queueing our shards in a Wire named `make-cat-noises`.
-
-![The meows and mews shards are queued up in a Wire that makes cat noises.](assets/shards-in-wire.png)
-
-Whenever we want our program to produce cat noises, we would call the `make-cat-noises` Wire. A Wire is similar to what we call a *function* in traditional programming languages.
 
 ??? "What is a function?"
     It is a block of code that can be reused over and over again.

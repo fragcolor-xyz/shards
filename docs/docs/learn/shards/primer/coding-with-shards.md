@@ -4,19 +4,19 @@ In this chapter, we will be learning how to code with Shards so that you can wri
 
 ## The shard
 
-A shard in its most basic code form consists of its name surrounded by parentheses.
+A shard in its most basic code form consists of its name and parameters(when applicable).
 
-![Some shard examples.](assets/shards-examples.png)
+```shards
+Math.Add(Operand: 1)
+
+Msg("Hello")
+
+Wait(Wire: main-gfx Timeout: 2.0)
+```
 
 The above example consists of 3 different predefined shards.
 
-Shards are named to make their purpose rather intuitive. [`(Msg)`](../../../../reference/shards/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../../reference/shards/shards/Math/Add/) is a Mathematics shard that adds numbers together.
-
-!!! note
-    It is a good practice to name your code based on its purpose. This allows others to easily understand what your code achieves without getting too technical.
-
-    For example, the code `(Msg "Hello World!")` can be easily understood to be sending the message "Hello World" to the console. You do not need to delve into how `(Msg)` was coded to understand what it can do.
-
+Shards are named to make their purpose rather intuitive. [`Msg`](../../../../reference/shards/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../../reference/shards/shards/Math/Add/) is a Mathematics shard that adds numbers together.
 
 A shard can take in an input, process that input, and produce an output. Shards also have *parameters* that behave as user-defined settings.
 
@@ -24,7 +24,7 @@ For example, `Math.Add` has the parameter `Operand` which is defined by the user
 
 ![The parameters set for a shard affects it's behavior.](assets/shard-parameter.png)
 
-In code form, parameters are defined by the user within the parentheses of the shard itself, after the shard's name. The above examples will appear as `5 (Math.Add 1)` and `5 (Math.Add 3)` in code. 
+In code form, parameters are defined by the user within the parentheses of the shard itself, after the shard's name. The above examples will appear as `5 Math.Add(Operand: 1)` and `5 Math.Add(3)` in code. 
  
 Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
@@ -34,72 +34,75 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 
 === "1 Parameter (Implicit)"
 
-    ```{.clojure .annotate linenums="1"}
-    (Repeat
-        (-> (Msg "Hello World!"))) ;; (1)(2)
+    ```shards
+    Repeat({
+        Msg("Hello World")
+    }) ;; (1)(2)
     ```
 
-    1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `(Msg "Hello World")` to it.
+    1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `Msg("Hello World")` to it.
     2. Since the other parameters are not defined, they will assume their default values. In this case, the `Repeat` shard will not run at all as `Times` has a default value of 0.
 
 === "2 Parameters (Explicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        :Action (-> (Msg "Hello World!")) ;; (1)
-        :Times 2) ;; (2)
+
+    ```shards
+    Repeat(
+        Action: {Msg("Hello World!")} ;; (1)
+        Times: 2
+    ) ;; (2)
     ```
 
     1. The parameters are explicitly declared for clarity.
     2. Repeats the `Action` twice.
 
 === "2 Parameters (Implicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat ;; (1)
-        (-> (Msg "Hello World!"))
-        2)
+
+    ```shards
+    Repeat( ;; (1)
+        {Msg("Hello World!")}
+        2
+    )
     ```
 
     1. Both parameters can be implicit since they are resolved in order. In this case, `Action` is the first implicit parameter, and `Times` is the second implicit parameter.
 
 === "2 Parameters (Implicit 1st)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        (-> (Msg "Hello World!")) ;; (1)
-        :Times 2)
+
+    ```shards
+    Repeat(
+        {Msg("Hello World!")} ;; (1)
+        Times: 2
+    )
     ```
 
     1. You can still implicitly declare the first parameter, while fully declaring the other parameters. Note that it does not work vice versa. You cannot implicitly declare parameters if a parameter before it has been explicitly declared.
 
 === "(INCORRECT) 2 Parameters (Implicit 2nd)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        :Action (-> (Msg "Hello World!")) 
-        2) ;; (1)
+
+    ```shards
+    Repeat(
+        Action: {Msg("Hello World!")} 
+        2
+    ) ;; (1)
     ```
 
     1. This will not work as you cannot implicitly declare the second parameter if the first has been fully declared.
 
 === "3 Parameters (Explicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat
-       :Action (-> (Msg "Hello World!"))
-       :Forever true ;; (1)
-       :Until ( ;; some condition )
+
+    ```shards
+    Repeat(
+       Action: Msg("Hello World!")
+       Forever: true ;; (1)
+       Until: { ;; some condition }
        ) ;; (2)
     ```
 
     1. The `Times` parameter is skipped and `Forever` is declared instead. Since we are skipping a parameter, we must fully declare the parameters that come after it.
     2. `Until` takes a shard that returns `true` or `false`. `Repeat` will loop forever until the shard specified in `Until` evaluates to `true`.
 
-!!! note "`->`"
-    When using shards for a parameter (e.g., `Action`), you must always place `->` before the first shard.
-
-    [`->`](../../../../reference/shards/lisp/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
+!!! note "`{}`"
+    When using groups of shards for a parameters (e.g., `Action`), you must place those shards in a `{}` container or an error will be thrown.
 
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
@@ -154,14 +157,15 @@ Imagine a scenario where you have a float `3.141592653589793` that you need to r
 
 === "Without Variables"
 
-    ```{.clojure .annotate linenums="1"}
-    3.141592653589793 (Math.Add 3.141592653589793) (Math.Multiply 3.141592653589793) (Math.Subtract 3.141592653589793)
+    ```shards
+    3.141592653589793 | Math.Add(3.141592653589793) | Math.Multiply(3.141592653589793) | Math.Subtract(3.141592653589793)
     ```
+
 === "With Variables"
 
-    ```{.clojure .annotate linenums="1"}
-    3.141592653589793 = .pi-value ;; (1)
-    .pi-value (Math.Add .pi-value) (Math.Multiply .pi-value) (Math.Subtract .pi-value)
+    ```shards
+    3.141592653589793 = pi-value ;; (1)
+    pi-value | Math.Add(.pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
     ```
 
     1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
@@ -170,11 +174,11 @@ Variable names always start with a `.` period.
 
 Some example of variable names:
 
-- `.x`
+- `x`
 
-- `.number-of-apples`
+- `number-of-apples`
 
-- `.is-verified` 
+- `is-verified` 
 
 How you assign data to variables depends on the variable type. The main differences between variables are as follows:
 
@@ -198,70 +202,80 @@ Here are the variable types and the symbols used to create and assign to them:
 | Variable Type   | Shard       | Alias  | Description                          |
 | :-------------- | :---------- | :----- | :----------------------------------- |
 | Local, Constant | `Ref`       | `=`    | Creates a local constant variable.   | 
-| Local, Mutable  | `Set`       | `>=`   | Creates a local mutable variable.    |
-| Global, Mutable | `Set`       | `>==`  | Creates a global mutable variable.   |
+| Local, Mutable  | `Set(Global: false)`       | `>=`   | Creates a local mutable variable.    |
+| Global, Mutable | `Set(Global: true)`       | none | Creates a global mutable variable.   |
 | Mutable         | `Update`    | `>`    | Updates a mutable variable.          |
 
 In summary:
 
 - Use `=` to create **constant** variables.
 
-- Otherwise, use `>=` to create **local** variables, or `>==` to make them **global**.
+- Otherwise, use `>=` to create **local** variables.
 
 - Use `>` to update variable values.
 
-When defining variables in your program, you can use `Setup` to ensure that variables defined within it will only ever be defined once within a program.
+When defining variables in your program, you can use `Once` to ensure that variables defined within it will only ever be defined once within a program.
 
 === "Defining Variables in Setup"
 
-    ```{.clojure .annotate linenums="1"}
-    (Setup
-     10 >= .timer
-     100 >= max-points) ;; (1)
+    ```shards
+    Setup({
+     10 >= timer
+     100 >= max-points
+    }) ;; (1)
     ```
 
     1. Code within a `Setup` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
 
-`Setup` is an alias of the shard [`Once`](../../../../reference/shards/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in its `Action` parameter will only be run once.
-
 ## Grouping shards
 
-[`defshards`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
+[`@define`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards to form a new shard. This new shard can then be used inline at any other point of your code. It is useful for organizing your code and improving readability.
 
-`defshards` has a syntax as such:
+`@define` has a syntax as such:
 
 === "Code"
-    
-    ```{.clojure .annotate linenums="1"}
 
-    (defshards shard-name []
-        ;; your shards here
+    ```shards
+
+    @defshards( message-groups {
+        Msg("Hello World 1")
+        Msg("Hello World 2")
+     }
     )
-    ```
-
-The square brackets `[]` are where you can define parameters. For example:
-
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
-
-    (defshards send-message [message]
-        (Msg "Message Incoming...")
-        (Msg message))
     ```
 
 When used in code:
 
 === "Code"
-    
-    ```{.clojure .annotate linenums="1"}
 
+    ```shards
     (send-message "Hello World!")
     ```
 
-=== "Result"
-    
+`@template` similarly allows you to group shards together and create a new shard. `@template` however allows you pass parameters into the new shard.
+
+=== "Code"
+
     ```{.clojure .annotate linenums="1"}
+
+    @template(send-message [message] {
+        Msg ("Message Incoming...")
+        Msg(message)
+    })
+    ```
+
+When used in code:
+
+=== "Code"
+
+    ```shards
+
+    send-message("Hello World!")
+    ```
+
+=== "Result"
+
+    ```shards
 
     Message Incoming...
     Hello World!
@@ -271,48 +285,39 @@ Let us now take a look at how we can utilize `defshards` in a code snippet that 
 
 === "Code"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
 
-    (Repeat
-     :Action
-     (-> (Msg "1")
-         (Msg "2")
-         (Msg "3")
-         (Msg "4")
-         (Msg "5"))
-     :Times 5)
+    Repeat(
+     Action:{
+       Msg("1")
+       Msg("2")
+       Msg("3")
+       Msg("4")
+       Msg("5")
+     }
+     Times: 5)
     ```
 
-We can replace the use of `->` above with `defshards` to make the count from 1 to 5 code reusable and factor it out under a new shard called `msg-one-to-five`.
+We can replace the block of the code in the `Action` parameter above with a `@define` to make the count from 1 to 5 code reusable and factor it out under a new shard called `msg-one-to-five`.
 
 === "Code"
     
     ```{.clojure .annotate linenums="1"}
     
-    (defshards msg-one-to-five []
-      (Msg "1")
-      (Msg "2")
-      (Msg "3")
-      (Msg "4")
-      (Msg "5"))
+    @define(msg-one-to-five {
+      Msg("1")
+      Msg("2")
+      Msg("3")
+      Msg("4")
+      Msg("5")
+    })
 
-    (Repeat
-     :Action (msg-one-to-five)
-     :Times 5)
+    Repeat(
+     Action: {
+        @msg-one-to-five
+     }
+     Times: 5)
     ```
-!!! note
-    The parameter will still require a `->` if it contains multiple shards.
-
-    === "Code"
-    
-        ```{.clojure .annotate linenums="1"}
-  
-        (Repeat
-         :Action
-         (-> (msg-one-to-five)
-             (Msg "6"))
-         :Times 5)
-        ```
 
 ## The Wire
 
@@ -320,18 +325,18 @@ A Wire is made up of a sequence of shards, queued for execution from left to rig
 
 ![A Wire is made up of a sequence of shards.](assets/what-is-a-wire.png)
 
-To create a Wire, we use [`defwire`](../../../../reference/shards/lisp/macros/#defwire).
+To create a Wire, we use [`@wire`](../../../../reference/shards/lisp/macros/#defwire).
 
 === "Creating a Wire"
     
-    ```{.clojure .annotate linenums="1"}
-    (defwire wire-name 
+    ```shards
+    @wire( wire-name 
       ;; shards here
     )
     ```
 
 !!! note
-    The syntax for `defwire` is different from `defshards` as you cannot define parameters. Square brackets `[]` are not used. Instead, `defwire` inherits variables from the parent wire unless the variables are pure.
+    `@wire` inherits variables from the parent wire unless the variables are pure.
 
 !!! note
     Unlike `defshards` which group shards up for organization, `defwire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.

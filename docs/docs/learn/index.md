@@ -16,8 +16,6 @@ Our tutorials, on the other hand, are more focused on practical application and 
 Begin by navigating to the project you wish to learn more about:
 
 - [Shards](./shards/)
-
-- Rare Engine (Coming Soon!)
 <!-- - [Rare Engine](./rare-engine/) -->
 
 --8<-- "includes/license.md"
