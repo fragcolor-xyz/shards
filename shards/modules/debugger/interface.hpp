@@ -2,6 +2,7 @@
 #define EB39FB65_2B9E_4609_AAE5_17D02DF485A1
 
 #include <shards/shards.h>
+#include <shards/core/assert.hpp>
 #include <vector>
 #include <string>
 #include <tuple>

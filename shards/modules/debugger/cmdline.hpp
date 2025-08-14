@@ -9,6 +9,8 @@
 #endif
 #if SH_APPLE
 #include <sys/sysctl.h>
+#include <fstream>
+#include <unistd.h>
 #endif
 #if SH_LINUX
 #include <unistd.h>
