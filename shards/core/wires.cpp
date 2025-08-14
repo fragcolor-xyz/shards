@@ -1,6 +1,9 @@
 #include "foundation.hpp"
 #include "runtime.hpp"
 #include "trait.hpp"
+#if SHARDS_DEBUGGER
+#include <shards/modules/debugger/interface.hpp>
+#endif
 
 using namespace shards;
 
@@ -68,7 +71,7 @@ void SHWire::warmup(SHContext *context) {
           if (status.code != SH_ERROR_NONE) {
             std::string_view msg(status.message.string, size_t(status.message.len));
             SHLOG_ERROR("Warmup failed on wire: {}, shard: {} ({})", name, blk->name(blk),
-                        formatShardSourceLocation<InternalCore>(blk));
+                        formatShardSourceLocation(blk));
             throw shards::WarmupError(msg);
           }
         }

@@ -16,15 +16,21 @@ struct FileRegistry {
 
   uint32_t map(std::string_view path) {
     if (path.empty()) {
-      SPDLOG_WARN("line_info: File path {} is invalid", path);
       return 0;
     }
 
     boost::filesystem::path p(path);
     auto npath = p.lexically_normal();
     auto gpath = npath.generic_string();
+    if(gpath.empty()) {
+      return 0;
+    }
+
+    // Normalize drive letter
+    gpath[0] = std::toupper(gpath[0]);
     
     std::shared_lock lock(mtx);
+
     auto it = pathToId.find(gpath);
     if (it == pathToId.end()) {
       auto s = XXH3_createState();

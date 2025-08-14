@@ -7,6 +7,11 @@
 #include <thread>
 #include "platform.hpp"
 
+#ifdef SHARDS_DEBUGGER
+#define SH_BASE_STACK_SIZE 2 * 1024 * 1024
+#endif
+
+#ifndef SH_BASE_STACK_SIZE
 #if SH_EMSCRIPTEN
 #define SH_BASE_STACK_SIZE 2 * 1024 * 1024
 #else
@@ -16,6 +21,7 @@
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
 #endif // SH_EMSCRIPTEN
+#endif
 
 // Enable to assert on consistent resuming
 // this is required to pass for the emscripten version to work correctly
@@ -56,8 +62,8 @@ private:
   std::atomic_bool isRunning;
 
   std::optional<boost::thread> thread;
-  logging::LogContext* srcLogContext{};
-  logging::LogContext* logContext;
+  logging::LogContext *srcLogContext{};
+  logging::LogContext *logContext;
 
 public:
   ThreadFiber() = default;

@@ -8,6 +8,8 @@
 #include "utility.hpp"
 
 namespace shards {
+inline std::string formatShardSourceLocation(Shard *blk);
+
 SH_HAS_MEMBER_TEST(name);
 SH_HAS_MEMBER_TEST(hash);
 SH_HAS_MEMBER_TEST(help);
@@ -182,14 +184,14 @@ template <class T> struct ShardWrapper {
     } else {
       result->getParam = static_cast<SHGetParamProc>([](Shard *b, int i) { return SHVar(); });
     }
-
+ 
     // compose
     if constexpr (has_compose<T>::value) {
       result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData *data) {
         try {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(*data)};
         } catch (std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
           return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                                                  reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}},
                                       SHTypeInfo{}};
@@ -206,7 +208,7 @@ template <class T> struct ShardWrapper {
         try {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.composeV2(*data)};
         } catch (std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
           return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                                                  reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}},
                                       SHTypeInfo{}};
@@ -224,7 +226,7 @@ template <class T> struct ShardWrapper {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.warmup(ctx);
           return SHError::Success;
         } catch (const std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
           return SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                             reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}};
         }

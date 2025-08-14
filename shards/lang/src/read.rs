@@ -175,25 +175,6 @@ impl ReadEnv {
     return 0;
   }
 
-  fn make_line_info_from_pos<'a>(&self, pos: Position<'a>) -> LineInfo {
-    let line = pos.line_col().0;
-    let column = pos.line_col().1;
-    LineInfo {
-      line: line as u32,
-      column: column as u32,
-      file: self.resolve_file_id(),
-    }
-  }
-
-  fn make_line_info_from_rule<'a>(&self, rule: &Pair<'a, Rule>) -> LineInfo {
-    let (line, column) = rule.line_col();
-    LineInfo {
-      line: line as u32,
-      column: column as u32,
-      file: self.resolve_file_id(),
-    }
-  }
-
   fn make_line_info_from_pair<'a>(&self, pair: &Pair<'a, Rule>) -> LineInfo {
     let (line, column) = pair.line_col();
     LineInfo {

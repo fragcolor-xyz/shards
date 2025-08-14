@@ -1,0 +1,15 @@
+[package]
+name = "shards-debugger"
+description = ""
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Fragcolor <ops@fragcolor.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+petname = "1.1.3"
+rand = "0.8.5"

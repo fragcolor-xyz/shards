@@ -110,11 +110,11 @@ constexpr SHStringWithLen toSWL(std::string_view str) { return SHStringWithLen{s
 
 constexpr std::string_view toStringView(SHStringWithLen swl) { return std::string_view(swl.string, swl.len); }
 
-template <class SH_CORE_> inline std::string formatShardSourceLocation(Shard *blk) {
+template <class SH_CORE_> inline std::string formatShardSourceLocationWithCore(Shard *blk) {
   SHStringWithLen fileName = SH_CORE_::getSourceFileName(blk->file);
   if (fileName.string == nullptr)
     fileName = shards::toSWL("<unknown>");
-  return fmt::format("{}:{}:{}", fileName, blk->line, blk->column);
+  return fmt::format("{}:{}:{}", toStringView(fileName), blk->line, blk->column);
 }
 
 // SFINAE tests
@@ -341,7 +341,7 @@ public:
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
           std::string msg =
-              fmt::format("{} shard: {} ({})", errors.message.string, blk->name(blk), formatShardSourceLocation<SH_CORE>(blk));
+              fmt::format("{} shard: {} ({})", errors.message.string, blk->name(blk), formatShardSourceLocationWithCore<SH_CORE>(blk));
           throw WarmupError(msg);
         }
       }

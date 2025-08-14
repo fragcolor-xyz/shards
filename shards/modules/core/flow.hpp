@@ -8,6 +8,9 @@
 #include <shards/core/shared.hpp>
 #include <shards/core/async.hpp>
 #include <shards/core/exposed_type_utils.hpp>
+#if SHARDS_DEBUGGER
+#include <shards/modules/debugger/interface.hpp>
+#endif
 #include <atomic>
 
 namespace shards {
@@ -395,7 +398,7 @@ struct Maybe : public BaseSubFlow {
     if (_elseBlks && !nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
       outputType = CoreInfo::AnyType;
       SHLOG_WARNING("Maybe: Branches return different types, setting output type to Any!, wire: {}, {}",
-                    data.wire ? data.wire->name : "unknown", formatShardSourceLocation<InternalCore>(_self));
+                    data.wire ? data.wire->name : "unknown", formatShardSourceLocation(_self));
     }
 
     // Maybe won't expose
@@ -506,6 +509,10 @@ struct Await : public BaseSubFlow {
       _context.emplace(nullptr, ctx->currentWire());
       _context->wireStack = ctx->wireStack;
       _context->parent = ctx;
+      _context->onWorkerThread = true;
+#if SHARDS_DEBUGGER
+      dbg::onWireRunStart(&*_context);
+#endif
     }
   }
 
@@ -518,6 +525,9 @@ struct Await : public BaseSubFlow {
       // we cannot make the bool inside the context atomic, simple, but it's fine
       _context->stopFlow();
       // Don't .reset() _context, it's still running on the worker thread
+#if SHARDS_DEBUGGER
+      dbg::onWireRunEnd(&*_context);
+#endif
     }
   }
 
@@ -778,7 +788,7 @@ struct IfBlock {
         outputType = CoreInfo::AnyType;
         auto self = data.shard;
         SHLOG_WARNING("If: Branches return different types, setting output type to Any!, wire: {}, {}",
-                      data.wire ? data.wire->name : "unknown", formatShardSourceLocation<InternalCore>(self));
+                      data.wire ? data.wire->name : "unknown", formatShardSourceLocation(self));
       }
     }
     return _passth ? data.inputType : outputType;
