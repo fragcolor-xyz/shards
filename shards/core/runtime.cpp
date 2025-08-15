@@ -727,7 +727,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
                                            SHVar *outHash = nullptr) noexcept {
 // check for stack overflow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
-  if (!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit())) {
+  if (unlikely(!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit()))) {
     uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
     uintptr_t start_address = reinterpret_cast<uintptr_t>(context->stackStart);
     SHLOG_ERROR("Stack overflow detected, wire: {} current sp: {} start address: {} stack size: {}", context->currentWire()->name,
@@ -923,8 +923,7 @@ void validateConnection(InternalCompositionContext &ctx) {
   if (!inputMatches) {
     const auto msg =
         fmt::format("Could not find a matching input type, shard: {} ({}) expected: {}. Found instead: {}",
-                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation(ctx.bottom), inputInfos,
-                    ctx.previousOutputType);
+                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation(ctx.bottom), inputInfos, ctx.previousOutputType);
 #if SH_DEBUG_TYPE_MATCHING
     // Put a breakpoint here to debug
     for (uint32_t i = 0; inputInfos.len > i; i++) {
@@ -1177,8 +1176,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
                 formatShardSourceLocation(data.shard));
   } else {
     if (wire.size() > 0) {
-      SHLOG_TRACE("Composing wire: {}, ", data.wire ? data.wire->name : "(unwired)",
-                  formatShardSourceLocation(wire.front()));
+      SHLOG_TRACE("Composing wire: {}, ", data.wire ? data.wire->name : "(unwired)", formatShardSourceLocation(wire.front()));
     } else {
       SHLOG_TRACE("Composing wire: {}", data.wire ? data.wire->name : "(unwired)");
     }
@@ -1277,9 +1275,8 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       try {
         validateConnection(ctx);
       } catch (std::exception &ex) {
-        auto verboseMsg =
-            fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
-                        formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+        auto verboseMsg = fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
+                                      formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
         // error log it
         SHLOG_ERROR("{}", verboseMsg);
         // send error if we can
