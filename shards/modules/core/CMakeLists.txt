@@ -54,7 +54,6 @@ add_shards_module(core SOURCES ${SOURCES}
   CoreRefTable
   CoreSetUpdateRegular
   CoreSetUpdateTable
-  CoreSwap
   CorePush
   CoreIs
   CoreIsNot

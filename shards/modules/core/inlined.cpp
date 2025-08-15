@@ -33,45 +33,55 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Not> *>(blk);
     return &shard->shard.activate(context, input);
   }
-  case InlineShard::CoreIs: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Is> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
+  case InlineShard::CoreIs:
   case InlineShard::CoreIsNot: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsNot> *>(blk);
-    return &shard->shard.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Is> *>(blk);
+    auto result = &shard->shard.activate(context, input);
+    // save on ASM instructions by not inverting the result, big win for cache locality
+    if (blk->inlineShardId == InlineShard::CoreIsNot) {
+      shard->shard._output.payload.boolValue = !shard->shard._output.payload.boolValue;
+    }
+    return result;
   }
-  case InlineShard::CoreIsMore: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsMore> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
-  case InlineShard::CoreIsLess: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsLess> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
-  case InlineShard::CoreIsMoreEqual: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsMoreEqual> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
+  case InlineShard::CoreIsMore:
   case InlineShard::CoreIsLessEqual: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsLessEqual> *>(blk);
-    return &shard->shard.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsMore> *>(blk);
+    auto result = &shard->shard.activate(context, input);
+    if (blk->inlineShardId == InlineShard::CoreIsLessEqual) {
+      // !(a > b) == (a <= b)
+      shard->shard._output.payload.boolValue = !shard->shard._output.payload.boolValue;
+    }
+    return result;
   }
-  case InlineShard::CoreIsTrue: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<IsTrue> *>(blk);
-    return &shard->shard.activate(context, input);
+  case InlineShard::CoreIsLess:
+  case InlineShard::CoreIsMoreEqual: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::IsLess> *>(blk);
+    auto result = &shard->shard.activate(context, input);
+    if (blk->inlineShardId == InlineShard::CoreIsMoreEqual) {
+      // !(a < b) == (a >= b)
+      shard->shard._output.payload.boolValue = !shard->shard._output.payload.boolValue;
+    }
+    return result;
   }
+  case InlineShard::CoreIsTrue:
   case InlineShard::CoreIsFalse: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<IsFalse> *>(blk);
-    return &shard->shard.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<IsTrue> *>(blk);
+    auto result = &shard->shard.activate(context, input);
+    if (blk->inlineShardId == InlineShard::CoreIsFalse) {
+      // save on ASM instructions by not inverting the result, big win for cache locality
+      shard->shard.output.payload.boolValue = !shard->shard.output.payload.boolValue;
+    }
+    return result;
   }
-  case InlineShard::CoreIsNone: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<IsNone> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
+  case InlineShard::CoreIsNone:
   case InlineShard::CoreIsNotNone: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<IsNotNone> *>(blk);
-    return &shard->shard.activate(context, input);
+    auto shard = reinterpret_cast<shards::ShardWrapper<IsNone> *>(blk);
+    auto result = &shard->shard.activate(context, input);
+    if (blk->inlineShardId == InlineShard::CoreIsNotNone) {
+      // save on ASM instructions by not inverting the result, big win for cache locality
+      shard->shard.output.payload.boolValue = !shard->shard.output.payload.boolValue;
+    }
+    return result;
   }
   case InlineShard::CoreInput: {
     auto shard = reinterpret_cast<shards::ShardWrapper<Input> *>(blk);
@@ -103,10 +113,6 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
   }
   case InlineShard::CoreRepeat: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Repeat> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
-  case InlineShard::CoreSwap: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Swap> *>(blk);
     return &shard->shard.activate(context, input);
   }
   case InlineShard::MathAdd: {

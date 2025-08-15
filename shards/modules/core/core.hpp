@@ -2072,7 +2072,6 @@ struct Swap {
   OwnedVar _cache;
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreSwap;
     return data.inputType;
   }
 
