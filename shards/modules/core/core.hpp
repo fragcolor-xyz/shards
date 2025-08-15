@@ -2072,7 +2072,6 @@ struct Swap {
   OwnedVar _cache;
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::CoreSwap;
     return data.inputType;
   }
 
@@ -4622,7 +4621,7 @@ struct Repeat {
     bool forever = _forever || _times.isNone();
     int repeats;
     if (!_times.isNone()) {
-      repeats = (int)(Var &)_times.get();
+      repeats = _times.get().payload.intValue;
     } else {
       repeats = 0;
     }

@@ -801,10 +801,7 @@ struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, Dispatc
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::MathLShift;
-    return genericCompose(*this, data);
-  }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
 };
 
 struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, DispatchType::IntTypes>> {
@@ -824,10 +821,7 @@ struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, Dispatc
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    data.shard->inlineShardId = InlineShard::MathRShift;
-    return genericCompose(*this, data);
-  }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
 };
 
 #define MATH_UNARY_OPERATION(NAME, FUNCI, FUNCF)    \
