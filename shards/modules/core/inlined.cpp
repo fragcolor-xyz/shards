@@ -147,14 +147,6 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Mod> *>(blk);
     return &shard->shard.activate(context, input);
   }
-  case InlineShard::MathLShift: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::LShift> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
-  case InlineShard::MathRShift: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::RShift> *>(blk);
-    return &shard->shard.activate(context, input);
-  }
   case InlineShard::NotInline:
     return blk->activate(blk, context, &input);
     // default:

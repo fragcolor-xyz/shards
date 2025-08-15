@@ -1,8 +1,24 @@
-# SPDX-License-Identifier: BSD-3-Clause
-# Copyright © 2020 Fragcolor Pte. Ltd.
+def fib4(n):
+    n = n - 3
+    a = 1
+    b = 2
+    
+    for _ in range(n):
+        c = a + b
+        a = b
+        b = c
+    
+    return b
 
-def fib(n):
-  if n < 2: return n
-  return fib(n - 1) + fib(n - 2)
+# Test with profiling
+import time
 
-print(fib(34))
+def run():
+    start = time.time()
+    result = fib4(256000000) # lol will print Int error and will run for hours... Shards ftw
+    end = time.time()
+    
+    print(f"result: {result}")
+    print(f"time: {end - start:.6f}s")
+
+run()
