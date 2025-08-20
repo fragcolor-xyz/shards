@@ -93,6 +93,7 @@ public struct Globals {
 
         // Finally init Shards
         Core = shardsInterface(UInt32(SHARDS_CURRENT_ABI))
+        _ = Core.pointee.`init`()
     }
 }
 
