@@ -162,7 +162,28 @@ typedef struct SHStringWithLen {
   uint64_t len;
 } SHStringWithLen;
 
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(_MSC_VER)
+
+// Not fully supported, but just for the dll interface
+#define likely(x) 
+#define unlikely(x) 
+#define shufflevector shassert(false)
+
+typedef int64_t[2] SHInt2;
+typedef int32_t[4] SHInt3;
+typedef int32_t[4] SHInt4;
+typedef int16_t[8] SHInt8;
+typedef int8_t[16] SHInt16;
+
+typedef double[2] SHFloat2;
+typedef float[4] SHFloat3;
+typedef float[4] SHFloat4;
+
+#define NO_INLINE 
+#define ALWAYS_INLINE
+#define FLATTEN 
+
+#elif defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
