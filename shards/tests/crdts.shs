@@ -47,3 +47,9 @@ r3 | CRDT.Get(CRDT: crdt2 Keys: [["A" "B"] ["A" 1]]) | Log | Assert.Is([[1 2 3 4
 crdt2 | CRDT.Version | Log | Assert.Is(14)
 
 11 | CRDT.ChangesSince(CRDT: crdt2) | Log | Count | Assert.Is(3)
+
+CRDT.Tombstones(CRDT: crdt2) | Log | Assert.Is(1)
+
+14 | CRDT.CompactTombstones(CRDT: crdt2)
+
+CRDT.Tombstones(CRDT: crdt2) | Log | Assert.Is(0)

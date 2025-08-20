@@ -466,6 +466,54 @@ struct CRDTChangesSince {
     return _output;
   }
 };
+
+struct CRDTCompactTombstones {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString help() { return SHCCSTR("Reduces memory usage of the CRDT by removing old tombstones"); }
+
+  PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to compact", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::IntType;
+  }
+
+  void activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    crdt.compact_tombstones(input.payload.intValue);
+  }
+};
+
+struct CRDTTombstones {
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+  static SHOptionalString help() { return SHCCSTR("Gets the number of tombstones in the CRDT"); }
+
+  PARAM_PARAMVAR(_crdt, "CRDT", "The crdt to get the tombstones from", {CRDTTypes::CRDT, Type::VariableOf(CRDTTypes::CRDT)});
+  PARAM_IMPL(PARAM_IMPL_FOR(_crdt));
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::IntType;
+  }
+
+  SHVar activate(SHContext *shContext, const SHVar &input) {
+    auto &crdt = varAsObjectChecked<ShardsCRDT>(_crdt.get(), CRDTTypes::CRDT);
+    return Var(static_cast<int64_t>(crdt.tombstone_count()));
+  }
+};
 } // namespace crdts
 
 SHARDS_REGISTER_FN(crdts) {
@@ -477,5 +525,7 @@ SHARDS_REGISTER_FN(crdts) {
   REGISTER_SHARD("CRDT.Delete", CRDTDelete);
   REGISTER_SHARD("CRDT.Version", CRDTGetVersion);
   REGISTER_SHARD("CRDT.ChangesSince", CRDTChangesSince);
+  REGISTER_SHARD("CRDT.CompactTombstones", CRDTCompactTombstones);
+  REGISTER_SHARD("CRDT.Tombstones", CRDTTombstones);
 }
 } // namespace shards
