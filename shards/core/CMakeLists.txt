@@ -150,6 +150,7 @@ target_link_libraries(shards-core
   pdqsort entt utf8.h Taskflow stb nlohmann_json
   shards-logging tbb
 )
+target_compile_definitions(shards-core PUBLIC SHARDS_WITH_ENTT=1)
 
 if(DESKTOP)
   target_compile_definitions(shards-core PUBLIC SHARDS_DESKTOP=1)

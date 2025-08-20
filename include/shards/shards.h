@@ -900,6 +900,8 @@ typedef void(__cdecl *SHUnregisterExitCallback)(SHString eventName);
 typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, struct SHStringWithLen name);
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
+typedef bool(__cdecl *SHInit)();
+
 typedef struct SHExternalVariable {
   struct SHVar *var;
 
@@ -1129,6 +1131,27 @@ typedef struct SHStringWithLen(__cdecl *SHFastStringLoad)(uint64_t id);
 typedef uint32_t(__cdecl *SHGetSourceFileId)(SHStringWithLen path);
 typedef SHStringWithLen(__cdecl *SHGetSourceFileName)(uint32_t file_id);
 
+#define SHLOG_LEVEL_TRACE 0
+#define SHLOG_LEVEL_DEBUG 1
+#define SHLOG_LEVEL_INFO 2
+#define SHLOG_LEVEL_WARN 3
+#define SHLOG_LEVEL_ERR 4
+#define SHLOG_LEVEL_CRITICAL 5
+typedef void(__cdecl *SHLogCallback)(SHStringWithLen category, SHStringWithLen message, int level, void *userData);
+
+typedef struct SHLogSettings_ {
+  // Set this to connect logging to a custom logger
+  SHLogCallback callback;
+  void *callbackUserData;
+  // Enable to log output to stderr
+  bool logToStdErr;
+  // If not set, log to default log file path
+  const char *logFilePath;
+  bool logToFile;
+} SHLogSettings;
+
+typedef void(__cdecl *SHSetupLogger)(const SHLogSettings *logSettings);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1326,6 +1349,12 @@ typedef struct _SHCore {
   // Source file utilities
   SHGetSourceFileId getSourceFileId;
   SHGetSourceFileName getSourceFileName;
+  
+  // Call this before using any other function, other than setupLogger
+  SHInit init;
+
+  // Can be called before or after init to setup the logging system and potential log callbacks
+  SHSetupLogger setupLogger;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

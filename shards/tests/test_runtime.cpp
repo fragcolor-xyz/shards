@@ -34,7 +34,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   shards::GetGlobals().RootPath = "./";
-  (void)shardsInterface(SHARDS_CURRENT_ABI);
+  auto iface = shardsInterface(SHARDS_CURRENT_ABI);
+  iface->init();
   int result = Catch::Session().run(argc, argv);
 
 #ifdef TRACY_ENABLE
@@ -2216,7 +2217,7 @@ TEST_CASE("FastString") {
   for (int i = 0; i < 1000000; i++) {
     auto id = ids[i];
     auto sv = shards::fast_string::load(id);
-    const auto& originalStr = testStrings[i % testStrings.size()];
+    const auto &originalStr = testStrings[i % testStrings.size()];
     REQUIRE(sv == originalStr); // Verify round-trip correctness
   }
   auto loadEnd = std::chrono::high_resolution_clock::now();

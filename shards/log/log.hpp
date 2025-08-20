@@ -7,6 +7,7 @@
 #include <shared_mutex>
 #include <vector>
 
+typedef struct SHLogSettings_ SHLogSettings;
 namespace shards::logging {
 
 struct ShardsSink;
@@ -62,6 +63,8 @@ void setSinkLevel(spdlog::level::level_enum level);
 
 void setStdErrLogLevel(spdlog::level::level_enum level);
 
+void setupDefaultLogger(const SHLogSettings& settings);
+
 // Setup the default logger if it's not setup already
 void setupDefaultLoggerConditional(std::string fileName);
 
@@ -98,6 +101,9 @@ template <typename T> Logger getOrCreate(const std::string &name, T init) {
 inline Logger getOrCreate(const std::string &name) {
   return getOrCreate(name, [](Logger logger) {});
 }
+
+bool isLoggerInitialized();
+
 } // namespace shards::logging
 
 #endif /* E8296F1D_E25F_4AC4_AA7C_D680CA0D7ABF */

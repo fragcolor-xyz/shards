@@ -1,4 +1,6 @@
 #include "log.hpp"
+#include <shards/shards.h>
+#include <shards/utility.hpp>
 #include <spdlog/fmt/bundled/core.h>
 #include <shards/core/assert.hpp>
 #include <shards/core/platform.hpp>
@@ -54,6 +56,19 @@ struct EmscriptenSink : public spdlog::sinks::base_sink<std::mutex> {
 #endif
 
 namespace shards::logging {
+
+struct CustomCallbackSink : public spdlog::sinks::base_sink<std::mutex> {
+  SHLogCallback callback;
+  void *userData;
+  CustomCallbackSink(SHLogCallback callback, void *userData) : callback(callback), userData(userData) {}
+  void sink_it_(const spdlog::details::log_msg &msg) override {
+    callback(SHStringWithLen{msg.logger_name.data(), msg.logger_name.size()}, //
+             SHStringWithLen{msg.payload.data(), msg.payload.size()},         //
+             msg.level, userData);
+  }
+  void flush_() override {}
+};
+
 std::shared_mutex &__getRegisterMutex() {
   static std::shared_mutex m;
   return m;
@@ -203,7 +218,7 @@ struct Sinks {
     mainSink->add_sink(emscriptenSink);
 #endif
 
-    initStdErrSink();
+    addStdErrSink();
 
     // Setup android logcat output
 #if SH_ANDROID
@@ -230,18 +245,22 @@ struct Sinks {
 
   void initStdErrSink() {
 #if !SH_EMSCRIPTEN
-    if (stdErrSink)
-      mainSink->remove_sink(stdErrSink);
     stdErrSink = std::make_shared<spdlog::sinks::stderr_color_sink_mt>();
     resetStdErrSink();
+#endif
+  }
+
+  void addStdErrSink() {
+#if !SH_EMSCRIPTEN
+    if (stdErrSink)
+      mainSink->remove_sink(stdErrSink);
+    initStdErrSink();
     mainSink->add_sink(stdErrSink);
 #endif
   }
 
-  void initLogFile(std::string fileName) {
-    std::string logFilePath = boost::filesystem::absolute(fileName).string();
-    if (logFileSink)
-      mainSink->remove_sink(logFileSink);
+  void initLogFileSink(std::string_view fileName) {
+    std::string logFilePath = boost::filesystem::absolute(boost::filesystem::path(std::string(fileName))).string();
 
 #if defined(SHARDS_LOG_ROTATING_MAX_FILE_SIZE) && defined(SHARDS_LOG_ROTATING_MAX_FILES)
     logFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath.c_str(), SHARDS_LOG_ROTATING_MAX_FILE_SIZE,
@@ -253,7 +272,6 @@ struct Sinks {
     if (Config::DefaultFileLogLevel) {
       logFileSink->set_level(Config::DefaultFileLogLevel.value());
     }
-    mainSink->add_sink(logFileSink);
   }
 
   // Reset compile-time settings when environment override is detected
@@ -367,17 +385,48 @@ void setSinkLevel(spdlog::level::level_enum level) { globalSinks().mainSink->set
 
 void setStdErrLogLevel(spdlog::level::level_enum level) { globalSinks().stdErrSink->set_level(level); }
 
-static void setupDefaultLogger(const std::string &fileName) {
+static bool &logInitialized() {
+  static bool initialized = false;
+  return initialized;
+}
+
+void setupDefaultLogger(const SHLogSettings &settings) {
   auto &sinks = globalSinks();
 
-  {
-    auto l = sinks.lockUnique();
-    if (!fileName.empty()) {
-      sinks.initLogFile(fileName);
+  std::string_view logFileName;
+  if (settings.logToFile) {
+    if (settings.logFilePath) {
+      logFileName = settings.logFilePath;
+    } else {
+      logFileName = "shards.log";
     }
+  }
+
+  auto l = sinks.lockUnique();
+
+  std::vector<std::shared_ptr<spdlog::sinks::sink>> newSinks;
+
+  if (!logFileName.empty()) {
+    sinks.initLogFileSink(logFileName);
+    newSinks.push_back(sinks.logFileSink);
+  }
+
+  if (settings.logToStdErr) {
+#if SH_EMSCRIPTEN
+    newSinks.push_back(sinks.emscriptenSink);
+#else
     // Reset this sink in case stderr handle changed
     sinks.initStdErrSink();
+    newSinks.push_back(sinks.stdErrSink);
+#endif
   }
+
+  if (settings.callback) {
+    newSinks.push_back(std::make_shared<CustomCallbackSink>(settings.callback, settings.callbackUserData));
+  }
+
+  // Update all the sinks in one go
+  sinks.mainSink->set_sinks(newSinks);
 
   auto logger = std::make_shared<spdlog::logger>("shards", sinks.mainSink);
   initFlush(logger);
@@ -390,13 +439,19 @@ static void setupDefaultLogger(const std::string &fileName) {
 
   // Redirect all existing loggers to the global dist sink
   initAllSinks();
+
+  logInitialized() = true;
 }
 
 void setupDefaultLoggerConditional(std::string fileName) {
-  static bool initialized = false;
-  if (!initialized) {
-    initialized = true;
-    setupDefaultLogger(fileName);
+  if (!logInitialized()) {
+    setupDefaultLogger(SHLogSettings{
+        .logToStdErr = true,
+        .logFilePath = fileName.c_str(),
+        .logToFile = true,
+    });
   }
 }
+
+bool isLoggerInitialized() { return logInitialized(); }
 } // namespace shards::logging

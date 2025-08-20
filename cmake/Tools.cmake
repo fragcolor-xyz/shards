@@ -123,11 +123,11 @@ endfunction()
 # function(target_bundle_files TARGET VISIBILITY NAMESPACE)
 
 # endfunction()
-function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
+function(target_generate_bundle_manifest2 TARGET HEADER_NAME MANIFEST_VAR_NAME SOURCE_VISIBILITY)
   set(GENERATED_HEADER_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
   set(GENERATED_C_FILE_PATH "${GENERATED_HEADER_ROOT_DIR}/${HEADER_NAME}.h")
   file(WRITE ${GENERATED_C_FILE_PATH} "")
-  target_sources(${TARGET} PRIVATE ${GENERATED_C_FILE_PATH})
+  target_sources(${TARGET} ${SOURCE_VISIBILITY} ${GENERATED_C_FILE_PATH})
   set_source_files_properties(${GENERATED_C_FILE_PATH} PROPERTIES GENERATED TRUE)
 
   get_target_property(BUNDLED_FILE_NAMES ${TARGET} "BUNDLED_FILE_NAMES")
@@ -148,4 +148,8 @@ function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
 
   file(APPEND ${GENERATED_C_FILE_PATH} "\};\n")
   message(STATUS "Created bundled file manifest for target ${TARGET} at ${GENERATED_C_FILE_PATH}")
+endfunction()
+
+function(target_generate_bundle_manifest TARGET HEADER_NAME MANIFEST_VAR_NAME)
+target_generate_bundle_manifest2(${TARGET} ${HEADER_NAME} ${MANIFEST_VAR_NAME} PRIVATE)
 endfunction()

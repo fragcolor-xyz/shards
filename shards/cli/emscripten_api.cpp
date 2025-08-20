@@ -176,6 +176,7 @@ EMSCRIPTEN_KEEPALIVE void shardsInit() {
   shards::logging::getDistSink()->add_sink(std::make_shared<LogBufferSink>());
 
   core = shardsInterface(SHARDS_CURRENT_ABI);
+  core->init();
   shards_init(core); // to init rust things
   asyncRunner.start();
   shards::EmMainProxy::instance = &emMainProxy;

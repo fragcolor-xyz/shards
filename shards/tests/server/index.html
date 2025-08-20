@@ -160,11 +160,13 @@
       };
       // if (urlQuery["trace"] !== "1") {
 
+      // Initialize shards
+      mod._shardsInit();
+
       // Set the canvas to use for input and graphics
       mod["canvas"] = canvas;
       mod.gfxSetup(canvasContainer, canvas);
 
-      mod._shardsInit();
 
       instance.setLoggerLevel("gfx", SPDLOG_LEVEL_TRACE);
       instance.setLoggerLevel("shards", SPDLOG_LEVEL_TRACE);

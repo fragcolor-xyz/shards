@@ -40,7 +40,12 @@ option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
 # Required by Jolt to build with WASM SIMD
 option(USE_WASM_SIMD "Enable WASM SIMD" ON)
 
-add_subdirectory(JoltPhysics/Build)
+if(EMSCRIPTEN)
+  add_compile_definitions(JPH_NO_FORCE_INLINE)
+  add_subdirectory(JoltPhysics/Build)
+else()
+  add_subdirectory(JoltPhysics/Build)
+endif()
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "" FORCE)
@@ -134,13 +139,15 @@ endif()
 if(NOT EMSCRIPTEN)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
-  if(LINUX) 
+
+  if(LINUX)
     # disable pipewire as it has some build issues with GCC 15
     set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
     set(SDL_X11 ON CACHE BOOL "" FORCE)
     set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
     set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
   endif()
+
   add_subdirectory(SDL3)
 endif()
 

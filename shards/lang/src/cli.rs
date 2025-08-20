@@ -171,6 +171,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
 
   unsafe {
     shards::core::Core = shardsInterface(SHARDS_CURRENT_ABI as u32);
+    (*shards::core::Core).init.unwrap_unchecked()();
     shards_install_signal_handlers();
     shlog_debug!("Shards git version: {}", GIT_VERSION);
   }
