@@ -138,28 +138,22 @@ Back to our previous example with apples, if John now requires some time to juic
     ```
     [john] Taking an apple!
     [take-an-apple] Actor: John
-    [take-an-apple] Setup: 10
     [take-an-apple] Apples Remaining: 9
     [lucy] Taking an apple!
     [take-an-apple] Actor: Lucy
-    [take-an-apple] Apples Remaining: 8
+    [take-an-apple] Apples Remaining: 9
     [juice-apple] Actor: John
     [juice-apple] Juicing Apple...
     [lucy] Taking an apple!
     [take-an-apple] Actor: Lucy
-    [take-an-apple] Apples Remaining: 7
+    [take-an-apple] Apples Remaining: 8
     [juice-apple] Made some Apple Juice!
     [lucy] Taking an apple!
     [take-an-apple] Actor: Lucy
-    [take-an-apple] Apples Remaining: 6
-    [john] Taking an apple!
-    [take-an-apple] Actor: John
-    [take-an-apple] Apples Remaining: 5
+    [take-an-apple] Apples Remaining: 7
     [lucy] Taking an apple!
     [take-an-apple] Actor: Lucy
-    [take-an-apple] Apples Remaining: 4
-    [juice-apple] Actor: John
-    [juice-apple] Juicing Apple...
+    [take-an-apple] Apples Remaining: 6
 
     ```
 
@@ -292,28 +286,29 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
       Math.Inc(apple-count)
 
       When(
-       Predicate: {apple-count | (IsMore 2)}
+       Predicate: {apple-count | IsMore(2)}
        Action:{
         Msg ("I have enough, you can have the rest.")
-        Resume})
-    } Looped: true) ;; (1)
+        SwitchTo(john)}) ;; (1)
+    } Looped: true) 
 
-    (defloop john
-      (Setup
-       (-> (Msg "Lucy, you can take as much as you want first.")
-           (Start lucy) ;; (2)
-           (Msg "It's my turn now!")))
-      (Msg "Taking an apple!")
-      (Do take-an-apple))
+    @wire(john{
+      Once({
+        Msg("Lucy, you can take as much as you want first.")
+        SwitchTo(lucy) ;; (2)
+        Msg("It's my turn now!")
+      })
+      Msg("Taking an apple!")
+      Do(take-an-apple)
+    } Looped: true)
 
-    (schedule main john)
-    (run main (/ 1 60) 6) ;; (3)
+    @schedule(main john)
+    @run(main (1.0 | Math.Divide(60.0)) 6)
 
     ```
 
     1. Returns the flow to the Wire that started it, which is `john` in this case.
     2. Starts the `lucy` Wire and redirects the program's flow to it.
-    3. `(/ 1 60)` is read as "1 divided by 60". It is used to get the program to run at 60 FPS (Frames Per Second).
 
 === "Output"
     ```
@@ -337,57 +332,52 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
 [`Stop`](../../../../reference/shards/shards/General/Stop) is used to end Wires. It is very useful for managing Wires created with `Detach` or `Spawn`.
 For example, if you have spawned multiple monsters, you could set them to `Stop` running once their health reaches 0.
 
-!!! note
-    If `Stop` is used on a Wire that is running from `Start` or `Resume`, the Wire itself is stopped and the entire program will end.
-
 ![Stop is used to end Wires.](assets/start-stop.png)
 
 For our example, we use `Stop` to end `bake-apple` looped Wires after they iterate twice.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defloop bake-apple
-      (Setup
-       (-> (Msg "Started Baking")
-           0 >= .timer))
-      (Math.Inc .timer)
-      .timer (Log "Time Baked")
+    @wire(bake-apple {
+      Once({
+        Msg("Started Baking")
+        0 >= timer})
+      Math.Inc(timer)
+      timer | Log("Time Baked")
 
-      (When
-       :Predicate (-> .timer (Is 2))
-       :Action (->
-                (Msg "Apple is Baked!")
-                (Stop))))
+      When(
+        Predicate: {timer | Is(2)}
+        Action: {
+          Msg("Apple is Baked!")
+          Stop})
+    } Looped: true)
 
-    (defloop john
-      (Msg "Baking Apple...")
-      (Spawn bake-apple))
+    @wire(john {
+      Msg("Baking Apple...")
+      Spawn(bake-apple)
+    } Looped: true)
 
-    (schedule main john)
-    (run main 1 3)
+    @schedule(main john)
+    @run(main 1 3)
     ```
 
 === "Output"
     ```
     [john] Baking Apple...
-    [bake-apple-1] Started Baking
-    [bake-apple-1] Time Baked: 1
     [john] Baking Apple...
-    [bake-apple-1] Time Baked: 2
-    [bake-apple-1] Apple is Baked!
-    [bake-apple-2] Started Baking
-    [bake-apple-2] Time Baked: 1
+    [bake-apple-0] Started Baking
+    [bake-apple-0] Time Baked: 1
     [john] Baking Apple...
-    [bake-apple-2] Time Baked: 2
-    [bake-apple-2] Apple is Baked!
+    [bake-apple-0] Time Baked: 2
+    [bake-apple-0] Apple is Baked!
     [bake-apple-1] Started Baking
     [bake-apple-1] Time Baked: 1
     ```
 ## Step
 
-[`Step`](../../../../reference/shards/shards/General/Step) schedules and runs another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on X itself.
+[`Step`](../../../../reference/shards/shards/General/Step) schedules and runs another Wire on the Wire calling `Step` itself. That is, if `X Step Y`, Y  is scheduled to run on parent wire X.
 
 Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
@@ -401,7 +391,7 @@ Being scheduled on a Wire (instead of the Mesh) has a few implications:
 
 The stepped Wire runs similarly to how `Do` does as the flow shifts into the stepped Wire immediately. It may seem like it is running inline too, but the difference is obvious when calling `Pause` on the stepped Wire.
 
-For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, even though the stepped Wire is paused, the original Wire continues to run.
+For `Do`, the flow is paused and resumed only after the pause is resolved. For `Step`, when the stepped Wire is paused, control is given back to the parent wire and the parent wire continues its flow.
 
 ![The difference between Step and Do.](assets/step-difference.png)
 
@@ -421,42 +411,50 @@ Most of the methods described in this chapter will "snapshot" the variables of t
 
 ### Example
 
-In the example below, we demonstrate how the main Looped Wired `john` continues to run even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` cannot be stepped into again when it is paused due to how it is still running.
+In the example below, we demonstrate how the main Looped Wired `john` continues to run even when the Wire `bake-apple` is paused after stepping into it. `bake-apple` will continue to progress whenever `Step` is called, but it will not hold `john` from progressing.
 
 The example also showcases how variables defined in `john` are affected by changes made to it by the stepped Wires.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire take-an-apple ;; (1)
-      (Math.Inc .fresh-apples)
-      (Msg "Taking an apple...")
-      .fresh-apples (Log "Fresh Apple (+1)"))
+    @wire(take-an-apple { ;; (1)
+      Math.Inc(fresh-apples)
+      Msg("Taking an apple...")
+      fresh-apples | Log("Fresh Apple (+1)")
+    } Looped: false)
 
-    (defwire bake-apple ;; (2)
-      (Math.Dec .fresh-apples)
-      (Msg "Baking apple...")
-      .fresh-apples (Log "Fresh Apple (-1)")
-      (Pause 1)
-      (Math.Inc .baked-apples)
-      (Msg "Baking complete!")
-      .baked-apples (Log "Baked Apple (+1)"))
+    @wire(bake-apple { ;; (2)
+      Math.Dec(fresh-apples)
+      Msg("Baking apple...")
+      fresh-apples | Log("Fresh Apple (-1)")
+      Pause(1.0)
+      Math.Inc(baked-apples)
+      Msg("Baking complete!")
+      baked-apples | Log("Baked Apple (+1)")
+    } Looped: false)
 
-    (defloop john
-      (Setup
-       5 >= .fresh-apples
-       0 >= .baked-apples)
+    @wire(john {
+      Once({
+        5 >= fresh-apples
+        0 >= baked-apples})
 
-      (Step take-an-apple)
-      (Step bake-apple))
+      Step(take-an-apple)
+      Step(bake-apple)
 
-    (schedule main john)
-    (run main 1 5)
+      baked-apples
+      When(Predicate: IsMoreEqual(5) Action: {
+        Stop
+      })
+    } Looped: true)
+
+    @schedule(main john)
+    @run(main (0.5))
     ```
 
-    1. This Wire increases the value of `.fresh-apples` every time it is stepped into.
-    2. This Wire decreases the value of `.fresh-apples`, pauses the Wire for 1 second, and increases the value of `.baked-apples` every time it is stepped into.
+    1. This Wire increases the value of `fresh-apples` every time it is stepped into.
+    2. This Wire decreases the value of `fresh-apples`, pauses the Wire for 1 second, and increases the value of `baked-apples` every time it is stepped into.
 
 === "Output"
     ```
@@ -466,18 +464,56 @@ The example also showcases how variables defined in `john` are affected by chang
     [bake-apple] Fresh Apple (-1): 5
     [take-an-apple] Taking an apple...
     [take-an-apple] Fresh Apple (+1): 6
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 7
     [bake-apple] Baking complete!
     [bake-apple] Baked Apple (+1): 1
     [take-an-apple] Taking an apple...
-    [take-an-apple] Fresh Apple (+1): 7
+    [take-an-apple] Fresh Apple (+1): 8
     [bake-apple] Baking apple...
-    [bake-apple] Fresh Apple (-1): 6
-    [take-an-apple] Taking an apple...
-    [take-an-apple] Fresh Apple (+1): 7
+    [bake-apple] Fresh Apple (-1): 7
     [take-an-apple] Taking an apple...
     [take-an-apple] Fresh Apple (+1): 8
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 9
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 10
     [bake-apple] Baking complete!
     [bake-apple] Baked Apple (+1): 2
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 11
+    [bake-apple] Baking apple...
+    [bake-apple] Fresh Apple (-1): 10
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 11
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 12
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 13
+    [bake-apple] Baking complete!
+    [bake-apple] Baked Apple (+1): 3
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 14
+    [bake-apple] Baking apple...
+    [bake-apple] Fresh Apple (-1): 13
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 14
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 15
+    [bake-apple] Baking complete!
+    [bake-apple] Baked Apple (+1): 4
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 16
+    [bake-apple] Baking apple...
+    [bake-apple] Fresh Apple (-1): 15
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 16
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 17
+    [take-an-apple] Taking an apple...
+    [take-an-apple] Fresh Apple (+1): 18
+    [bake-apple] Baking complete!
+    [bake-apple] Baked Apple (+1): 5
     ```
 
 ## Branch
@@ -485,8 +521,8 @@ The example also showcases how variables defined in `john` are affected by chang
 [`Branch`](../../../../reference/shards/shards/General/Branch) is used when you wish to create a Submesh on the current Mesh. You can schedule Wires on the Submesh by placing Wires in its `Wires` parameter. These Wires will behave as if they were run with `Step`.
 
 === "Syntax"
-    ```{.clojure .annotate linenums="1"}
-    (Branch [wire-x wire-y wire-z]) ;; (1)
+    ```shards
+    Branch([wire-x wire-y wire-z]) ;; (1)
     ```
 
     1. You can schedule as many Wires as you wish within the square brackets here. In this example, three Wires are scheduled on the Submesh.
@@ -507,22 +543,27 @@ The example also showcases how variables defined in `john` are affected by chang
 In our example below, we will be using `Expand` to teach John about multiplication with zeros.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire learn-zero-multiplication
-      (Expand
-       :Size 100 ;; (1)
-       :Wire (defwire zero-multiplication
-               (RandomInt :Max 100)(Math.Multiply 0))) ;; (2)
-      (ForEach (-> (Is 0)(Log)))) ;; (3)
+    @wire(zero-multiplication{
+      RandomInt(Max: 100) | Math.Multiply(0) ;; (2)
+    } Looped: false)
 
-    (defwire john
-      (Do learn-zero-multiplication))
+    @wire(learn-zero-multiplication {
+      Expand(
+        Size: 100 ;; (1)
+        Wire: zero-multiplication
+      )
+      ForEach({Is(0) | Log})
+    } Looped: false) ;; (3)
 
-    (schedule main john)
-    (run main)
+    @wire(john {
+      Do(learn-zero-multiplication)
+    } Looped: false)
 
+    @schedule(main john)
+    @run(main)
     ```
 
     1. Creates and runs 100 copies of the Wire `zero-multiplication`.
@@ -557,29 +598,33 @@ There are three variations of `WaitUntil`:
 
 3. `WaitUntil.SomeSuccess` - Will wait for all Wire copies to run, but will only output the successful results.
 
-In the following examples, John attempts to hit a moving target by firing arrows at it. He can only land a hit if the `.distance-shot` is an odd number. Note how the results vary based on the `Policy` used.
+In the following examples, John attempts to hit a moving target by firing arrows at it. He can only land a hit if the `distance-shot` is an odd number. Note how the results vary based on the `Policy` used.
 
 === "FirstSuccess"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire fire-arrow
-      [1, 2, 3]
-      (TryMany
-       :Wire (defwire check-for-hit
-               >= .distance-shot
-               (Math.Mod 2) ;; (2)
-               (Assert.Is 1 false)
-               .distance-shot)
-       :Policy WaitUntil.FirstSuccess) ;; (1)
-      (Log "Hits the mark"))
+    @wire(check-for-hit {
+      >= distance-shot
+      Math.Mod(2) ;; (2)
+      Assert.Is(Value: 1 Break: false)
+      distance-shot
+    } Looped: false)
 
-    (defwire john
-      (Do fire-arrow))
+    @wire(fire-arrow {
+      [1 2 3]
+      TryMany(
+        Wire: check-for-hit
+        Policy: WaitUntil::FirstSuccess) ;; (1)
+        Log("Hits the mark")
+    } Looped: false)
 
-    (schedule main john)
-    (run main)
+    @wire( john {
+      Do(fire-arrow)
+    } Looped: false)
 
+    @schedule(main john)
+    @run(main)
     ```
 
     1. Only the first successful result will be used as output. Once a Wire is successful, the rest are ignored.
@@ -591,26 +636,30 @@ In the following examples, John attempts to hit a moving target by firing arrows
     ```
 
 === "AllSuccess"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire fire-arrow
-      [1, 2, 3]
-      (TryMany
-       :Wire (defwire check-for-hit
-               >= .distance-shot
-               (Math.Mod 2)
-               (Assert.Is 1 false)
-               .distance-shot)
-       :Policy WaitUntil.AllSuccess) ;; (1)
-      (Log "Hits the mark"))
+    @wire(check-for-hit {
+      >= distance-shot
+      Math.Mod(2)
+      Assert.Is(Value:1 Break:false)
+      distance-shot
+    } Looped: false)
 
-    (defwire john
-      (Do fire-arrow))
+    @wire(fire-arrow {
+      [1 2 3]
+      TryMany(
+        Wire: check-for-hit
+        Policy: WaitUntil::AllSuccess) ;; (1)
+      Log("Hits the mark")
+    } Looped: false)
 
-    (schedule main john)
-    (run main)
+    @wire(john {
+      Do(fire-arrow)
+    } Looped: false)
 
+    @schedule(main john)
+    @run(main)
     ```
 
     1. All results will be produced in the output, but only if all Wires are successful.
@@ -622,25 +671,30 @@ In the following examples, John attempts to hit a moving target by firing arrows
     ```
 
 === "SomeSuccess"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire fire-arrow
-      [1, 2, 3]
-      (TryMany
-       :Wire (defwire check-for-hit
-               >= .distance-shot
-               (Math.Mod 2) ;; (2)
-               (Assert.Is 1 false)
-               .distance-shot)
-       :Policy WaitUntil.SomeSuccess) ;; (1)
-      (Log "Hits the mark"))
+    @wire(check-for-hit {
+      >= distance-shot
+      Math.Mod(2)
+      Assert.Is(Value:1 Break:false)
+      distance-shot
+    } Looped: false)
 
-    (defwire john
-      (Do fire-arrow))
+    @wire(fire-arrow {
+      [1 2 3]
+      TryMany(
+        Wire: check-for-hit
+        Policy: WaitUntil::SomeSuccess) ;; (1)
+      Log("Hits the mark")
+    } Looped: false)
 
-    (schedule main john)
-    (run main)
+    @wire(john {
+      Do(fire-arrow)
+    } Looped: false)
+
+    @schedule(main john)
+    @run(main)
 
     ```
 
@@ -648,7 +702,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
 
 === "Output"
     ```
-    [fire-arrow] Hits the mark: [1, 3]
+    [fire-arrow] Hits the mark: [1 none 3]
     ```
 
 ??? "Multithreading with `TryMany`"
@@ -670,8 +724,7 @@ In the next chapter, we will take a look at what working with data in Shards is 
 | Do       | Yes                      | No             | Yes              | Yes                 |
 | Detach   | No                       | Yes            | Yes              | Yes                 |
 | Spawn    | No                       | Yes            | Yes              | No                  |
-| Start    | No                       | Yes            | No               | No                  |
-| Resume   | No                       | Yes            | Yes              | Yes                 |
+| SwitchTo | No                       | Yes/No         | No               | Yes                 |
 | Step     | Yes                      | Yes            | Yes              | Yes                 |
 | StepMany | Yes                      | Yes            | Yes              | No                  |
 | Branch   | Yes                      | No             | Yes              | Yes                 |
