@@ -412,9 +412,13 @@ void setupDefaultLogger(const SHLogSettings &settings) {
   }
 
   if (settings.logToStdErr) {
+#if SH_EMSCRIPTEN
+    newSinks.push_back(sinks.emscriptenSink);
+#else
     // Reset this sink in case stderr handle changed
     sinks.initStdErrSink();
     newSinks.push_back(sinks.stdErrSink);
+#endif
   }
 
   if (settings.callback) {
