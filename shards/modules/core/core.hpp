@@ -1178,12 +1178,7 @@ struct SetBase : public VariableBase {
         throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
-      _trackingMaskInternal = reference.trackingMask;
-      if (existingExposed.tracked) {
-        _isExposed = true;
-      } else {
-        _isExposed = false;
-      }
+      _trackingMaskInternal = existingExposed.trackingMask;
     }
     return existingExposedVariable;
   }
@@ -1303,7 +1298,7 @@ struct Set : public SetUpdateBase {
 
     // bake exposed types
     if (_isTable) {
-      if (existingExposedType && existingExposedType->exposedType.table.fixedStructTable) {
+      if (existingExposedVariable && existingExposedVariable->exposed.exposedType.table.fixedStructTable) {
         throw ComposeError(fmt::format(
             "Set, variable \"{}\" is a fixed struct table, cannot be used with Set, please use Update instead", _name));
       }
@@ -1680,21 +1675,17 @@ struct Update : public SetUpdateBase {
         invalidationPath.append(compose::VariableAccessor::key(_key));
       } // Otherwise invalidate the entire table
     } else {
-      auto type = findExposedVariablePtr(inherited->inherited, _name);
-      if (type) {
-        if (!matchTypes(data.inputType, type->exposedType, true, true, true)) {
-          throw ComposeError("Update: error, update is changing the variable type.");
-        }
-        _isGlobal = type->global;
-        _trackingMaskInternal = type->trackingMask;
-      } else {
-        throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
+      auto &exposed = existingVariable->exposed;
+      if (!matchTypes(data.inputType, exposed.exposedType, true, true, true)) {
+        throw ComposeError("Update: error, update is changing the variable type.");
       }
+      _isGlobal = exposed.global;
+      _trackingMaskInternal = exposed.trackingMask;
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
 
       // just a variable, keep unchanged!
-      _exposedInfo.push_back(existingVariable->exposed);
+      _exposedInfo.push_back(exposed);
     }
 
     // always lift this limit in a Set/Update
@@ -1718,7 +1709,8 @@ struct Update : public SetUpdateBase {
     if (_trackingMaskInternal != 0) {
       SHLOG_DEBUG("Warmup Update: {} tracking mask: {}", _name, _trackingMaskInternal);
 
-      shassert_extended(context, (_target->trackingMask & _trackingMaskInternal) != 0 && "Target variable masks are not correct");
+      shassert_extended(context,
+                        ((*_target)->trackingMask & _trackingMaskInternal) != 0 && "Target variable masks are not correct");
 
       // override shard default behavior
       const_cast<Shard *>(_self)->inlineShardId = InlineShard::NotInline;
@@ -2074,9 +2066,7 @@ struct Swap {
 
   OwnedVar _cache;
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    return data.inputType;
-  }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return data.inputType; }
 
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     _cache = _first.get();

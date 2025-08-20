@@ -343,8 +343,8 @@ std::string_view CompositionContext::shardContextStr(size_t scopeOffset) const {
 std::string_view CompositionContext::shardContextStr(const Shard *shard) const {
   shardContextStrBuf.clear();
   if (shard) {
-    fmt::format_to(std::back_inserter(shardContextStrBuf), "{} (line: {}, column: {})", shard->name(const_cast<Shard *>(shard)),
-                   shard->line, shard->column);
+    auto cs = const_cast<Shard *>(shard);
+    fmt::format_to(std::back_inserter(shardContextStrBuf), "{} ({})", cs->name(cs), shards::formatShardSourceLocation(cs));
   } else {
     fmt::format_to(std::back_inserter(shardContextStrBuf), "<none>");
   }
@@ -846,7 +846,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
             ctx.insertVariable(key.payload.stringValue, SHExposedTypeInfo{key.payload.stringValue, {}, *type, true /* mutable */})
                 .mutate();
         v.kind = VariableKind::External;
-        v.exposed.tracked = var.flags & SHVAR_FLAGS_TRACKED;
+        v.exposed.trackingMask = var.trackingMask;
       }
 
       // add present mesh variables as well if we have a mesh

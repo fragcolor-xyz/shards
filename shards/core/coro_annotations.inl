@@ -1,3 +1,4 @@
+namespace shards {
 SHARDS_COND_INLINE void coroResumed(SHContext *context) {
   SHWire *wire = context->currentWire();
   if (!wire)
@@ -84,3 +85,4 @@ SHARDS_COND_INLINE void coroExtSuspend(SHWire *wire) {
   SHLOG_TRACE("Suspending wire {}", wire->name);
 #endif
 }
+} // namespace shards

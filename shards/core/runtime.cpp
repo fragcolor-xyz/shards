@@ -41,6 +41,10 @@
 #include "lang_api.hpp"
 #include "log_api.hpp"
 
+#if !SHARDS_INLINE_EVERYTHING
+#include "coro_annotations.inl"
+#endif
+
 #if SHARDS_DEBUGGER
 #include <shards/modules/debugger/interface.hpp>
 #endif
