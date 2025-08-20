@@ -169,8 +169,6 @@ Imagine a scenario where you have a float `3.141592653589793` that you need to r
     ```
 
     1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
-  
-Variable names always start with a `.` period.
 
 Some example of variable names:
 
@@ -216,16 +214,16 @@ In summary:
 
 When defining variables in your program, you can use `Once` to ensure that variables defined within it will only ever be defined once within a program.
 
-=== "Defining Variables in Setup"
+=== "Defining Variables in Once"
 
     ```shards
-    Setup({
+    Once({
      10 >= timer
      100 >= max-points
     }) ;; (1)
     ```
 
-    1. Code within a `Setup` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
+    1. Code within a `Once` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
 
 ## Grouping shards
 
@@ -281,7 +279,7 @@ When used in code:
     Hello World!
     ```
 
-Let us now take a look at how we can utilize `defshards` in a code snippet that counts from 1 to 5 multiple times.
+Let us now take a look at how we can utilize `@define` in a code snippet that counts from 1 to 5 multiple times.
 
 === "Code"
     
@@ -339,9 +337,9 @@ To create a Wire, we use [`@wire`](../../../../reference/shards/lisp/macros/#def
     `@wire` inherits variables from the parent wire unless the variables are pure.
 
 !!! note
-    Unlike `defshards` which group shards up for organization, `defwire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
+    Unlike `define` which group shards up for organization, `@wire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
 
-A Wire's lifetime ends once the final shard within it has been executed. To keep a Wire alive even after it has reached its end, we can set it to be loopable. This is called a Looped Wire.
+A Wire's lifetime ends once the final shard within it has been executed. To keep a Wire alive after it has reached its end, we can set it to be loopable. This is called a Looped Wire.
 
 ![A Looped Wire is kept alive even after the final shard is executed.](assets/what-is-a-looped-wire.png)
 
@@ -354,10 +352,11 @@ To create a Looped Wire, we use [`defloop`](../../../../reference/shards/lisp/ma
 
 === "Creating a Looped Wire"
     
-    ```{.clojure .annotate linenums="1"}
-    (defloop loop-name 
-      ;; shards here
-    )
+    ```shards
+    @wire(loop-name {
+        ;; shards here
+      }
+    Looped: true)
     ```
 
 ## The Mesh
@@ -366,12 +365,12 @@ Wires are queued for execution within a Mesh, from left to right, top to bottom.
 
 ![Wires are queued for execution within a Mesh.](assets/what-is-a-mesh.png)
 
-To queue a Wire on a Mesh, we use [`schedule`](../../../../reference/shards/lisp/misc/#schedule).
+To queue a Wire on a Mesh, we use [`@schedule`](../../../../reference/shards/lisp/misc/#schedule).
 
 === "Scheduling a Wire"
     
     ```{.clojure .annotate linenums="1"}
-    (schedule mesh-name wire-name)
+    @schedule(mesh-name wire-name)
     ```
 
 !!! note
@@ -384,7 +383,7 @@ To get Shards running, a specific hierarchy and sequence must be followed. Your 
 
 ![The hierarchy of a Shards program.](assets/shards-hierarchy.png)
 
-When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../../reference/shards/lisp/misc/#run).
+When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`@run`](../../../../reference/shards/lisp/misc/#run).
 
 === "Running a Mesh"
     
@@ -392,7 +391,7 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
     (run mesh-name)
     ```
 
-`run` can take in two optional values:
+`@run` can take in two optional values:
 
 - The interval between each iteration of the Mesh.
 
@@ -423,50 +422,53 @@ Let us first define the `make-cat-noises` Wire.
 
 === "make-cat-noises"
     
-    ```{.clojure .annotate linenums="1"}
-    (defwire make-cat-noises
-      (Msg "Meow") (Msg "Meow") (Msg "Meow")
-      (Msg "Mew") (Msg "Mew") (Msg "Mew")
-      (Msg "Meow") (Msg "Meow") (Msg "Meow")
-      (Msg "Mew") (Msg "Mew") (Msg "Mew"))
+    ```shards
+    @wire(make-cat-noises {
+      Msg ("Meow")
+      Msg ("Meow") 
+      Msg( "Meow")
+      Msg ("Meow")
+      Msg ("Meow") 
+      Msg( "Meow")
+      Msg ("Meow")
+      Msg ("Meow") 
+      Msg( "Meow")
+      Msg ("Meow")
+      Msg ("Meow") 
+      Msg( "Meow")
+    })
     ```
 
 We can employ the `Repeat` shard we saw earlier to make our code more efficient. 
 
 === "make-cat-noises"
     
-    ```{.clojure .annotate linenums="1"}
-    (defwire make-cat-noises
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
+    ```shards
+    @wire(make-cat-noises {
+      Repeat(
+       Action: ({
+        Msg("Meow")
+       })
+       :Times 12)
+    })
     ```
-Going a step further, we can better organize our code by creating new shards with `defshards`. Look at how much neater it is now!
+Going a step further, we can better organize our code by creating new shards with `@define`. Look at how much neater it is now!
 
 === "make-cat-noises"
     
-    ```{.clojure .annotate linenums="1"}
-    (defshards meows []
+    ```shards
+    define(meows {
       (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3))
+       :Action {(
+        ("Meow"))}
+       :Times 12)
+    })
 
-    (defshards mews []
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
+    @wire(mews {
+        @mewos
+    })
 
-    (defwire make-cat-noises
-      (meows) (mews) (meows) (mews))
+
     ```
 ### The Loop
 
@@ -474,41 +476,46 @@ With the `make-cat-noises` Wire done, let us now look at creating the full `hung
 
 === "hungry-cat"
     
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat)
+    ```shards
+    @wire(hungry-cat {
+
+    } Looped: true)
     ```
 
-We want to first create a variable to track the cat's hunger level. Create the `.hunger` variable and assign the value of 0 to it. Remember to create the variable within `Setup` to prevent it from being reassigned at each iteration of the loop.
+We want to first create a variable to track the cat's hunger level. Create the `hunger` variable and assign the value of 0 to it. Remember to create the variable within `Setup` to prevent it from being reassigned at each iteration of the loop.
 
 === "hungry-cat"
     
     ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)) ;; (1)
+    @wire(hungry-cat
+      Once({
+        0 >= hunger
+      })
+    Looped: true) ;; (1)
     ```
 
-    1. Code within a `Setup` will only be run once in a program.
+    1. Code within a `Once` will only be run once in a program.
 
-Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard to increase the value of `.hunger` every time the Wire loops.
+Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard to increase the value of `hunger` every time the Wire loops.
 
 === "hungry-cat"
     
     ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      (Math.Inc .hunger))
+    @wire(hungry-cat {
+      Once({
+       0 >= hunger})
+      Math.Inc(hunger)
+    } Looped: true)
     ```
 
 ### Conditionals
 
-A conditional can be used to check if `.hunger` is greater than 0. When the cat's hunger level has risen above 0, we want the cat to start making cat noises. Some conditional shards that you can use are:
+A conditional can be used to check if `hunger` is greater than 0. When the cat's hunger level has risen above 0, we want the cat to start making cat noises. Some conditional shards that you can use are:
 
 - [`When`](../../../../reference/shards/shards/General/When/)
 - [`If`](../../../../reference/shards/shards/General/If/)
 
-`When` allows you to specify what happens if a condition is met. The syntax reads as such: `When` a condition is met, `Then` a specified action happens.
+`When` allows you to specify what happens if a condition is met. The syntax reads as such: `When` a condition is met, a specified action happens.
 
 `If` is similar to `When`, but it has an additional parameter `Else` that allows it to have a syntax that reads as such: `If` a condition is met, `Then` a specified action occurs, `Else` another action is executed instead.
 
@@ -516,14 +523,28 @@ For this example, using `When` would suffice as we only need `make-cat-noises` t
 
 === "hungry-cat"
     
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      (When
-       :Predicate (IsMore 0) ;; (1)
-       :Action (-> (Detach make-cat-noises))) ;; (2)
-      (Math.Inc .hunger))
+    ```shards
+    @mesh(main)
+
+    @wire(make-cat-noises {
+        Repeat(
+            Times: 12
+            Action: {
+                Msg("Meow")
+            }
+        )
+    } Looped: false)
+
+    @wire(hungry-cat {
+      Once({
+       0 >= hunger})
+      hunger
+      When(
+       Predicate: IsMore(0) ;; (1)
+       Action: {Detach(make-cat-noises)}
+      ) ;; (2)
+      Math.Inc(hunger)
+    })
     ```
 
     1. [`IsMore`](../../../../reference/shards/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
@@ -531,13 +552,13 @@ For this example, using `When` would suffice as we only need `make-cat-noises` t
 
 ### Debugging
 
-What if you wanted to check the value of `.hunger` in each loop iteration? 
+What if you wanted to check the value of `hunger` in each loop iteration? 
 We can employ a shard that is useful when you wish to debug your code - the [`Log`](../../../../reference/shards/shards/Math/Log/) shard.
 
 !!! note "Debugging"
     Debugging is the process of attempting to find the cause of an error or undesirable behavior in your program. When attempting to debug your code, functions or tools that allow you to check the value of variables at various points in your code can be useful in helping you narrow down where the errors could be originating from.
 
-`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we will use `Log` to verify the value of `.hunger` before the conditional check with `When` occurs. Upon running the code, you will see that when the value of `.hunger` becomes 1, the cat starts to make noises.
+`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we will use `Log` to verify the value of `hunger` before the conditional check with `When` occurs. Upon running the code, you will see that when the value of `hunger` becomes 1, the cat starts to make noises.
 
 ### Readying the Mesh
 
@@ -552,32 +573,30 @@ Before our program can run, do not forget to:
 === "hungry-cat"
     
     ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    @mesh(main)
 
-    (defshards meows []
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3))
+    @wire(make-cat-noises {
+        Repeat(
+            Times: 12
+            Action: {
+                Msg("Meow")
+            }
+        )
+    } Looped: false)
 
-    (defshards mews []
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
+    @wire(hungry-cat {
+      Once({
+       0 >= hunger})
+      hunger
+      When(
+       Predicate: IsMore(0) ;; (1)
+       Action: {Detach(make-cat-noises)}
+      ) ;; (2)
+      Math.Inc(hunger)
+    })
 
-    (defwire make-cat-noises
-      (meows) (mews) (meows) (mews))
-
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      .hunger (Log "Hunger Level")
-      (When
-       :Predicate (IsMore 0)
-       :Action (-> (Detach make-cat-noises)))
-      (Math.Inc .hunger))
-
-    (schedule main hungry-cat)
-    (run main 1 3) ;; (1)
+    @schedule(main hungry-cat)
+    @run(main) ;; (1)
     ```
 
     1. We set the Mesh to only run 3 iterations. This means that the `hungry-cat` loop will only occur 3 times.
@@ -590,28 +609,28 @@ Before our program can run, do not forget to:
     [make-cat-noises] Meow
     [make-cat-noises] Meow
     [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
     [make-cat-noises] Meow
     [make-cat-noises] Meow
     [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
     [hungry-cat] Hunger Level: 2
     [make-cat-noises] Meow
     [make-cat-noises] Meow
     [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
     [make-cat-noises] Meow
     [make-cat-noises] Meow
     [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
+    [make-cat-noises] Meow
     ```
 
 Congratulations! You have now learned the fundamentals of writing a Shards program.

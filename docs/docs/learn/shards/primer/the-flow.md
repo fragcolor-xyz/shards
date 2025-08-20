@@ -8,32 +8,39 @@ To gain better control of the flow in your Shards program, you can employ some o
 
 [`Do`](../../../../reference/shards/shards/General/Do) allows you to run a Wire without having to schedule it on a Mesh. This is useful when you wish to reuse a Wire multiple times, similar to a function. `Do` takes an input, passes it into the Wire being called, and returns the output from it.
 
-In the example below, John and Lucy are taking apples in turn. The Looped Wires are scheduled on the Mesh. When they are run, they each call the unscheduled Wire `take-an-apple`.
+In the example below, John and Lucy are taking apples in turn. The Looped Wires are scheduled on the Mesh. When  both wires are run, they each call the unscheduled Wire `take-an-apple`.
 
 !!! note
     Wires scheduled on the Mesh are automatically run in order when the program starts. Unscheduled Wires however will only run when called by methods such as `Do`.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire take-an-apple
-      = .name (Log "Actor") ;; (1)
-      (Setup 10 >= .apples) ;; (2)
-      (Math.Dec .apples)
-      .apples (Log "Apples Remaining"))
+    @wire(take-an-apple {
+      = name 
+      Log("Actor") ;; (1)
+      Once({10 >= apples}) ;; (2)
+      Math.Dec(apples)
+      apples
+      Log("Apples Remaining")
+    } Looped: false)
 
-    (defloop john
-      (Msg "Taking an apple!")
-      "John" (Do take-an-apple))
+    @wire(john {
+      Msg("Taking an apple!")
+      "John" 
+      Do(take-an-apple)
+    } Looped: true)
 
-    (defloop lucy
-      (Msg "Taking an apple!")
-      "Lucy" (Do take-an-apple))
+    @wire(lucy {
+      Msg("Taking an apple!")
+      "Lucy" 
+      Do(take-an-apple)}
+    Looped: true)
 
-    (schedule main john)
-    (schedule main lucy)
-    (run main 1 3)
+    @schedule(main john)
+    @schedule(main lucy)
+    @run(main 1.0 3)
     ```
 
     1. The value passed into the Wire is saved into a variable. In this case, the string "John" or "Lucy" is passed into the Wire and saved into the variable `.name`.
@@ -89,33 +96,40 @@ This means that there can only be one instance of the detached Wire running, whi
 Back to our previous example with apples, if John now requires some time to juice each apple before taking another, we could use `Detach` and `Wait` to implement this. Note how Lucy continues to take apples while John is still making apple juice.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire take-an-apple
-      = .name (Log "Actor")
-      (Setup 10 >= .apples (Log "Setup"))
-      (Math.Dec .apples)
-      .apples (Log "Apples Remaining"))
+    @wire(take-an-apple {
+      = name 
+      Log("Actor") ;; (1)
+      Once({10 >= apples}) ;; (2)
+      Math.Dec(apples)
+      apples
+      Log("Apples Remaining")
+    } Looped: false)
 
-    (defwire juice-apple
-      = .name (Log "Actor")
-      (Msg "Juicing Apple...") (Pause 1) ;; (1)
-      (Msg "Made some Apple Juice!"))
+    @wire(juice-apple {
+      = name 
+      Log("Actor")
+      Msg("Juicing Apple...") | Pause(1) ;; (1)
+      Msg("Made some Apple Juice!")
+    } Looped: false)
 
-    (defloop john
-      (Msg "Taking an apple!")
-      "John" (Do take-an-apple)
-      "John" (Detach juice-apple)
-      (Wait "juice-apple"))
+    @wire(john {
+      Msg("Taking an apple!")
+      "John" | Do(take-an-apple)
+      "John" | Detach(juice-apple)
+      Wait("juice-apple")
+    } Looped: false)
 
-    (defloop lucy
-      (Msg "Taking an apple!")
-      "Lucy" (Do take-an-apple))
+    @wire(lucy{
+      Msg("Taking an apple!")
+      "Lucy" | Do(take-an-apple)
+    } Looped: true)
 
-    (schedule main john)
-    (schedule main lucy)
-    (run main 1 4)
+    @schedule(main john)
+    @schedule(main lucy)
+    @run(main 1.0 4)
     ```
 
     1. [`Pause`](../../../../reference/shards/shards/General/Pause/) pauses the Wire by the specified amount of seconds.
@@ -149,37 +163,43 @@ Back to our previous example with apples, if John now requires some time to juic
 
     ```
 
-If you tried `(Detach juice-apple)` for Lucy too, you would notice that the juicing does not happen on Lucy's end. This is due to how `Detach` is scheduling the original Wire, and only one instance of it can be scheduled at any time. When John is using the juicer to make apple juice, Lucy cannot use it.
+If you tried `Detach(juice-apple)` for Lucy too, you would notice that the juicing does not happen on Lucy's end. This is due to how `Detach` is scheduling the original Wire, and only one instance of it can be scheduled at any time. When John is using the juicer to make apple juice, Lucy cannot use it.
 
 Now say we have a large oven that bakes multiple apples concurrently. We can use `Spawn` to make clones of a `bake-apple` Wire that can be scheduled to run together.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire take-an-apple
-      = .name (Log "Actor")
-      (Setup 10 >= .apples)
-      (Math.Dec .apples)
-      .apples (Log "Apples Remaining"))
+    @wire(take-an-apple {
+      = name 
+      Log("Actor") ;; (1)
+      Once({10 >= apples}) ;; (2)
+      Math.Dec(apples)
+      apples
+      Log("Apples Remaining")
+    } Looped: false)
 
-    (defwire bake-apple
-      = .name (Log "Actor")
-      (Msg "Baking Apple...") (Pause 1)
-      (Msg "Made a Baked Apple!"))
+    @wire(bake-apple {
+      = name | Log("Actor")
+      Msg("Baking Apple...") | Pause(1)
+      Msg("Made a Baked Apple!")
+    } Looped: true)
 
-    (defloop john
-      (Msg "Taking an apple!")
-      "John" (Do take-an-apple)
-      "John" (Spawn bake-apple))
+    @wire(john {
+      Msg("Taking an apple!")
+      "John" | Do(take-an-apple)
+      "John" | Spawn(bake-apple)
+    } Looped: true)
 
-    (defloop lucy
-      (Msg "Taking an apple!")
-      "Lucy" (Do take-an-apple))
+    @wire(lucy {
+      Msg("Taking an apple!")
+      "Lucy" | Do(take-an-apple)
+    } Looped: true)
 
-    (schedule main john)
-    (schedule main lucy)
-    (run main 1 4)
+    @schedule(main john)
+    @schedule(main lucy)
+    @run(main 1.0 4)
     ```
 
 === "Output"
@@ -219,64 +239,64 @@ Now say we have a large oven that bakes multiple apples concurrently. We can use
     [bake-apple-2] Baking Apple...
     ```
 
-If you added `(Spawn bake-apple)` for Lucy, you will notice that Lucy starts to bake apples along with John! Unlike `Detach`, you can have multiple instances of a spawned Wire running.
+If you added `Spawn(bake-apple)` for Lucy, you will notice that Lucy starts to bake apples along with John! Unlike `Detach`, you can have multiple instances of a spawned Wire running.
 
 Use cases for `Spawn` would include spawning the same projectile (such as bullets fired from a gun) or spawning monster mobs with many instances of one monster type.
 
-## Start / Resume
+## Suspend / Resume
 
 ### Start
 
-[`Start`](../../../../reference/shards/shards/General/Start) scheduling a Wire to run on the same Mesh, in place of the current Wire.
-
-!!! note "Start vs Detach"
-    Even though they both schedule a Wire onto the Mesh, `Start` will stop the current Wire to run the scheduled Wire. With `Detach`, the scheduled Wire will only run when its turn on the Mesh is up.
-
-![Start scheduling a Wire to run in place of the current Wire.](assets/start.png)
+[`Suspend`](../../../../reference/shards/shards/General/Susend) Pauses a specified Wire's execution. If no Wire is specified, pauses the current wire.
 
 ### Resume
 
 [`Resume`](../../../../reference/shards/shards/General/Resume) will resume a suspended Wire from where it was last paused at.
 
-!!! note
-    If `Resume` is used on a Wire that has not been scheduled yet, it will behave as `Start` would and schedule the Wire on the Mesh before starting it.
-
 ![Resume will resume a suspended Wire from where it was last paused at.](assets/start-resume.png)
 
-`Start` and `Resume` are useful when managing different states.
+`Suspend` and `Resume` are useful when managing the state of a detached wire.
+
+### SwitchTo
+
+[`SwitchTo`](../../../../reference/shards/shards/General/SwitchTo) suspends the current wire and switches flow to another wire.
+
+SwitchTo is useful for managing the game state.
 
 For example:
 
-- Your game `Start`s the player in Zone 1.
+- Your game starts the player in Zone 1.
 
-- When the player moves to Zone 2, you `Start` Zone 2's Wire.
+- When the player moves to Zone 2, you `SwitchTo` Zone 2's Wire.
 
-- When the player returns to Zone 1, you `Resume` Zone 1's Wire.
+- When the player returns to Zone 1, you `SwitchTo` Zone 1's Wire.
 
 - Any previous changes made by the player in Zone 1 would still persist.
 
 In the example below, we use `Start` and `Resume` to toggle between John's and Lucy's turns. Note how `Resume` redirects the flow back to exactly where `john` was paused at.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire take-an-apple
-      (Setup 10 >= .apples)
-      (Math.Dec .apples)
-      .apples (Log "Apples Remaining"))
+    @wire(take-an-apple{
+      Once({10 >= apples})
+      Math.Dec(apples)
+      apples | Log("Apples Remaining")
+    } Looped: false)
 
-    (defloop lucy
-      (Setup 0 >= .apple-count)
-      (Msg "Taking an apple!")
-      (Do take-an-apple)
-      (Math.Inc .apple-count)
+    @wire( lucy{ 
+      Once({0 >= apple-count})
+      Msg("Taking an apple!")
+      Do(take-an-apple)
+      Math.Inc(apple-count)
 
-      (When
-       :Predicate (-> .apple-count (IsMore 2))
-       :Action
-       (-> (Msg "I have enough, you can have the rest.")
-           (Resume)))) ;; (1)
+      When(
+       Predicate: {apple-count | (IsMore 2)}
+       Action:{
+        Msg ("I have enough, you can have the rest.")
+        Resume})
+    } Looped: true) ;; (1)
 
     (defloop john
       (Setup
