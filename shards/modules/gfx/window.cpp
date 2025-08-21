@@ -147,11 +147,7 @@ struct MainWindow final {
 
       SHInstanceData innerData = data;
       innerData.shared = SHExposedTypesInfo(_innerExposedVariables);
-      auto res = _contents.compose(innerData);
-      for (auto &req : res.requiredInfo) {
-        if (req != WindowContext::VariableInfo || req != reqInputCtx)
-          _requiredVariables.push_back(req);
-      }
+      _contents.compose(innerData);
     }
 
     mergeIntoExposedInfo(_exposedVariables, _contents.composeResult().exposedInfo);
