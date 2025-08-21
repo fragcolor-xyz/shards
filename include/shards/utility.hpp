@@ -8,8 +8,6 @@
 #include "ops.hpp"
 #include "iterator.hpp"
 #include "defer.hpp"
-#include <spdlog/fmt/fmt.h>
-#include <magic_enum.hpp>
 #include <cassert>
 #include <future>
 #include <memory>
@@ -17,6 +15,14 @@
 #include <string>
 #include <vector>
 #include <string.h>
+
+#if SHARDS_NO_SPDLOG
+#include <fmt/format.h>
+#else
+#include <spdlog/fmt/fmt.h>
+#endif
+
+#include <magic_enum.hpp>
 
 #ifdef HAS_BOOST_CONTAINER
 #ifdef __clang__
@@ -835,7 +841,7 @@ template <class SH_CORE> const TSeqVar<SH_CORE> &asSeq(const TOwnedVar<SH_CORE> 
   return reinterpret_cast<const TSeqVar<SH_CORE> &>(var);
 }
 
-template <typename T, size_t N> struct __attribute__((aligned(16))) aligned_array : public std::array<T, N> {};
+template <typename T, size_t N> struct SH_STRUCT16 aligned_array : public std::array<T, N> {};
 
 // Assigns only the variable value, not it's flags and internal properties
 ALWAYS_INLINE inline void assignVariableValue(SHVar &v, const SHVar &other) {
