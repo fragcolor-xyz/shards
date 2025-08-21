@@ -1147,8 +1147,13 @@ struct Fold {
     _tmpInfoIndex.exposedType = CoreInfo::IntType;
     arrayPush(dataCopy.shared, _tmpInfoIndex);
 
-    _shards.compose(dataCopy);
-    PARAM_COMPOSE_MERGE_REQUIRED(_shards);
+    auto res = _shards.compose(dataCopy);
+    for (auto &req : res.requiredInfo) {
+      auto name = std::string_view(req.name);
+      if (name != "$0" && name != "$i") {
+        _requiredVariables.push_back(req);
+      }
+    }
 
     return _outputSingleType;
   }
@@ -2139,8 +2144,13 @@ struct Iterate {
     arrayPush(dataCopy.shared, _tmpInfo0);
     arrayPush(dataCopy.shared, _tmpInfo1);
 
-    _action.compose(dataCopy);
-    PARAM_COMPOSE_MERGE_REQUIRED(_action);
+    auto res = _action.compose(dataCopy);
+    for (auto &req : res.requiredInfo) {
+      auto name = std::string_view(req.name);
+      if (name != "$0" && name != "$1") {
+        _requiredVariables.push_back(req);
+      }
+    }
 
     return data.inputType;
   }
