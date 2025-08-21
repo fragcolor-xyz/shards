@@ -15,7 +15,8 @@ struct RendererShard {
   static const inline Type WindowType = WindowContext::Type;
 
   PARAM_PARAMVAR(_window, "Window", "The window to run the renderer on.", {CoreInfo::NoneType, Type::VariableOf(WindowType)});
-  PARAM_PARAMVAR(_surface, "Surface", "The surface to run the renderer on.", {CoreInfo::NoneType, Type::VariableOf(SHSurface::Type)});
+  PARAM_PARAMVAR(_surface, "Surface", "The surface to run the renderer on.",
+                 {CoreInfo::NoneType, Type::VariableOf(SHSurface::Type)});
   PARAM(ShardsVar, _contents, "Contents", "The main input loop of this window.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_ignoreCompilationErrors, "IgnoreCompilationErrors",
             "When enabled, shader or pipeline compilation errors will be ignored and either use fallback rendering or not "
@@ -23,8 +24,8 @@ struct RendererShard {
             {CoreInfo::BoolType});
   PARAM_PARAMVAR(_debug, "Debug", "Enable debug visualization mode.",
                  {CoreInfo::NoneType, CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_surface), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_ignoreCompilationErrors),
-             PARAM_IMPL_FOR(_debug));
+  PARAM_IMPL(PARAM_IMPL_FOR(_window), PARAM_IMPL_FOR(_surface), PARAM_IMPL_FOR(_contents),
+             PARAM_IMPL_FOR(_ignoreCompilationErrors), PARAM_IMPL_FOR(_debug));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -64,8 +65,6 @@ struct RendererShard {
     innerData.shared = SHExposedTypesInfo(_innerExposedVariables);
     _contents.compose(innerData);
 
-    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
-
     mergeIntoExposedInfo(_exposedVariables, _contents.composeResult().exposedInfo);
 
     // Merge required, but without the context variables
@@ -99,9 +98,8 @@ struct RendererShard {
       renderer._graphicsContext.renderer->setDebug(debug.isNone() ? false : (bool)debug);
     }
 
-
-    bool begun =false;
-    if(!_window.isNone()) {
+    bool begun = false;
+    if (!_window.isNone()) {
       auto &windowContext = varAsObjectChecked<shards::WindowContext>(_window.get(), shards::WindowContext::Type);
       begun = renderer.begin(shContext, windowContext);
     } else if (!_surface.isNone()) {

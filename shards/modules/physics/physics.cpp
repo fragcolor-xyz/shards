@@ -146,8 +146,13 @@ struct WithContextShard {
     });
     SHInstanceData innerData = data;
     innerData.shared = SHExposedTypesInfo(innerShared);
-    _contents.compose(innerData);
-    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
+    auto res = _contents.compose(innerData);
+    for (auto &req : res.requiredInfo) {
+      auto name = std::string_view(req.name);
+      if (name != ShardsContext::VariableName) {
+        _requiredVariables.push_back(req);
+      }
+    }
     return outputTypes().elements[0];
   }
 
@@ -290,7 +295,9 @@ struct CollisionsShard {
 struct DumpShard {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Logs information about the current state of the physics simulation in the console."); }
+  static SHOptionalString help() {
+    return SHCCSTR("Logs information about the current state of the physics simulation in the console.");
+  }
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpPass; }
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 
@@ -362,7 +369,7 @@ struct RotationShard {
   PARAM_IMPL();
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
-  PARAM_REQUIRED_VARIABLES(); 
+  PARAM_REQUIRED_VARIABLES();
 
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
@@ -664,7 +671,9 @@ struct ApplyForceAt {
   static SHOptionalString inputHelp() { return SHCCSTR("The physics body to apply the force to."); }
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input physics body with the force applied."); }
 
-  PARAM_PARAMVAR(_force, "Force", "The force to apply represented as a float3 containing the magnitude and direction of the force.", {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(_force, "Force",
+                 "The force to apply represented as a float3 containing the magnitude and direction of the force.",
+                 {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_PARAMVAR(_position, "Position", "The position to apply the force at represented as a float3",
                  {shards::CoreInfo::Float3Type, CoreInfo::Float3VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_force), PARAM_IMPL_FOR(_position));

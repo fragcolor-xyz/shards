@@ -102,8 +102,10 @@ struct GizmosContextShard {
 
     auto cr = _content.compose(contentInstanceData);
     for (auto &req : cr.requiredInfo) {
-      if (req != GizmoContext::VariableInfo)
+      auto name = std::string_view(req.name);
+      if (name != GizmoContext::VariableName) {
         _requiredVariables.push_back(req);
+      }
     }
 
     _exposedInfo.clear();
