@@ -147,6 +147,7 @@ struct WithContextShard {
     SHInstanceData innerData = data;
     innerData.shared = SHExposedTypesInfo(innerShared);
     _contents.compose(innerData);
+    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
     return outputTypes().elements[0];
   }
 
@@ -214,8 +215,10 @@ struct CollisionsShard {
     SHInstanceData innerData{data};
     innerData.inputType = ContactTableType;
     _enter.compose(innerData);
+    PARAM_COMPOSE_MERGE_REQUIRED(_enter);
     innerData.inputType = ContactLeaveTableType;
     _leave_.compose(innerData);
+    PARAM_COMPOSE_MERGE_REQUIRED(_leave_);
 
     return outputTypes().elements[0];
   }

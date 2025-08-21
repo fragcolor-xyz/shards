@@ -395,8 +395,11 @@ public:
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     baseCompose(data, _requiredVariables);
     _leftButton.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_leftButton);
     _rightButton.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_rightButton);
     _middleButton.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_middleButton);
     return data.inputType;
   }
 
@@ -518,6 +521,7 @@ public:
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     baseCompose(data, _requiredVariables);
     _shards.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_shards);
     return data.inputType;
   }
 
@@ -695,6 +699,7 @@ struct HandleURL : public Base {
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::StringType;
     _action.compose(dataCopy);
+    PARAM_COMPOSE_MERGE_REQUIRED(_action);
     return data.inputType;
   }
 

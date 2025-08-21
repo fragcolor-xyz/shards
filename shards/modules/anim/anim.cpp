@@ -112,6 +112,7 @@ struct TimerShard {
     _hasCallback = _action.shards().len > 0;
     if (_hasCallback) {
       _action.compose(data);
+      PARAM_COMPOSE_MERGE_REQUIRED(_action);
     }
 
     return outputTypes().elements[0];

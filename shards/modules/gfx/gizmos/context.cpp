@@ -101,6 +101,7 @@ struct GizmosContextShard {
     contentInstanceData.shared = SHExposedTypesInfo(_innerExposedInfo);
 
     auto cr = _content.compose(contentInstanceData);
+    PARAM_COMPOSE_MERGE_REQUIRED(_content);
 
     _exposedInfo.clear();
     for (auto &exposed : cr.exposedInfo) {

@@ -278,7 +278,11 @@ struct RenderIntoShard {
       _requiredVariables.push_back(decltype(_inputContext)::getExposedTypeInfo());
     }
 
-    return _contents.compose(data).outputType;
+    auto result = _contents.compose(data).outputType;
+
+    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
+
+    return result;
   }
 
   TextureSubResource applyAttachment(SHContext *shContext, const SHVar &input) {

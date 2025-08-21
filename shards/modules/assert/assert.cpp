@@ -281,16 +281,19 @@ template <bool Mode> struct Compose {
   static SHOptionalString inputHelp() { return SHCCSTR("The input can be of any type."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The output will be the input (passthrough)."); }
 
-  PARAM(ShardsVar, _contents, "Content", "The content of the composed shard.", {CoreInfo::ShardsOrNoneSeq});
+  PARAM(ShardsVar, _contents, "Content", "The content of the compose shard.", {CoreInfo::ShardsOrNoneSeq});
   PARAM_VAR(_tag, "Tag", "The tag of this assertion.", {CoreInfo::NoneType, CoreInfo::StringType});
   PARAM_IMPL(PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_tag));
 
   bool _didCompose{};
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     _didCompose = false;
     try {
       _contents.compose(data);
+      PARAM_COMPOSE_MERGE_REQUIRED(_contents);
       _didCompose = true;
     } catch (const std::exception &e) {
       _didCompose = false;

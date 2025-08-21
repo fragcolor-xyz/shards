@@ -885,7 +885,9 @@ struct ExpectLike {
       _expectedType = deriveTypeInfo((SHVar &)_typeOf, data);
       _derived = true;
     } else if (haveOutputOf) {
-      _expectedType = _outputOf.compose(data).outputType;
+      auto res = _outputOf.compose(data);
+      _expectedType = res.outputType;
+      PARAM_COMPOSE_MERGE_REQUIRED(_outputOf);
     } else {
       throw ComposeError("One of TypeOf or OutputOf is required");
     }
@@ -927,7 +929,10 @@ struct TypeOf {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
-    _expectedType = _outputOf.compose(data).outputType;
+    auto res = _outputOf.compose(data);
+    _expectedType = res.outputType;
+    PARAM_COMPOSE_MERGE_REQUIRED(_outputOf);
+
     return outputTypes().elements[0];
   }
 

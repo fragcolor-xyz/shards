@@ -742,6 +742,7 @@ struct Transaction : public Base {
     arrayPush(dataCopy.shared, _cookie);
     // the cookie will be used within inner queries to ensure they are part of the transaction
     _composeResult = _queries.compose(dataCopy);
+    PARAM_COMPOSE_MERGE_REQUIRED(_queries);
     return data.inputType;
   }
 

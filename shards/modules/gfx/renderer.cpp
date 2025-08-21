@@ -64,6 +64,8 @@ struct RendererShard {
     innerData.shared = SHExposedTypesInfo(_innerExposedVariables);
     _contents.compose(innerData);
 
+    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
+
     mergeIntoExposedInfo(_exposedVariables, _contents.composeResult().exposedInfo);
 
     // Merge required, but without the context variables

@@ -100,6 +100,7 @@ struct TUITypes {
     SHTypeInfo compose(SHInstanceData &data) {                                                                     \
       PARAM_COMPOSE_REQUIRED_VARIABLES(data);                                                                      \
       _contents.compose(data);                                                                                     \
+      PARAM_COMPOSE_MERGE_REQUIRED(_contents);                                                                     \
       return TUITypes::Element;                                                                                    \
     }                                                                                                              \
                                                                                                                    \
@@ -362,6 +363,7 @@ struct Button {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     _action.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_action);
     return TUITypes::Element;
   }
 
@@ -434,6 +436,7 @@ struct TUIInput {
     }
 
     _onEnter.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_onEnter);
 
     return TUITypes::Element;
   }

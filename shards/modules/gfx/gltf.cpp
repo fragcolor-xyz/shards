@@ -206,6 +206,7 @@ struct GLTFShard {
         throw std::runtime_error(fmt::format("Invalid animation frame data: {}, expected: {}",
                                              _animController.composeResult().outputType,
                                              Animations::ShardsTypes::AnimationValues));
+      PARAM_COMPOSE_MERGE_REQUIRED(_animController);
     }
 
     return ShardsTypes::Drawable;
@@ -402,9 +403,7 @@ struct GLTFShard {
     }
   }
 
-  bool isFloat4x4(const SHVar &var) {
-    return var.valueType == SHType::Seq && var.payload.seqValue.len == 4;
-  }
+  bool isFloat4x4(const SHVar &var) { return var.valueType == SHType::Seq && var.payload.seqValue.len == 4; }
   bool isValidPath(const SHVar &var) {
     for (auto &elem : var.payload.seqValue) {
       if (elem.valueType != SHType::String)

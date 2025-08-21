@@ -191,7 +191,10 @@ struct Sort : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
+
     _key.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_key);
+
     return inputType;
   }
 
@@ -337,10 +340,12 @@ struct Remove : public JointOp {
 
     auto inputType = info.exposedType;
     data.inputType = info.exposedType.seqTypes.elements[0];
-    const auto pres = _predicate.compose(data);
+    auto pres = _predicate.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_predicate);
     if (pres.outputType.basicType != SHType::Bool) {
       throw ComposeError("Remove Predicate should output a boolean value.");
     }
+
     return inputType;
   }
 
@@ -414,6 +419,7 @@ struct Profile {
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     auto res = _action.compose(data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_action);
     _exposed = res.exposedInfo;
     _required = res.requiredInfo;
     return res.outputType;
@@ -1142,6 +1148,7 @@ struct Fold {
     arrayPush(dataCopy.shared, _tmpInfoIndex);
 
     _shards.compose(dataCopy);
+    PARAM_COMPOSE_MERGE_REQUIRED(_shards);
 
     return _outputSingleType;
   }
@@ -2133,6 +2140,7 @@ struct Iterate {
     arrayPush(dataCopy.shared, _tmpInfo1);
 
     _action.compose(dataCopy);
+    PARAM_COMPOSE_MERGE_REQUIRED(_action);
 
     return data.inputType;
   }
@@ -2285,9 +2293,7 @@ struct Filter {
     if (res.outputType.basicType != SHType::Bool) {
       throw ActivationError("Filter: Expected boolean output.");
     }
-    for (auto &req : res.requiredInfo) {
-      _requiredVariables.push_back(req);
-    }
+    PARAM_COMPOSE_MERGE_REQUIRED(_filter);
     return data.inputType;
   }
 
