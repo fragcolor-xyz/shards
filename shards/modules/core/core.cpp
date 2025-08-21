@@ -1400,9 +1400,7 @@ struct Assoc : public VariableBase {
        {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return params; }
 
-  static SHOptionalString help() {
-    return SHCCSTR("Updates a sequence or a table based on the input sequence.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Updates a sequence or a table based on the input sequence."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHOptionalString inputHelp() {
@@ -2263,6 +2261,58 @@ struct Last {
     } else {
       throw ActivationError("Last: Expected table or sequence input.");
     }
+  }
+};
+
+struct Filter {
+  static SHOptionalString help() { return SHCCSTR("Filters a sequence based on a predicate."); }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence to filter."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A new sequence containing only the elements that match the filter."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  PARAM(ShardsVar, _filter, "Predicate", "The predicate function to filter elements.", {CoreInfo::ShardsOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_filter));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    SHInstanceData dataCopy = data;
+    dataCopy.inputType = data.inputType.seqTypes.len == 1 ? data.inputType.seqTypes.elements[0] : (SHTypeInfo)CoreInfo::AnyType;
+    auto res = _filter.compose(dataCopy);
+    if (res.outputType.basicType != SHType::Bool) {
+      throw ActivationError("Filter: Expected boolean output.");
+    }
+    for (auto &req : res.requiredInfo) {
+      _requiredVariables.push_back(req);
+    }
+    return data.inputType;
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  SeqVar _output;
+
+  SHVar &activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+
+    for (auto &item : input) {
+      SHVar output{};
+      auto state = _filter.activate<true>(context, item, output);
+      if (unlikely(state != SHWireState::Continue)) {
+        // early out
+        return _output;
+      }
+      if (output.payload.boolValue) {
+        _output.push_back(item);
+      }
+    }
+
+    return _output;
   }
 };
 
@@ -3257,5 +3307,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Iterate", Iterate);
   REGISTER_SHARD("First", First);
   REGISTER_SHARD("Last", Last);
+  REGISTER_SHARD("Filter", Filter);
 }
 }; // namespace shards

@@ -119,6 +119,12 @@ struct Type {
     return res;
   }
 
+  static Type SeqOf(SHTypeInfo &type) {
+    Type res;
+    res._type = {SHType::Seq, {.seqTypes = SHTypesInfo{.elements = &type, .len = 1}}};
+    return res;
+  }
+
   static Type SeqOf(SHTypesInfo types, uint32_t fixedLen) {
     Type res;
     res._type = {SHType::Seq, {.seqTypes = types}, fixedLen};

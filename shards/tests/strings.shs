@@ -82,6 +82,26 @@ Something else"""
   @read("utf16str.dat" Bytes: true) = utf16bytes
   utf16bytes | String.FromUTF16 | Assert.Is("Advanced Early Bird’s Grace")
   String.ToUTF16 | Assert.Is(utf16bytes)
+  
+  """Hello this is just a test string, with a "quoted sentence" in the middle""" = search-text
+  
+  ; Extract quoted phrases first
+  search-text | Regex.Search("\"([^\"]+)\"") | Map({
+    Take(1) ; Capture group 1 (content inside quotes)
+  }) = quoted-phrases
+  
+  ; Remove quotes and their content, then split remaining terms
+  search-text | Regex.Replace("\"[^\"]+\"" "")
+  String.Split(" ")
+  Filter(IsAllNot(["" "a"])) ; Remove empty strings
+  Map({
+    ["%" $0 "%"] | String.Join
+  }) = individual-terms
+  
+  quoted-phrases | Assert.Is(["quoted sentence"])
+  individual-terms | Assert.Is([
+    "%Hello%" "%this%" "%is%" "%just%" "%test%" "%string,%" "%with%" "%in%" "%the%" "%middle%"
+  ])
 })
 
 @mesh(root)
