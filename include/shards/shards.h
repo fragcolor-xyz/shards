@@ -162,28 +162,7 @@ typedef struct SHStringWithLen {
   uint64_t len;
 } SHStringWithLen;
 
-#if defined(_MSC_VER)
-
-// Not fully supported, but just for the dll interface
-#define likely(x) 
-#define unlikely(x) 
-#define shufflevector shassert(false)
-
-typedef int64_t[2] SHInt2;
-typedef int32_t[4] SHInt3;
-typedef int32_t[4] SHInt4;
-typedef int16_t[8] SHInt8;
-typedef int8_t[16] SHInt16;
-
-typedef double[2] SHFloat2;
-typedef float[4] SHFloat3;
-typedef float[4] SHFloat4;
-
-#define NO_INLINE 
-#define ALWAYS_INLINE
-#define FLATTEN 
-
-#elif defined(__clang__) || defined(__GNUC__)
+#if defined(__clang__) || defined(__GNUC__)
 #define likely(x) __builtin_expect((x), 1)
 #define unlikely(x) __builtin_expect((x), 0)
 
@@ -203,6 +182,8 @@ typedef double SHFloat2 __attribute__((vector_size(16)));
 typedef float SHFloat3 __attribute__((vector_size(16)));
 typedef float SHFloat4 __attribute__((vector_size(16)));
 
+#define SH_STRUCT16 
+
 #define NO_INLINE __attribute__((noinline))
 
 #if defined(NDEBUG) && !defined(NO_FORCE_INLINE)
@@ -212,7 +193,19 @@ typedef float SHFloat4 __attribute__((vector_size(16)));
 #define ALWAYS_INLINE
 #define FLATTEN
 #endif
+#elif defined(_MSC_VER)
+// Not fully supported, but just for the dll interface
+#define likely(x) 
+#define unlikely(x) 
+#define shufflevector shassert(false)
 
+#include "msc_vec.hpp"
+
+#define SH_STRUCT16 __declspec(align(16))
+
+#define NO_INLINE 
+#define ALWAYS_INLINE
+#define FLATTEN 
 #else // TODO
 #error "Unsupported compiler"
 
@@ -265,7 +258,7 @@ struct SHImage {
   uint8_t flags;
   uint8_t *data;
   SHImageFreeProc free;
-} __attribute__((aligned(16)));
+} SH_STRUCT16;
 
 struct SHAudio {
   uint32_t sampleRate; // set to 0 if unknown/not relevant
@@ -643,7 +636,7 @@ struct SHVarPayload {
     struct SHTypeInfo *typeValue;
     struct SHTrait *traitValue;
   };
-} __attribute__((aligned(16)));
+} SH_STRUCT16;
 
 // SHVar flags
 #define SHVAR_FLAGS_NONE (0)
@@ -693,14 +686,14 @@ struct SHVar {
   uint8_t trackingMask; // 8bits mask, so up to 8 kinds of tracking
   uint16_t flags;
   uint32_t refcount;
-} __attribute__((aligned(16)));
+} SH_STRUCT16;
 
 enum SH_ENUM_CLASS SHRunWireOutputState { Running, Returned, Stopped, Failed };
 
 struct SHRunWireOutput {
   struct SHVar output;
   SH_ENUM_DECL SHRunWireOutputState state;
-} __attribute__((aligned(16)));
+} SH_STRUCT16;
 
 struct SHComposeResult {
   struct SHTypeInfo outputType;

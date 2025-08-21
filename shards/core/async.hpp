@@ -119,12 +119,15 @@ struct TidePool {
   std::mutex _condMutex;
   std::condition_variable _cond;
 
-  TidePool() {
-    _running = true;
-    _controller = std::thread(&TidePool::controllerWorker, this);
-  }
-
+  TidePool() { initialize(); }
   ~TidePool() { terminate(); }
+
+  void initialize() {
+    if (!_running) {
+      _running = true;
+      _controller = std::thread(&TidePool::controllerWorker, this);
+    }
+  }
 
   void terminate() {
     if (!_running)
