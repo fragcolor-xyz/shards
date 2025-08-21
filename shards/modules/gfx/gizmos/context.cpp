@@ -101,7 +101,10 @@ struct GizmosContextShard {
     contentInstanceData.shared = SHExposedTypesInfo(_innerExposedInfo);
 
     auto cr = _content.compose(contentInstanceData);
-    PARAM_COMPOSE_MERGE_REQUIRED(_content);
+    for (auto &req : cr.requiredInfo) {
+      if (req != GizmoContext::VariableInfo)
+        _requiredVariables.push_back(req);
+    }
 
     _exposedInfo.clear();
     for (auto &exposed : cr.exposedInfo) {
