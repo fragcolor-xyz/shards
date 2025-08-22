@@ -15,17 +15,8 @@ let package = Package(
         ),
     ],
     targets: [
-        .systemLibrary(
-            name: "shards",
-            pkgConfig: "shards",
-            providers: [
-                .brew(["shards"]),
-                .apt(["libshards-dev"])
-            ]
-        ),
         .target(
             name: "Shards",
-            dependencies: ["shards"],
             path: "include/shards",
             sources: ["shards.swift"]
         ),
