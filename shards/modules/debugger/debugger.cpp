@@ -133,10 +133,10 @@ void DAPServer::start() {
 }
 
 void DAPServer::stop() {
-  stopServiceDiscovery();
   if (acceptor_) {
     io_context_.stop();
     acceptor_.reset();
+    stopServiceDiscovery();
   }
 }
 
