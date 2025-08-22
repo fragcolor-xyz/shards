@@ -1282,6 +1282,7 @@ struct CapturingSpawners : public WireBase {
     _sharedCopy = shared;
   }
 };
+
 enum class WaitUntil { FirstSuccess, AllSuccess, SomeSuccess };
 } // namespace shards
 

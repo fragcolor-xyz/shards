@@ -15,7 +15,7 @@ import time
 
 def run():
     start = time.time()
-    result = fib4(256000000) # lol will print Int error and will run for hours... Shards ftw
+    result = fib4(90)
     end = time.time()
     
     print(f"result: {result}")

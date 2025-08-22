@@ -251,6 +251,7 @@ struct WSServerShard {
       SHInstanceData dataCopy = data;
       dataCopy.inputType = Types::Peer;
       _onDisconnect.compose(dataCopy);
+      PARAM_COMPOSE_MERGE_REQUIRED(_onDisconnect);
     }
 
     // inject our special context vars
@@ -478,6 +479,7 @@ struct WSClientShard {
         dataCopy.inputType = CoreInfo::AnyType;
       }
       _handler.compose(dataCopy);
+      PARAM_COMPOSE_MERGE_REQUIRED(_handler);
     }
 
     return outputTypes().elements[0];
@@ -727,6 +729,7 @@ struct WSClientShard {
         dataCopy.inputType = CoreInfo::AnyType;
       }
       _handler.compose(dataCopy);
+      PARAM_COMPOSE_MERGE_REQUIRED(_handler);
     }
 
     return outputTypes().elements[0];

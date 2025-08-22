@@ -270,6 +270,7 @@ struct CaptureLog {
     SHInstanceData dataInner = data;
     dataInner.shared = SHExposedTypesInfo(inner);
     _content.compose(dataInner);
+    PARAM_COMPOSE_MERGE_REQUIRED(_content);
     return outputTypes().elements[0];
   }
 

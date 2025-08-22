@@ -346,10 +346,9 @@ struct Detached {
     auto mainInstanceData = data;
     mainInstanceData.inputType = mainDataSeqType;
 
-    auto mainCr = _mainShards.compose(mainInstanceData);
-    for (auto req : mainCr.requiredInfo) {
-      _requiredVariables.push_back(req);
-    }
+    _mainShards.compose(mainInstanceData);
+    PARAM_COMPOSE_MERGE_REQUIRED(_mainShards);
+
     return mainDataSeqType;
   }
 

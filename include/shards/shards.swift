@@ -2112,7 +2112,7 @@ class SwiftSWL {
 }
 
 public class RefCounted<T> {
-    var value: T?
+    var value: T
     private var manualCount: Int = 1 // Start at 1 for the initial owner
 
     init(value: T) {

@@ -142,7 +142,8 @@ struct MainWindow final {
 
       _inlineInputContext.emplace();
       _inlineInputContext->master = &_windowContext->inputMaster;
-      _innerExposedVariables.push_back(RequiredInputContext::getExposedTypeInfo());
+      auto reqInputCtx = RequiredInputContext::getExposedTypeInfo();
+      _innerExposedVariables.push_back(reqInputCtx);
 
       SHInstanceData innerData = data;
       innerData.shared = SHExposedTypesInfo(_innerExposedVariables);

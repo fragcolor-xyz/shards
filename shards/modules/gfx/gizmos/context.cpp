@@ -101,6 +101,12 @@ struct GizmosContextShard {
     contentInstanceData.shared = SHExposedTypesInfo(_innerExposedInfo);
 
     auto cr = _content.compose(contentInstanceData);
+    for (auto &req : cr.requiredInfo) {
+      auto name = std::string_view(req.name);
+      if (name != GizmoContext::VariableName) {
+        _requiredVariables.push_back(req);
+      }
+    }
 
     _exposedInfo.clear();
     for (auto &exposed : cr.exposedInfo) {
