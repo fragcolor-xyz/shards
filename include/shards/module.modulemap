@@ -1,4 +1,4 @@
-module shards {
+module shards_native {
   header "shards_swift.h"
   export *
 }

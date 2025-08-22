@@ -72,7 +72,28 @@
  */
 
 import Foundation
-import shards
+import shards_native
+
+public typealias SHVar = shards_native.SHVar
+public typealias SHObjectInfo = shards_native.SHObjectInfo
+public typealias SHInstanceData = shards_native.SHInstanceData
+public typealias SHTypeInfo = shards_native.SHTypeInfo
+public typealias SHMeshRef = shards_native.SHMeshRef
+
+public typealias SHInputTypesProc = shards_native.SHInputTypesProc
+public typealias SHDestroyProc = shards_native.SHDestroyProc
+public typealias SHNameProc = shards_native.SHNameProc
+public typealias SHHashProc = shards_native.SHHashProc
+public typealias SHHelpProc = shards_native.SHHelpProc
+public typealias SHParametersProc = shards_native.SHParametersProc
+public typealias SHSetParamProc = shards_native.SHSetParamProc
+public typealias SHGetParamProc = shards_native.SHGetParamProc
+public typealias SHExposedVariablesProc = shards_native.SHExposedVariablesProc
+public typealias SHRequiredVariablesProc = shards_native.SHRequiredVariablesProc
+public typealias SHComposeProc = shards_native.SHComposeProc
+public typealias SHWarmupProc = shards_native.SHWarmupProc
+public typealias SHCleanupProc = shards_native.SHCleanupProc
+public typealias SHActivateProc = shards_native.SHActivateProc
 
 public struct Globals {
     public var Core: UnsafeMutablePointer<SHCore>
@@ -217,11 +238,11 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
             || self == VarType.Float4
     }
 
-    func asSHType() -> SHType {
+    public func asSHType() -> SHType {
         SHType(rawValue: rawValue)
     }
 
-    func asSHTypeInfo() -> SHTypeInfo {
+    public func asSHTypeInfo() -> SHTypeInfo {
         var info = SHTypeInfo()
         info.basicType = asSHType()
         return info
@@ -255,7 +276,7 @@ extension SHVar: CustomStringConvertible {
         G.Core.pointee.destroyVar(&self)
     }
 
-    init(value: Bool) {
+    public init(value: Bool) {
         var v = SHVar()
         v.valueType = Bool
         v.payload.boolValue = SHBool(value)
@@ -316,14 +337,14 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(x: Int64, y: Int64) {
+    public init(x: Int64, y: Int64) {
         var v = SHVar()
         v.valueType = Int2
         v.payload.int2Value = SHInt2(x: x, y: y)
         self = v
     }
 
-    init(r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
+    public init(r: UInt8, g: UInt8, b: UInt8, a: UInt8) {
         var v = SHVar()
         v.valueType = Color
         v.payload.colorValue.r = r
@@ -333,21 +354,21 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
-    init(value: SIMD2<Int64>) {
+    public init(value: SIMD2<Int64>) {
         var v = SHVar()
         v.valueType = Int2
         v.payload.int2Value = value
         self = v
     }
 
-    init(value: SIMD3<Float>) {
+    public init(value: SIMD3<Float>) {
         var v = SHVar()
         v.valueType = Float3
         v.payload.float3Value = SIMD4<Float>(value, 0)
         self = v
     }
 
-    init(value: SIMD4<Float>) {
+    public init(value: SIMD4<Float>) {
         var v = SHVar()
         v.valueType = Float4
         v.payload.float4Value = value
@@ -368,7 +389,7 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
-    init(value: SIMD2<Double>) {
+    public init(value: SIMD2<Double>) {
         var v = SHVar()
         v.valueType = Float2
         v.payload.float2Value = value
@@ -459,7 +480,7 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(string: StaticString) {
+    public init(string: StaticString) {
         var v = SHVar()
         v.valueType = String
         v.payload.stringValue = string.withUTF8Buffer { buffer in
@@ -567,14 +588,14 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(value: ShardPtr) {
+    public init(value: ShardPtr) {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.ShardRef.rawValue)
         v.payload.shardValue = value
         self = v
     }
 
-    init(value: SHWireRef) {
+    public init(value: SHWireRef) {
         var v = SHVar()
         v.valueType = SHType(rawValue: VarType.Wire.rawValue)
         v.payload.wireValue = value
@@ -591,7 +612,7 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(value: UnsafeMutableBufferPointer<SHVar>) {
+    public init(value: UnsafeMutableBufferPointer<SHVar>) {
         var v = SHVar()
         v.valueType = Seq
         v.payload.seqValue.elements = value.baseAddress
@@ -610,7 +631,7 @@ extension SHVar: CustomStringConvertible {
         }
     }
 
-    init(pointer: UnsafeMutableRawPointer, vendorId: Int32, typeId: Int32) {
+    public init(pointer: UnsafeMutableRawPointer, vendorId: Int32, typeId: Int32) {
         var v = SHVar()
         v.valueType = Object
         v.payload.objectVendorId = vendorId
@@ -619,16 +640,16 @@ extension SHVar: CustomStringConvertible {
         self = v
     }
 
-    func isNone() -> Bool {
+    public func isNone() -> Bool {
         return type == .NoValue
     }
 
-    mutating func addRef() {
+    public mutating func addRef() {
         refcount += 1
         flags |= UInt16(SHVAR_FLAGS_REF_COUNTED)
     }
 
-    mutating func releaseRef() {
+    public mutating func releaseRef() {
         assert(refcount > 0, "Refcount must be positive!")
         refcount -= 1
         if refcount == 0 {
@@ -640,15 +661,15 @@ extension SHVar: CustomStringConvertible {
     }
 }
 
-class OwnedVar {
-    var v: SHVar
+public class OwnedVar {
+    public var v: SHVar
     var borrowed = false
 
-    init() {
+    public init() {
         v = SHVar()
     }
 
-    init(cloning: SHVar) {
+    public init(cloning: SHVar) {
         v = SHVar()
 
         withUnsafePointer(to: cloning) { ptr in
@@ -656,37 +677,37 @@ class OwnedVar {
         }
     }
 
-    init(borrowing: SHVar) {
+    public init(borrowing: SHVar) {
         v = borrowing
         borrowed = true
     }
 
-    init(string: String) {
+    public init(string: String) {
         v = SHVar()
         set(string: string)
     }
 
-    init(variable: String) {
+    public init(variable: String) {
         v = SHVar()
         set(variable: variable)
     }
 
-    init(bytes: ContiguousArray<UInt8>) {
+    public init(bytes: ContiguousArray<UInt8>) {
         v = SHVar()
         set(bytes: bytes)
     }
 
-    init(bool: Bool) {
+    public init(bool: Bool) {
         v = SHVar()
         set(bool: bool)
     }
 
-    init(float: Double) {
+    public init(float: Double) {
         v = SHVar()
         set(float: float)
     }
 
-    init(int: Int) {
+    public init(int: Int) {
         v = SHVar()
         set(int: int)
     }
@@ -699,13 +720,13 @@ class OwnedVar {
         }
     }
 
-    func ptr() -> UnsafeMutablePointer<SHVar> {
+    public func ptr() -> UnsafeMutablePointer<SHVar> {
         return withUnsafeMutablePointer(to: &v) { ptr in
             UnsafeMutablePointer(mutating: ptr)
         }
     }
 
-    func set(string: String) {
+    public func set(string: String) {
         string.withCString { cString in
             var tmp = SHVar()
             tmp.valueType = VarType.String.asSHType()
@@ -716,7 +737,7 @@ class OwnedVar {
         }
     }
 
-    func set(variable: String) {
+    public func set(variable: String) {
         variable.withCString { cString in
             var tmp = SHVar()
             tmp.valueType = VarType.ContextVar.asSHType()
@@ -727,27 +748,27 @@ class OwnedVar {
         }
     }
 
-    func set(bool: Bool) {
+    public func set(bool: Bool) {
         v.valueType = VarType.Bool.asSHType()
         v.payload.boolValue = bool
     }
 
-    func set(float: Double) {
+    public func set(float: Double) {
         v.valueType = VarType.Float.asSHType()
         v.payload.floatValue = float
     }
 
-    func set(int: Int) {
+    public func set(int: Int) {
         v.valueType = VarType.Int.asSHType()
         v.payload.intValue = Int64(int)
     }
 
-    func set(int: Int64) {
+    public func set(int: Int64) {
         v.valueType = VarType.Int.asSHType()
         v.payload.intValue = int
     }
 
-    func set(bytes: ContiguousArray<UInt8>) {
+    public func set(bytes: ContiguousArray<UInt8>) {
         bytes.withUnsafeBufferPointer { buffer in
             let length = buffer.count
             var tmp = SHVar()
@@ -758,52 +779,52 @@ class OwnedVar {
         }
     }
 
-    func assign(other: SHVar) {
+    public func assign(other: SHVar) {
         withUnsafePointer(to: other) { ptr in
             G.Core.pointee.cloneVar(&v, UnsafeMutablePointer(mutating: ptr))
         }
     }
 }
 
-class TableVar: OwnedVar, Sequence {
-    override init() {
+public class TableVar: OwnedVar, Sequence {
+    public override init() {
         super.init()
         v.valueType = VarType.Table.asSHType()
         v.payload.tableValue = G.Core.pointee.tableNew()
     }
 
-    override init(cloning: SHVar) {
+    public override init(cloning: SHVar) {
         super.init(cloning: cloning)
         assert(cloning.valueType == VarType.Table.asSHType())
     }
 
-    override init(borrowing: SHVar) {
+    public override init(borrowing: SHVar) {
         super.init(borrowing: borrowing)
         borrowed = true
         assert(borrowing.valueType == VarType.Table.asSHType())
     }
 
-    func insertOrUpdate(key: SHVar, cloning: SHVar) {
+    public func insertOrUpdate(key: SHVar, cloning: SHVar) {
         let vPtr = v.payload.tableValue.api.pointee.tableAt(v.payload.tableValue, key)
         withUnsafePointer(to: cloning) { ptr in
             G.Core.pointee.cloneVar(vPtr, UnsafeMutablePointer(mutating: ptr))
         }
     }
 
-    func insertOrUpdate(string: StaticString, cloning: SHVar) {
+    public func insertOrUpdate(string: StaticString, cloning: SHVar) {
         insertOrUpdate(key: SHVar(string: string), cloning: cloning)
     }
 
-    func get(key: SHVar) -> SHVar {
+    public func get(key: SHVar) -> SHVar {
         let vPtr = v.payload.tableValue.api.pointee.tableAt(v.payload.tableValue, key)
         return vPtr!.pointee
     }
 
-    func get(key: StaticString) -> SHVar {
+    public func get(key: StaticString) -> SHVar {
         return get(key: SHVar(string: key))
     }
 
-    func maybeGet(key: StaticString) -> SHVar? {
+    public func maybeGet(key: StaticString) -> SHVar? {
         let result = get(key: SHVar(string: key))
         if result.valueType != VarType.NoValue.asSHType() {
             return result
@@ -812,21 +833,21 @@ class TableVar: OwnedVar, Sequence {
         }
     }
 
-    func clear() {
+    public func clear() {
         v.payload.tableValue.api.pointee.tableClear(v.payload.tableValue)
         // also increase version
         v.version += 1
     }
 
-    func contains(key: SHVar) -> Bool {
+    public func contains(key: SHVar) -> Bool {
         return v.payload.tableValue.api.pointee.tableContains(v.payload.tableValue, key)
     }
 
-    func contains(string: StaticString) -> Bool {
+    public func contains(string: StaticString) -> Bool {
         return contains(key: SHVar(string: string))
     }
 
-    struct Iterator: IteratorProtocol {
+    public struct Iterator: IteratorProtocol {
         let table: SHTable
         // could not find a better solution... anyway why not...
         var iterator:
@@ -843,12 +864,12 @@ class TableVar: OwnedVar, Sequence {
                 0, 0, 0, 0, 0, 0, 0, 0
             )
 
-        init(table: SHTable) {
+        public init(table: SHTable) {
             self.table = table
             table.api.pointee.tableGetIterator(table, &iterator)
         }
 
-        mutating func next() -> (key: SHVar, value: SHVar)? {
+        public mutating func next() -> (key: SHVar, value: SHVar)? {
             var k = SHVar()
             var v = SHVar()
 
@@ -859,62 +880,62 @@ class TableVar: OwnedVar, Sequence {
         }
     }
 
-    func makeIterator() -> Iterator {
+    public func makeIterator() -> Iterator {
         Iterator(table: v.payload.tableValue)
     }
 
     // Convenience method similar to the C++ ForEach
-    func forEach(_ body: (SHVar, SHVar) throws -> Void) rethrows {
+    public func forEach(_ body: (SHVar, SHVar) throws -> Void) rethrows {
         for (key, value) in self {
             try body(key, value)
         }
     }
 
     // override assign to assign other table
-    override func assign(other: SHVar) {
+    public override func assign(other: SHVar) {
         assert(other.valueType == VarType.Table.asSHType())
         super.assign(other: other)
     }
 }
 
-class SeqVar: OwnedVar {
-    override init() {
+public class SeqVar: OwnedVar {
+    public override init() {
         super.init()
         v.valueType = VarType.Seq.asSHType()
     }
 
-    override init(cloning: SHVar) {
+    public override init(cloning: SHVar) {
         super.init(cloning: cloning)
         assert(cloning.valueType == VarType.Seq.asSHType())
     }
 
-    override init(borrowing: SHVar) {
+    public override init(borrowing: SHVar) {
         super.init(borrowing: borrowing)
         borrowed = true
         assert(borrowing.valueType == VarType.Seq.asSHType())
     }
 
-    func resize(size: Int) {
+    public func resize(size: Int) {
         withUnsafeMutablePointer(to: &v.payload.seqValue) { ptr in
             G.Core.pointee.seqResize(ptr, UInt32(size))
         }
     }
 
-    func clear() {
+    public func clear() {
         resize(size: 0)
     }
 
-    func size() -> Int {
+    public func size() -> Int {
         return Int(v.payload.seqValue.len)
     }
 
-    func pushRaw(value: SHVar) {
+    public func pushRaw(value: SHVar) {
         let index = size()
         resize(size: index + 1)
         v.payload.seqValue.elements[index] = value
     }
 
-    func pushCloning(value: OwnedVar) {
+    public func pushCloning(value: OwnedVar) {
         let index = size()
         resize(size: index + 1)
         withUnsafePointer(to: value.v) { ptr in
@@ -935,7 +956,7 @@ class SeqVar: OwnedVar {
         }
     }
 
-    func push(string: String) {
+    public func push(string: String) {
         string.utf8CString.withUnsafeBufferPointer { buffer in
             var tmp = SHVar()
             tmp.valueType = VarType.String.asSHType()
@@ -945,7 +966,7 @@ class SeqVar: OwnedVar {
         }
     }
 
-    func push(bytes: ContiguousArray<UInt8>) {
+    public func push(bytes: ContiguousArray<UInt8>) {
         bytes.withUnsafeBufferPointer { buffer in
             var tmp = SHVar()
             tmp.valueType = VarType.Bytes.asSHType()
@@ -957,19 +978,19 @@ class SeqVar: OwnedVar {
 
     // Notice that the memory of the result is still owned by SeqVar as when we destroy we destroy capacity!
     // So a further push will reuse same memory!
-    @discardableResult func popRaw() -> SHVar {
+    @discardableResult public func popRaw() -> SHVar {
         assert(size() > 0)
         let index = size() - 1
         resize(size: index)
         return v.payload.seqValue.elements[index]
     }
 
-    func at(index: Int) -> SHVar {
+    public func at(index: Int) -> SHVar {
         assert(index >= 0 && index < size())
         return v.payload.seqValue.elements[index]
     }
 
-    func set(index: Int, value: SHVar) {
+    public func set(index: Int, value: SHVar) {
         assert(index >= 0 && index < size())
         withUnsafePointer(to: value) { ptr in
             G.Core.pointee.cloneVar(
@@ -978,14 +999,14 @@ class SeqVar: OwnedVar {
         }
     }
 
-    func remove(index: Int) {
+    public func remove(index: Int) {
         assert(index >= 0 && index < size())
         withUnsafeMutablePointer(to: &v.payload.seqValue) { ptr in
             G.Core.pointee.seqSlowDelete(ptr, UInt32(index))
         }
     }
 
-    func removeFast(index: Int) {
+    public func removeFast(index: Int) {
         assert(index >= 0 && index < size())
         withUnsafeMutablePointer(to: &v.payload.seqValue) { ptr in
             G.Core.pointee.seqFastDelete(ptr, UInt32(index))
@@ -994,10 +1015,10 @@ class SeqVar: OwnedVar {
 }
 
 extension SeqVar: Sequence {
-    struct Iterator: IteratorProtocol {
+    public struct Iterator: IteratorProtocol {
         let seq: SeqVar
         var currentIndex: Int = 0
-        mutating func next() -> SHVar? {
+        public mutating func next() -> SHVar? {
             if currentIndex < seq.size() {
                 let element = seq.at(index: currentIndex)
                 currentIndex += 1
@@ -1007,21 +1028,21 @@ extension SeqVar: Sequence {
         }
     }
 
-    func makeIterator() -> Iterator {
+    public func makeIterator() -> Iterator {
         return Iterator(seq: self, currentIndex: 0)
     }
 }
 
-class ParamVar {
+public class ParamVar {
     private var parameter: OwnedVar
     private var pointee: UnsafeMutablePointer<SHVar>?
     private var requiredTypes = ExposedTypes()
 
-    init(parameter: OwnedVar) {
+    public init(parameter: OwnedVar) {
         self.parameter = parameter
     }
 
-    func compose(help: String, requiredType: TypeInfo) {
+    public func compose(help: String, requiredType: TypeInfo) {
         if isVariable() {
             let reqInfo = ExposedTypeInfo(name: getName()!, help: help, exposedType: requiredType)
             requiredTypes = .init(types: [reqInfo])
@@ -1030,14 +1051,14 @@ class ParamVar {
         }
     }
 
-    func cleanup() {
+    public func cleanup() {
         if parameter.v.valueType == VarType.ContextVar.asSHType() {
             G.Core.pointee.releaseVariable(pointee)
         }
         pointee = nil
     }
 
-    func warmup(context: Context) {
+    public func warmup(context: Context) {
         if parameter.v.valueType == VarType.ContextVar.asSHType() {
             assert(pointee == nil)
             var swl = SHStringWithLen()
@@ -1052,7 +1073,7 @@ class ParamVar {
         assert(pointee != nil)
     }
 
-    func setFastUnsafe(value: inout SHVar) {
+    public func setFastUnsafe(value: inout SHVar) {
         assert(pointee != nil)
         // store flags and rc
         let rc = pointee!.pointee.refcount
@@ -1064,61 +1085,61 @@ class ParamVar {
         pointee!.pointee.refcount = rc
     }
 
-    func setCloning(value: inout SHVar) {
+    public func setCloning(value: inout SHVar) {
         assert(pointee != nil)
         withUnsafeMutablePointer(to: &value) { ptr in
             G.Core.pointee.cloneVar(pointee, ptr)
         }
     }
 
-    func get() -> SHVar {
+    public func get() -> SHVar {
         assert(pointee != nil)
         return pointee!.pointee
     }
 
-    func maybeGet() -> SHVar? {
+    public func maybeGet() -> SHVar? {
         return pointee?.pointee
     }
 
-    func assignParam(value: SHVar) {
+    public func assignParam(value: SHVar) {
         parameter = .init(cloning: value)
     }
 
-    func getParam() -> SHVar {
+    public func getParam() -> SHVar {
         parameter.v
     }
 
-    func isVariable() -> Bool {
+    public func isVariable() -> Bool {
         parameter.v.valueType == VarType.ContextVar.asSHType()
     }
 
-    func isNone() -> Bool {
+    public func isNone() -> Bool {
         parameter.v.valueType == VarType.NoValue.asSHType()
     }
 
-    func setName(name: String) {
+    public func setName(name: String) {
         parameter = .init(string: name)
     }
 
-    func getName() -> String? {
+    public func getName() -> String? {
         if isVariable() {
             return parameter.v.string
         }
         return nil
     }
 
-    func getRequiredTypes() -> ExposedTypes {
+    public func getRequiredTypes() -> ExposedTypes {
         return requiredTypes
     }
 }
 
 class ShardsVar {
-    private var shardsPtrs: ContiguousArray<ShardPtr> = []
-    private var nativeShards = shards.Shards()
-    private var composeResult = SHComposeResult()
-    private var paramValue = OwnedVar()
+    public var shardsPtrs: ContiguousArray<ShardPtr> = []
+    public var nativeShards = shards_native.Shards()
+    public var composeResult = SHComposeResult()
+    public var paramValue = OwnedVar()
 
-    private func reset() {
+    public func reset() {
         // Free all shards
         for shard in shardsPtrs {
             shard!.pointee.destroy(shard!)
@@ -1138,7 +1159,7 @@ class ShardsVar {
         composeResult = SHComposeResult()
     }
 
-    func cleanup(context: Context) -> Result<Void, ShardError> {
+    public func cleanup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
         for shard in shardsPtrs {
             error = shard!.pointee.cleanup(shard!, context.context)
@@ -1149,7 +1170,7 @@ class ShardsVar {
         return .success(())
     }
 
-    func warmup(context: Context) -> Result<Void, ShardError> {
+    public func warmup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
         for shard in shardsPtrs {
             error = shard!.pointee.warmup(shard!, context.context)
@@ -1160,7 +1181,7 @@ class ShardsVar {
         return .success(())
     }
 
-    func setParam(value: SHVar) -> Result<Void, ShardError> {
+    public func setParam(value: SHVar) -> Result<Void, ShardError> {
         reset()
 
         if value.valueType == VarType.ShardRef.asSHType() {
@@ -1196,11 +1217,11 @@ class ShardsVar {
         return .success(())
     }
 
-    func getParam() -> SHVar {
+    public func getParam() -> SHVar {
         return paramValue.v
     }
 
-    func compose(data: SHInstanceData) -> Result<SHComposeResult, ShardError> {
+    public func compose(data: SHInstanceData) -> Result<SHComposeResult, ShardError> {
         if shardsPtrs.isEmpty {
             return .success(composeResult)
         }
@@ -1214,7 +1235,7 @@ class ShardsVar {
         return .success(composeResult)
     }
 
-    func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
+    public func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
         if shardsPtrs.isEmpty {
             return SHWireState(rawValue: 0) // continue
         }
@@ -1228,7 +1249,7 @@ class ShardsVar {
         return state
     }
 
-    func activateHandlingReturn(
+    public func activateHandlingReturn(
         context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>
     ) -> SHWireState {
         if shardsPtrs.isEmpty {
@@ -1242,15 +1263,15 @@ class ShardsVar {
         return state
     }
 
-    func isEmpty() -> Bool {
+    public func isEmpty() -> Bool {
         return shardsPtrs.isEmpty
     }
 
-    func getExposing() -> SHExposedTypesInfo {
+    public func getExposing() -> SHExposedTypesInfo {
         return composeResult.exposedInfo
     }
 
-    func getRequiring() -> SHExposedTypesInfo {
+    public func getRequiring() -> SHExposedTypesInfo {
         return composeResult.requiredInfo
     }
 
@@ -1272,7 +1293,7 @@ public typealias ShardPtr = UnsafeMutablePointer<Shard>?
 public final class ShardError: Error {
     public var message: String
 
-    init(message: String) {
+    public init(message: String) {
         self.message = message
     }
 }
@@ -1291,7 +1312,7 @@ public class EnumInfo {
 
     private var values: [Int32]
 
-    init(name: String, help: String, labels: [String] = [], descriptions: [String] = [], values: [Int32] = []) {
+    public init(name: String, help: String, labels: [String] = [], descriptions: [String] = [], values: [Int32] = []) {
         self.name = name.utf8CString
         self.help = help.utf8CString
 
@@ -1310,7 +1331,7 @@ public class EnumInfo {
         self.values = values
     }
 
-    func toSHEnumInfo() -> SHEnumInfo {
+    public func toSHEnumInfo() -> SHEnumInfo {
         var result = SHEnumInfo()
 
         name.withUnsafeBufferPointer {
@@ -1347,25 +1368,25 @@ public class EnumInfo {
 }
 
 public class TypeInfo {
-    var native = SHTypeInfo()
+    public var native = SHTypeInfo()
 
-    init(type: VarType) {
+    public init(type: VarType) {
         native.basicType = type.asSHType()
     }
 
-    init(seqOf: TypeInfo) {
+    public init(seqOf: TypeInfo) {
         native.basicType = VarType.Seq.asSHType()
         native.seqTypes.len = 1
         native.seqTypes.elements = withUnsafeMutablePointer(to: &seqOf.native) { $0 }
     }
 
-    init(tableOf: TypeInfo) {
+    public init(tableOf: TypeInfo) {
         native.basicType = VarType.Table.asSHType()
         native.table.types.len = 1
         native.table.types.elements = withUnsafeMutablePointer(to: &tableOf.native) { $0 }
     }
 
-    init(variableOf: TypeInfo) {
+    public init(variableOf: TypeInfo) {
         native.basicType = VarType.ContextVar.asSHType()
         native.contextVarTypes.len = 1
         native.contextVarTypes.elements = withUnsafeMutablePointer(to: &variableOf.native) { $0 }
@@ -1376,7 +1397,7 @@ public class Types {
     private var types: [TypeInfo] // to keep alive
     public var native = SHTypesInfo()
 
-    init(types: [TypeInfo]) {
+    public init(types: [TypeInfo]) {
         self.types = types
         for t in types {
             withUnsafeMutablePointer(to: &native) { ptr in
@@ -1400,7 +1421,7 @@ public class ParameterInfo {
     var types: [TypeInfo] // to keep alive
     var typesStorage: ContiguousArray<SHTypeInfo> = []
 
-    init(name: String, help: String, types: [TypeInfo]) {
+    public init(name: String, help: String, types: [TypeInfo]) {
         self.name = name.utf8CString
         self.help = help.utf8CString
         self.types = types
@@ -1431,13 +1452,16 @@ public class ParameterInfo {
 public class Parameters {
     private var infos: [ParameterInfo] = [] // to keep alive
     public var native = SHParametersInfo()
+    
+    public init() {
+    }
 
-    func add(name: String, help: String, types: [TypeInfo]) {
+    public func add(name: String, help: String, types: [TypeInfo]) {
         let info = ParameterInfo(name: name, help: help, types: types)
         infos.append(info)
     }
 
-    func done() {
+    public func done() {
         for info in infos {
             var pInfo = info.toSHParameterInfo()
             withUnsafeMutablePointer(to: &native) { ptr in
@@ -1464,7 +1488,7 @@ public class ExposedTypeInfo {
     var global: Bool
     var declared: Bool
 
-    init(
+    public init(
         name: String, help: String, exposedType: TypeInfo, isMutable: Bool = false,
         isProtected: Bool = false, global: Bool = false, declared: Bool = false
     ) {
@@ -1477,7 +1501,7 @@ public class ExposedTypeInfo {
         self.declared = declared
     }
 
-    func toSHExposedTypeInfo() -> SHExposedTypeInfo {
+    public func toSHExposedTypeInfo() -> SHExposedTypeInfo {
         var result = SHExposedTypeInfo()
 
         name.withUnsafeBufferPointer {
@@ -1501,11 +1525,11 @@ public class ExposedTypes {
     private var types: [ExposedTypeInfo] // to keep alive
     public var native = SHExposedTypesInfo()
 
-    init() {
+    public init() {
         types = []
     }
 
-    init(types: [ExposedTypeInfo]) {
+    public init(types: [ExposedTypeInfo]) {
         self.types = types
         for t in types {
             var eInfo = t.toSHExposedTypeInfo()
@@ -1517,7 +1541,7 @@ public class ExposedTypes {
         }
     }
 
-    func extend(types: SHExposedTypesInfo) {
+    public func extend(types: SHExposedTypesInfo) {
         for i in 0 ..< types.len {
             var eInfo = types.elements[Int(i)]
             withUnsafeMutablePointer(to: &native) { ptr in
@@ -1786,7 +1810,7 @@ extension IShard {}
     return hash
 }
 
-func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
+public func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     #if DEBUG
         print("Creating swift shard: \(T.name)")
     #endif
@@ -1820,13 +1844,13 @@ func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
     return UnsafeMutableRawPointer(cwrapper).assumingMemoryBound(to: Shard.self)
 }
 
-class WireController {
-    init() {
+public class WireController {
+    public init() {
         let cname = SHStringWithLen()
         nativeRef = G.Core.pointee.createWire(cname)
     }
 
-    init(native: SHWireRef) {
+    public init(native: SHWireRef) {
         nativeRef = G.Core.pointee.referenceWire(native)
     }
 
@@ -1836,24 +1860,24 @@ class WireController {
         }
     }
 
-    var looped: Bool = false {
+    public var looped: Bool = false {
         didSet {
             G.Core.pointee.setWireLooped(nativeRef, looped)
         }
     }
 
-    var unsafe: Bool = false {
+    public var unsafe: Bool = false {
         didSet {
             G.Core.pointee.setWireUnsafe(nativeRef, unsafe)
         }
     }
 
-    var failed: Bool {
+    public var failed: Bool {
         let info = G.Core.pointee.getWireInfo(nativeRef)
         return info.failed
     }
 
-    var failureMessage: String? {
+    public var failureMessage: String? {
         let info = G.Core.pointee.getWireInfo(nativeRef)
         if info.failed {
             return info.failureMessage.toString()
@@ -1880,52 +1904,52 @@ class WireController {
         }
     }
 
-    func addExternal(name: String, owned: OwnedVar) {
+    public func addExternal(name: String, owned: OwnedVar) {
         addExternalVar(name: name, varPtr: owned.ptr())
         references.append(owned)
     }
 
-    func addExternal(name: String, owned: inout OwnedVar) {
+    public func addExternal(name: String, owned: inout OwnedVar) {
         addExternalVar(name: name, varPtr: owned.ptr())
     }
 
-    func addExternal(name: String, owned: inout OwnedVar, varType: inout SHTypeInfo) {
+    public func addExternal(name: String, owned: inout OwnedVar, varType: inout SHTypeInfo) {
         addExternalVar(name: name, varPtr: owned.ptr(), varType: &varType)
     }
 
-    func addExternal(name: String, sequence: inout SeqVar) {
+    public func addExternal(name: String, sequence: inout SeqVar) {
         addExternalVar(name: name, varPtr: sequence.ptr())
     }
 
-    func addExternal(name: String, sequence: inout SeqVar, varType: inout SHTypeInfo) {
+    public func addExternal(name: String, sequence: inout SeqVar, varType: inout SHTypeInfo) {
         addExternalVar(name: name, varPtr: sequence.ptr(), varType: &varType)
     }
 
-    func addExternal(name: String, table: inout TableVar) {
+    public func addExternal(name: String, table: inout TableVar) {
         addExternalVar(name: name, varPtr: table.ptr())
     }
 
-    func addExternal(name: String, table: inout TableVar, varType: inout SHTypeInfo) {
+    public func addExternal(name: String, table: inout TableVar, varType: inout SHTypeInfo) {
         addExternalVar(name: name, varPtr: table.ptr(), varType: &varType)
     }
 
-    func addExternal(name: String, raw: inout SHVar) {
+    public func addExternal(name: String, raw: inout SHVar) {
         addExternalVar(name: name, varPtr: &raw)
     }
 
-    func addExternal(name: String, raw: inout SHVar, varType: inout SHTypeInfo) {
+    public func addExternal(name: String, raw: inout SHVar, varType: inout SHTypeInfo) {
         addExternalVar(name: name, varPtr: &raw, varType: &varType)
     }
 
-    func isRunning() -> Bool {
+    public func isRunning() -> Bool {
         G.Core.pointee.isWireRunning(nativeRef)
     }
 
-    func setPriority(_ priority: Int) {
+    public func setPriority(_ priority: Int) {
         G.Core.pointee.setWirePriority(nativeRef, Int32(priority))
     }
 
-    func stop() {
+    public func stop() {
         var result = G.Core.pointee.stopWire(nativeRef)
         withUnsafeMutablePointer(to: &result) { resultPtr in
             G.Core.pointee.destroyVar(resultPtr)
@@ -1939,17 +1963,17 @@ class WireController {
         }
     }
 
-    var nativeRef = SHWireRef(bitPattern: 0)
+    public var nativeRef = SHWireRef(bitPattern: 0)
 
     private var references: [OwnedVar] = []
 }
 
-class MeshController {
-    init() {
+public class MeshController {
+    public init() {
         nativeRef = G.Core.pointee.createMesh()
     }
 
-    init(borrowing: SHMeshRef) {
+    public init(borrowing: SHMeshRef) {
         nativeRef = borrowing
         self.borrowing = true
     }
@@ -1967,11 +1991,11 @@ class MeshController {
         }
     }
 
-    func schedule(wire: WireController, compose: Bool = true) {
+    public func schedule(wire: WireController, compose: Bool = true) {
         G.Core.pointee.schedule(nativeRef, wire.nativeRef, compose)
     }
 
-    func maybeSchedule(wire: WireController) -> Result<Void, ShardError> {
+    public func maybeSchedule(wire: WireController) -> Result<Void, ShardError> {
         let error = OwnedVar()
         let result = G.Core.pointee.compose(nativeRef, wire.nativeRef, &error.v)
         if result {
@@ -1981,19 +2005,19 @@ class MeshController {
         return .failure(ShardError(message: error.v.string))
     }
 
-    func unschedule(wire: WireController) {
+    public func unschedule(wire: WireController) {
         G.Core.pointee.unschedule(nativeRef, wire.nativeRef)
     }
 
-    func tick() -> Bool {
+    public func tick() -> Bool {
         G.Core.pointee.tick(nativeRef)
     }
 
-    func isEmpty() -> Bool {
+    public func isEmpty() -> Bool {
         G.Core.pointee.isEmpty(nativeRef)
     }
 
-    func getVariable(name: String) -> UnsafeMutablePointer<SHVar> {
+    public func getVariable(name: String) -> UnsafeMutablePointer<SHVar> {
         return name.withCString { cString in
             var cname = SHStringWithLen()
             cname.string = cString
@@ -2022,7 +2046,7 @@ class MeshController {
         }
 
     // Register a callback that will be called when an error occurs
-    func registerErrorEvent(callback: @escaping (String, UInt32, UInt32) -> Void)
+    public func registerErrorEvent(callback: @escaping (String, UInt32, UInt32) -> Void)
         -> UnsafeMutableRawPointer
     {
         // Create a context pointer to pass to the C function
@@ -2038,7 +2062,7 @@ class MeshController {
     }
 
     // Unregister a previously registered error callback
-    func unregisterErrorEvent(userData: UnsafeMutableRawPointer) {
+    public func unregisterErrorEvent(userData: UnsafeMutableRawPointer) {
         // Remove from our map
         errorCallbacks.removeValue(forKey: userData)
 
@@ -2112,10 +2136,10 @@ class SwiftSWL {
 }
 
 public class RefCounted<T> {
-    var value: T
+    public var value: T
     private var manualCount: Int = 1 // Start at 1 for the initial owner
 
-    init(value: T) {
+    public init(value: T) {
         self.value = value
     }
 
@@ -2138,166 +2162,164 @@ public class RefCounted<T> {
     }
 }
 
-class Shards {
-    static func log(_ message: String) {
-        message.withCString { cString in
-            var shString = SHStringWithLen()
-            shString.string = cString
-            let length = message.lengthOfBytes(using: .utf8)
-            shString.len = UInt64(length)
-            G.Core.pointee.log(shString)
-        }
+public func log(_ message: String) {
+    message.withCString { cString in
+        var shString = SHStringWithLen()
+        shString.string = cString
+        let length = message.lengthOfBytes(using: .utf8)
+        shString.len = UInt64(length)
+        G.Core.pointee.log(shString)
+    }
+}
+
+public func logLevel(_ level: Int, _ message: String) {
+    message.withCString { cString in
+        var shString = SHStringWithLen()
+        shString.string = cString
+        let length = message.lengthOfBytes(using: .utf8)
+        shString.len = UInt64(length)
+        G.Core.pointee.logLevel(Int32(level), shString)
+    }
+}
+
+public func registerObjectType(vendor: Int32, type: Int32, info: SHObjectInfo) {
+    G.Core.pointee.registerObjectType(vendor, type, info)
+}
+
+public func registerEnumInfo(vendor: Int32, type: Int32, info: SHEnumInfo) {
+    G.Core.pointee.registerEnumType(vendor, type, info)
+}
+
+public func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {
+    // Create SHStringWithLen instances
+    let nameStr = SwiftSWL(name)
+    let codeStr = SwiftSWL(code)
+    let basePathStr = SwiftSWL(basePath)
+
+    // Create output AST struct
+    var ast = SHLAst()
+
+    // Read the AST
+    let success = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0, &ast)
+    defer { G.Core.pointee.freeAst(&ast) }
+    guard success, ast.error.message == nil else {
+        let errorMessage = String(cString: ast.error.message)
+        let line = ast.error.line
+        let column = ast.error.column
+        return .failure(ShardError(message: "Failed to read AST: \(errorMessage) at line \(line), column \(column)"))
+    }
+    // ast will have refcount of 0, need to bump it with a clone
+    let astOwned = OwnedVar(cloning: ast.ast)
+
+    // Create evaluation environment
+    let emptyStr = SHStringWithLen.fromStatic("")
+    let env = G.Core.pointee.createEvalEnv(emptyStr)
+
+    // Create error struct for eval
+    var evalError = SHLError()
+    defer { G.Core.pointee.freeError(&evalError) }
+
+    // Evaluate the AST
+    let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)
+    guard evalSuccess else {
+        let errorMessage = String(cString: evalError.message)
+        let line = evalError.line
+        let column = evalError.column
+        G.Core.pointee.freeEvalEnv(env)
+        return .failure(ShardError(message: "Failed to evaluate AST: \(errorMessage) at line \(line), column \(column)"))
     }
 
-    static func logLevel(_ level: Int, _ message: String) {
-        message.withCString { cString in
-            var shString = SHStringWithLen()
-            shString.string = cString
-            let length = message.lengthOfBytes(using: .utf8)
-            shString.len = UInt64(length)
-            G.Core.pointee.logLevel(Int32(level), shString)
-        }
+    // Create output wire struct
+    var outWire = SHLWire()
+    defer { G.Core.pointee.freeWire(&outWire) }
+
+    // Transform environment into a wire
+    let transformSuccess = G.Core.pointee.transformEnv(
+        env, nameStr.asSHStringWithLen(), &outWire
+    ) // consumes env
+    guard transformSuccess, outWire.error.message == nil else {
+        let errorMessage = String(cString: outWire.error.message)
+        let line = outWire.error.line
+        let column = outWire.error.column
+        return .failure(
+            ShardError(
+                message:
+                "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"
+            ))
     }
 
-    static func registerObjectType(vendor: Int32, type: Int32, info: SHObjectInfo) {
-        G.Core.pointee.registerObjectType(vendor, type, info)
-    }
+    // Create WireController from the resulting wire
+    let wireController = WireController(native: outWire.wire.pointee!)
+    return .success(wireController)
+}
 
-    static func registerEnumInfo(vendor: Int32, type: Int32, info: SHEnumInfo) {
-        G.Core.pointee.registerEnumType(vendor, type, info)
-    }
-
-    static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {
-        // Create SHStringWithLen instances
-        let nameStr = SwiftSWL(name)
-        let codeStr = SwiftSWL(code)
-        let basePathStr = SwiftSWL(basePath)
-
-        // Create output AST struct
-        var ast = SHLAst()
-
-        // Read the AST
-        let success = G.Core.pointee.read(nameStr.asSHStringWithLen(), codeStr.asSHStringWithLen(), basePathStr.asSHStringWithLen(), nil, 0, &ast)
-        defer { G.Core.pointee.freeAst(&ast) }
-        guard success, ast.error.message == nil else {
-            let errorMessage = String(cString: ast.error.message)
-            let line = ast.error.line
-            let column = ast.error.column
-            return .failure(ShardError(message: "Failed to read AST: \(errorMessage) at line \(line), column \(column)"))
-        }
-        // ast will have refcount of 0, need to bump it with a clone
-        let astOwned = OwnedVar(cloning: ast.ast)
-
-        // Create evaluation environment
-        let emptyStr = SHStringWithLen.fromStatic("")
-        let env = G.Core.pointee.createEvalEnv(emptyStr)
-
-        // Create error struct for eval
-        var evalError = SHLError()
-        defer { G.Core.pointee.freeError(&evalError) }
-
-        // Evaluate the AST
-        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)
-        guard evalSuccess else {
-            let errorMessage = String(cString: evalError.message)
-            let line = evalError.line
-            let column = evalError.column
-            G.Core.pointee.freeEvalEnv(env)
-            return .failure(ShardError(message: "Failed to evaluate AST: \(errorMessage) at line \(line), column \(column)"))
-        }
-
-        // Create output wire struct
-        var outWire = SHLWire()
-        defer { G.Core.pointee.freeWire(&outWire) }
-
-        // Transform environment into a wire
-        let transformSuccess = G.Core.pointee.transformEnv(
-            env, nameStr.asSHStringWithLen(), &outWire
-        ) // consumes env
-        guard transformSuccess, outWire.error.message == nil else {
-            let errorMessage = String(cString: outWire.error.message)
-            let line = outWire.error.line
-            let column = outWire.error.column
-            return .failure(
-                ShardError(
-                    message:
-                    "Failed to transform environment: \(errorMessage) at line \(line), column \(column)"
-                ))
-        }
-
-        // Create WireController from the resulting wire
-        let wireController = WireController(native: outWire.wire.pointee!)
-        return .success(wireController)
-    }
-
-    static func evalWire(_ name: String, _ code: String, _ basePath: String) -> WireController? {
-        let result = maybeEvalWire(name, code, basePath)
-        switch result {
-        case let .success(wireController):
-            return wireController
-        case .failure:
-            return nil
-        }
-    }
-
-    static func evalWire(_ name: String, _ ast: [UInt8]) -> WireController? {
-        // Create SHStringWithLen instances
-        let nameStr = SwiftSWL(name)
-
-        // Read the AST
-        var outAst = SHLAst()
-        defer { G.Core.pointee.freeAst(&outAst) }
-
-        let success = ast.withUnsafeBufferPointer { buffer in
-            G.Core.pointee.loadAst(buffer.baseAddress!, UInt32(buffer.count), &outAst)
-        }
-        guard success, outAst.error.message == nil else {
-            return nil
-        }
-        // ast will have refcount of 0, need to bump it with a clone
-        let astOwned = OwnedVar(cloning: outAst.ast)
-
-        // Create evaluation environment
-        let emptyStr = SHStringWithLen.fromStatic("")
-        let env = G.Core.pointee.createEvalEnv(emptyStr)
-
-        // Create error struct for eval
-        var evalError = SHLError()
-        defer { G.Core.pointee.freeError(&evalError) }
-
-        // Evaluate the AST
-        let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
-        guard evalSuccess else {
-            G.Core.pointee.freeEvalEnv(env)
-            return nil
-        }
-
-        // Create output wire struct
-        var outWire = SHLWire()
-        defer { G.Core.pointee.freeWire(&outWire) }
-
-        // Transform environment into a wire
-        let transformSuccess = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen(), &outWire) // consumes env
-        guard transformSuccess, outWire.error.message == nil else {
-            return nil
-        }
-
-        // Create WireController from the resulting wire
-        let wireController = WireController(native: outWire.wire.pointee!)
+public func evalWire(_ name: String, _ code: String, _ basePath: String) -> WireController? {
+    let result = maybeEvalWire(name, code, basePath)
+    switch result {
+    case let .success(wireController):
         return wireController
+    case .failure:
+        return nil
+    }
+}
+
+public func evalWire(_ name: String, _ ast: [UInt8]) -> WireController? {
+    // Create SHStringWithLen instances
+    let nameStr = SwiftSWL(name)
+
+    // Read the AST
+    var outAst = SHLAst()
+    defer { G.Core.pointee.freeAst(&outAst) }
+
+    let success = ast.withUnsafeBufferPointer { buffer in
+        G.Core.pointee.loadAst(buffer.baseAddress!, UInt32(buffer.count), &outAst)
+    }
+    guard success, outAst.error.message == nil else {
+        return nil
+    }
+    // ast will have refcount of 0, need to bump it with a clone
+    let astOwned = OwnedVar(cloning: outAst.ast)
+
+    // Create evaluation environment
+    let emptyStr = SHStringWithLen.fromStatic("")
+    let env = G.Core.pointee.createEvalEnv(emptyStr)
+
+    // Create error struct for eval
+    var evalError = SHLError()
+    defer { G.Core.pointee.freeError(&evalError) }
+
+    // Evaluate the AST
+    let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError) // consumes ast
+    guard evalSuccess else {
+        G.Core.pointee.freeEvalEnv(env)
+        return nil
     }
 
-    enum SuspendResult {
-        case canContinue
-        case mustInterrupt
+    // Create output wire struct
+    var outWire = SHLWire()
+    defer { G.Core.pointee.freeWire(&outWire) }
+
+    // Transform environment into a wire
+    let transformSuccess = G.Core.pointee.transformEnv(env, nameStr.asSHStringWithLen(), &outWire) // consumes env
+    guard transformSuccess, outWire.error.message == nil else {
+        return nil
     }
 
-    static func suspend(_ context: Context, _ duration: Double = 0.0) -> SuspendResult {
-        if G.Core.pointee.suspend(context.context, duration) == SHWireState(rawValue: 0) {
-            return .canContinue
-        } else {
-            return .mustInterrupt
-        }
+    // Create WireController from the resulting wire
+    let wireController = WireController(native: outWire.wire.pointee!)
+    return wireController
+}
+
+public enum SuspendResult {
+    case canContinue
+    case mustInterrupt
+}
+
+public func suspend(_ context: Context, _ duration: Double = 0.0) -> SuspendResult {
+    if G.Core.pointee.suspend(context.context, duration) == SHWireState(rawValue: 0) {
+        return .canContinue
+    } else {
+        return .mustInterrupt
     }
 }
 

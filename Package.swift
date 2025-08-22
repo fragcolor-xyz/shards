@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Shards",
+    name: "ShardsSwift",
     platforms: [
         .macOS(.v12),
         .iOS(.v15),
@@ -10,13 +10,13 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "Shards",
-            targets: ["Shards"]
+            name: "ShardsSwift",
+            targets: ["ShardsSwift"]
         ),
     ],
     targets: [
         .target(
-            name: "shards",
+            name: "shards_native",
             path: "include/shards",
             sources: [],
             publicHeadersPath: ".",
@@ -25,10 +25,14 @@ let package = Package(
             ]
         ),
         .target(
-            name: "Shards",
-            dependencies: ["shards"],
+            name: "ShardsSwift",
+            dependencies: ["shards_native"],
             path: "include/shards",
-            sources: ["shards.swift"]
+            sources: ["shards.swift"],
+            publicHeadersPath: ".",
+            cSettings: [
+                .headerSearchPath(".")
+            ]
         ),
     ]
 )
