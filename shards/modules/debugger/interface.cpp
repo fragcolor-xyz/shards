@@ -6,6 +6,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/assert.hpp>
 #include <shards/utility.hpp>
+#include <SDL3/SDL_stdinc.h>
 
 namespace shards::dbg {
 
@@ -136,10 +137,19 @@ struct State {
   std::unordered_map<const SHVar *, uint64_t> varVariableScopeMap;
   std::unordered_map<const SHWire *, uint64_t> wireInputScopeMap;
 
+  // Used to wait for the client to connect
+  std::atomic_bool initialClientConnected;
+
   // Updated when
   uint32_t configCounter;
 
   State() : breakSema(1) {
+
+    if (SDL_getenv("SHARDS_DEBUGGER_WAIT")) {
+      // Break on startup
+      shardHook = &State::hookWaitForDebugger;
+    }
+
     server = std::make_shared<DAPServer>();
     // Set up the onStarted callback before starting the server
     server->onStarted = [](const std::string &instanceName, int actualPort) {
@@ -231,6 +241,11 @@ struct State {
         }
         breakpoints.insert(breakpoints.end(), breakpoints.begin(), breakpoints.end());
       });
+      if (!initialClientConnected) {
+        shardHook = &State::hookPause;
+        pauseQueue++;
+        initialClientConnected = true;
+      }
     };
     server->requestScopes = [this](const ScopesArguments &args, std::vector<Scope> &scopes) {
       auto frameId = args.frameId;
@@ -503,6 +518,17 @@ struct State {
     }
   }
 
+  void hookWaitForDebugger(SHContext *context, Shard *blk) {
+    SPDLOG_LOGGER_INFO(logger, "Waiting for debugger to connect");
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      if (initialClientConnected) {
+        break;
+      }
+    }
+    hookPause(context, blk);
+  }
+
   void hookPauseOther(SHContext *context, Shard *blk) {
     // When any other thread is paused, this will hang this thread, while others are being debugged
     breakSema.acquire();
@@ -542,7 +568,7 @@ struct State {
     breakSema.acquire();
     DEFER({ breakSema.release(); });
 
-    // Make sure to free all the other threads
+    // Make sure to freeze all the other threads
     shardHook = &State::hookPauseOther;
 
     uint64_t threadId = context->debugContextTracking->threadId;
@@ -750,7 +776,5 @@ void onExitActivation(SHContext *context, Shard **start, size_t stride, size_t l
 
   stack.pop_back();
 }
-void unload() {
-  State::resetInstance();
-}
+void unload() { State::resetInstance(); }
 } // namespace shards::dbg

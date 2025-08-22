@@ -157,9 +157,6 @@ void DAPServer::accept_connections() {
 void DAPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
   auto buffer = std::make_shared<boost::asio::streambuf>();
   read_message(socket, buffer);
-
-  // Simulate continue, when disconnected
-  DEFER({ setCommand(CommandType::Continue); });
 }
 
 void DAPServer::read_message(std::shared_ptr<tcp::socket> socket, std::shared_ptr<boost::asio::streambuf> buffer) {
