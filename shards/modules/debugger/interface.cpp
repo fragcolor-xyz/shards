@@ -546,7 +546,7 @@ struct State {
     shardHook = &State::hookPauseOther;
 
     uint64_t threadId = context->debugContextTracking->threadId;
-    
+
     server->sendStoppedEvent("pause", threadId, "Execution paused by user");
 
     auto debugCtx = context->debugContextTracking;
@@ -615,10 +615,17 @@ struct State {
     }
   }
 
-  static State &instance() {
-    static State state;
-    return state;
+  static std::shared_ptr<State> &instancePtr() {
+    static std::shared_ptr<State> state_;
+    return state_;
   }
+  static State &instance() {
+    if (!instancePtr()) {
+      instancePtr() = std::make_shared<State>();
+    }
+    return *instancePtr();
+  }
+  static void resetInstance() { instancePtr().reset(); }
 };
 
 void onShard(SHContext *context, Shard *where) {
@@ -742,5 +749,8 @@ void onExitActivation(SHContext *context, Shard **start, size_t stride, size_t l
   }
 
   stack.pop_back();
+}
+void unload() {
+  State::resetInstance();
 }
 } // namespace shards::dbg

@@ -182,7 +182,7 @@ typedef double SHFloat2 __attribute__((vector_size(16)));
 typedef float SHFloat3 __attribute__((vector_size(16)));
 typedef float SHFloat4 __attribute__((vector_size(16)));
 
-#define SH_STRUCT16 
+#define SH_STRUCT16 __attribute__((aligned(16)))
 
 #define NO_INLINE __attribute__((noinline))
 
@@ -195,8 +195,8 @@ typedef float SHFloat4 __attribute__((vector_size(16)));
 #endif
 #elif defined(_MSC_VER)
 // Not fully supported, but just for the dll interface
-#define likely(x) 
-#define unlikely(x) 
+#define likely(x) (x)
+#define unlikely(x) (x)
 #define shufflevector shassert(false)
 
 #include "msc_vec.hpp"
@@ -915,6 +915,7 @@ typedef struct SHVar *(__cdecl *SHReferenceVariable)(struct SHContext *context, 
 typedef struct SHVar *(__cdecl *SHReferenceWireVariable)(SHWireRef wire, struct SHStringWithLen name);
 
 typedef bool(__cdecl *SHInit)();
+typedef void(__cdecl *SHBeforeUnload)();
 
 typedef struct SHExternalVariable {
   struct SHVar *var;
@@ -1369,6 +1370,10 @@ typedef struct _SHCore {
 
   // Can be called before or after init to setup the logging system and potential log callbacks
   SHSetupLogger setupLogger;
+
+  // Call this before unloading the module, to clean up any running threads or other resources
+  //  that might prevent the module from being unloaded
+  SHBeforeUnload beforeUnload;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

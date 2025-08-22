@@ -2517,7 +2517,7 @@ void shInit() {
 #endif
 
   ZoneScopedN("shInit");
-  
+
   // Initialize log outputs only
   shInitLog();
 
@@ -3181,6 +3181,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
       SHLOG_ERROR("Failed to register core shards, error: {}", ex.what());
       return false;
     }
+  };
+
+  result->beforeUnload = []() {
+#if SHARDS_DEBUGGER
+    dbg::unload();
+#endif
+    getTidePool().terminate();
+    SHLOG_INFO("! shards beforeUnload called !");
   };
 
   setupCoreLoggingAPI(result);
