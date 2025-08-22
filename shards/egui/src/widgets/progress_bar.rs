@@ -59,7 +59,7 @@ impl LegacyShard for ProgressBar {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.ProgressBar-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.ProgressBar-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

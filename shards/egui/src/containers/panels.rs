@@ -282,7 +282,7 @@ impl_panel!(
   min_height,
   max_height,
   "UI.BottomPanel",
-  "UI.BottomPanel-rust-0x20200101",
+  "UI.BottomPanel-rust-0x20250822",
   egui::TopBottomPanel::bottom
 );
 impl_panel!(
@@ -291,7 +291,7 @@ impl_panel!(
   min_width,
   max_width,
   "UI.LeftPanel",
-  "UI.LeftPanel-rust-0x20200101",
+  "UI.LeftPanel-rust-0x20250822",
   egui::SidePanel::left
 );
 impl_panel!(
@@ -300,7 +300,7 @@ impl_panel!(
   min_width,
   max_width,
   "UI.RightPanel",
-  "UI.RightPanel-rust-0x20200101",
+  "UI.RightPanel-rust-0x20250822",
   egui::SidePanel::right
 );
 impl_panel!(
@@ -309,7 +309,7 @@ impl_panel!(
   min_height,
   max_height,
   "UI.TopPanel",
-  "UI.TopPanel-rust-0x20200101",
+  "UI.TopPanel-rust-0x20250822",
   egui::TopBottomPanel::top
 );
 
@@ -335,7 +335,7 @@ impl LegacyShard for CentralPanel {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UI.CentralPanel-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.CentralPanel-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

@@ -42,7 +42,7 @@ impl LegacyShard for UUIDCreate {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UUID-rust-0x20200101")
+    compile_time_crc32::crc32!("UUID-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -76,7 +76,7 @@ impl LegacyShard for UUIDConvert {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UUID.Convert-rust-0x20200101")
+    compile_time_crc32::crc32!("UUID.Convert-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -134,7 +134,7 @@ impl LegacyShard for UUIDToString {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UUID.ToString-rust-0x20200101")
+    compile_time_crc32::crc32!("UUID.ToString-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -196,7 +196,7 @@ impl LegacyShard for UUIDToBytes {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("UUID.ToBytes-rust-0x20200101")
+    compile_time_crc32::crc32!("UUID.ToBytes-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -251,7 +251,7 @@ impl LegacyShard for NanoIDCreate {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("NanoID-rust-0x20200101")
+    compile_time_crc32::crc32!("NanoID-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

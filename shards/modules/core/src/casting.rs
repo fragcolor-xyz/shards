@@ -40,7 +40,7 @@ impl LegacyShard for ToBase58 {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ToBase58-rust-0x20200101")
+    compile_time_crc32::crc32!("ToBase58-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -98,7 +98,7 @@ impl LegacyShard for FromBase58 {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("FromBase58-rust-0x20200101")
+    compile_time_crc32::crc32!("FromBase58-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -164,7 +164,7 @@ impl LegacyShard for ToLEB128 {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ToLEB128-rust-0x20200101")
+    compile_time_crc32::crc32!("ToLEB128-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -245,7 +245,7 @@ impl LegacyShard for FromLEB128 {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("FromLEB128-rust-0x20200101")
+    compile_time_crc32::crc32!("FromLEB128-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

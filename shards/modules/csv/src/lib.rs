@@ -80,7 +80,7 @@ impl LegacyShard for CSVRead {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("CSV.Read-rust-0x20200101")
+    compile_time_crc32::crc32!("CSV.Read-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -177,7 +177,7 @@ impl LegacyShard for CSVWrite {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("CSV.Write-rust-0x20200101")
+    compile_time_crc32::crc32!("CSV.Write-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

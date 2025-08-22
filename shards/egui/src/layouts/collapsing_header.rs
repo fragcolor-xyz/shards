@@ -77,7 +77,7 @@ impl LegacyShard for CollapsingHeader {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Collapsing-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Collapsing-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

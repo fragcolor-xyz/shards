@@ -839,7 +839,7 @@ fn process_shard_helper_impl(struct_: syn::ItemStruct) -> Result<TokenStream, Er
   let shard_name = get_expr_str_lit(&shard_name_expr)?;
   let shard_desc_expr = shard_info.desc;
 
-  let crc = crc32(format!("{}-rust-0x20200101", shard_name));
+  let crc = crc32(format!("{}-rust-0x20250822", shard_name));
 
   let (required_variables_opt, compose_helper) = if let Some(required) = &shard_fields.required {
     (

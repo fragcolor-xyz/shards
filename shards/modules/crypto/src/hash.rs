@@ -229,28 +229,28 @@ macro_rules! add_hasher {
 add_hasher!(
   Keccak_256,
   "Hash.Keccak-256",
-  "Hash.Keccak-256-rust-0x20200101",
+  "Hash.Keccak-256-rust-0x20250822",
   Keccak::v256,
   32
 );
 add_hasher!(
   Keccak_512,
   "Hash.Keccak-512",
-  "Hash.Keccak-512-rust-0x20200101",
+  "Hash.Keccak-512-rust-0x20250822",
   Keccak::v512,
   64
 );
 add_hasher!(
   SHSha3_256,
   "Hash.Sha3-256",
-  "Hash.Sha3-256-rust-0x20200101",
+  "Hash.Sha3-256-rust-0x20250822",
   Sha3::v256,
   32
 );
 add_hasher!(
   SHSha3_512,
   "Hash.Sha3-512",
-  "Hash.Sha3-512-rust-0x20200101",
+  "Hash.Sha3-512-rust-0x20250822",
   Sha3::v512,
   64
 );
@@ -345,13 +345,13 @@ macro_rules! add_hasher2 {
 add_hasher2!(
   SHSha2_256,
   "Hash.Sha2-256",
-  "Hash.Sha2-256-rust-0x20200101",
+  "Hash.Sha2-256-rust-0x20250822",
   Sha256::new
 );
 add_hasher2!(
   SHSha2_512,
   "Hash.Sha2-512",
-  "Hash.Sha2-512-rust-0x20200101",
+  "Hash.Sha2-512-rust-0x20250822",
   Sha512::new
 );
 
@@ -466,7 +466,7 @@ macro_rules! add_hasher3 {
 add_hasher3!(
   SHBlake_128,
   "Hash.Blake2-128",
-  "Hash.Blake2-128-rust-0x20200101",
+  "Hash.Blake2-128-rust-0x20250822",
   blake2_128,
   16
 );
@@ -474,7 +474,7 @@ add_hasher3!(
 add_hasher3!(
   SHBlake_256,
   "Hash.Blake2-256",
-  "Hash.Blake2-256-rust-0x20200101",
+  "Hash.Blake2-256-rust-0x20250822",
   blake2_256,
   32
 );
@@ -482,7 +482,7 @@ add_hasher3!(
 add_hasher3!(
   SHTwoX_64,
   "Hash.XXH-64",
-  "Hash.XXH-64-rust-0x20200101",
+  "Hash.XXH-64-rust-0x20250822",
   twox_64,
   8
 );
@@ -490,7 +490,7 @@ add_hasher3!(
 add_hasher3!(
   SHTwoX_128,
   "Hash.XXH-128",
-  "Hash.XXH-128-rust-0x20200101",
+  "Hash.XXH-128-rust-0x20250822",
   twox_128,
   16
 );
@@ -498,7 +498,7 @@ add_hasher3!(
 add_hasher3!(
   SHTwoX_64_New,
   "Hash.XXH3-64",
-  "Hash.XXH3-64-rust-0x20200101",
+  "Hash.XXH3-64-rust-0x20250822",
   twox_64_3,
   8
 );
@@ -506,7 +506,7 @@ add_hasher3!(
 add_hasher3!(
   SHTwoX_128_New,
   "Hash.XXH3-128",
-  "Hash.XXH3-128-rust-0x20200101",
+  "Hash.XXH3-128-rust-0x20250822",
   twox_128_3,
   16
 );

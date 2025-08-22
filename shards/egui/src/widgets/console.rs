@@ -65,7 +65,7 @@ impl LegacyShard for Console {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Console-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Console-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

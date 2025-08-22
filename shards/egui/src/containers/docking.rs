@@ -94,7 +94,7 @@ impl LegacyShard for Tab {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Tab-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Tab-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -244,7 +244,7 @@ impl LegacyShard for DockArea {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.DockArea-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.DockArea-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

@@ -31,7 +31,7 @@ use std::ffi::CString;
 use std::future::Future;
 use std::os::raw::c_char;
 
-const ABI_VERSION: u32 = 0x20200101;
+const ABI_VERSION: u32 = 0x20250822;
 
 pub const MIN_STACK_SIZE: usize = crate::shardsc::SH_MIN_STACK_SIZE as usize;
 

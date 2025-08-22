@@ -910,12 +910,12 @@ macro_rules! post_like {
   };
 }
 
-get_like!(Get, get, "Http.Get", "Http.Get-rust-0x20200101");
-get_like!(Head, head, "Http.Head", "Http.Head-rust-0x20200101");
-post_like!(Post, post, "Http.Post", "Http.Post-rust-0x20200101");
-post_like!(Put, put, "Http.Put", "Http.Put-rust-0x20200101");
-post_like!(Patch, patch, "Http.Patch", "Http.Patch-rust-0x20200101");
-post_like!(Delete, delete, "Http.Delete", "Http.Delete-rust-0x20200101");
+get_like!(Get, get, "Http.Get", "Http.Get-rust-0x20250822");
+get_like!(Head, head, "Http.Head", "Http.Head-rust-0x20250822");
+post_like!(Post, post, "Http.Post", "Http.Post-rust-0x20250822");
+post_like!(Put, put, "Http.Put", "Http.Put-rust-0x20250822");
+post_like!(Patch, patch, "Http.Patch", "Http.Patch-rust-0x20250822");
+post_like!(Delete, delete, "Http.Delete", "Http.Delete-rust-0x20250822");
 
 #[derive(shards::shard)]
 #[shard_info("Http.Stream", "Reads data from a previously opened stream.")]

@@ -1380,8 +1380,8 @@ typedef SHCore *(__cdecl *SHShardsInterface)(uint32_t abi_version);
 #define SHARDS_API SHARDS_IMPORT
 #endif
 
-#define SHARDS_CURRENT_ABI 0x20200103
-#define SHARDS_CURRENT_ABI_STR "0x20200103"
+#define SHARDS_CURRENT_ABI 0x20250822
+#define SHARDS_CURRENT_ABI_STR "0x20250822"
 
 #if defined(__cplusplus)
 extern "C" {

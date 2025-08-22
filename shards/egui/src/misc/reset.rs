@@ -38,7 +38,7 @@ impl LegacyShard for Reset {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Reset-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Reset-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

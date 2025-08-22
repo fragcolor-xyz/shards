@@ -62,7 +62,7 @@ impl LegacyShard for PlotLine {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.PlotLine-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.PlotLine-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

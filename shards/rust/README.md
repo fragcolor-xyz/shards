@@ -100,7 +100,7 @@ These functions are used to identify the shard by name.
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("MyShard-rust-0x20200101")
+    compile_time_crc32::crc32!("MyShard-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

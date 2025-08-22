@@ -40,7 +40,7 @@ impl LegacyShard for Encrypt {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ChaChaPoly.Encrypt-rust-0x20200101")
+    compile_time_crc32::crc32!("ChaChaPoly.Encrypt-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -153,7 +153,7 @@ impl LegacyShard for Decrypt {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ChaChaPoly.Decrypt-rust-0x20200101")
+    compile_time_crc32::crc32!("ChaChaPoly.Decrypt-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

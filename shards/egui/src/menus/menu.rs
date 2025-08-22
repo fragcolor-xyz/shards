@@ -71,7 +71,7 @@ impl LegacyShard for CloseMenu {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.CloseMenu-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.CloseMenu-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -152,7 +152,7 @@ impl LegacyShard for Menu {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.Menu-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.Menu-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -300,7 +300,7 @@ impl LegacyShard for MenuBar {
   where
     Self: Sized,
   {
-    compile_time_crc32::crc32!("UI.MenuBar-rust-0x20200101")
+    compile_time_crc32::crc32!("UI.MenuBar-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {

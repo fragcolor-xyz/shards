@@ -78,7 +78,7 @@ impl LegacyShard for ECDSASign {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ECDSA.Sign-rust-0x20200101")
+    compile_time_crc32::crc32!("ECDSA.Sign-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -165,7 +165,7 @@ impl LegacyShard for ECDSAPubKey {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ECDSA.PublicKey-rust-0x20200101")
+    compile_time_crc32::crc32!("ECDSA.PublicKey-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -236,7 +236,7 @@ impl LegacyShard for ECDSAPrivKey {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ECDSA.Seed-rust-0x20200101")
+    compile_time_crc32::crc32!("ECDSA.Seed-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
@@ -302,7 +302,7 @@ impl LegacyShard for ECDSARecover {
   }
 
   fn hash() -> u32 {
-    compile_time_crc32::crc32!("ECDSA.Recover-rust-0x20200101")
+    compile_time_crc32::crc32!("ECDSA.Recover-rust-0x20250822")
   }
 
   fn name(&mut self) -> &str {
