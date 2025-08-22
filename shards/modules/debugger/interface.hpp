@@ -14,6 +14,7 @@ void onWireRunStart(SHContext *ctx);
 void onWireRunEnd(SHContext *ctx);
 void onEnterActivation(SHContext *context, const SHVar **input, const SHVar **output, Shard **start, size_t offset, size_t len);
 void onExitActivation(SHContext *context, Shard **start, size_t offset, size_t len);
+void unload();
 
 template <typename T> std::tuple<Shard **, size_t, size_t> extractShardsParam(T &shards) {
   Shard **start{};
