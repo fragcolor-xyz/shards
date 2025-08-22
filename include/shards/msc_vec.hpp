@@ -17,7 +17,7 @@
 
 #ifndef __builtin_unreachable
 #include <stdlib.h>
-#define __builtin_unreachable() __assume(0)
+#define __builtin_unreachable() (__assume(0))
 #endif
 
 namespace shards {
@@ -53,8 +53,7 @@ namespace shards {
 template <typename T>
 concept TIsVectorType = T::StorageSize != 0;
 template <typename T>
-concept TIsIntegralVectorType =
-    TIsVectorType<T> && std::is_integral_v<std::decay_t<decltype(T::v[0])>>;
+concept TIsIntegralVectorType = TIsVectorType<T> && std::is_integral_v<std::decay_t<decltype(T::v[0])>>;
 
 // +, -, *, /, unary minus, ^, |, &, ~, %.
 template <typename T>
@@ -283,17 +282,16 @@ template <> struct TVecCompareResult<16> {
   using type = TShardVector<int8_t, 16>;
 };
 
-template <typename T>
-using TVecCompareType = typename TVecCompareResult<T::StorageSize>::type;
+template <typename T> using TVecCompareType = typename TVecCompareResult<T::StorageSize>::type;
 
 template <typename T>
 inline TVecCompareType<T> operator<=(T a, T b)
   requires TIsVectorType<T>
 {
-  auto res = TVecCompareType<T>::All(true);
+  auto res = TVecCompareType<T>::All(1);
   for (auto i = 0; i < T::StorageSize; i++) {
     if (a[i] > b[i])
-      res[i] = false;
+      res[i] = 0;
   }
   return res;
 }
@@ -302,10 +300,10 @@ template <typename T>
 inline TVecCompareType<T> operator==(T a, T b)
   requires TIsVectorType<T>
 {
-  auto res = TVecCompareType<T>::All(true);
+  auto res = TVecCompareType<T>::All(1);
   for (auto i = 0; i < T::StorageSize; i++) {
     if (a[i] != b[i])
-      res[i] = false;
+      res[i] = 0;
   }
   return res;
 }
@@ -314,10 +312,10 @@ template <typename T>
 inline TVecCompareType<T> operator!=(T a, T b)
   requires TIsVectorType<T>
 {
-  auto res = TVecCompareType<T>::All(true);
+  auto res = TVecCompareType<T>::All(1);
   for (auto i = 0; i < T::StorageSize; i++) {
     if (a[i] == b[i])
-      res[i] = false;
+      res[i] = 0;
   }
   return res;
 }
