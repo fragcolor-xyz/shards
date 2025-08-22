@@ -4008,7 +4008,7 @@ fn eval_pipeline(
             let info = process_ast(func, get_block_line_info(e, block), e)?;
             add_const_shard2(func, *info.as_ref(), get_block_line_info(e, block), e)
           }
-          ("eval-context", true) => {
+          ("capture-eval-context", true) => {
             let ctx = capture_eval_context(e);
             add_const_shard2(func, ctx.0, get_block_line_info(e, block), e)
           }

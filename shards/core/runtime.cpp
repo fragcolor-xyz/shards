@@ -1460,7 +1460,7 @@ SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
 bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   auto params = shard->parameters(shard);
   if (params.len <= (uint32_t)index) {
-    SHLOG_ERROR("Parameter index out of range, shard: {}, line: {}, column: {}", shard->name(shard), shard->line, shard->column);
+    SHLOG_ERROR("Parameter index out of range, {}", formatShardSourceLocation(shard));
     return false;
   }
 
@@ -1480,8 +1480,8 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   }
 
   auto err = fmt::format(
-      "Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), line: {}, column: {}, shard: {}",
-      param.name, value, varType, param.valueTypes, shard->line, shard->column, shard->name(shard));
+      "Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), {}",
+      param.name, value, varType, param.valueTypes, formatShardSourceLocation(shard));
 #if SH_DEBUG_TYPE_MATCHING
   // Put a breakpoint here to debug
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
