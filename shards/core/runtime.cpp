@@ -2654,7 +2654,7 @@ SHContext *getWireContext(SHWireRef wireRef) {
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   if (SHARDS_CURRENT_ABI != abi_version) {
     // SHLOG_ERROR("A plugin requested an invalid ABI version.");
-    SHLOG_ERROR("Invalid ABI version requested, Formabble is at version {}, you requested {}", SHARDS_CURRENT_ABI, abi_version);
+    SHLOG_ERROR("Invalid ABI version requested, Shards is at version {}, you requested {}", SHARDS_CURRENT_ABI, abi_version);
     return nullptr;
   }
 
