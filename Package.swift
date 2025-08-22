@@ -16,7 +16,17 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "shards",
+            path: "include/shards",
+            sources: [],
+            publicHeadersPath: ".",
+            cSettings: [
+                .headerSearchPath(".")
+            ]
+        ),
+        .target(
             name: "Shards",
+            dependencies: ["shards"],
             path: "include/shards",
             sources: ["shards.swift"]
         ),
