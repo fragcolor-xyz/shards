@@ -175,26 +175,6 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     shard->shard.activateFloat32x4(input);
     return &shard->shard._result;
   }
-  case InlineShard::MathDivideInt64x2: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
-    shard->shard.activateInt64x2(input);
-    return &shard->shard._result;
-  }
-  case InlineShard::MathDivideInt32x4: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
-    shard->shard.activateInt32x4(input);
-    return &shard->shard._result;
-  }
-  case InlineShard::MathDivideFloat64x2: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
-    shard->shard.activateFloat64x2(input);
-    return &shard->shard._result;
-  }
-  case InlineShard::MathDivideFloat32x4: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
-    shard->shard.activateFloat32x4(input);
-    return &shard->shard._result;
-  }
   case InlineShard::MathXorInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Xor> *>(blk);
     shard->shard.activateInt64x2(input);
@@ -222,16 +202,6 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
   }
   case InlineShard::MathOrInt32x4: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Or> *>(blk);
-    shard->shard.activateInt32x4(input);
-    return &shard->shard._result;
-  }
-  case InlineShard::MathModInt64x2: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Mod> *>(blk);
-    shard->shard.activateInt64x2(input);
-    return &shard->shard._result;
-  }
-  case InlineShard::MathModInt32x4: {
-    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Mod> *>(blk);
     shard->shard.activateInt32x4(input);
     return &shard->shard._result;
   }

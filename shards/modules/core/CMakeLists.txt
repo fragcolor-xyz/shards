@@ -80,18 +80,12 @@ add_shards_module(core SOURCES ${SOURCES}
   MathMultiplyInt32x4
   MathMultiplyFloat64x2
   MathMultiplyFloat32x4
-  MathDivideInt64x2
-  MathDivideInt32x4
-  MathDivideFloat64x2
-  MathDivideFloat32x4
   MathXorInt64x2
   MathXorInt32x4
   MathAndInt64x2
   MathAndInt32x4
   MathOrInt64x2
   MathOrInt32x4
-  MathModInt64x2
-  MathModInt32x4
 )
 
 if(EMSCRIPTEN)
