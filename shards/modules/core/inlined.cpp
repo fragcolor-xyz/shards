@@ -115,37 +115,125 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Repeat> *>(blk);
     return &shard->shard.activate(context, input);
   }
-  case InlineShard::MathAdd: {
+  case InlineShard::MathAddInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Add> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathSubtract: {
+  case InlineShard::MathAddInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Add> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathAddFloat64x2: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Add> *>(blk);
+    shard->shard.activateFloat64x2(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathAddFloat32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Add> *>(blk);
+    shard->shard.activateFloat32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathSubtractInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Subtract> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathMultiply: {
+  case InlineShard::MathSubtractInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Subtract> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathSubtractFloat64x2: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Subtract> *>(blk);
+    shard->shard.activateFloat64x2(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathSubtractFloat32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Subtract> *>(blk);
+    shard->shard.activateFloat32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathMultiplyInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Multiply> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathDivide: {
+  case InlineShard::MathMultiplyInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Multiply> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathMultiplyFloat64x2: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Multiply> *>(blk);
+    shard->shard.activateFloat64x2(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathMultiplyFloat32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Multiply> *>(blk);
+    shard->shard.activateFloat32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathDivideInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathXor: {
+  case InlineShard::MathDivideInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathDivideFloat64x2: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
+    shard->shard.activateFloat64x2(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathDivideFloat32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Divide> *>(blk);
+    shard->shard.activateFloat32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathXorInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Xor> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathAnd: {
+  case InlineShard::MathXorInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Xor> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathAndInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::And> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathOr: {
+  case InlineShard::MathAndInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::And> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathOrInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Or> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
   }
-  case InlineShard::MathMod: {
+  case InlineShard::MathOrInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Or> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathModInt64x2: {
     auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Mod> *>(blk);
-    return &shard->shard.activate(context, input);
+    shard->shard.activateInt64x2(input);
+    return &shard->shard._result;
+  }
+  case InlineShard::MathModInt32x4: {
+    auto shard = reinterpret_cast<shards::ShardWrapper<shards::Math::Mod> *>(blk);
+    shard->shard.activateInt32x4(input);
+    return &shard->shard._result;
   }
   case InlineShard::NotInline:
     return blk->activate(blk, context, &input);
