@@ -49,7 +49,8 @@ struct Track {
 
   PARAM_VAR(_variables, "Variables", "The variables to track for changes.", {CoreInfo::AnySeqType});
   PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::ShardsOrNoneSeq});
-  PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action));
+  PARAM_VAR(_mask, "Mask", "The mask to use to determine which variables to track.", {CoreInfo::IntOrNone});
+  PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_mask));
 
   SHTypeInfo compose(SHInstanceData &data) {
     auto res = _action.compose(data);
@@ -69,13 +70,12 @@ struct Track {
 
     _varNames.clear();
 
-    if (context) {
-      auto mesh = context->rootWire()->mesh.lock();
-      if (mesh) {
-        mesh->dispatcher.sink<shards::OnTrackedVarSet>().disconnect<&Track::handleTrackedVarSet>(this);
-      }
+    if (_connection) {
+      _connection.release();
     }
   }
+
+  entt::scoped_connection _connection;
 
   void warmup(SHContext *context) {
     _action.warmup(context);
@@ -86,13 +86,23 @@ struct Track {
     }
 
     auto mesh = context->rootWire()->mesh.lock();
-    mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSet>(this);
+    if (_mask->isNone()) {
+      _connection = mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSet>(this);
+    } else {
+      _connection = mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSetWithMask>(this);
+    }
 
     _shouldActivate = true; // always trigger the first time
   }
 
   void handleTrackedVarSet(OnTrackedVarSet &event) {
     if (!_shouldActivate && _varNames.contains(event.name)) {
+      _shouldActivate = true;
+    }
+  }
+
+  void handleTrackedVarSetWithMask(OnTrackedVarSet &event) {
+    if (!_shouldActivate && _varNames.contains(event.name) && (event.newValue.trackingMask & _mask.payload.intValue) != 0) {
       _shouldActivate = true;
     }
   }
