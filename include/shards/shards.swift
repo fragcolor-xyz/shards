@@ -2138,6 +2138,22 @@ public class RefCounted<T> {
     }
 }
 
+public struct ObjectInfo<T> {
+    var info: SHObjectInfo = SHObjectInfo()
+    var vendor: Int32 = 0
+    var type: Int32 = 0
+
+    public mutating func make(obj: RefCounted<T>) -> SHVar {
+        let output = SHVar.object(vendorId: vendor, typeId: type, value: obj.getSelf(), objectInfo: &info)
+        return output
+    }
+}
+
+func registerObjectType<T>(_: T.Type, vendor: Int32, type: Int32, info: SHObjectInfo) -> ObjectInfo<T> {
+    G.Core.pointee.registerObjectType(vendor, type, info)
+    return ObjectInfo(info: info, vendor: vendor, type: type)
+}
+
 class Shards {
     static func log(_ message: String) {
         message.withCString { cString in
