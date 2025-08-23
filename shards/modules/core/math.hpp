@@ -608,7 +608,7 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddInt64x2;
@@ -668,7 +668,7 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractInt64x2;
@@ -728,7 +728,7 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyInt64x2;
@@ -835,7 +835,7 @@ struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType:
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathXorInt64x2;
@@ -881,7 +881,7 @@ struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType:
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAndInt64x2;
@@ -928,7 +928,7 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    SHTypeInfo operandType;
+    SHTypeInfo operandType{};
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathOrInt64x2;
