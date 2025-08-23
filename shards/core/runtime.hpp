@@ -926,7 +926,7 @@ private:
       return *a < *b;
     }
   };
-  // Notice, has to be stable_vector to ensure iterator stability
+
   using WirePtr = std::shared_ptr<SHWire>;
   using ScheduledSet = boost::container::flat_set<WirePtr, WireLess>;
   ScheduledSet _scheduled;
