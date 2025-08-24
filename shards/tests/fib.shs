@@ -7,11 +7,11 @@
 @mesh(root)
 
 @wire(fib4 {
-  Math.Subtract(3) = n
+  Sub(3) = n
   1 >= a
   2 >= b
   Repeat({
-    a | Math.Add(b) = c
+    a | Add(b) = c
     b > a
     c > b
   } Times: n)
