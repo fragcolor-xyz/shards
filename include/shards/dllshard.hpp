@@ -9,7 +9,10 @@ At runtime just dlopen the dll, that's it!
 
 #ifndef SH_DLLSHARD_HPP
 #define SH_DLLSHARD_HPP
+
+#ifndef SH_NO_INTERNAL_CORE
 #define SH_NO_INTERNAL_CORE
+#endif
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -47,6 +50,17 @@ struct CoreLoader {
 #endif
 
   CoreLoader() {
+#ifndef SHARDS_CORE_LOADER_LAZY
+    loadModule(SHARDS_MODULE_FILENAME);
+#endif
+  }
+
+  ~CoreLoader() { unloadModule(); }
+
+  void loadModule(const char *modulePath = SHARDS_MODULE_FILENAME) {
+    if (handle)
+      return;
+
     SHShardsInterface ifaceproc;
 #ifdef _WIN32
     handle = GetModuleHandle(NULL);
@@ -75,11 +89,12 @@ struct CoreLoader {
     registerExternalShards();
   }
 
-  ~CoreLoader() { unloadModule(); }
   void unloadModule() {
     if (handle) {
 #if _WIN32
       FreeLibrary(handle);
+#else
+      dlclose(handle);
 #endif
       handle = {};
     }
@@ -328,7 +343,9 @@ public:
 
   static void freeAst(struct SHLAst *ast) { sCore._core->freeAst(ast); }
 
-  static void unloadModule() { sCore.unloadModule(); }
+  static void _loadModule(const char *modulePath) { sCore.loadModule(modulePath); }
+  static void _unloadModule() { sCore.unloadModule(); }
+
 private:
   static inline CoreLoader sCore{};
 };
