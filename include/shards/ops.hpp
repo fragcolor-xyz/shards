@@ -136,9 +136,10 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s64((const int64_t*)&a.payload.int2Value);
     auto vb = vld1q_s64((const int64_t*)&b.payload.int2Value);
     auto cmp = vceqq_s64(va, vb);
-    // No vminvq_u64, so extract lanes manually
-    return vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 0) && 
-           vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 1);
+    // Check if all lanes show equality (all bits set to 0xFFFFFFFFFFFFFFFF)
+    uint64_t lane0 = vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 0);
+    uint64_t lane1 = vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 1);
+    return (lane0 == 0xFFFFFFFFFFFFFFFF) && (lane1 == 0xFFFFFFFFFFFFFFFF);
 #elif defined(__SSE4_1__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int2Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int2Value);
@@ -154,25 +155,25 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s32((const int32_t*)&a.payload.int3Value);
     auto vb = vld1q_s32((const int32_t*)&b.payload.int3Value);
     auto cmp = vceqq_s32(va, vb);
-    // Only check first 3 elements
-    return vgetq_lane_u32(cmp, 0) && vgetq_lane_u32(cmp, 1) && vgetq_lane_u32(cmp, 2);
+    // Check only first 3 elements - ensure all comparison masks are 0xFFFFFFFF
+    uint32_t lane0 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 0);
+    uint32_t lane1 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 1);
+    uint32_t lane2 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 2);
+    return (lane0 == 0xFFFFFFFF) && (lane1 == 0xFFFFFFFF) && (lane2 == 0xFFFFFFFF);
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int3Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int3Value);
     auto cmp = _mm_cmpeq_epi32(va, vb);
     auto mask = _mm_movemask_epi8(cmp);
-    return (mask & 0x0FFF) == 0x0FFF; // First 3 elements
-#else
-    auto mask = a.payload.int3Value == b.payload.int3Value;
-    return (mask[0] & mask[1] & mask[2]) != 0;
+    return (mask & 0x0FFF) == 0x0FFF; // First 3 elements (12 bytes)
 #endif
-  }
   case SHType::Int4: {
 #ifdef __ARM_NEON
     auto va = vld1q_s32((const int32_t*)&a.payload.int4Value);
     auto vb = vld1q_s32((const int32_t*)&b.payload.int4Value);
     auto cmp = vceqq_s32(va, vb);
-    return vminvq_u32(vreinterpretq_u32_s32(cmp)) != 0;
+    // Use horizontal minimum to check if all lanes are 0xFFFFFFFF
+    return vminvq_u32(vreinterpretq_u32_s32(cmp)) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int4Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int4Value);
@@ -188,7 +189,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s16((const int16_t*)&a.payload.int8Value);
     auto vb = vld1q_s16((const int16_t*)&b.payload.int8Value);
     auto cmp = vceqq_s16(va, vb);
-    return vminvq_u16(vreinterpretq_u16_s16(cmp)) != 0;
+    // Use horizontal minimum to check if all lanes are 0xFFFF
+    return vminvq_u16(vreinterpretq_u16_s16(cmp)) == 0xFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int8Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int8Value);
@@ -204,7 +206,8 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s8((const int8_t*)&a.payload.int16Value);
     auto vb = vld1q_s8((const int8_t*)&b.payload.int16Value);
     auto cmp = vceqq_s8(va, vb);
-    return vminvq_u8(vreinterpretq_u8_s8(cmp)) != 0;
+    // Use horizontal minimum to check if all lanes are 0xFF
+    return vminvq_u8(vreinterpretq_u8_s8(cmp)) == 0xFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int16Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int16Value);
@@ -224,18 +227,20 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto veps = vld1q_f64((const double*)&vepsi);
     auto diff = vabsq_f64(vsubq_f64(va, vb));
     auto cmp = vcleq_f64(diff, veps);
-    // No vminvq_u64, so extract lanes manually
-    return vgetq_lane_u64(cmp, 0) && vgetq_lane_u64(cmp, 1);
+    // Check if all lanes show <= epsilon (all bits set to 0xFFFFFFFFFFFFFFFF)
+    uint64_t lane0 = vgetq_lane_u64(cmp, 0);
+    uint64_t lane1 = vgetq_lane_u64(cmp, 1);
+    return (lane0 == 0xFFFFFFFFFFFFFFFF) && (lane1 == 0xFFFFFFFFFFFFFFFF);
 #elif defined(__SSE2__)
     auto va = _mm_load_pd((const double*)&a.payload.float2Value);
     auto vb = _mm_load_pd((const double*)&b.payload.float2Value);
     auto veps = _mm_load_pd((const double*)&vepsi);
     auto diff = _mm_sub_pd(va, vb);
-    // Manual abs for doubles
+    // Manual abs for doubles (clear sign bit)
     auto sign_mask = _mm_set1_pd(-0.0);
     diff = _mm_andnot_pd(sign_mask, diff);
     auto cmp = _mm_cmple_pd(diff, veps);
-    return _mm_movemask_pd(cmp) == 0x3;
+    return _mm_movemask_pd(cmp) == 0x3; // Both bits set
 #else
     SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
     diff[0] = __builtin_fabs(diff[0]);
@@ -245,26 +250,29 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
 #endif
   }
   case SHType::Float3: {
-    const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON}; // 4th element for SIMD alignment
 #ifdef __ARM_NEON
     auto va = vld1q_f32((const float*)&a.payload.float3Value);
     auto vb = vld1q_f32((const float*)&b.payload.float3Value);
     auto veps = vld1q_f32((const float*)&vepsi);
     auto diff = vabsq_f32(vsubq_f32(va, vb));
     auto cmp = vcleq_f32(diff, veps);
-    // Only check first 3 elements
-    return vgetq_lane_u32(cmp, 0) && vgetq_lane_u32(cmp, 1) && vgetq_lane_u32(cmp, 2);
+    // Check only first 3 elements - ensure comparison masks are 0xFFFFFFFF
+    uint32_t lane0 = vgetq_lane_u32(cmp, 0);
+    uint32_t lane1 = vgetq_lane_u32(cmp, 1);
+    uint32_t lane2 = vgetq_lane_u32(cmp, 2);
+    return (lane0 == 0xFFFFFFFF) && (lane1 == 0xFFFFFFFF) && (lane2 == 0xFFFFFFFF);
 #elif defined(__SSE2__)
     auto va = _mm_load_ps((const float*)&a.payload.float3Value);
     auto vb = _mm_load_ps((const float*)&b.payload.float3Value);
     auto veps = _mm_load_ps((const float*)&vepsi);
     auto diff = _mm_sub_ps(va, vb);
-    // Manual abs for floats
+    // Manual abs for floats (clear sign bit)
     auto sign_mask = _mm_set1_ps(-0.0f);
     diff = _mm_andnot_ps(sign_mask, diff);
     auto cmp = _mm_cmple_ps(diff, veps);
     auto mask = _mm_movemask_ps(cmp);
-    return (mask & 0x7) == 0x7; // First 3 elements
+    return (mask & 0x7) == 0x7; // First 3 bits set
 #else
     SHFloat3 diff = a.payload.float3Value - b.payload.float3Value;
     diff[0] = __builtin_fabs(diff[0]);
@@ -282,17 +290,18 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto veps = vld1q_f32((const float*)&vepsi);
     auto diff = vabsq_f32(vsubq_f32(va, vb));
     auto cmp = vcleq_f32(diff, veps);
-    return vminvq_u32(cmp) != 0;
+    // Use horizontal minimum to check if all lanes are 0xFFFFFFFF
+    return vminvq_u32(cmp) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_ps((const float*)&a.payload.float4Value);
     auto vb = _mm_load_ps((const float*)&b.payload.float4Value);
     auto veps = _mm_load_ps((const float*)&vepsi);
     auto diff = _mm_sub_ps(va, vb);
-    // Manual abs for floats
+    // Manual abs for floats (clear sign bit)
     auto sign_mask = _mm_set1_ps(-0.0f);
     diff = _mm_andnot_ps(sign_mask, diff);
     auto cmp = _mm_cmple_ps(diff, veps);
-    return _mm_movemask_ps(cmp) == 0xF;
+    return _mm_movemask_ps(cmp) == 0xF; // All 4 bits set
 #else
     SHFloat4 diff = a.payload.float4Value - b.payload.float4Value;
     diff[0] = __builtin_fabs(diff[0]);
