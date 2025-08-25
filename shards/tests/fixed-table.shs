@@ -21,6 +21,9 @@ Assert.ComposeFailure({
 
 my-struct | Take("first") | Add(10) | Assert.Is(20)
 
+Get(my-struct "first") | Assert.Is(10)
+Get(my-struct "second") | Assert.Is({third: {first: 0 second: {third: 0}}})
+
 Assert.ComposeFailure({
   my-struct | Take("first") | Add(10.0)
 })

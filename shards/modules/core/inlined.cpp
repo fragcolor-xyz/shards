@@ -12,7 +12,7 @@
 
 namespace shards {
 
-ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *context, const SHVar &input) {
+ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHContext *context, const SHVar &input) noexcept {
   auto enumValue = static_cast<shards::InlineShard::Type>(blk->inlineShardId);
   switch (enumValue) {
   case InlineShard::NoopShard:
@@ -94,6 +94,16 @@ ALWAYS_INLINE const SHVar *SHARDS_MODULE_FN(activateShardInline)(Shard *blk, SHC
   case InlineShard::CoreGet: {
     auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
     return shard->core._cell;
+  }
+  case InlineShard::CoreGetTableFixed: {
+    auto shard = reinterpret_cast<shards::GetRuntime *>(blk);
+    SHMap *table = static_cast<SHMap *>(shard->core._target->payload.tableValue.opaque);
+    return &table->tree().nth(*shard->core.fixedTableIdx)->second;
+  }
+  case InlineShard::CoreTakeTableFixed: {
+    auto shard = reinterpret_cast<shards::TakeRuntime *>(blk);
+    SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
+    return &table->tree().nth(*shard->core.fixedTableIdx)->second;
   }
   case InlineShard::CoreRefRegular: {
     auto shard = reinterpret_cast<shards::RefRuntime *>(blk);

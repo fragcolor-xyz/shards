@@ -1793,11 +1793,15 @@ struct Get : public VariableBase {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The output is the value read from the specified variable."); }
 
+  std::optional<uint32_t> fixedTableIdx;
+
   SHTypeInfo composeV2(const SHInstanceData &data) {
     shassert(data.privateContext && "Private context should be valid");
     auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
 
     _shard = const_cast<Shard *>(data.shard);
+
+    fixedTableIdx.reset();
 
     if (_defaultValue.valueType != SHType::None) {
       freeDerivedInfo(_defaultType);
@@ -1821,6 +1825,12 @@ struct Get : public VariableBase {
             // if keys are populated they are not variables;
             auto &key = tableKeys.elements[y];
             if (key == _key) {
+              auto fixedTable = type->exposedType.table.fixedStructTable;
+              if (fixedTable) {
+                shassert(type->exposedType.table.indices.len == tableKeys.len && "Fixed table indices length mismatch");
+                fixedTableIdx = type->exposedType.table.indices.elements[y];
+                shassert(fixedTableIdx < tableKeys.len && "Fixed table index out of bounds");
+              }
               return tableTypes.elements[y];
             } else if (key.valueType == SHType::None) {
               hasMagicNone = true;
@@ -1940,6 +1950,12 @@ struct Get : public VariableBase {
       _target = referenceGlobalVariable(context, _name.c_str());
     else
       _target = referenceVariable(context, _name.c_str());
+
+    if (fixedTableIdx) {
+      _shard->inlineShardId = InlineShard::CoreGetTableFixed;
+    } else {
+      _shard->inlineShardId = InlineShard::NotInline;
+    }
 
     _key.warmup(context);
   }
@@ -2071,9 +2087,7 @@ struct Swap {
 
   OwnedVar _cache;
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
-    return data.inputType;
-  }
+  SHTypeInfo composeV2(const SHInstanceData &data) { return data.inputType; }
 
   ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     _cache = _first.get();
@@ -3356,9 +3370,17 @@ struct Take {
 
   static SHParametersInfo parameters() { return SHParametersInfo(indicesParamsInfo); }
 
+  std::optional<uint32_t> fixedTableIdx;
+  Shard *_shard;
+
   SHTypeInfo compose(const SHInstanceData &data) {
     bool valid = false;
     bool isTable = data.inputType.basicType == SHType::Table;
+
+    fixedTableIdx.reset();
+
+    _shard = const_cast<Shard *>(data.shard);
+
     // Figure if we output a sequence or not
     if (_indices.valueType == SHType::Seq) {
       if (isTable) {
@@ -3522,6 +3544,12 @@ struct Take {
           } else {
             for (uint32_t i = 0; i < data.inputType.table.keys.len; i++) {
               if (_indices == data.inputType.table.keys.elements[i]) {
+                if (data.inputType.table.fixedStructTable) {
+                  shassert(data.inputType.table.indices.len == data.inputType.table.keys.len &&
+                           "Fixed table indices length mismatch");
+                  fixedTableIdx = data.inputType.table.indices.elements[i];
+                  shassert(fixedTableIdx < data.inputType.table.keys.len && "Fixed table index out of bounds");
+                }
                 return data.inputType.table.types.elements[i];
               }
             }
@@ -3588,6 +3616,12 @@ struct Take {
   void warmup(SHContext *context) {
     if (_indices.valueType == SHType::ContextVar && !_indicesVar) {
       _indicesVar = referenceVariable(context, SHSTRVIEW(_indices));
+    }
+
+    if (fixedTableIdx) {
+      _shard->inlineShardId = InlineShard::CoreTakeTableFixed;
+    } else {
+      _shard->inlineShardId = InlineShard::NotInline;
     }
   }
 

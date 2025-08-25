@@ -50,6 +50,8 @@ add_shards_module(core SOURCES ${SOURCES}
   CoreInput
   CoreRepeat
   CoreGet
+  CoreGetTableFixed
+  CoreTakeTableFixed
   CoreRefRegular
   CoreRefTable
   CoreSetUpdateRegular
