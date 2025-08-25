@@ -134,7 +134,7 @@ function(sh_add_external_project)
     endforeach()
   endif()
 
-  message(STATUS "  LIB_NAMES: ${LIB_NAMES}")
+  message(STATUS "  LIB_NAMES: ${PROJ_LIB_NAMES}")
 
   set(PROJ_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME})
   set(PROJ_INSTALL_PATH ${PROJ_PREFIX_PATH})
