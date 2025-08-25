@@ -76,7 +76,7 @@ struct STUNShard {
       shards::CoreInfo::IntType,    //
       shards::CoreInfo::StringType, //
   };
-  static inline shards::Type resultType = shards::Type::TableOf(resultTypes, resultKeys);
+  static inline shards::Type resultType = shards::Type::TableOf(resultTypes, resultKeys, true);
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return resultType; }

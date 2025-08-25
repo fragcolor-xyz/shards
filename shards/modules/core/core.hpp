@@ -2591,38 +2591,6 @@ struct TableDecl : public VariableBase {
     throw SHException("Param index out of range.");
   }
 
-  static bool deriveTableIndices(SHTableTypeInfo &info) {
-    // Early validation - O(n) scan before any allocation
-    for (uint32_t i = 0; i < info.keys.len; i++) {
-      if (info.keys.elements[i].valueType == SHType::None) {
-        return false; // Cannot proceed with incomplete type info
-      }
-    }
-
-    // Proceed with optimization
-    std::vector<uint32_t> indices(info.keys.len);
-    std::iota(indices.begin(), indices.end(), 0);
-
-    std::sort(indices.begin(), indices.end(),
-              [&](uint32_t a, uint32_t b) { return ShardsKeyCompare<SHVar>{}(info.keys.elements[a], info.keys.elements[b]); });
-
-    shards::arrayResize(info.indices, info.keys.len);
-    std::copy(indices.begin(), indices.end(), info.indices.elements);
-
-    // Recurse - fail fast propagation
-    for (uint32_t i = 0; i < info.types.len; i++) {
-      auto &type = info.types.elements[i];
-      if (type.basicType == SHType::Table) {
-        if (!deriveTableIndices(type.table)) {
-          shards::arrayFree(info.indices); // Clean up on nested failure
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
   SHTypeInfo compose(const SHInstanceData &data) {
     const auto updateTableInfo = [this] {
       _tableInfo.basicType = SHType::Table;

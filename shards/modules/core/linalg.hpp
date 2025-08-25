@@ -28,7 +28,7 @@ struct Types {
       CoreInfo::Float4Type,
       CoreInfo::Float3Type,
   }};
-  static inline Type TRS = Type::TableOf(_trsTypes, _trsKeys);
+  static inline Type TRS = Type::TableOf(_trsTypes, _trsKeys, true);
 };
 
 template <typename TOp> struct UnaryOperation : public Math::UnaryOperation<TOp> {
@@ -559,7 +559,7 @@ struct Rotation {
 struct LookAt {
   static inline shards::Types InputTableTypes{{CoreInfo::Float3Type, CoreInfo::Float3Type}};
   static inline std::array<SHVar, 2> InputTableKeys{Var("Position"), Var("Target")};
-  static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
+  static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys, true);
 
   static SHOptionalString help() {
     return SHCCSTR(

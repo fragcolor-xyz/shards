@@ -87,6 +87,8 @@ public:
 
 Shard *createShard(std::string_view name);
 
+inline bool deriveTableIndices(SHTableTypeInfo &info);
+
 struct Type {
   Type() : _type({SHType::None}) {}
 
@@ -161,13 +163,25 @@ struct Type {
     return res;
   }
 
-  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys) {
+  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys, bool fixed = false) {
     Type res;
     if (N > 0 && N != types.len) {
       throw std::logic_error("TableOf: keys and types length mismatch");
     }
+
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
     res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+
+    if (fixed) {
+      // ! This is leaking, WIP
+      shassert(res._type.table.keys.len == res._type.table.types.len && "TableOf: keys and types length mismatch");
+      fixed = deriveTableIndices(res._type.table);
+      if (fixed) {
+        shassert(res._type.table.keys.len == res._type.table.indices.len && "TableOf: keys and indices length mismatch");
+        res._type.table.fixedStructTable = true;
+      }
+    }
+
     return res;
   }
 

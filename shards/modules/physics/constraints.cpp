@@ -189,14 +189,14 @@ struct SpringSettings {
       CoreInfo::FloatType,
   };
   // Frequency + damping
-  static inline Type Type0 = Type::TableOf(Types0, Keys0);
+  static inline Type Type0 = Type::TableOf(Types0, Keys0, true);
   static inline std::array<SHVar, 2> Keys1{Var("stiffness"), Var("damping")};
   static inline shards::Types Types1{
       CoreInfo::FloatType,
       CoreInfo::FloatType,
   };
   // Stiffness + damping
-  static inline Type Type1 = Type::TableOf(Types1, Keys1);
+  static inline Type Type1 = Type::TableOf(Types1, Keys1, true);
 
   static inline shards::Types Types{Type0, Type1};
   static inline shards::Types TypesVarOrNone{CoreInfo::NoneType, Type0, Type1, Type::VariableOf(Type0), Type::VariableOf(Type1)};
@@ -242,7 +242,7 @@ struct MotorSettings {
       CoreInfo::FloatType,
       CoreInfo::FloatType,
   };
-  static inline Type Type0 = Type::TableOf(Types0, Keys0);
+  static inline Type Type0 = Type::TableOf(Types0, Keys0, true);
 
   static inline TableVar Default = []() {
     TableVar tv;

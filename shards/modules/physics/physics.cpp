@@ -178,7 +178,7 @@ struct CollisionsShard {
       tk_penDepth,
       tk_normal,
   };
-  static inline Type ContactTableType = Type::TableOf(ContactTableTypes, ContactTableKeys);
+  static inline Type ContactTableType = Type::TableOf(ContactTableTypes, ContactTableKeys, true);
   static inline Type ContactTableSeqType = Type::SeqOf(ContactTableType);
 
   static inline shards::Types ContactLeaveTableTypes{SHBody::Type, CoreInfo::AnyType};

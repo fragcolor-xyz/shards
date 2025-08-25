@@ -95,8 +95,8 @@ struct Base {
   static inline Types FullStrOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
   static inline Types FullBytesOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
   static inline std::array<SHVar, 3> FullOutputKeys{Var("status"), Var("headers"), Var("body")};
-  static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys);
-  static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
+  static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys, true);
+  static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys, true);
   static inline Types AllOutputTypes{{FullBytesOutputType, CoreInfo::BytesType, FullStrOutputType, CoreInfo::StringType}};
 
   static inline Parameters params{
@@ -874,7 +874,7 @@ struct Server {
 struct Read {
   static inline Types OutTypes{{CoreInfo::StringType, CoreInfo::StringTableType, CoreInfo::StringType, CoreInfo::StringType}};
   static inline std::array<SHVar, 4> OutKeys{Var("method"), Var("headers"), Var("target"), Var("body")};
-  static inline Type OutputType = Type::TableOf(OutTypes, OutKeys);
+  static inline Type OutputType = Type::TableOf(OutTypes, OutKeys, true);
 
   static SHOptionalString help() {
     return SHCCSTR(
