@@ -68,7 +68,7 @@ template <typename CORE> struct EvalEnvironment {
   SHWireRef *eval(const shards::TOwnedVar<CORE> &ast, std::string_view name) {
     SHLWire wire;
     DEFER(CORE::freeWire(&wire));
-    if (!CORE::evalAst(ast.v, toSWL(name), &wire))
+    if (!CORE::evalAst(&(SHVar&)ast, toSWL(name), &wire))
       throw Exception(wire.error);
     return wire.wire;
   }
