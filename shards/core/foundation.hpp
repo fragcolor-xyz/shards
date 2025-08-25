@@ -1395,6 +1395,29 @@ struct InternalCore {
 
   static uint32_t getSourceFileId(SHStringWithLen path);
   static SHStringWithLen getSourceFileName(uint32_t file_id);
+
+  static bool read(struct SHStringWithLen name, struct SHStringWithLen code, struct SHStringWithLen basePath,
+                   const struct SHStringWithLen *includeDirs, uint32_t numIncludeDirs, struct SHLAst *out_ast);
+
+  static bool loadAst(const uint8_t *bytes, uint32_t size, struct SHLAst *out_ast);
+
+  static void freeError(struct SHLError *error);
+
+  static struct SHLEvalEnv *createEvalEnv(struct SHStringWithLen namespace_);
+
+  static void freeEvalEnv(struct SHLEvalEnv *env);
+
+  static bool eval(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error);
+
+  static bool transformEnv(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire);
+
+  static bool transformEnvs(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name, struct SHLWire *out_wire);
+
+  static bool evalAst(const struct SHVar *ast, struct SHStringWithLen name, struct SHLWire *out_wire);
+
+  static void freeWire(struct SHLWire *wire);
+
+  static void freeAst(struct SHLAst *ast);
 };
 
 inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<InternalCore>(blk); }
