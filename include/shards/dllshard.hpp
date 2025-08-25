@@ -86,7 +86,9 @@ struct CoreLoader {
     _core = ifaceproc(SHARDS_CURRENT_ABI);
     assert(_core);
     _core->log("loading external shards..."_swl);
+#ifndef SHARDS_NO_DLL_REGISTER
     registerExternalShards();
+#endif
   }
 
   void unloadModule() {
