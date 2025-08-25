@@ -12,51 +12,53 @@ Scope determines the visibility of data at different points in your program. Whe
 
 - Global: The variable is known throughout the entire Mesh.
 
-In the example below, the Wire `get-x` attempts to retrieve the value of `.x` defined in the Wire `define-x`. Note how it can retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `.x` has been defined as a global variable, making its value available to all Wires on the Mesh.
+In the example below, the Wire `get-x` attempts to retrieve the value of `x` defined in the Wire `define-x`. Note how it can retrieve the value of 1 even though it was defined in a separate Wire. This is due to how `x` has been defined as a global variable, making its value available to all Wires on the Mesh.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire get-x
-      (Get .x :Default 0) (Log "x"))
+    @wire( get-x {
+      Get( Name:x Default: 0) | Log("x")
+    } Looped: false)
 
-    (defwire define-x
-      1 >== .x) ;; (1)
+    @wire(define-x {
+      1 | Set(Name: x Global: true)
+    } Looped: false)
 
-    (schedule main define-x)
-    (schedule main get-x)
-    (run main)
+    @schedule(main define-x)
+    @schedule(main get-x)
+    @run(main)
     ```
 
-    1. `>==` is the alias for the [`Set`](../../../../reference/shards/shards/General/Set/) shard, with the parameter `Global` set to **true**. This makes `.x` a global variable.
-
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     [get-x] x: 1
     ```
 
-For the following example, `get-x` fails to retrieve the value of `.x` defined in `define-x` and returns the default value of 0. This is due to how `.x` was locally defined within the Wire `define-x` and cannot be accessed by other Wires separate from it.
+For the following example, `get-x` fails to retrieve the value of `x` defined in `define-x` and returns the default value of 0. This is due to how `x` was locally defined within the Wire `define-x` and cannot be accessed by other Wires separate from it.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire get-x
-      (Get .x :Default 0) (Log "x"))
+    @wire( get-x {
+      Get(Name:x Default: 0) | Log("x")
+    } Looped: false)
 
-    (defwire define-x
-      1 >= .x) ;; (1)
+    @wire( define-x {
+      1 >= x ;; (1)
+    } Looped: false) 
 
-    (schedule main define-x)
-    (schedule main get-x)
-    (run main)
+    @schedule(main define-x)
+    @schedule(main get-x)
+    @run(main)
     ```
 
-    1. `>=` is the alias for the [`Set`](../../../reference/shards/General/Set/) shard, with the parameter `Global` set to **false**. This makes `.x` a local variable.
+    1. `>=` is the alias for the [`Set`](../../../reference/shards/General/Set/) shard, with the parameter `Global` set to **false**. This makes `x` a local variable.
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     [get-x] x: 0
     ```
 
@@ -69,22 +71,26 @@ However, this does not mean that Wire Y is in the same scope as X. Wire Y holds 
 If a method such as [`Step`](../../../../reference/shards/shards/General/Step) is used instead, Wire Y would be scheduled on Wire X itself, giving it the same scope and access to X's actual variables.
 
 === "Detach"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire wire-y
-      12 > .x (Log)) ;; (1)
+    @wire( wire-y {
+      12 > x | Log ;; (1)
+    } Looped: false)
 
-    (defloop wire-x
-      (Setup 0 >= .x)
-      .x (Log)
-      (Detach wire-y))
+    @wire( wire-x {
+      Once({
+        0 >= x
+      })
+      x | Log
+      Detach(wire-y)
+    } Looped: false)
 
-    (schedule main wire-x)
-    (run main 1 2)
+    @schedule(main wire-x)
+    @run(main 1 2)
     ```
 
-    1. `.x` here is a copy of the original variable in `wire-x`. It was snapshotted when `Detach wire-y` was called.
+    1. `x` here is a copy of the original variable in `wire-x`. It was snapshotted when `Detach wire-y` was called.
 
 === "Output"
     ```
@@ -95,22 +101,24 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
     ```
 
 === "Step"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire wire-y
-      12 > .x (Log)) ;; (1)
+    @wire( wire-y {
+      12 > x | Log
+    } Looped: false) ;; (1)
 
-    (defloop wire-x
-      (Setup 0 >= .x)
-      .x (Log)
-      (Step wire-y))
+    @wire(wire-x {
+      Once({0 >= x})
+      x | Log
+      Step(wire-y)
+    } Looped: false)
 
-    (schedule main wire-x)
-    (run main 1 2)
+    @schedule(main wire-x)
+    @run(main 1 2)
     ```
 
-    1. `.x` here is the original variable from `wire-x`. This is due to how `Step` results in `wire-y` existing in the same scope as `wire-x`.
+    1. `x` here is the original variable from `wire-x`. This is due to how `Step` results in `wire-y` existing in the same scope as `wire-x`.
 
 === "Output"
     ```
@@ -126,34 +134,37 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
 
 Pure Wires are Wires that exist in their scope. When run from another Wire, they do not copy that Wire's variables.
 
-To create a Pure Wire, we use `defpure`.
+To create a Pure Wire, we use `@wire` with the `Pure` parameter set to true.
 
 === "Syntax"
-    ```{.clojure .annotate linenums="1"}
-    (defpure wire-name
+    ```shards
+    @wire( wire-name {
       ;; your shards here
-      )
+    })
     ```
 
 In the example below, you can see how using `Step` on a Pure Wire still does not give it access to the parent Wire's variables.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire unpure-wire
-      (Get .x :Default 0) (Log))
+    @wire( unpure-wire {
+      Get( Name: x Default: 0) | Log
+    } Looped: false)
 
-    (defpure pure-wire
-      (Get .x :Default 0) (Log))
+    @wire(pure-wire {
+      Get( Name: x Default: 0) | Log
+    } Looped: false Pure: true)
 
-    (defwire main-wire
-      5 >= .x
-      (Step unpure-wire)
-      (Step pure-wire))
+    @wire( main-wire {
+      5 >= x
+      Sep(unpure-wire)
+      Sep(pure-wire)
+    } Looped: false)
 
-    (schedule main main-wire)
-    (run main)
+    @schedule(main main-wire)
+    @run(main)
     ```
 
 === "Output"
@@ -164,72 +175,86 @@ In the example below, you can see how using `Step` on a Pure Wire still does not
 
 ### Defined Constants
 
-If you define a constant in your program, it will have a global scope and can be accessed by any Wire in your program.
+If you define a constant in your program using `@define`, it will have a global scope and can be accessed by any Wire in your program.
 
 === "Command"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (def x 1)
+    @define(named-constant {1})
 
-    (defwire get-x
-      x (Log "x"))
+    @wire(get-named-constant {
+      @named-constant | Log("named-constant")
+    } Looped: false)
 
-    (schedule main get-x)
-    (run main)
+    @schedule(main get-named-constant)
+    @run(main)
     ```
 
 === "Output"
-    ```{.clojure .annotate linenums="1"}
-    [get-x] x: 1
+    ```shards
+    [get-named-constant] x: 1
     ```
-
-!!! note
-    Note that the constant `x` defined in the example above is named differently from variables, which would have been `.x` in this case.
 
 ## Passthrough
 
 Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can employ the shard [`_SubFlow`](../../../../reference/shards/shards/General/_SubFlow/). `_SubFlow` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the `Shards` parameter of `_SubFlow` will run as per usual, except that the final output will be replaced with the initial input passed into `_SubFlow`, thereby creating a passthrough effect.
+Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can wrap the segment of code that we want the input value to Passthrough with `{}`. `{}` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the within the `{}` will run as per usual, except that the final output will be replaced with the initial input passed into `{}`, thereby creating a passthrough effect.
 
-`_SubFlow` has an alias `|` which eliminates the need for `->` to group shards when passed into its `Shards` parameter.
+Shards that have a `Passthrough` parameter and has that parameter set to true will also output its input unchanged.
 
-=== "_SubFlow Example"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+=== "Passthrough Example"
+    ```shards
+    @mesh(main)
 
-    (defwire sub-test
-      1 >= .x (Log "Before _SubFlow")
-      (_SubFlow
-       :Shards
-       (-> (Math.Add 2) > .x
-           .x (Log "In _SubFlow")))
-      (Log "After _SubFlow"))
+    @wire(sub-test {
+      1 >= x | Log("Before Passthrough")
+      {Math.Add(2) | Log("In Passthrough")}
+      > x | Log("After Passthrough")
+    } Looped: false)
 
-    (schedule main sub-test)
-    (run main)
-    ```
-
-=== "_SubFlow Example with |"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
-
-    (defwire sub-test
-      1 >= .x (Log "Before _SubFlow")
-      (|(Math.Add 2) > .x
-        .x (Log "In _SubFlow"))
-      (Log "After _SubFlow"))
-
-    (schedule main sub-test)
-    (run main)
+    @schedule(main sub-test)
+    @run(main)
     ```
 
 === "Output"
     ```
-    [sub-test] Before _SubFlow: 1
-    [sub-test] In _SubFlow: 3
-    [sub-test] After _SubFlow: 1
+    [sub-test] Before Passthrough: 1
+    [sub-test] In Passthrough: 3
+    [sub-test] After Passthrough: 1
+    ```
+
+=== "Shard with Passthrough parameter"
+    ```shards
+    @mesh(main)
+
+    @wire(sub-test {
+      1
+      Match([
+        1 {"One"}
+        2 {"Two"}
+        3 {"Three"}
+      ] Passthrough: false)
+      Log("No Passthrough")
+
+      1
+      Match([
+        1 {"One"}
+        2 {"Two"}
+        3 {"Three"}
+      ] Passthrough: true)
+      Log("Yes Passthrough")
+    } Looped: false)
+
+    @schedule(main sub-test)
+    @run(main)
+    ```
+
+=== "Output"
+    ```
+    [sub-test] No Passthrough: One
+    [sub-test] Yes Passthrough: 1
     ```
 
 In the example below, John wishes to check the price of an apple in different currencies. The base price of 1 USD is passed into a Wire and goes through a series of shards that each performs mathematical operations on it to obtain its foreign value.
@@ -267,15 +292,16 @@ When you have to convert data's type to allow for it to be used by shards, you c
 In the example below, [`String.Join`](../../../../reference/shards/shards/String/Join/) retrieves elements in a sequence and combines them. It only accepts strings and will throw an error if the sequence passed into it contains non-strings. To get `String.Join` to use integer values to form a sentence, the integer will have to be converted to a string first.
 
 === "ToString"
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+    ```shards
+    @mesh(main)
 
-    (defwire wire
-      2 (ToString) >= .num-of-apples
-      ["John has " .num-of-apples " apples."](String.Join)(Log))
+    @wire(wire {
+      2 | ToString >= num-of-apples
+      ["John has " num-of-apples " apples"] | String.Join | Log
+    } Looped: false)
 
-    (schedule main wire)
-    (run main)
+    @schedule(main wire)
+    @run(main)
     ```
 
 === "Output"

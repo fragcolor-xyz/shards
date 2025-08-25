@@ -165,7 +165,7 @@ Imagine a scenario where you have a float `3.141592653589793` that you need to r
 
     ```shards
     3.141592653589793 = pi-value ;; (1)
-    pi-value | Math.Add(.pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
+    pi-value | Math.Add(pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
     ```
 
     1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
@@ -235,7 +235,7 @@ When defining variables in your program, you can use `Once` to ensure that varia
 
     ```shards
 
-    @defshards( message-groups {
+    @define( message-groups {
         Msg("Hello World 1")
         Msg("Hello World 2")
      }
@@ -247,14 +247,14 @@ When used in code:
 === "Code"
 
     ```shards
-    (send-message "Hello World!")
+    @send-message("Hello World!")
     ```
 
 `@template` similarly allows you to group shards together and create a new shard. `@template` however allows you pass parameters into the new shard.
 
 === "Code"
 
-    ```{.clojure .annotate linenums="1"}
+    ```shards
 
     @template(send-message [message] {
         Msg ("Message Incoming...")
@@ -268,7 +268,7 @@ When used in code:
 
     ```shards
 
-    send-message("Hello World!")
+    @send-message("Hello World!")
     ```
 
 === "Result"
@@ -286,7 +286,7 @@ Let us now take a look at how we can utilize `@define` in a code snippet that co
     ```shards
 
     Repeat(
-     Action:{
+     Action: {
        Msg("1")
        Msg("2")
        Msg("3")
@@ -300,7 +300,7 @@ We can replace the block of the code in the `Action` parameter above with a `@de
 
 === "Code"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     
     @define(msg-one-to-five {
       Msg("1")
@@ -348,14 +348,14 @@ A Looped Wire will continue running until its exit conditions have been met.
 !!! note
     You will learn more about the entering and exiting of Looped Wires in the next chapter!
 
-To create a Looped Wire, we use [`defloop`](../../../../reference/shards/lisp/macros/#defloop).
+To create a Looped Wire, we use @wire with its `Looped` parameter set to true.
 
 === "Creating a Looped Wire"
     
     ```shards
     @wire(loop-name {
         ;; shards here
-      }
+    }
     Looped: true)
     ```
 
@@ -369,7 +369,7 @@ To queue a Wire on a Mesh, we use [`@schedule`](../../../../reference/shards/lis
 
 === "Scheduling a Wire"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     @schedule(mesh-name wire-name)
     ```
 
@@ -387,8 +387,8 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
 
 === "Running a Mesh"
     
-    ```{.clojure .annotate linenums="1"}
-    (run mesh-name)
+    ```shards
+    @run(mesh-name)
     ```
 
 `@run` can take in two optional values:
@@ -402,8 +402,8 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
 
     === "Running a Mesh at 60 FPS"
     
-        ```{.clojure .annotate linenums="1"}
-        (run mesh-name (/ 1.0 60.0))
+        ```shards
+        @run(mesh-name (1.0 | Math.Divide(60.0)))
         ```
 
 Let us now take a look at what a basic Shards program will look like!
@@ -416,7 +416,7 @@ Do you recall the `hungry-cat` loop from the previous chapter? Let us try to imp
 
 In this example, the "cat" starts off with 0 hunger. At the end of each loop, we increase the hunger by 1. Once the value of hunger is greater than 0, the cat starts to make cat noises.
 
-### defshards and defwire
+### @define and @wire
 
 Let us first define the `make-cat-noises` Wire.
 
@@ -449,7 +449,7 @@ We can employ the `Repeat` shard we saw earlier to make our code more efficient.
        Action: ({
         Msg("Meow")
        })
-       :Times 12)
+       Times: 12)
     })
     ```
 Going a step further, we can better organize our code by creating new shards with `@define`. Look at how much neater it is now!
@@ -458,15 +458,15 @@ Going a step further, we can better organize our code by creating new shards wit
     
     ```shards
     define(meows {
-      (Repeat
-       :Action {(
+      Repeat(
+       Action: {(
         ("Meow"))}
-       :Times 12)
+       Times: 12)
     })
 
     @wire(mews {
-        @mewos
-    })
+        @meows
+    } Looped: false)
 
 
     ```
@@ -486,7 +486,7 @@ We want to first create a variable to track the cat's hunger level. Create the `
 
 === "hungry-cat"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     @wire(hungry-cat
       Once({
         0 >= hunger
@@ -500,7 +500,7 @@ Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard 
 
 === "hungry-cat"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     @wire(hungry-cat {
       Once({
        0 >= hunger})
@@ -572,7 +572,7 @@ Before our program can run, do not forget to:
 
 === "hungry-cat"
     
-    ```{.clojure .annotate linenums="1"}
+    ```shards
     @mesh(main)
 
     @wire(make-cat-noises {
