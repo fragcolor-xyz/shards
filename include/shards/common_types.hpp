@@ -38,18 +38,18 @@ enum class BasicTypes {
 };
 
 struct CoreInfo {
-  static inline Type NoneType{{SHType::None}};
+  static inline Type NoneType{SHTypeInfo{SHType::None}};
 
-#define SH_CORE_TYPE_DEF(_shtype_)                                                                       \
-  static inline Type _shtype_##Type{{SHType::_shtype_}};                                                 \
-  static inline Type _shtype_##SeqType{{SHType::Seq, {.seqTypes = _shtype_##Type}}};                     \
-  static inline Type _shtype_##TableType{{SHType::Table, {.table = {.types = _shtype_##Type}}}};         \
-  static inline Type _shtype_##VarType{{SHType::ContextVar, {.contextVarTypes = _shtype_##Type}}};       \
-  static inline Type _shtype_##VarSeqType{{SHType::ContextVar, {.contextVarTypes = _shtype_##SeqType}}}; \
-  static inline Type _shtype_##VarTableType {                                                            \
-    {                                                                                                    \
-      SHType::ContextVar, { .contextVarTypes = _shtype_##TableType }                                     \
-    }                                                                                                    \
+#define SH_CORE_TYPE_DEF(_shtype_)                                                                                 \
+  static inline Type _shtype_##Type{SHTypeInfo{SHType::_shtype_}};                                                 \
+  static inline Type _shtype_##SeqType{SHTypeInfo{SHType::Seq, {.seqTypes = SHTypesInfo(_shtype_##Type)}}};                     \
+  static inline Type _shtype_##TableType{SHTypeInfo{SHType::Table, {.table = {.types = SHTypesInfo(_shtype_##Type)}}}};         \
+  static inline Type _shtype_##VarType{SHTypeInfo{SHType::ContextVar, {.contextVarTypes = SHTypesInfo(_shtype_##Type)}}};       \
+  static inline Type _shtype_##VarSeqType{SHTypeInfo{SHType::ContextVar, {.contextVarTypes = SHTypesInfo(_shtype_##SeqType)}}}; \
+  static inline Type _shtype_##VarTableType {                                                                      \
+    SHTypeInfo {                                                                                                   \
+      SHType::ContextVar, { .contextVarTypes = SHTypesInfo(_shtype_##TableType) }                                               \
+    }                                                                                                              \
   }
 
   SH_CORE_TYPE_DEF(Any);
@@ -84,13 +84,13 @@ struct CoreInfo {
 
   static inline Type TableOfAnySeqType = Type::TableOf(AnySeqType);
 
-  static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = Float4Type}, 4}};
+  static inline Type Float4x4Type{{SHType::Seq, {.seqTypes = SHTypesInfo(Float4Type)}, 4}};
   static inline Type Float4x4SeqType = Type::SeqOf(Float4x4Type);
   static inline Types Float4x4Types{{Float4x4Type, Float4x4SeqType}};
-  static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = Float3Type}, 3}};
+  static inline Type Float3x3Type{{SHType::Seq, {.seqTypes = SHTypesInfo(Float3Type)}, 3}};
   static inline Type Float3x3SeqType = Type::SeqOf(Float3x3Type);
   static inline Types Float3x3Types{{Float3x3Type, Float3x3SeqType}};
-  static inline Type Float2x2Type{{SHType::Seq, {.seqTypes = Float2Type}, 2}};
+  static inline Type Float2x2Type{{SHType::Seq, {.seqTypes = SHTypesInfo(Float2Type)}, 2}};
   static inline Type Float2x2SeqType = Type::SeqOf(Float2x2Type);
   static inline Types Float2x2Types{{Float2x2Type, Float2x2SeqType}};
 
@@ -143,7 +143,7 @@ struct CoreInfo {
 
   static inline Types WireOrNone{{WireType, NoneType}};
 
-  static inline Type ShardsOrNoneSeq{{SHType::Seq, {.seqTypes = ShardsOrNone}}};
+  static inline Type ShardsOrNoneSeq{SHTypeInfo{SHType::Seq, {.seqTypes = SHTypesInfo(ShardsOrNone)}}};
 
   static inline Types StringOrBytes{{StringType, BytesType}};
 
