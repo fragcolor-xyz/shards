@@ -132,47 +132,22 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Float:
     return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= DBL_EPSILON;
   case SHType::Int2: {
-#ifdef __ARM_NEON
-    auto va = vld1q_s64((const int64_t*)&a.payload.int2Value);
-    auto vb = vld1q_s64((const int64_t*)&b.payload.int2Value);
-    auto cmp = vceqq_s64(va, vb);
-    // Check if all lanes show equality (all bits set to 0xFFFFFFFFFFFFFFFF)
-    uint64_t lane0 = vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 0);
-    uint64_t lane1 = vgetq_lane_u64(vreinterpretq_u64_s64(cmp), 1);
-    return (lane0 == 0xFFFFFFFFFFFFFFFF) && (lane1 == 0xFFFFFFFFFFFFFFFF);
-#elif defined(__SSE4_1__)
-    auto va = _mm_load_si128((const __m128i*)&a.payload.int2Value);
-    auto vb = _mm_load_si128((const __m128i*)&b.payload.int2Value);
-    auto cmp = _mm_cmpeq_epi64(va, vb);
-    return _mm_movemask_epi8(cmp) == 0xFFFF;
-#else
-    auto mask = a.payload.int2Value == b.payload.int2Value;
-    return (mask[0] & mask[1]) != 0;
-#endif
+    // Scalar is faster for just 2 elements
+    const int64_t* av = (const int64_t*)&a.payload.int2Value;
+    const int64_t* bv = (const int64_t*)&b.payload.int2Value;
+    return av[0] == bv[0] && av[1] == bv[1];
   }
   case SHType::Int3: {
-#ifdef __ARM_NEON
-    auto va = vld1q_s32((const int32_t*)&a.payload.int3Value);
-    auto vb = vld1q_s32((const int32_t*)&b.payload.int3Value);
-    auto cmp = vceqq_s32(va, vb);
-    // Check only first 3 elements - ensure all comparison masks are 0xFFFFFFFF
-    uint32_t lane0 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 0);
-    uint32_t lane1 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 1);
-    uint32_t lane2 = vgetq_lane_u32(vreinterpretq_u32_s32(cmp), 2);
-    return (lane0 == 0xFFFFFFFF) && (lane1 == 0xFFFFFFFF) && (lane2 == 0xFFFFFFFF);
-#elif defined(__SSE2__)
-    auto va = _mm_load_si128((const __m128i*)&a.payload.int3Value);
-    auto vb = _mm_load_si128((const __m128i*)&b.payload.int3Value);
-    auto cmp = _mm_cmpeq_epi32(va, vb);
-    auto mask = _mm_movemask_epi8(cmp);
-    return (mask & 0x0FFF) == 0x0FFF; // First 3 elements (12 bytes)
-#endif
+    // Scalar is faster for just 3 elements
+    const int32_t* av = (const int32_t*)&a.payload.int3Value;
+    const int32_t* bv = (const int32_t*)&b.payload.int3Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2];
+  }
   case SHType::Int4: {
 #ifdef __ARM_NEON
     auto va = vld1q_s32((const int32_t*)&a.payload.int4Value);
     auto vb = vld1q_s32((const int32_t*)&b.payload.int4Value);
     auto cmp = vceqq_s32(va, vb);
-    // Use horizontal minimum to check if all lanes are 0xFFFFFFFF
     return vminvq_u32(vreinterpretq_u32_s32(cmp)) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int4Value);
@@ -180,8 +155,9 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto cmp = _mm_cmpeq_epi32(va, vb);
     return _mm_movemask_epi8(cmp) == 0xFFFF;
 #else
-    auto mask = a.payload.int4Value == b.payload.int4Value;
-    return (mask[0] & mask[1] & mask[2] & mask[3]) != 0;
+    const int32_t* av = (const int32_t*)&a.payload.int4Value;
+    const int32_t* bv = (const int32_t*)&b.payload.int4Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2] && av[3] == bv[3];
 #endif
   }
   case SHType::Int8: {
@@ -189,7 +165,6 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s16((const int16_t*)&a.payload.int8Value);
     auto vb = vld1q_s16((const int16_t*)&b.payload.int8Value);
     auto cmp = vceqq_s16(va, vb);
-    // Use horizontal minimum to check if all lanes are 0xFFFF
     return vminvq_u16(vreinterpretq_u16_s16(cmp)) == 0xFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int8Value);
@@ -197,8 +172,10 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto cmp = _mm_cmpeq_epi16(va, vb);
     return _mm_movemask_epi8(cmp) == 0xFFFF;
 #else
-    auto mask = a.payload.int8Value == b.payload.int8Value;
-    return (mask[0] & mask[1] & mask[2] & mask[3] & mask[4] & mask[5] & mask[6] & mask[7]) != 0;
+    const int16_t* av = (const int16_t*)&a.payload.int8Value;
+    const int16_t* bv = (const int16_t*)&b.payload.int8Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2] && av[3] == bv[3] &&
+           av[4] == bv[4] && av[5] == bv[5] && av[6] == bv[6] && av[7] == bv[7];
 #endif
   }
   case SHType::Int16: {
@@ -206,7 +183,6 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s8((const int8_t*)&a.payload.int16Value);
     auto vb = vld1q_s8((const int8_t*)&b.payload.int16Value);
     auto cmp = vceqq_s8(va, vb);
-    // Use horizontal minimum to check if all lanes are 0xFF
     return vminvq_u8(vreinterpretq_u8_s8(cmp)) == 0xFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int16Value);
@@ -214,102 +190,50 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto cmp = _mm_cmpeq_epi8(va, vb);
     return _mm_movemask_epi8(cmp) == 0xFFFF;
 #else
-    auto mask = a.payload.int16Value == b.payload.int16Value;
-    return (mask[0] & mask[1] & mask[2] & mask[3] & mask[4] & mask[5] & mask[6] & mask[7] & mask[8] & mask[9] & mask[10] &
-            mask[11] & mask[12] & mask[13] & mask[14] & mask[15]) != 0;
+    // For 16 bytes, memcmp is likely optimal
+    return memcmp(&a.payload.int16Value, &b.payload.int16Value, 16) == 0;
 #endif
   }
   case SHType::Float2: {
-    const SHFloat2 vepsi = {DBL_EPSILON, DBL_EPSILON};
-#ifdef __ARM_NEON
-    auto va = vld1q_f64((const double*)&a.payload.float2Value);
-    auto vb = vld1q_f64((const double*)&b.payload.float2Value);
-    auto veps = vld1q_f64((const double*)&vepsi);
-    auto diff = vabsq_f64(vsubq_f64(va, vb));
-    auto cmp = vcleq_f64(diff, veps);
-    // Check if all lanes show <= epsilon (all bits set to 0xFFFFFFFFFFFFFFFF)
-    uint64_t lane0 = vgetq_lane_u64(cmp, 0);
-    uint64_t lane1 = vgetq_lane_u64(cmp, 1);
-    return (lane0 == 0xFFFFFFFFFFFFFFFF) && (lane1 == 0xFFFFFFFFFFFFFFFF);
-#elif defined(__SSE2__)
-    auto va = _mm_load_pd((const double*)&a.payload.float2Value);
-    auto vb = _mm_load_pd((const double*)&b.payload.float2Value);
-    auto veps = _mm_load_pd((const double*)&vepsi);
-    auto diff = _mm_sub_pd(va, vb);
-    // Manual abs for doubles (clear sign bit)
-    auto sign_mask = _mm_set1_pd(-0.0);
-    diff = _mm_andnot_pd(sign_mask, diff);
-    auto cmp = _mm_cmple_pd(diff, veps);
-    return _mm_movemask_pd(cmp) == 0x3; // Both bits set
-#else
-    SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    auto mask = diff <= vepsi;
-    return (mask[0] & mask[1]) != 0;
-#endif
+    // Scalar is faster for just 2 elements - use appropriate epsilon for data type
+    const double* av = (const double*)&a.payload.float2Value;
+    const double* bv = (const double*)&b.payload.float2Value;
+    return (fabs(av[0] - bv[0]) <= DBL_EPSILON) && (fabs(av[1] - bv[1]) <= DBL_EPSILON);
   }
   case SHType::Float3: {
-    const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON}; // 4th element for SIMD alignment
-#ifdef __ARM_NEON
-    auto va = vld1q_f32((const float*)&a.payload.float3Value);
-    auto vb = vld1q_f32((const float*)&b.payload.float3Value);
-    auto veps = vld1q_f32((const float*)&vepsi);
-    auto diff = vabsq_f32(vsubq_f32(va, vb));
-    auto cmp = vcleq_f32(diff, veps);
-    // Check only first 3 elements - ensure comparison masks are 0xFFFFFFFF
-    uint32_t lane0 = vgetq_lane_u32(cmp, 0);
-    uint32_t lane1 = vgetq_lane_u32(cmp, 1);
-    uint32_t lane2 = vgetq_lane_u32(cmp, 2);
-    return (lane0 == 0xFFFFFFFF) && (lane1 == 0xFFFFFFFF) && (lane2 == 0xFFFFFFFF);
-#elif defined(__SSE2__)
-    auto va = _mm_load_ps((const float*)&a.payload.float3Value);
-    auto vb = _mm_load_ps((const float*)&b.payload.float3Value);
-    auto veps = _mm_load_ps((const float*)&vepsi);
-    auto diff = _mm_sub_ps(va, vb);
-    // Manual abs for floats (clear sign bit)
-    auto sign_mask = _mm_set1_ps(-0.0f);
-    diff = _mm_andnot_ps(sign_mask, diff);
-    auto cmp = _mm_cmple_ps(diff, veps);
-    auto mask = _mm_movemask_ps(cmp);
-    return (mask & 0x7) == 0x7; // First 3 bits set
-#else
-    SHFloat3 diff = a.payload.float3Value - b.payload.float3Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    diff[2] = __builtin_fabs(diff[2]);
-    auto mask = diff <= vepsi;
-    return (mask[0] & mask[1] & mask[2]) != 0;
-#endif
+    // Scalar is faster for just 3 elements
+    const float* av = (const float*)&a.payload.float3Value;
+    const float* bv = (const float*)&b.payload.float3Value;
+    return (fabsf(av[0] - bv[0]) <= FLT_EPSILON) && 
+           (fabsf(av[1] - bv[1]) <= FLT_EPSILON) && 
+           (fabsf(av[2] - bv[2]) <= FLT_EPSILON);
   }
   case SHType::Float4: {
-    const SHFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
+    // SIMD is actually beneficial for 4 floats
 #ifdef __ARM_NEON
     auto va = vld1q_f32((const float*)&a.payload.float4Value);
     auto vb = vld1q_f32((const float*)&b.payload.float4Value);
-    auto veps = vld1q_f32((const float*)&vepsi);
+    auto veps = vdupq_n_f32(FLT_EPSILON);
     auto diff = vabsq_f32(vsubq_f32(va, vb));
     auto cmp = vcleq_f32(diff, veps);
-    // Use horizontal minimum to check if all lanes are 0xFFFFFFFF
     return vminvq_u32(cmp) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_ps((const float*)&a.payload.float4Value);
     auto vb = _mm_load_ps((const float*)&b.payload.float4Value);
-    auto veps = _mm_load_ps((const float*)&vepsi);
+    auto veps = _mm_set1_ps(FLT_EPSILON);
     auto diff = _mm_sub_ps(va, vb);
     // Manual abs for floats (clear sign bit)
     auto sign_mask = _mm_set1_ps(-0.0f);
     diff = _mm_andnot_ps(sign_mask, diff);
     auto cmp = _mm_cmple_ps(diff, veps);
-    return _mm_movemask_ps(cmp) == 0xF; // All 4 bits set
+    return _mm_movemask_ps(cmp) == 0xF;
 #else
-    SHFloat4 diff = a.payload.float4Value - b.payload.float4Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    diff[2] = __builtin_fabs(diff[2]);
-    diff[3] = __builtin_fabs(diff[3]);
-    auto mask = diff <= vepsi;
-    return (mask[0] & mask[1] & mask[2] & mask[3]) != 0;
+    const float* av = (const float*)&a.payload.float4Value;
+    const float* bv = (const float*)&b.payload.float4Value;
+    return (fabsf(av[0] - bv[0]) <= FLT_EPSILON) && 
+           (fabsf(av[1] - bv[1]) <= FLT_EPSILON) && 
+           (fabsf(av[2] - bv[2]) <= FLT_EPSILON) && 
+           (fabsf(av[3] - bv[3]) <= FLT_EPSILON);
 #endif
   }
   case SHType::Color:
