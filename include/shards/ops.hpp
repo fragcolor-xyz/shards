@@ -201,12 +201,33 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     return (fabs(av[0] - bv[0]) <= DBL_EPSILON) && (fabs(av[1] - bv[1]) <= DBL_EPSILON);
   }
   case SHType::Float3: {
-    // Scalar is faster for just 3 elements
+    // Use SIMD for 4 elements, mask to check only first 3
+#ifdef __ARM_NEON
+    auto va = vld1q_f32((const float*)&a.payload.float3Value);
+    auto vb = vld1q_f32((const float*)&b.payload.float3Value);
+    auto veps = vdupq_n_f32(FLT_EPSILON);
+    auto diff = vabsq_f32(vsubq_f32(va, vb));
+    auto cmp = vcleq_f32(diff, veps);
+    // Set 4th lane to "pass" value, then use horizontal min
+    cmp = vsetq_lane_u32(0xFFFFFFFF, vreinterpretq_u32_s32(cmp), 3);
+    return vminvq_u32(cmp) == 0xFFFFFFFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_ps((const float*)&a.payload.float3Value);
+    auto vb = _mm_load_ps((const float*)&b.payload.float3Value);
+    auto veps = _mm_set1_ps(FLT_EPSILON);
+    auto diff = _mm_sub_ps(va, vb);
+    auto sign_mask = _mm_set1_ps(-0.0f);
+    diff = _mm_andnot_ps(sign_mask, diff);
+    auto cmp = _mm_cmple_ps(diff, veps);
+    auto mask = _mm_movemask_ps(cmp);
+    return (mask & 0x7) == 0x7; // First 3 bits set
+#else
     const float* av = (const float*)&a.payload.float3Value;
     const float* bv = (const float*)&b.payload.float3Value;
     return (fabsf(av[0] - bv[0]) <= FLT_EPSILON) && 
            (fabsf(av[1] - bv[1]) <= FLT_EPSILON) && 
            (fabsf(av[2] - bv[2]) <= FLT_EPSILON);
+#endif
   }
   case SHType::Float4: {
     // SIMD is actually beneficial for 4 floats
