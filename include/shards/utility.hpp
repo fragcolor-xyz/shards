@@ -138,8 +138,8 @@ template <class SH_CORE_> inline std::string formatShardSourceLocationWithCore(S
 
 template <class SH_CORE> class TParamVar {
 private:
-  SHVar *_cp = nullptr;
   SHVar _v{};
+  SHVar *_cp = nullptr;
 
 public:
   TParamVar() {}

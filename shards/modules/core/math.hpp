@@ -104,10 +104,17 @@ struct BinaryBase : public Base {
   ParamVar _operand{shards::Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
+  SHType _fastPathType{SHType::None};
 
   void cleanup(SHContext *context) { _operand.cleanup(); }
 
-  void warmup(SHContext *context) { _operand.warmup(context); }
+  void warmup(SHContext *context) {
+    _operand.warmup(context);
+    if (_fastPathType != SHType::None) {
+      _result = {};
+      _result.valueType = _fastPathType;
+    }
+  }
 
   static SHParametersInfo parameters() { return SHParametersInfo(mathParamsInfo); }
 
@@ -609,22 +616,23 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float || data.inputType.basicType == SHType::Float2) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddFloat64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddFloat32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
@@ -669,22 +677,23 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float || data.inputType.basicType == SHType::Float2) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractFloat64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractFloat32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
@@ -729,22 +738,23 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float || data.inputType.basicType == SHType::Float2) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyFloat64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyFloat32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
@@ -834,14 +844,15 @@ struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType:
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathXorInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathXorInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
@@ -880,14 +891,15 @@ struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType:
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAndInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAndInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
@@ -927,14 +939,15 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
+    _fastPathType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     if ((data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) && data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathOrInt64x2;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     } else if ((data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) &&
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathOrInt32x4;
-      _result.valueType = data.inputType.basicType;
+      _fastPathType = data.inputType.basicType;
     }
     return result;
   }
