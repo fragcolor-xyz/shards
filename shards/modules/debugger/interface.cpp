@@ -139,15 +139,19 @@ struct State {
 
   // Used to wait for the client to connect
   std::atomic_bool initialClientConnected;
+  uint32_t debuggerWaitMode = 0;
 
   // Updated when
   uint32_t configCounter;
 
   State() : breakSema(1) {
 
-    if (SDL_getenv("SHARDS_DEBUGGER_WAIT")) {
-      // Break on startup
-      shardHook = &State::hookWaitForDebugger;
+    if (const char *wait = SDL_getenv("SHARDS_DEBUGGER_WAIT")) {
+      debuggerWaitMode = atoi(wait);
+      if (debuggerWaitMode > 0) {
+        // Break on startup
+        shardHook = &State::hookWaitForDebugger;
+      }
     }
 
     server = std::make_shared<DAPServer>();
@@ -188,7 +192,7 @@ struct State {
             sf.line = s->line;
             sf.column = s->column;
             sf.name = s->name(frame.shard);
-            if (sf.name == "Do" || sf.name == "Step" || sf.name == "SwitchTo") {
+            if (sf.name == "Do" || sf.name == "Step" || sf.name == "SwitchTo" || sf.name == "WireRunner") {
               auto arg = s->getParam(s, 0);
               if (arg.valueType == SHType::Wire) {
                 auto wire = SHWire::sharedFromRef(arg.payload.wireValue);
@@ -242,8 +246,12 @@ struct State {
         breakpoints.insert(breakpoints.end(), breakpoints.begin(), breakpoints.end());
       });
       if (!initialClientConnected) {
-        shardHook = &State::hookPause;
-        pauseQueue++;
+        if (debuggerWaitMode == 2) {
+          shardHook = &State::hookPause;
+          pauseQueue++;
+        } else {
+          shardHook = nullptr;
+        }
         initialClientConnected = true;
       }
     };
@@ -526,7 +534,9 @@ struct State {
         break;
       }
     }
-    hookPause(context, blk);
+    if (debuggerWaitMode == 2) {
+      hookPause(context, blk);
+    }
   }
 
   void hookPauseOther(SHContext *context, Shard *blk) {
