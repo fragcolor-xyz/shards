@@ -73,7 +73,7 @@ struct CoreLoader {
     if (!ifaceproc) {
       // try again.. see if we are libshards
 #ifdef _WIN32
-      handle = LoadLibraryA(SHARDS_MODULE_FILENAME);
+      handle = LoadLibraryA(modulePath);
       if (handle)
         ifaceproc = (SHShardsInterface)GetProcAddress(handle, "shardsInterface");
 #else
