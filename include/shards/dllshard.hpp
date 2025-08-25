@@ -29,13 +29,27 @@ namespace shards {
 // this must be defined in the external
 extern void registerExternalShards();
 
+#ifndef SHARDS_MODULE_FILENAME
+#ifdef _WIN32
+#define SHARDS_MODULE_FILENAME "libshards.dll"
+#else
+#define SHARDS_MODULE_FILENAME "libshards.so"
+#endif
+#endif
+
 struct CoreLoader {
   SHCore *_core{nullptr};
+
+#ifdef _WIN32
+  HMODULE handle{};
+#else
+  void *handle{};
+#endif
 
   CoreLoader() {
     SHShardsInterface ifaceproc;
 #ifdef _WIN32
-    auto handle = GetModuleHandle(NULL);
+    handle = GetModuleHandle(NULL);
     ifaceproc = (SHShardsInterface)GetProcAddress(handle, "shardsInterface");
 #else
     auto handle = dlopen(NULL, RTLD_NOW);
@@ -45,11 +59,11 @@ struct CoreLoader {
     if (!ifaceproc) {
       // try again.. see if we are libshards
 #ifdef _WIN32
-      handle = GetModuleHandleA("libshards.dll");
+      handle = LoadLibraryA(SHARDS_MODULE_FILENAME);
       if (handle)
         ifaceproc = (SHShardsInterface)GetProcAddress(handle, "shardsInterface");
 #else
-      handle = dlopen("libshards.so", RTLD_NOW);
+      handle = dlopen(SHARDS_MODULE_FILENAME, RTLD_NOW);
       if (handle)
         ifaceproc = (SHShardsInterface)dlsym(handle, "shardsInterface");
 #endif
@@ -59,6 +73,16 @@ struct CoreLoader {
     assert(_core);
     _core->log("loading external shards..."_swl);
     registerExternalShards();
+  }
+
+  ~CoreLoader() { unloadModule(); }
+  void unloadModule() {
+    if (handle) {
+#if _WIN32
+      FreeLibrary(handle);
+#endif
+      handle = {};
+    }
   }
 };
 
@@ -269,6 +293,42 @@ public:
 
   static bool deriveTableIndices(SHTableTypeInfo &info) { return sCore._core->deriveTableIndices(&info); }
 
+  static bool read(struct SHStringWithLen name, struct SHStringWithLen code, struct SHStringWithLen basePath,
+                   const struct SHStringWithLen *includeDirs, uint32_t numIncludeDirs, struct SHLAst *out_ast) {
+    return sCore._core->read(name, code, basePath, includeDirs, numIncludeDirs, out_ast);
+  }
+
+  static bool loadAst(const uint8_t *bytes, uint32_t size, struct SHLAst *out_ast) {
+    return sCore._core->loadAst(bytes, size, out_ast);
+  }
+
+  static void freeError(struct SHLError *error) { sCore._core->freeError(error); }
+
+  static struct SHLEvalEnv *createEvalEnv(struct SHStringWithLen namespace_) { return sCore._core->createEvalEnv(namespace_); }
+
+  static void freeEvalEnv(struct SHLEvalEnv *env) { sCore._core->freeEvalEnv(env); }
+
+  static bool eval(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error) {
+    return sCore._core->eval(env, ast, error);
+  }
+
+  static bool transformEnv(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire) {
+    return sCore._core->transformEnv(env, name, out_wire);
+  }
+
+  static bool transformEnvs(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name, struct SHLWire *out_wire) {
+    return sCore._core->transformEnvs(env, len, name, out_wire);
+  }
+
+  static bool evalAst(const struct SHVar *ast, struct SHStringWithLen name, struct SHLWire *out_wire) {
+    return sCore._core->evalAst(ast, name, out_wire);
+  }
+
+  static void freeWire(struct SHLWire *wire) { sCore._core->freeWire(wire); }
+
+  static void freeAst(struct SHLAst *ast) { sCore._core->freeAst(ast); }
+
+  static void unloadModule() { sCore.unloadModule(); }
 private:
   static inline CoreLoader sCore{};
 };
