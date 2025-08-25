@@ -1339,22 +1339,26 @@ inline void weakObjectVar(SHVar &dst, const SHVar &src) {
 }
 
 inline bool deriveTableIndices(SHTableTypeInfo &info) {
-  // Early validation - O(n) scan before any allocation
+  // Early validation
   for (uint32_t i = 0; i < info.keys.len; i++) {
     if (info.keys.elements[i].valueType == SHType::None) {
-      return false; // Cannot proceed with incomplete type info
+      return false;
     }
   }
 
-  // Proceed with optimization
-  std::vector<uint32_t> indices(info.keys.len);
-  std::iota(indices.begin(), indices.end(), 0);
+  // Create sorted indices mapping
+  std::vector<uint32_t> sortedIndices(info.keys.len);
+  std::iota(sortedIndices.begin(), sortedIndices.end(), 0);
 
-  std::sort(indices.begin(), indices.end(),
+  std::sort(sortedIndices.begin(), sortedIndices.end(),
             [&](uint32_t a, uint32_t b) { return ShardsKeyCompare<SHVar>{}(info.keys.elements[a], info.keys.elements[b]); });
 
+  // Create inverse mapping: original_pos -> sorted_pos
   shards::arrayResize(info.indices, info.keys.len);
-  std::copy(indices.begin(), indices.end(), info.indices.elements);
+  for (uint32_t sortedPos = 0; sortedPos < sortedIndices.size(); sortedPos++) {
+    uint32_t originalPos = sortedIndices[sortedPos];
+    info.indices.elements[originalPos] = sortedPos;
+  }
 
   // Recurse - fail fast propagation
   for (uint32_t i = 0; i < info.types.len; i++) {

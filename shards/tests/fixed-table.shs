@@ -96,3 +96,11 @@ dyn-tab | Count | Assert.Is(0)
 Clear(dyn-tab)
 
 dyn-tab | Count | Assert.Is(0)
+
+Table(trs Type: @type({translation: Type::Float3 rotation: Type::Float4 scale: Type::Float3}))
+@f4(0 0 0 1) | Update(trs "rotation")
+@f3(1) | Update(trs "scale")
+
+trs:translation | Assert.Is(@f3(0 0 0)) | Log
+trs:rotation | Assert.Is(@f4(0 0 0 1)) | Log
+trs:scale | Assert.Is(@f3(1 1 1)) | Log
