@@ -14,7 +14,7 @@
 #pragma clang diagnostic pop
 #endif
 
-#include <tracy/Wrapper.hpp>
+#include "network_profiling.hpp"
 #include "network.hpp"
 #include <shards/core/shared.hpp>
 #include <shards/core/foundation.hpp>
@@ -33,6 +33,7 @@
 #include <thread>
 #include <unordered_map>
 #include <utility>
+#include <iterator>
 
 #include "shards/core/async.hpp"
 #include "log.hpp"
@@ -42,7 +43,7 @@
 // Network Configuration Strategy:
 // MTU 1200: QUIC/IETF standard for wild internet UDP reliability
 //   - Survives IPv6 minimum (1280), PPPoE (1492), tunnels, mobile carriers
-//   - Avoids fragmentation on 99%+ of internet paths  
+//   - Avoids fragmentation on 99%+ of internet paths
 //   - 1000 = too conservative (20% header waste), 1300+ = fragmentation risk
 // Window 54: Maintains ~65KB capacity (54*1200), fewer packets than 64-window
 // Kernel Buffers: Auto-sized for burst + retransmit + OS scheduling scenarios
@@ -184,6 +185,9 @@ struct NetworkBase {
 };
 
 struct KCPPeer final : public Peer {
+#if TRACY_ENABLE
+  char *kcpPlotName{};
+#endif
   KCPPeer() {}
 
   ~KCPPeer() {
@@ -194,6 +198,14 @@ struct KCPPeer final : public Peer {
   }
 
   bool tryReceive(SHContext *context) {
+#if TRACY_ENABLE
+    if (!kcpPlotName) {
+      kcpPlotName = new char[256];
+      std::string plotName = fmt::format("Network.Kcp.{}.Waiting", endpoint->address().to_string());
+      std::strcpy(kcpPlotName, plotName.c_str());
+      TracyPlotConfig(kcpPlotName, tracy::PlotFormatType::Memory, true, true, 0xFF00FFFF);
+    }
+#endif
     std::scoped_lock peerLock(mutex);
 
     if (networkError) {
@@ -205,6 +217,17 @@ struct KCPPeer final : public Peer {
     auto now = SHClock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
     ikcp_update(kcp, ms);
+
+    ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - _start).count();
+    
+#ifdef TRACY_ENABLE
+    auto nextUpdate = ikcp_check(kcp, ms);
+    auto nextUpdateDelta = (nextUpdate - ms);
+
+    TracyPlot(kcpPlotName, int64_t(ikcp_waitsnd(kcp)));
+    NetworkProfiler::instance().kcpPollNext += nextUpdateDelta;
+    NetworkProfiler::instance().kcpPollCount++;
+#endif
 
     // Initialize variables for buffer management.
     size_t offset = recvBuffer.size();
@@ -308,21 +331,21 @@ struct KCPPeer final : public Peer {
 
     kcp = ikcp_create('shrd', this);
 
-    // set "turbo" mode  
+    // set "turbo" mode
     ikcp_nodelay(kcp, 1, 10, 2, 1);
-    
+
     // Optimized MTU/window configuration for wild internet
     // MTU 1200: Battle-tested by QUIC for real-world UDP reliability
     // - Avoids fragmentation on most paths (IPv6 min 1280, PPPoE 1492, tunnels, mobile)
     // - 1000 = too conservative (20% header overhead), 1300+ = fragmentation risk
     // - IETF/Google recommendation for "one size fits wild internet"
-    constexpr size_t mtu = 1200; 
-    
+    constexpr size_t mtu = 1200;
+
     // Window 54: Maintains ~65KB effective capacity (54 * 1200 = 64.8KB)
     // - Fewer packets in flight than 64, reduces out-of-order delivery
     // - Same throughput as original 1300 MTU * ~49 window configuration
     constexpr size_t window = 54;
-    
+
     ikcp_setmtu(kcp, mtu);
     ikcp_wndsize(kcp, window, window);
 
@@ -396,6 +419,28 @@ struct KCPServer : public Server {
   }
 };
 
+inline void setOptimalSocketBufferSizes(boost::asio::ip::udp::socket &socket) {
+  // Auto-calculated kernel buffers for 1000 MTU, 64 window
+  constexpr size_t mtu = 1000;
+  constexpr size_t window = 64;
+  constexpr size_t packet_overhead = 300;
+  constexpr double burst_multiplier = 1.5;
+  constexpr size_t safety_margin = 32 * 1024;
+
+  size_t send_buf = static_cast<size_t>((window * mtu * burst_multiplier) + (window * packet_overhead) + safety_margin);
+  size_t recv_buf = send_buf * 2;
+
+  // Round up to 4KB boundaries
+  send_buf = ((send_buf + 4095) / 4096) * 4096;
+  recv_buf = ((recv_buf + 4095) / 4096) * 4096;
+
+  boost::asio::socket_base::send_buffer_size option_send(send_buf);
+  boost::asio::socket_base::receive_buffer_size option_recv(recv_buf);
+
+  socket.set_option(option_send);
+  socket.set_option(option_recv);
+}
+
 struct ServerShard : public NetworkBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return Types::Server; }
@@ -454,37 +499,33 @@ struct ServerShard : public NetworkBase {
   bool _isDualStack = false; // Track if we're using dual-stack
 
   // Helper to normalize bind addresses for dual-stack
-  std::string normalizeBindAddress(const std::string& hostname, bool isDualStack) {
+  std::string normalizeBindAddress(const std::string &hostname, bool isDualStack) {
     if (!isDualStack) {
       return hostname; // No changes for IPv4-only
     }
-    
+
     // Convert IPv4 bind-all addresses to IPv6 bind-all for dual-stack
-    if (hostname == "0.0.0.0" || 
-        hostname.empty() ||
-        hostname == "*") {
+    if (hostname == "0.0.0.0" || hostname.empty() || hostname == "*") {
       return "::";
     }
-    
+
     // Convert localhost variants to IPv6 bind-all for dual-stack
     // This allows both IPv4 and IPv6 localhost connections
-    if (hostname == "localhost" ||
-        hostname == "127.0.0.1" ||
-        hostname == "::1") {
+    if (hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1") {
       return "::";
     }
-    
+
     // IPv6 bind-all variants - normalize to standard form
     if (hostname == "0:0:0:0:0:0:0:0") {
       return "::";
     }
-    
+
     // Return as-is for other addresses (like fly-global-services)
     return hostname;
   }
 
   // Helper to ensuint compatibility with socket
-  udp::endpoint makeCompatibleEndpoint(const udp::endpoint& ep) {
+  udp::endpoint makeCompatibleEndpoint(const udp::endpoint &ep) {
     if (_isDualStack && ep.address().is_v4()) {
       // Convert IPv4 to IPv4-mapped IPv6 for dual-stack socket
       auto v4_addr = ep.address().to_v4();
@@ -690,9 +731,13 @@ struct ServerShard : public NetworkBase {
 
     std::scoped_lock<std::mutex> l(s->_socketMutex); // not ideal but for now we gotta do it
 
+    SPDLOG_LOGGER_TRACE(logger, "asio> queueing sending {} bytes", len);
     s->_socket->async_send_to(boost::asio::buffer(buf, len), *p->endpoint,
                               [](boost::system::error_code ec, std::size_t bytes_sent) {
                                 TracyMessageL("Network::async_send_to (udp)");
+#ifdef TRACY_ENABLE
+                                NetworkProfiler::instance().bytesSent += bytes_sent;
+#endif
                                 if (ec) {
                                   // ignore flow-control No buffer space available
                                   if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
@@ -701,6 +746,8 @@ struct ServerShard : public NetworkBase {
                                   } else {
                                     SPDLOG_LOGGER_DEBUG(logger, "Error sending (ignored): {}", ec.message());
                                   }
+                                } else {
+                                  SPDLOG_LOGGER_TRACE(logger, "asio> sent {} bytes", bytes_sent);
                                 }
                               });
     return 0;
@@ -725,6 +772,9 @@ struct ServerShard : public NetworkBase {
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _sender,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
                                   TracyMessageL("Network::async_receive_from (udp)");
+#ifdef TRACY_ENABLE
+                                  NetworkProfiler::instance().bytesReceived += bytes_recvd;
+#endif
                                   if (!_running) {
                                     receiveLoopFinished();
                                     return;
@@ -771,9 +821,6 @@ struct ServerShard : public NetworkBase {
                                           return do_receive();
                                       }
                                     } else {
-                                      // SPDLOG_LOGGER_TRACE(logger, "Received packet from known peer: {} port: {}",
-                                      // _sender.address().to_string(), _sender.port());
-
                                       // existing peer
                                       currentPeer = it->second;
 
@@ -849,56 +896,37 @@ struct ServerShard : public NetworkBase {
     if (!_socket) {
       // first activation, let's init
       _socket.emplace(io_context);
-      
+
       // Try dual-stack (IPv6 with IPv4 mapped addresses) first
       _isDualStack = true;
       try {
         _socket->open(udp::v6());
         _socket->set_option(boost::asio::ip::v6_only(false)); // Enable dual-stack
-      } catch (const boost::system::system_error& e) {
+      } catch (const boost::system::system_error &e) {
         SPDLOG_LOGGER_DEBUG(logger, "IPv6 dual-stack not available, falling back to IPv4: {}", e.what());
         _isDualStack = false;
         _socket->close();
         _socket->open(udp::v4());
       }
-      
+
       _socket->set_option(boost::asio::ip::udp::socket::reuse_address(true));
-      
-      // Auto-calculated kernel buffers for 1000 MTU, 64 window
-      constexpr size_t mtu = 1000;
-      constexpr size_t window = 64;
-      constexpr size_t packet_overhead = 300;
-      constexpr double burst_multiplier = 1.5;
-      constexpr size_t safety_margin = 32 * 1024;
-      
-      size_t send_buf = static_cast<size_t>(
-        (window * mtu * burst_multiplier) + 
-        (window * packet_overhead) + 
-        safety_margin
-      );
-      size_t recv_buf = send_buf * 2;
-      
-      // Round up to 4KB boundaries
-      send_buf = ((send_buf + 4095) / 4096) * 4096;
-      recv_buf = ((recv_buf + 4095) / 4096) * 4096;
-      
-      _socket->set_option(boost::asio::socket_base::send_buffer_size(send_buf));
-      _socket->set_option(boost::asio::socket_base::receive_buffer_size(recv_buf));
-      
+
+      setOptimalSocketBufferSizes(*_socket);
+
       boost::asio::io_context tmp_io_context;
       udp::resolver resolver(tmp_io_context);
       auto sport = std::to_string(_port.get().payload.intValue);
       auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
-      
+
       // Normalize hostname for dual-stack binding
       auto normalizedHostname = normalizeBindAddress(hostname, _isDualStack);
-      
+
       // Try to resolve for the appropriate protocol, with fallback
       udp::resolver::results_type r;
       if (_isDualStack) {
         try {
           r = resolver.resolve(udp::v6(), normalizedHostname, sport);
-        } catch (const boost::system::system_error& e) {
+        } catch (const boost::system::system_error &e) {
           SPDLOG_LOGGER_DEBUG(logger, "IPv6 resolution failed for {}, falling back to IPv4: {}", normalizedHostname, e.what());
           _isDualStack = false;
           _socket->close();
@@ -909,7 +937,7 @@ struct ServerShard : public NetworkBase {
       } else {
         r = resolver.resolve(udp::v4(), hostname, sport);
       }
-        
+
       if (r.size() == 0)
         throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
       auto bindEndpoint = r.begin()->endpoint();
@@ -939,10 +967,11 @@ struct ServerShard : public NetworkBase {
           _stopWireQueue.push(peer->wire.get());
           continue;
         }
-        
+
         // Check if peer was manually disconnected
         if (peer->disconnected()) {
-          SPDLOG_LOGGER_DEBUG(logger, "Peer {}:{} manually disconnected", peer->endpoint->address().to_string(), peer->endpoint->port());
+          SPDLOG_LOGGER_DEBUG(logger, "Peer {}:{} manually disconnected", peer->endpoint->address().to_string(),
+                              peer->endpoint->port());
           _stopWireQueue.push(peer->wire.get());
           continue;
         }
@@ -1095,6 +1124,9 @@ struct ClientShard : public NetworkBase {
     SPDLOG_LOGGER_TRACE(logger, "asio> queueing sending {} bytes", len);
     c->_socket->async_send_to(boost::asio::buffer(buf, len), c->_server,
                               [c](boost::system::error_code ec, std::size_t bytes_sent) {
+#ifdef TRACY_ENABLE
+                                NetworkProfiler::instance().bytesSent += bytes_sent;
+#endif
                                 if (ec) {
                                   // ignore flow-control No buffer space available
                                   if (ec != boost::asio::error::no_buffer_space && ec != boost::asio::error::would_block &&
@@ -1133,6 +1165,9 @@ struct ClientShard : public NetworkBase {
 
     _socket->async_receive_from(boost::asio::buffer(recv_buffer.data(), recv_buffer.size()), _server,
                                 [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+#ifdef TRACY_ENABLE
+                                  NetworkProfiler::instance().bytesReceived += bytes_recvd;
+#endif
                                   if (!_running) {
                                     finishReceiveLoop();
                                   } else if (ec) {
@@ -1215,44 +1250,23 @@ struct ClientShard : public NetworkBase {
       udp::resolver resolver(tmp_io_context);
       auto sport = std::to_string(_port.get().payload.intValue);
       auto hostname = SHSTRING_PREFER_SHSTRVIEW(_addr.get());
-      
+
       // Resolve the target address to determine if we need IPv4 or IPv6
       auto r = resolver.resolve(hostname, sport);
       if (r.size() == 0)
         throw std::runtime_error(fmt::format("Failed to resolve hostname: {}:{}", hostname, sport));
-      
+
       _server = r.begin()->endpoint();
       _peer.endpoint = _server;
-      
+
       // Create socket with appropriate protocol family
       if (_server.address().is_v6()) {
         _socket.emplace(io_context, udp::endpoint(udp::v6(), 0));
       } else {
         _socket.emplace(io_context, udp::endpoint(udp::v4(), 0));
       }
-      
-      // Auto-calculated kernel buffers for 1000 MTU, 64 window
-      constexpr size_t mtu = 1000;
-      constexpr size_t window = 64;
-      constexpr size_t packet_overhead = 300;
-      constexpr double burst_multiplier = 1.5;
-      constexpr size_t safety_margin = 32 * 1024;
-      
-      size_t send_buf = static_cast<size_t>(
-        (window * mtu * burst_multiplier) + 
-        (window * packet_overhead) + 
-        safety_margin
-      );
-      size_t recv_buf = send_buf * 2;
-      
-      // Round up to 4KB boundaries  
-      send_buf = ((send_buf + 4095) / 4096) * 4096;
-      recv_buf = ((recv_buf + 4095) / 4096) * 4096;
-      
-      boost::asio::socket_base::send_buffer_size option_send(send_buf);
-      boost::asio::socket_base::receive_buffer_size option_recv(recv_buf);
-      _socket->set_option(option_send);
-      _socket->set_option(option_recv);
+
+      setOptimalSocketBufferSizes(*_socket);
 
       // start receiving
       boost::asio::post(io_context, [this]() {
