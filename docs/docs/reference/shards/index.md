@@ -19,7 +19,7 @@ Begin your journey by selecting the section you wish to navigate to:
 
 - [Enums](./enums/)
 
-- [Lisp functions](./lisp/)
+- [Built-in Functions](./lisp/)
 
 Alternatively, you can search for a specific shard or function by utilizing the search bar above.
 
