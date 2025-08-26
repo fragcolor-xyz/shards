@@ -95,8 +95,8 @@ struct Base {
   static inline Types FullStrOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::StringType}};
   static inline Types FullBytesOutputTypes{{CoreInfo::IntType, CoreInfo::StringTableType, CoreInfo::BytesType}};
   static inline std::array<SHVar, 3> FullOutputKeys{Var("status"), Var("headers"), Var("body")};
-  static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys, true);
-  static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys, true);
+  static inline Type FullStrOutputType = Type::TableOf(FullStrOutputTypes, FullOutputKeys);
+  static inline Type FullBytesOutputType = Type::TableOf(FullBytesOutputTypes, FullOutputKeys);
   static inline Types AllOutputTypes{{FullBytesOutputType, CoreInfo::BytesType, FullStrOutputType, CoreInfo::StringType}};
 
   static inline Parameters params{
@@ -800,20 +800,20 @@ struct Server {
 
     if (!_is_running) {
       _ioc.reset(new net::io_context());
-      
+
       auto port = _port.get().payload.intValue;
       // ensure port is in range of 1-65535
       if (port < 1 || port > 65535) {
         throw ActivationError("Port must be in range 1-65535");
       }
-      
+
       // Try to resolve the endpoint (hostname or IP address)
       tcp::endpoint endpoint;
       try {
         // First try to parse as IP address directly
         auto addr = net::ip::make_address(_endpoint);
         endpoint = tcp::endpoint(addr, uint16_t(port));
-      } catch (const std::exception&) {
+      } catch (const std::exception &) {
         // If that fails, use resolver to resolve hostname
         tcp::resolver resolver(*_ioc);
         auto results = resolver.resolve(_endpoint, std::to_string(port), tcp::resolver::passive);
@@ -822,7 +822,7 @@ struct Server {
         }
         endpoint = *results.begin();
       }
-      
+
       _acceptor.reset(new tcp::acceptor(*_ioc, endpoint));
       _composer.context = context;
       // start accepting
