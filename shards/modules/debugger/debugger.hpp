@@ -420,6 +420,8 @@ struct ScopesArguments {
 struct DAPServer {
   boost::asio::io_context io_context_;
   std::optional<tcp::acceptor> acceptor_;
+  std::mutex starup_mtx_;
+  std::atomic_bool pendingStop_{};
   std::optional<boost::asio::ip::udp::socket> udp_socket_;
   std::unique_ptr<boost::asio::steady_timer> broadcast_timer_;
   int port_;

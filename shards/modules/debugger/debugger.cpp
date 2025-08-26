@@ -75,74 +75,98 @@ DAPServer::DAPServer() {
 void DAPServer::start() {
   shassert(!acceptor_);
 
-  // Start async port allocation
-  auto timer = std::make_shared<boost::asio::steady_timer>(io_context_);
-  timer->async_wait([this, timer](boost::system::error_code ec) {
-    if (!ec) {
-      // Find available port and bind atomically to avoid race conditions
-      const int max_attempts = 100;
-      bool bound = false;
+  // Bind immediately, no timer delay to avoid race conditions in short-lifetime scenarios
+  if (pendingStop_)
+    return;
 
-      for (int attempt = 0; attempt < max_attempts && !bound; ++attempt) {
-        int test_port = STARTING_PORT + attempt;
+  std::unique_lock<std::mutex> l(starup_mtx_);
+  // Find available port and bind atomically to avoid race conditions
+  const int max_attempts = 100;
+  bool bound = false;
 
-        try {
-          // Try to bind directly to the port - no separate availability check
-          auto ep = tcp::endpoint(boost::asio::ip::address_v4::any(), test_port);
-          acceptor_.emplace(io_context_);
-          acceptor_->open((ep.protocol)());
-          acceptor_->bind(ep);
-          acceptor_->listen();
-          port_ = test_port;
-          bound = true;
-          SPDLOG_LOGGER_INFO(logger_, "DAP server '{}' bound to port {}", instance_name_, port_);
+  for (int attempt = 0; attempt < max_attempts && !bound; ++attempt) {
+    int test_port = STARTING_PORT + attempt;
 
-          // Start service discovery
-          startServiceDiscovery();
+    try {
+      // Try to bind directly to the port - no separate availability check
+      auto ep = tcp::endpoint(boost::asio::ip::address_v4::any(), test_port);
+      acceptor_.emplace(io_context_);
+      acceptor_->open((ep.protocol)());
+      acceptor_->bind(ep);
+      acceptor_->listen();
+      port_ = test_port;
+      bound = true;
+      SPDLOG_LOGGER_INFO(logger_, "DAP server '{}' bound to port {}", instance_name_, port_);
 
-          // Notify that server is started and ready
-          if (onStarted) {
-            onStarted(instance_name_, port_);
-          }
+      // Start service discovery
+      startServiceDiscovery();
 
-          accept_connections();
-        } catch (const std::exception &e) {
-          // Port is in use or other error, try next port
-          acceptor_.reset();
-          SPDLOG_LOGGER_DEBUG(logger_, "Failed to bind to port {}: {}", test_port, e.what());
-          if (attempt == max_attempts - 1) {
-            // Last attempt failed
-            SPDLOG_LOGGER_ERROR(logger_, "Error starting DAP server after {} attempts: {}", max_attempts, e.what());
-          }
-        }
+      // Notify that server is started and ready
+      if (onStarted) {
+        onStarted(instance_name_, port_);
       }
 
-      if (!bound) {
-        SPDLOG_LOGGER_WARN(logger_, "Could not find available port after {} attempts starting from {}", max_attempts,
-                           STARTING_PORT);
+      accept_connections();
+    } catch (const std::exception &e) {
+      // Port is in use or other error, try next port
+      acceptor_.reset();
+      SPDLOG_LOGGER_DEBUG(logger_, "Failed to bind to port {}: {}", test_port, e.what());
+      if (attempt == max_attempts - 1) {
+        // Last attempt failed
+        SPDLOG_LOGGER_ERROR(logger_, "Error starting DAP server after {} attempts: {}", max_attempts, e.what());
       }
     }
-  });
+    if (pendingStop_)
+      return;
+  }
+
+  if (!bound) {
+    SPDLOG_LOGGER_WARN(logger_, "Could not find available port after {} attempts starting from {}", max_attempts, STARTING_PORT);
+    return;
+  }
+
+  l.unlock();
 
   try {
     io_context_.run();
-    SPDLOG_LOGGER_ERROR(logger_, "DAP server stopped");
+    SPDLOG_LOGGER_INFO(logger_, "DAP server stopped");
   } catch (std::exception &e) {
     SPDLOG_LOGGER_ERROR(logger_, "Error running DAP server IO context: {}", e.what());
   }
 }
 
 void DAPServer::stop() {
+  pendingStop_ = true;
+  std::unique_lock<std::mutex> l(starup_mtx_);
+
+  // Cancel all async operations gracefully before stopping
   if (acceptor_) {
-    io_context_.stop();
-    acceptor_.reset();
-    stopServiceDiscovery();
+    boost::system::error_code ec;
+    (void)acceptor_->cancel(ec);
+    if (ec) {
+      SPDLOG_LOGGER_DEBUG(logger_, "Error canceling acceptor: {}", ec.message());
+    }
   }
+
+  // Stop service discovery first
+  stopServiceDiscovery();
+
+  l.unlock();
+
+  // Stop the io_context - this will cause run() to return
+  io_context_.stop();
+
+  acceptor_.reset();
 }
 
 void DAPServer::accept_connections() {
   auto socket = std::make_shared<tcp::socket>(io_context_);
   acceptor_->async_accept(*socket, [this, socket](boost::system::error_code ec) {
+    if (ec == boost::asio::error::operation_aborted) {
+      SPDLOG_LOGGER_TRACE(logger_, "accept_connections cancelled");
+      return;
+    }
+
     if (!ec) {
       SPDLOG_LOGGER_INFO(logger_, "New client connected");
       addClient(socket);
@@ -274,7 +298,7 @@ void DAPServer::send_event(const json &event) {
 void DAPServer::sendInitializedEvent() {
   json event = {{"seq", sequenceNumber.fetch_add(1)}, {"type", "event"}, {"event", "initialized"}};
 
-  SPDLOG_LOGGER_INFO(logger_, "Sending initialized event");
+  SPDLOG_LOGGER_DEBUG(logger_, "Sending initialized event");
   send_event(event);
 }
 
@@ -287,7 +311,7 @@ void DAPServer::sendStoppedEvent(const std::string &reason, uint64_t threadId, c
 
   json event = {{"seq", sequenceNumber.fetch_add(1)}, {"type", "event"}, {"event", "stopped"}, {"body", body}};
 
-  SPDLOG_LOGGER_INFO(logger_, "Sending stopped event: {}", reason);
+  SPDLOG_LOGGER_DEBUG(logger_, "Sending stopped event: {}", reason);
   send_event(event);
   setState(DebuggerState::Paused);
 }
@@ -298,7 +322,7 @@ void DAPServer::sendContinuedEvent(int threadId, bool allThreadsContinued) {
                 {"event", "continued"},
                 {"body", {{"threadId", threadId}, {"allThreadsContinued", allThreadsContinued}}}};
 
-  SPDLOG_LOGGER_INFO(logger_, "Sending continued event");
+  SPDLOG_LOGGER_DEBUG(logger_, "Sending continued event");
   send_event(event);
   setState(DebuggerState::Running);
 }
@@ -741,7 +765,7 @@ void DAPServer::startServiceDiscovery() {
 
     broadcast_timer_ = std::make_unique<boost::asio::steady_timer>(io_context_);
 
-    SPDLOG_LOGGER_INFO(logger_, "Started service discovery broadcasting on port {}", DISCOVERY_PORT);
+    SPDLOG_LOGGER_DEBUG(logger_, "Started service discovery broadcasting on port {}", DISCOVERY_PORT);
     sendServiceAnnouncement();
   } catch (const std::exception &e) {
     SPDLOG_LOGGER_ERROR(logger_, "Failed to start service discovery: {}", e.what());

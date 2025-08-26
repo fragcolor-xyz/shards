@@ -397,7 +397,8 @@ struct State {
   ~State() {
     if (serverThread) {
       server->stop();
-      serverThread->join();
+      if (serverThread->joinable())
+        serverThread->join();
     }
   }
 
