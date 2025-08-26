@@ -20,7 +20,7 @@ jobs:
   # Build shards for iOS
   #
   iOS:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Setup
         id: setup
@@ -54,7 +54,7 @@ jobs:
   # Build shards for visionOS
   #
   visionOS:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Setup
         id: setup
