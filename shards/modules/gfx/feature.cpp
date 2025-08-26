@@ -137,13 +137,13 @@ struct BuiltinFeatureShard {
 struct FeatureTypes {
   static inline shards::Types GeneratedViewInputTableTypes{{ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq}};
   static inline std::array<SHVar, 3> GeneratedViewInputTableKeys{Var("Queue"), Var("View"), Var("Features")};
-  static inline Type GeneratedViewInputTableType = Type::TableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys, true);
+  static inline TypeInfo GeneratedViewInputTableType = TypeInfo::FixedTableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
 
   static inline shards::Type DrawableDataSeqType = Type::SeqOf(CoreInfo::IntType);
   static inline shards::Types GeneratedDrawInputTableTypes{
       {ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq, DrawableDataSeqType}};
   static inline std::array<SHVar, 4> GeneratedDrawInputTableKeys{Var("Queue"), Var("View"), Var("Features"), Var("Drawables")};
-  static inline Type GeneratedDrawInputTableType = Type::TableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys, true);
+  static inline TypeInfo GeneratedDrawInputTableType = TypeInfo::FixedTableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
   static inline Type ShaderEntryPointType = Type::SeqOf(CoreInfo::AnyTableType);
 

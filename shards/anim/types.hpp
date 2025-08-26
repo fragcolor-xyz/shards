@@ -23,7 +23,7 @@ struct Container {
 
   static inline shards::Types ValueTableTypes{Path, CoreInfo::AnyType};
   static inline std::array<SHVar, 2> ValueTableKeys{Var("Path"), Var("Value")};
-  static inline Type ValueTable = Type::TableOf(ValueTableTypes, ValueTableKeys, true);
+  static inline TypeInfo ValueTable = TypeInfo::FixedTableOf(ValueTableTypes, ValueTableKeys);
   static inline Type AnimationValues = Type::SeqOf(ValueTable);
 
   static inline shards::Types KeyframeTableTypes{CoreInfo::FloatType, CoreInfo::AnyType, CoreInfo::AnyType};
@@ -32,7 +32,7 @@ struct Container {
 
   static inline shards::Types TrackTableTypes{Path, Type::SeqOf(KeyframeTable)};
   static inline std::array<SHVar, 2> TrackTableKeys{Var("Path"), Var("Frames")};
-  static inline Type TrackTable = Type::TableOf(TrackTableTypes, TrackTableKeys, true);
+  static inline TypeInfo TrackTable = TypeInfo::FixedTableOf(TrackTableTypes, TrackTableKeys);
 
   static inline Type Animation = Type::SeqOf(TrackTable);
   static inline Types AnimationOrAnimationVar{Type::VariableOf(Animation), Animation};

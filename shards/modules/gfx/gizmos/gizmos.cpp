@@ -19,8 +19,8 @@ using namespace linalg::aliases;
 using gfx::TRS;
 
 struct Types {
-  static inline shards::Type TRS = Math::LinAlg::Types::TRS;
-  static inline shards::Types GizmoInOutTypes = {Types::TRS, Type::SeqOf(Types::TRS)};
+  static inline shards::Type TRS = *Math::LinAlg::Types::TRS;
+  static inline shards::Types GizmoInOutTypes = {TRS, Type::SeqOf(TRS)};
 };
 
 inline float getScreenSize(ParamVar &v) {

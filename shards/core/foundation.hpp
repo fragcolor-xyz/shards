@@ -294,6 +294,42 @@ template <typename T, typename Resource = bumping_memory_resource<sizeof(T) * 32
   friend bool operator!=(const stack_allocator &lhs, const stack_allocator &rhs) { return lhs._res != rhs._res; }
 };
 
+inline bool deriveTableIndices(SHTableTypeInfo &info) {
+  // Early validation
+  for (uint32_t i = 0; i < info.keys.len; i++) {
+    if (info.keys.elements[i].valueType == SHType::None) {
+      return false;
+    }
+  }
+
+  // Create sorted indices mapping
+  std::vector<uint32_t> sortedIndices(info.keys.len);
+  std::iota(sortedIndices.begin(), sortedIndices.end(), 0);
+
+  std::sort(sortedIndices.begin(), sortedIndices.end(),
+            [&](uint32_t a, uint32_t b) { return ShardsKeyCompare<SHVar>{}(info.keys.elements[a], info.keys.elements[b]); });
+
+  // Create inverse mapping: original_pos -> sorted_pos
+  shards::arrayResize(info.indices, info.keys.len);
+  for (uint32_t sortedPos = 0; sortedPos < sortedIndices.size(); sortedPos++) {
+    uint32_t originalPos = sortedIndices[sortedPos];
+    info.indices.elements[originalPos] = sortedPos;
+  }
+
+  // Recurse - fail fast propagation
+  for (uint32_t i = 0; i < info.types.len; i++) {
+    auto &type = info.types.elements[i];
+    if (type.basicType == SHType::Table) {
+      if (!deriveTableIndices(type.table)) {
+        shards::arrayFree(info.indices); // Clean up on nested failure
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 struct TypeInfo {
   TypeInfo() {}
 
@@ -307,6 +343,26 @@ struct TypeInfo {
   TypeInfo(TypeInfo &&info) {
     _info = info._info;
     info._info = {};
+  }
+
+  template <size_t N> static TypeInfo FixedTableOf(SHTypesInfo types, const std::array<SHVar, N> &keys) {
+    TypeInfo res;
+    if (N > 0 && N != types.len) {
+      throw std::logic_error("TableOf: keys and types length mismatch");
+    }
+
+    auto &k = const_cast<std::array<SHVar, N> &>(keys);
+    auto weakTmp = SHTypeInfo{SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+    res._info = cloneTypeInfo(weakTmp);
+
+    shassert(res._info.table.keys.len == res._info.table.types.len && "TableOf: keys and types length mismatch");
+    auto fixed = deriveTableIndices(res._info.table);
+    if (fixed) {
+      shassert(res._info.table.keys.len == res._info.table.indices.len && "TableOf: keys and indices length mismatch");
+      res._info.table.fixedStructTable = true;
+    }
+
+    return res;
   }
 
   TypeInfo &operator=(const SHTypeInfo &info) {
@@ -325,6 +381,10 @@ struct TypeInfo {
   ~TypeInfo() { freeTypeInfo(_info); }
 
   operator const SHTypeInfo &() { return _info; }
+  operator SHTypesInfo() const {
+    SHTypesInfo res{const_cast<SHTypeInfo *>(&_info), 1, 0};
+    return res;
+  }
 
   const SHTypeInfo *operator->() const { return &_info; }
   const SHTypeInfo &operator*() const { return _info; }
@@ -1336,42 +1396,6 @@ inline void weakObjectVar(SHVar &dst, const SHVar &src) {
   dst.flags |= SHVAR_FLAGS_USES_OBJINFO | SHVAR_FLAGS_WEAK_OBJECT;
   dst.objectInfo = src.objectInfo;
   dst.objectInfo->weakReference(dst.payload.objectValue);
-}
-
-inline bool deriveTableIndices(SHTableTypeInfo &info) {
-  // Early validation
-  for (uint32_t i = 0; i < info.keys.len; i++) {
-    if (info.keys.elements[i].valueType == SHType::None) {
-      return false;
-    }
-  }
-
-  // Create sorted indices mapping
-  std::vector<uint32_t> sortedIndices(info.keys.len);
-  std::iota(sortedIndices.begin(), sortedIndices.end(), 0);
-
-  std::sort(sortedIndices.begin(), sortedIndices.end(),
-            [&](uint32_t a, uint32_t b) { return ShardsKeyCompare<SHVar>{}(info.keys.elements[a], info.keys.elements[b]); });
-
-  // Create inverse mapping: original_pos -> sorted_pos
-  shards::arrayResize(info.indices, info.keys.len);
-  for (uint32_t sortedPos = 0; sortedPos < sortedIndices.size(); sortedPos++) {
-    uint32_t originalPos = sortedIndices[sortedPos];
-    info.indices.elements[originalPos] = sortedPos;
-  }
-
-  // Recurse - fail fast propagation
-  for (uint32_t i = 0; i < info.types.len; i++) {
-    auto &type = info.types.elements[i];
-    if (type.basicType == SHType::Table) {
-      if (!deriveTableIndices(type.table)) {
-        shards::arrayFree(info.indices); // Clean up on nested failure
-        return false;
-      }
-    }
-  }
-
-  return true;
 }
 
 struct InternalCore {

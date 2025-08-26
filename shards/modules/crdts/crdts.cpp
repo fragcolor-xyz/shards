@@ -50,7 +50,7 @@ struct CRDTTypes {
       CoreInfo::Int16Type, //
       CoreInfo::AnyType,   //
   };
-  static inline Type ChangesTableType = Type::TableOf(ChangesTableTypes, ChangesTableKeys, true);
+  static inline TypeInfo ChangesTableType = TypeInfo::FixedTableOf(ChangesTableTypes, ChangesTableKeys);
   static inline Type ChangesTableVarType = Type::VariableOf(ChangesTableType);
   static inline Type ChangesTableSeqType = Type::SeqOf(ChangesTableType);
 };

@@ -19,7 +19,7 @@ struct MeshShard {
   static inline Var InputVerticesTableKey = Var("Vertices");
   static inline Var InputIndicesTableKey = Var("Indices");
   static inline std::array<SHVar, 2> InputTableKeys{InputVerticesTableKey, InputIndicesTableKey};
-  static inline Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys, true);
+  static inline TypeInfo InputTable = TypeInfo::FixedTableOf(InputTableTypes, InputTableKeys);
 
   static SHTypesInfo inputTypes() { return InputTable; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }

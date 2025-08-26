@@ -21,7 +21,7 @@ struct TextPlacement {
   static inline std::array<SHVar, 5> Keys{Var(quad_str), Var(uv_str), Var(texture_str), Var(codepoint_str), Var(coord_str)};
   static inline shards::Types Types{
       {CoreInfo::Float4Type, CoreInfo::Float4Type, ShardsTypes::Texture, CoreInfo::IntType, CoreInfo::Int2Type}};
-  static inline shards::Type Type = shards::Type::TableOf(Types, Keys, true);
+  static inline shards::TypeInfo Type = shards::TypeInfo::FixedTableOf(Types, Keys);
   static inline shards::Type SeqType = shards::Type::SeqOf(Type);
 };
 struct TextPlacementRef {
@@ -364,7 +364,7 @@ struct DynamicDrawTextPlacementShard : public DynamicDrawTextShardBase {
 struct DynamicToMeshShard {
   static inline shards::Types OutTableTypes{{gfx::ShardsTypes::Mesh, gfx::ShardsTypes::Texture}};
   static inline std::array<SHVar, 2> OutTableKeys{Var("mesh"), Var("texture")};
-  static inline Type OutTableType = Type::TableOf(OutTableTypes, OutTableKeys, true);
+  static inline TypeInfo OutTableType = TypeInfo::FixedTableOf(OutTableTypes, OutTableKeys);
   static inline Type OutSeqType = Type::SeqOf(OutTableType);
 
   static SHTypesInfo inputTypes() { return SHDynamicMesh::Type; }

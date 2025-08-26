@@ -178,7 +178,7 @@ struct CollisionsShard {
       tk_penDepth,
       tk_normal,
   };
-  static inline Type ContactTableType = Type::TableOf(ContactTableTypes, ContactTableKeys, true);
+  static inline TypeInfo ContactTableType = TypeInfo::FixedTableOf(ContactTableTypes, ContactTableKeys);
   static inline Type ContactTableSeqType = Type::SeqOf(ContactTableType);
 
   static inline shards::Types ContactLeaveTableTypes{SHBody::Type, CoreInfo::AnyType};
@@ -186,7 +186,7 @@ struct CollisionsShard {
       tk_other,
       tk_otherTag,
   };
-  static inline Type ContactLeaveTableType = Type::TableOf(ContactTableTypes, ContactTableKeys);
+  static inline TypeInfo ContactLeaveTableType = TypeInfo::FixedTableOf(ContactTableTypes, ContactTableKeys);
 
   static SHTypesInfo inputTypes() { return SHBody::Type; }
   static SHTypesInfo outputTypes() { return ContactTableSeqType; }

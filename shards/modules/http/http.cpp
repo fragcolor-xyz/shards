@@ -874,7 +874,7 @@ struct Server {
 struct Read {
   static inline Types OutTypes{{CoreInfo::StringType, CoreInfo::StringTableType, CoreInfo::StringType, CoreInfo::StringType}};
   static inline std::array<SHVar, 4> OutKeys{Var("method"), Var("headers"), Var("target"), Var("body")};
-  static inline Type OutputType = Type::TableOf(OutTypes, OutKeys, true);
+  static inline TypeInfo OutputType = TypeInfo::FixedTableOf(OutTypes, OutKeys);
 
   static SHOptionalString help() {
     return SHCCSTR(

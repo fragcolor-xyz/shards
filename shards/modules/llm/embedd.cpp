@@ -81,7 +81,7 @@ struct Tokenize {
       shards::CoreInfo::IntSeqType,
       shards::CoreInfo::IntType,
   }};
-  static inline ::shards::Type TokenLimitType{shards::Type::TableOf(OutputTableTypes, OutputTableKeys, true)};
+  static inline ::shards::TypeInfo TokenLimitType{shards::TypeInfo::FixedTableOf(OutputTableTypes, OutputTableKeys)};
   static inline ::shards::Types OutputTypes{{
       TokenLimitType,
       shards::CoreInfo::IntSeqType,
