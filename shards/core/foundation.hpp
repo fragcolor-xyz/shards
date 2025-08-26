@@ -25,16 +25,14 @@
 #include <algorithm>
 #include <atomic>
 #include <cassert>
-#include <deque>
 #include <list>
-#include <map>
 #include <mutex>
 #include <optional>
-#include <set>
 #include <type_traits>
 #include <unordered_set>
 #include <variant>
 #include <random>
+#include <numeric>
 
 #ifdef SHARDS_TRACKING
 #include "tracking.hpp"
