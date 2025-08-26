@@ -951,7 +951,7 @@ TEST_CASE("Type") {
     Type IndicesSeq = Type::SeqOf(IndicesSeqTypes);
     Types InputTableTypes{{VerticesSeq, IndicesSeq}};
     std::array<SHVar, 2> InputTableKeys{Var("Vertices"), Var("Indices")};
-    Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys, true);
+    Type InputTable = Type::TableOf(InputTableTypes, InputTableKeys);
 
     SHTypeInfo t1 = InputTable;
     REQUIRE(t1.basicType == SHType::Table);
