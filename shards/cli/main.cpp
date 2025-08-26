@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 /* Copyright © 2019 Fragcolor Pte. Ltd. */
 
-#include <shards/lang/bindings.h>
+#include <shards/modules/langffi/bindings.h>
 #include <shards/core/utils.hpp>
-// #include <shards/core/foundation.hpp>
 #include <boost/filesystem.hpp>
 
 int main(int argc, const char *argv[]) {
