@@ -64,7 +64,6 @@ jobs:
           submodules: recursive
       - name: Set up dependencies
         run: |
-          sudo xcode-select --switch /Applications/Xcode_15.4.app
           brew install cmake ninja clang-format
           ./bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`
