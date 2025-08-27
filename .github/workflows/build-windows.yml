@@ -100,8 +100,6 @@ jobs:
           submodules: recursive
       - name: Set up rust
         shell: bash
-        env:
-          RUSTUP_USE_CURL: 1
         run: |
           RUSTUP_TOOLCHAIN=`cat rust.version`-msvc
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
