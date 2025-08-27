@@ -122,10 +122,14 @@ const unsigned __tsan_switch_to_fiber_no_sync = 1 << 0;
 #define CUSTOM_XXH3_kSecret XXH3_kSecret
 #endif
 
+namespace shards {
+static inline SHVar SuspendEmptyReturn = shards::Var::Empty;
+}
+
 #define SH_SUSPEND(_ctx_, _secs_)                             \
   const auto _suspend_state = shards::suspend(_ctx_, _secs_); \
   if (_suspend_state != SHWireState::Continue)                \
-  return shards::Var::Empty
+  return shards::SuspendEmptyReturn
 
 struct SHStateSnapshot {
   SHWireState state;
