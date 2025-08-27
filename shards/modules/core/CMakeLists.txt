@@ -11,6 +11,7 @@ set(SOURCES
   exposed.cpp
   trait.cpp
   memoize.cpp
+  parallel.cpp
 )
 
 if(ENABLE_FFI)
@@ -40,7 +41,7 @@ add_shards_module(core SOURCES ${SOURCES}
   REGISTER_SHARDS
   core casting flow linalg math seqs
   strings wires logging serialization time
-  rust memoize exposed trait
+  rust memoize exposed trait parallel
   RUST_TARGETS shards-core-rust
   INLINE_SOURCES core.cpp math.cpp inlined.cpp
   INLINE_SHARDS
