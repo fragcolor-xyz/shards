@@ -115,16 +115,16 @@ struct Track {
     }
   }
 
-  OwnedVar _output;
+  SHVar _lastOutput{};
 
   SHVar &activate(SHContext *context, const SHVar &input) {
     if (_shouldActivate) {
       _shouldActivate = false;
 
-      _action.activate(context, input, _output);
+      _action.activate(context, input, _lastOutput);
     }
 
-    return _output;
+    return _lastOutput;
   }
 };
 } // namespace shards
