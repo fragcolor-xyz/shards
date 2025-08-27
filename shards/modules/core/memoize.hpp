@@ -47,7 +47,7 @@ struct Track {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Tracks the variables and executes the action when they change."); }
 
-  PARAM_VAR(_variables, "Variables", "The variables to track for changes.", {CoreInfo::AnySeqType});
+  PARAM_VAR(_variables, "Variables", "A single variable or a sequence of variables to track for changes.", {CoreInfo::AnyType});
   PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::ShardsOrNoneSeq});
   PARAM_VAR(_mask, "Mask", "The mask to use to determine which variables to track.", {CoreInfo::IntOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_mask));
@@ -81,8 +81,19 @@ struct Track {
   void warmup(SHContext *context) {
     _action.warmup(context);
 
-    for (auto &variable : _variables) {
-      auto name = SHSTRVIEW(variable);
+    if (_variables.valueType == SHType::Seq) {
+      for (auto &variable : _variables) {
+        if (variable.valueType != SHType::ContextVar) {
+          throw WarmupError("Track variables must be context variables");
+        }
+        auto name = SHSTRVIEW(variable);
+        _varNames.insert(name);
+      }
+    } else {
+      if (_variables.valueType != SHType::ContextVar) {
+        throw WarmupError("Track variables must be context variables");
+      }
+      auto name = SHSTRVIEW(_variables);
       _varNames.insert(name);
     }
 
