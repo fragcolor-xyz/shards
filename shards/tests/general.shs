@@ -1209,6 +1209,27 @@
   @i3(6 6 6) | Flatten | Assert.Is([6 6 6] true) >> i3s
   i3s | Flatten | Assert.Is([3 3 3 6 6 6] true)
   Log
+
+  @i2(1 2) | Add(@i2(1 2)) | Assert.Is(@i2(2 4) true)
+  @i2(1 2) | Sub(@i2(1 2)) | Assert.Is(@i2(0 0) true)
+  @i2(1 2) | Mul(@i2(1 2)) | Assert.Is(@i2(1 4) true)
+  @i2(1 2) | Math.And(@i2(1 2)) | Assert.Is(@i2(1 2) true)
+  @i2(1 2) | Math.Or(@i2(1 2)) | Assert.Is(@i2(1 2) true)
+  @i2(1 2) | Math.Xor(@i2(1 2)) | Assert.Is(@i2(0 0) true)
+
+  @i3(1 2 3) | Add(@i3(1 2 3)) | Assert.Is(@i3(2 4 6) true)
+  @i3(1 2 3) | Sub(@i3(1 2 3)) | Assert.Is(@i3(0 0 0) true)
+  @i3(1 2 3) | Mul(@i3(1 2 3)) | Assert.Is(@i3(1 4 9) true)
+  @i3(1 2 3) | Math.And(@i3(1 2 3)) | Assert.Is(@i3(1 2 3) true)
+  @i3(1 2 3) | Math.Or(@i3(1 2 3)) | Assert.Is(@i3(1 2 3) true)
+  @i3(1 2 3) | Math.Xor(@i3(1 2 3)) | Assert.Is(@i3(0 0 0) true)
+
+  @i4(1 2 3 4) | Add(@i4(1 2 3 4)) | Assert.Is(@i4(2 4 6 8) true)
+  @i4(1 2 3 4) | Sub(@i4(1 2 3 4)) | Assert.Is(@i4(0 0 0 0) true)
+  @i4(1 2 3 4) | Mul(@i4(1 2 3 4)) | Assert.Is(@i4(1 4 9 16) true)
+  @i4(1 2 3 4) | Math.And(@i4(1 2 3 4)) | Assert.Is(@i4(1 2 3 4) true)
+  @i4(1 2 3 4) | Math.Or(@i4(1 2 3 4)) | Assert.Is(@i4(1 2 3 4) true)
+  @i4(1 2 3 4) | Math.Xor(@i4(1 2 3 4)) | Assert.Is(@i4(0 0 0 0) true)
   
   RandomFloat | IsLess(1.0) | Assert.Is(true true)
   RandomBytes(16) = random-bytes

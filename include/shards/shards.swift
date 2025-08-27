@@ -640,7 +640,7 @@ extension SHVar: CustomStringConvertible {
     }
 }
 
-class OwnedVar {
+class OwnedVar : Hashable, Equatable {
     var v: SHVar
     var borrowed = false
 
@@ -761,6 +761,21 @@ class OwnedVar {
     func assign(other: SHVar) {
         withUnsafePointer(to: other) { ptr in
             G.Core.pointee.cloneVar(&v, UnsafeMutablePointer(mutating: ptr))
+        }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        let hash = withUnsafePointer(to: &v) { ptr in
+            G.Core.pointee.hashVar(ptr)
+        }
+        hasher.combine(hash.int2)
+    }
+
+    static func == (lhs: OwnedVar, rhs: OwnedVar) -> Bool {
+        withUnsafePointer(to: lhs.v) { lhsPtr in
+            withUnsafePointer(to: rhs.v) { rhsPtr in
+                G.Core.pointee.isEqualVar(lhsPtr, rhsPtr)
+            }
         }
     }
 }

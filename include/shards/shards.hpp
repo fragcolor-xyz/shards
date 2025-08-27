@@ -87,6 +87,7 @@ public:
 
 Shard *createShard(std::string_view name);
 
+// Notice this class is WEAK (mostly especially for tables and seq!)
 struct Type {
   Type() : _type({SHType::None}) {}
 
@@ -166,8 +167,10 @@ struct Type {
     if (N > 0 && N != types.len) {
       throw std::logic_error("TableOf: keys and types length mismatch");
     }
+
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
     res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+
     return res;
   }
 

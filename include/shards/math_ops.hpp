@@ -276,6 +276,9 @@ struct ModOp final {
       // Use std::fmod for floating-point types
       return std::fmod(lhs, rhs);
     } else {
+      if (rhs == 0) {
+        throw std::runtime_error("Modulo by zero");
+      }
       // Use the modulo operator for integral types
       return lhs % rhs;
     }
@@ -290,7 +293,6 @@ struct ModOp final {
 MATH_BINARY_OPERATION(Add, +);
 MATH_BINARY_OPERATION(Subtract, -);
 MATH_BINARY_OPERATION(Multiply, *);
-MATH_BINARY_OPERATION(Divide, /);
 MATH_BINARY_OPERATION(Xor, ^);
 MATH_BINARY_OPERATION(And, &);
 MATH_BINARY_OPERATION(Or, |);
@@ -298,6 +300,15 @@ MATH_BINARY_OPERATION(LShift, <<);
 MATH_BINARY_OPERATION(RShift, >>);
 
 #undef MATH_BINARY_OPERATION
+
+struct DivideOp final {
+  template <typename T> T apply(const T &lhs, const T &rhs) {
+    if (rhs == 0) {
+      throw std::runtime_error("Division by zero");
+    }
+    return lhs / rhs;
+  }
+};
 
 } // namespace shards::Math
 

@@ -435,7 +435,7 @@ function(shards_generate_union UNION_TARGET_NAME)
   if(NOT SHARDS_INLINE_EVERYTHING)
     foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
       file(APPEND ${GENERATED_TEMP}
-        "ALWAYS_INLINE const SHVar *activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&);\n"
+        "ALWAYS_INLINE const SHVar *activateShardInline_${MODULE_ID}(Shard*, SHContext*, const SHVar&) noexcept;\n"
       )
     endforeach()
 
@@ -443,7 +443,7 @@ function(shards_generate_union UNION_TARGET_NAME)
   endif()
 
   file(APPEND ${GENERATED_TEMP}
-    "ALWAYS_INLINE const SHVar *activateShardInline(Shard *shard, SHContext *context, const SHVar &input) {\n")
+    "ALWAYS_INLINE const SHVar *activateShardInline(Shard *shard, SHContext *context, const SHVar &input) noexcept {\n")
 
   foreach(MODULE_ID ${MODULES_WITH_INLINE_IDS})
     file(APPEND ${GENERATED_TEMP}

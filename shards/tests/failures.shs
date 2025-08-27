@@ -42,6 +42,24 @@
 @schedule(root test-4)
 @run(root FPS: 10) | Assert.Is(false)
 
+; mod by zero
+@wire(test-mod-by-zero {
+  10
+  Math.Mod(0)
+})
+
+@schedule(root test-mod-by-zero)
+@run(root FPS: 10) | Assert.Is(false)
+
+; divide by zero
+@wire(test-divide-by-zero {
+  10
+  Math.Divide(0)
+})
+
+@schedule(root test-divide-by-zero)
+@run(root FPS: 10) | Assert.Is(false)
+
 ; wrong type
 @wire(test-5 {
   [10 20 2.0 40 50]

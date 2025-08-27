@@ -163,6 +163,7 @@ elseif(DESKTOP_LINUX)
 endif()
 
 target_compile_options(shards-core
+  # -fno-finite-math-only` restores NaN/infinity support while keeping the other fast-math optimizations active
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
 )
 

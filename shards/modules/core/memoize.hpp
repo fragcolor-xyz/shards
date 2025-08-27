@@ -47,7 +47,7 @@ struct Track {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Tracks the variables and executes the action when they change."); }
 
-  PARAM_VAR(_variables, "Variables", "The variables to track for changes.", {CoreInfo::AnySeqType});
+  PARAM_VAR(_variables, "Variables", "A single variable or a sequence of variables to track for changes.", {CoreInfo::AnyType});
   PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::ShardsOrNoneSeq});
   PARAM_VAR(_mask, "Mask", "The mask to use to determine which variables to track.", {CoreInfo::IntOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_mask));
@@ -76,12 +76,24 @@ struct Track {
   }
 
   entt::scoped_connection _connection;
+  SHWire *_triggerWire{nullptr};
 
   void warmup(SHContext *context) {
     _action.warmup(context);
 
-    for (auto &variable : _variables) {
-      auto name = SHSTRVIEW(variable);
+    if (_variables.valueType == SHType::Seq) {
+      for (auto &variable : _variables) {
+        if (variable.valueType != SHType::ContextVar) {
+          throw WarmupError("Track variables must be context variables");
+        }
+        auto name = SHSTRVIEW(variable);
+        _varNames.insert(name);
+      }
+    } else {
+      if (_variables.valueType != SHType::ContextVar) {
+        throw WarmupError("Track variables must be context variables");
+      }
+      auto name = SHSTRVIEW(_variables);
       _varNames.insert(name);
     }
 
@@ -92,31 +104,38 @@ struct Track {
       _connection = mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSetWithMask>(this);
     }
 
+    _triggerWire = context->rootWire();
+
     _shouldActivate = true; // always trigger the first time
   }
 
   void handleTrackedVarSet(OnTrackedVarSet &event) {
-    if (!_shouldActivate && _varNames.contains(event.name)) {
+    shassert(event.wire && event.wire->context && event.wire->context->rootWire() &&
+             "Tracked var set event should have a valid wire");
+    if (!_shouldActivate && event.wire->context->rootWire() == _triggerWire && _varNames.contains(event.name)) {
       _shouldActivate = true;
     }
   }
 
   void handleTrackedVarSetWithMask(OnTrackedVarSet &event) {
-    if (!_shouldActivate && _varNames.contains(event.name) && (event.newValue.trackingMask & _mask.payload.intValue) != 0) {
+    shassert(event.wire && event.wire->context && event.wire->context->rootWire() &&
+             "Tracked var set event should have a valid wire");
+    if (!_shouldActivate && event.wire->context->rootWire() == _triggerWire && _varNames.contains(event.name) &&
+        (event.newValue.trackingMask & _mask.payload.intValue) != 0) {
       _shouldActivate = true;
     }
   }
 
-  OwnedVar _output;
+  SHVar _lastOutput{};
 
   SHVar &activate(SHContext *context, const SHVar &input) {
     if (_shouldActivate) {
       _shouldActivate = false;
 
-      _action.activate(context, input, _output);
+      _action.activate(context, input, _lastOutput);
     }
 
-    return _output;
+    return _lastOutput;
   }
 };
 } // namespace shards

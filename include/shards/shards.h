@@ -203,9 +203,9 @@ typedef float SHFloat4 __attribute__((vector_size(16)));
 
 #define SH_STRUCT16 __declspec(align(16))
 
-#define NO_INLINE 
+#define NO_INLINE
 #define ALWAYS_INLINE
-#define FLATTEN 
+#define FLATTEN
 #else // TODO
 #error "Unsupported compiler"
 
@@ -721,7 +721,7 @@ struct SHInstanceData {
 
   // Info related to our activation
   struct SHTypeInfo inputType;
-  SHExposedTypesInfo shared; 
+  SHExposedTypesInfo shared;
 
   // if this activation might happen in a worker thread
   // for example cos this shard is within an Await shard
@@ -1146,6 +1146,8 @@ typedef struct SHStringWithLen(__cdecl *SHFastStringLoad)(uint64_t id);
 typedef uint32_t(__cdecl *SHGetSourceFileId)(SHStringWithLen path);
 typedef SHStringWithLen(__cdecl *SHGetSourceFileName)(uint32_t file_id);
 
+typedef bool(__cdecl *SHDeriveTableIndices)(struct SHTableTypeInfo *info);
+
 #define SHLOG_LEVEL_TRACE 0
 #define SHLOG_LEVEL_DEBUG 1
 #define SHLOG_LEVEL_INFO 2
@@ -1166,6 +1168,9 @@ typedef struct SHLogSettings_ {
 } SHLogSettings;
 
 typedef void(__cdecl *SHSetupLogger)(const SHLogSettings *logSettings);
+
+typedef SHBool(__cdecl *SHTriggerVarValueChange)(SHWireRef wire, struct SHStringWithLen name, const struct SHVar *key,
+                                               bool isGlobal, const struct SHVar *var);
 
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
@@ -1364,7 +1369,7 @@ typedef struct _SHCore {
   // Source file utilities
   SHGetSourceFileId getSourceFileId;
   SHGetSourceFileName getSourceFileName;
-  
+
   // Call this before using any other function, other than setupLogger
   SHInit init;
 
@@ -1374,6 +1379,12 @@ typedef struct _SHCore {
   // Call this before unloading the module, to clean up any running threads or other resources
   //  that might prevent the module from being unloaded
   SHBeforeUnload beforeUnload;
+
+  // Utility to deal with SHTableTypeInfo
+  SHDeriveTableIndices deriveTableIndices;
+
+  // Utility to trigger var value change (which trigger tracking mask events)
+  SHTriggerVarValueChange triggerVarValueChange;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

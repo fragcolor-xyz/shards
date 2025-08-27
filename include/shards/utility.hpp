@@ -345,8 +345,8 @@ public:
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
-          std::string msg =
-              fmt::format("{} shard: {} ({})", errors.message.string, blk->name(blk), formatShardSourceLocationWithCore<SH_CORE>(blk));
+          std::string msg = fmt::format("{} shard: {} ({})", errors.message.string, blk->name(blk),
+                                        formatShardSourceLocationWithCore<SH_CORE>(blk));
           throw WarmupError(msg);
         }
       }

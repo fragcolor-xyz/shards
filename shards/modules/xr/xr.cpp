@@ -31,7 +31,7 @@ struct GamePadTable : public TableVar {
       CoreInfo::StringType,
       CoreInfo::BoolType,
   }};
-  static inline Type ValueType = Type::TableOf(_types, _keys);
+  static inline Type ValueType = Type::TableOf(_types, _keys, true);
 
   GamePadTable()
       : TableVar(),                      //
@@ -65,7 +65,7 @@ struct ControllerTable : public GamePadTable {
       CoreInfo::StringType,
       CoreInfo::BoolType,
   }};
-  static inline Type ValueType = Type::TableOf(_types, _keys);
+  static inline Type ValueType = Type::TableOf(_types, _keys, true);
 
   ControllerTable()
       : GamePadTable(),                      //

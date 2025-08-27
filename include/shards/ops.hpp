@@ -10,6 +10,16 @@
 #include <string>
 #include <string_view>
 
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
+#ifdef __SSE2__
+#include <emmintrin.h>
+#endif
+#ifdef __SSE4_1__
+#include <smmintrin.h>
+#endif
+
 inline const char *type2Name_raw(SHType type) {
   switch (type) {
   case SHType::EndOfBlittableTypes:
@@ -122,75 +132,130 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   case SHType::Float:
     return __builtin_fabs(a.payload.floatValue - b.payload.floatValue) <= DBL_EPSILON;
   case SHType::Int2: {
-    SHInt2 vec = a.payload.int2Value == b.payload.int2Value;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    // Scalar is faster for just 2 elements
+    const int64_t* av = (const int64_t*)&a.payload.int2Value;
+    const int64_t* bv = (const int64_t*)&b.payload.int2Value;
+    return av[0] == bv[0] && av[1] == bv[1];
   }
   case SHType::Int3: {
-    SHInt3 vec = a.payload.int3Value == b.payload.int3Value;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    // Scalar is faster for just 3 elements
+    const int32_t* av = (const int32_t*)&a.payload.int3Value;
+    const int32_t* bv = (const int32_t*)&b.payload.int3Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2];
   }
   case SHType::Int4: {
-    SHInt4 vec = a.payload.int4Value == b.payload.int4Value;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+#ifdef __ARM_NEON
+    auto va = vld1q_s32((const int32_t*)&a.payload.int4Value);
+    auto vb = vld1q_s32((const int32_t*)&b.payload.int4Value);
+    auto cmp = vceqq_s32(va, vb);
+    return vminvq_u32(vreinterpretq_u32_s32(cmp)) == 0xFFFFFFFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_si128((const __m128i*)&a.payload.int4Value);
+    auto vb = _mm_load_si128((const __m128i*)&b.payload.int4Value);
+    auto cmp = _mm_cmpeq_epi32(va, vb);
+    return _mm_movemask_epi8(cmp) == 0xFFFF;
+#else
+    const int32_t* av = (const int32_t*)&a.payload.int4Value;
+    const int32_t* bv = (const int32_t*)&b.payload.int4Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2] && av[3] == bv[3];
+#endif
   }
   case SHType::Int8: {
-    SHInt8 vec = a.payload.int8Value == b.payload.int8Value;
-    for (auto i = 0; i < 8; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+#ifdef __ARM_NEON
+    auto va = vld1q_s16((const int16_t*)&a.payload.int8Value);
+    auto vb = vld1q_s16((const int16_t*)&b.payload.int8Value);
+    auto cmp = vceqq_s16(va, vb);
+    return vminvq_u16(vreinterpretq_u16_s16(cmp)) == 0xFFFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_si128((const __m128i*)&a.payload.int8Value);
+    auto vb = _mm_load_si128((const __m128i*)&b.payload.int8Value);
+    auto cmp = _mm_cmpeq_epi16(va, vb);
+    return _mm_movemask_epi8(cmp) == 0xFFFF;
+#else
+    const int16_t* av = (const int16_t*)&a.payload.int8Value;
+    const int16_t* bv = (const int16_t*)&b.payload.int8Value;
+    return av[0] == bv[0] && av[1] == bv[1] && av[2] == bv[2] && av[3] == bv[3] &&
+           av[4] == bv[4] && av[5] == bv[5] && av[6] == bv[6] && av[7] == bv[7];
+#endif
   }
   case SHType::Int16: {
-    SHInt16 vec = a.payload.int16Value == b.payload.int16Value;
-    for (auto i = 0; i < 16; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+#ifdef __ARM_NEON
+    auto va = vld1q_s8((const int8_t*)&a.payload.int16Value);
+    auto vb = vld1q_s8((const int8_t*)&b.payload.int16Value);
+    auto cmp = vceqq_s8(va, vb);
+    return vminvq_u8(vreinterpretq_u8_s8(cmp)) == 0xFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_si128((const __m128i*)&a.payload.int16Value);
+    auto vb = _mm_load_si128((const __m128i*)&b.payload.int16Value);
+    auto cmp = _mm_cmpeq_epi8(va, vb);
+    return _mm_movemask_epi8(cmp) == 0xFFFF;
+#else
+    // For 16 bytes, memcmp is likely optimal
+    return memcmp(&a.payload.int16Value, &b.payload.int16Value, 16) == 0;
+#endif
   }
   case SHType::Float2: {
-    const SHFloat2 vepsi = {DBL_EPSILON, DBL_EPSILON};
-    SHFloat2 diff = a.payload.float2Value - b.payload.float2Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    SHInt2 vec = diff <= vepsi;
-    for (auto i = 0; i < 2; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    // Scalar is faster for just 2 elements - use appropriate epsilon for data type
+    const double* av = (const double*)&a.payload.float2Value;
+    const double* bv = (const double*)&b.payload.float2Value;
+    return (fabs(av[0] - bv[0]) <= DBL_EPSILON) && (fabs(av[1] - bv[1]) <= DBL_EPSILON);
   }
   case SHType::Float3: {
-    const SHFloat3 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    SHFloat3 diff = a.payload.float3Value - b.payload.float3Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    diff[2] = __builtin_fabs(diff[2]);
-    SHInt3 vec = diff <= vepsi;
-    for (auto i = 0; i < 3; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    // Use SIMD for 4 elements, mask to check only first 3
+#ifdef __ARM_NEON
+    auto va = vld1q_f32((const float*)&a.payload.float3Value);
+    auto vb = vld1q_f32((const float*)&b.payload.float3Value);
+    auto veps = vdupq_n_f32(FLT_EPSILON);
+    auto diff = vabsq_f32(vsubq_f32(va, vb));
+    auto cmp = vcleq_f32(diff, veps);
+    // Set 4th lane to "pass" value, then use horizontal min
+    cmp = vsetq_lane_u32(0xFFFFFFFF, vreinterpretq_u32_s32(cmp), 3);
+    return vminvq_u32(cmp) == 0xFFFFFFFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_ps((const float*)&a.payload.float3Value);
+    auto vb = _mm_load_ps((const float*)&b.payload.float3Value);
+    auto veps = _mm_set1_ps(FLT_EPSILON);
+    auto diff = _mm_sub_ps(va, vb);
+    auto sign_mask = _mm_set1_ps(-0.0f);
+    diff = _mm_andnot_ps(sign_mask, diff);
+    auto cmp = _mm_cmple_ps(diff, veps);
+    auto mask = _mm_movemask_ps(cmp);
+    return (mask & 0x7) == 0x7; // First 3 bits set
+#else
+    const float* av = (const float*)&a.payload.float3Value;
+    const float* bv = (const float*)&b.payload.float3Value;
+    return (fabsf(av[0] - bv[0]) <= FLT_EPSILON) && 
+           (fabsf(av[1] - bv[1]) <= FLT_EPSILON) && 
+           (fabsf(av[2] - bv[2]) <= FLT_EPSILON);
+#endif
   }
   case SHType::Float4: {
-    const SHFloat4 vepsi = {FLT_EPSILON, FLT_EPSILON, FLT_EPSILON, FLT_EPSILON};
-    SHFloat4 diff = a.payload.float4Value - b.payload.float4Value;
-    diff[0] = __builtin_fabs(diff[0]);
-    diff[1] = __builtin_fabs(diff[1]);
-    diff[2] = __builtin_fabs(diff[2]);
-    diff[3] = __builtin_fabs(diff[3]);
-    SHInt4 vec = diff <= vepsi;
-    for (auto i = 0; i < 4; i++)
-      if (vec[i] == 0)
-        return false;
-    return true;
+    // SIMD is actually beneficial for 4 floats
+#ifdef __ARM_NEON
+    auto va = vld1q_f32((const float*)&a.payload.float4Value);
+    auto vb = vld1q_f32((const float*)&b.payload.float4Value);
+    auto veps = vdupq_n_f32(FLT_EPSILON);
+    auto diff = vabsq_f32(vsubq_f32(va, vb));
+    auto cmp = vcleq_f32(diff, veps);
+    return vminvq_u32(cmp) == 0xFFFFFFFF;
+#elif defined(__SSE2__)
+    auto va = _mm_load_ps((const float*)&a.payload.float4Value);
+    auto vb = _mm_load_ps((const float*)&b.payload.float4Value);
+    auto veps = _mm_set1_ps(FLT_EPSILON);
+    auto diff = _mm_sub_ps(va, vb);
+    // Manual abs for floats (clear sign bit)
+    auto sign_mask = _mm_set1_ps(-0.0f);
+    diff = _mm_andnot_ps(sign_mask, diff);
+    auto cmp = _mm_cmple_ps(diff, veps);
+    return _mm_movemask_ps(cmp) == 0xF;
+#else
+    const float* av = (const float*)&a.payload.float4Value;
+    const float* bv = (const float*)&b.payload.float4Value;
+    return (fabsf(av[0] - bv[0]) <= FLT_EPSILON) && 
+           (fabsf(av[1] - bv[1]) <= FLT_EPSILON) && 
+           (fabsf(av[2] - bv[2]) <= FLT_EPSILON) && 
+           (fabsf(av[3] - bv[3]) <= FLT_EPSILON);
+#endif
   }
   case SHType::Color:
     return a.payload.colorValue.r == b.payload.colorValue.r && a.payload.colorValue.g == b.payload.colorValue.g &&
@@ -258,16 +323,24 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
   return false;
 }
 
-// avoid trying to be smart with SIMDs here
-// compiler will outsmart us likely anyway.
-#define SHVECTOR_CMP(_a_, _b_, _s_, _final_) \
-  for (auto i = 0; i < _s_; i++) {           \
-    if (_a_[i] < _b_[i])                     \
-      return true;                           \
-    else if (_a_[i] > _b_[i])                \
-      return false;                          \
-  }                                          \
-  return _final_
+// Vectorized comparison helpers
+template<typename T, size_t N>
+ALWAYS_INLINE inline bool vector_less_than(const T* a, const T* b) {
+  for (size_t i = 0; i < N; i++) {
+    if (a[i] < b[i]) return true;
+    if (a[i] > b[i]) return false;
+  }
+  return false;
+}
+
+template<typename T, size_t N>
+ALWAYS_INLINE inline bool vector_less_equal(const T* a, const T* b) {
+  for (size_t i = 0; i < N; i++) {
+    if (a[i] < b[i]) return true;
+    if (a[i] > b[i]) return false;
+  }
+  return true;
+}
 
 ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   if (a.valueType != b.valueType)
@@ -291,28 +364,28 @@ ALWAYS_INLINE inline bool operator<(const SHVar &a, const SHVar &b) {
   case SHType::Float:
     return a.payload.floatValue < b.payload.floatValue;
   case SHType::Int2: {
-    SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, false);
+    return vector_less_than<int64_t, 2>((const int64_t*)&a.payload.int2Value, (const int64_t*)&b.payload.int2Value);
   }
   case SHType::Int3: {
-    SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, false);
+    return vector_less_than<int32_t, 3>((const int32_t*)&a.payload.int3Value, (const int32_t*)&b.payload.int3Value);
   }
   case SHType::Int4: {
-    SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, false);
+    return vector_less_than<int32_t, 4>((const int32_t*)&a.payload.int4Value, (const int32_t*)&b.payload.int4Value);
   }
   case SHType::Int8: {
-    SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, false);
+    return vector_less_than<int16_t, 8>((const int16_t*)&a.payload.int8Value, (const int16_t*)&b.payload.int8Value);
   }
   case SHType::Int16: {
-    SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, false);
+    return vector_less_than<int8_t, 16>((const int8_t*)&a.payload.int16Value, (const int8_t*)&b.payload.int16Value);
   }
   case SHType::Float2: {
-    SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, false);
+    return vector_less_than<double, 2>((const double*)&a.payload.float2Value, (const double*)&b.payload.float2Value);
   }
   case SHType::Float3: {
-    SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, false);
+    return vector_less_than<float, 3>((const float*)&a.payload.float3Value, (const float*)&b.payload.float3Value);
   }
   case SHType::Float4: {
-    SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, false);
+    return vector_less_than<float, 4>((const float*)&a.payload.float4Value, (const float*)&b.payload.float4Value);
   }
   case SHType::Color:
     return a.payload.colorValue.r < b.payload.colorValue.r || a.payload.colorValue.g < b.payload.colorValue.g ||
@@ -392,28 +465,28 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   case SHType::Float:
     return a.payload.floatValue <= b.payload.floatValue;
   case SHType::Int2: {
-    SHVECTOR_CMP(a.payload.int2Value, b.payload.int2Value, 2, true);
+    return vector_less_equal<int64_t, 2>((const int64_t*)&a.payload.int2Value, (const int64_t*)&b.payload.int2Value);
   }
   case SHType::Int3: {
-    SHVECTOR_CMP(a.payload.int3Value, b.payload.int3Value, 3, true);
+    return vector_less_equal<int32_t, 3>((const int32_t*)&a.payload.int3Value, (const int32_t*)&b.payload.int3Value);
   }
   case SHType::Int4: {
-    SHVECTOR_CMP(a.payload.int4Value, b.payload.int4Value, 4, true);
+    return vector_less_equal<int32_t, 4>((const int32_t*)&a.payload.int4Value, (const int32_t*)&b.payload.int4Value);
   }
   case SHType::Int8: {
-    SHVECTOR_CMP(a.payload.int8Value, b.payload.int8Value, 8, true);
+    return vector_less_equal<int16_t, 8>((const int16_t*)&a.payload.int8Value, (const int16_t*)&b.payload.int8Value);
   }
   case SHType::Int16: {
-    SHVECTOR_CMP(a.payload.int16Value, b.payload.int16Value, 16, true);
+    return vector_less_equal<int8_t, 16>((const int8_t*)&a.payload.int16Value, (const int8_t*)&b.payload.int16Value);
   }
   case SHType::Float2: {
-    SHVECTOR_CMP(a.payload.float2Value, b.payload.float2Value, 2, true);
+    return vector_less_equal<double, 2>((const double*)&a.payload.float2Value, (const double*)&b.payload.float2Value);
   }
   case SHType::Float3: {
-    SHVECTOR_CMP(a.payload.float3Value, b.payload.float3Value, 3, true);
+    return vector_less_equal<float, 3>((const float*)&a.payload.float3Value, (const float*)&b.payload.float3Value);
   }
   case SHType::Float4: {
-    SHVECTOR_CMP(a.payload.float4Value, b.payload.float4Value, 4, true);
+    return vector_less_equal<float, 4>((const float*)&a.payload.float4Value, (const float*)&b.payload.float4Value);
   }
   case SHType::Color:
     return a.payload.colorValue.r <= b.payload.colorValue.r && a.payload.colorValue.g <= b.payload.colorValue.g &&
@@ -477,7 +550,7 @@ ALWAYS_INLINE inline bool operator<=(const SHVar &a, const SHVar &b) {
   __builtin_unreachable();
 }
 
-#undef SHVECTOR_CMP
+
 
 ALWAYS_INLINE inline bool operator!=(const SHVar &a, const SHVar &b) { return !(a == b); }
 
