@@ -76,6 +76,7 @@ struct Track {
   }
 
   entt::scoped_connection _connection;
+  SHWire *_triggerWire{nullptr};
 
   void warmup(SHContext *context) {
     _action.warmup(context);
@@ -92,17 +93,24 @@ struct Track {
       _connection = mesh->dispatcher.sink<shards::OnTrackedVarSet>().connect<&Track::handleTrackedVarSetWithMask>(this);
     }
 
+    _triggerWire = context->rootWire();
+
     _shouldActivate = true; // always trigger the first time
   }
 
   void handleTrackedVarSet(OnTrackedVarSet &event) {
-    if (!_shouldActivate && _varNames.contains(event.name)) {
+    shassert(event.wire && event.wire->context && event.wire->context->rootWire() &&
+             "Tracked var set event should have a valid wire");
+    if (!_shouldActivate && event.wire->context->rootWire() == _triggerWire && _varNames.contains(event.name)) {
       _shouldActivate = true;
     }
   }
 
   void handleTrackedVarSetWithMask(OnTrackedVarSet &event) {
-    if (!_shouldActivate && _varNames.contains(event.name) && (event.newValue.trackingMask & _mask.payload.intValue) != 0) {
+    shassert(event.wire && event.wire->context && event.wire->context->rootWire() &&
+             "Tracked var set event should have a valid wire");
+    if (!_shouldActivate && event.wire->context->rootWire() == _triggerWire && _varNames.contains(event.name) &&
+        (event.newValue.trackingMask & _mask.payload.intValue) != 0) {
       _shouldActivate = true;
     }
   }

@@ -35,6 +35,10 @@
       TUI.Filler
     })
   }) | TUI.RunOnce
+
+  Once({
+    "Ciao Mondo" > hello-text
+  })
   
   ; Track([hello-text] {
   ;   Inc(counter)
