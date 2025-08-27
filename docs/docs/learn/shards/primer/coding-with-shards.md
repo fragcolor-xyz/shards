@@ -227,7 +227,7 @@ When defining variables in your program, you can use `Once` to ensure that varia
 
 ## Grouping shards
 
-[`@define`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards to form a new shard. This new shard can then be used inline at any other point of your code. It is useful for organizing your code and improving readability.
+[`@define`](../../../../reference/shards/lisp/macros/#defshards) Creates a named definition in the current environment. These definitions can then be used inline in your script for substitution. By creating a named definition using a group of shards, you can reduce repeating huge chunks of code and improve readability.
 
 `@define` has a syntax as such:
 
@@ -250,7 +250,7 @@ When used in code:
     @send-message("Hello World!")
     ```
 
-`@template` similarly allows you to group shards together and create a new shard. `@template` however allows you pass parameters into the new shard.
+`@template` similarly allows you to group shards together to create a definition in the current environment. `@template` however allows you pass parameters into the new shard.
 
 === "Code"
 

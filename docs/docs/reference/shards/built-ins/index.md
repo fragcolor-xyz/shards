@@ -9,12 +9,12 @@ Built-in functions are special keywords in Shards, prefixed with `@`, that provi
 
 They are used for:
 
-* [Data construction](data-contruction.md) – e.g., `@i2`, `@f3`, and `@color` for creating vectors, floats, or color values.
+* [Data construction](data-construction.md) – e.g., `@i2`, `@f3`, `@color` or `@type` for creating vectors, floats, color values or type descriptions.
 
-* [Introspection and meta-programming](introspection-meta.md) – e.g., `@type` to generate type descriptors, or `@namespace` to query the current namespace.
-
-* [Platform or context utilities](utilities.md) – e.g., `@platform` to detect the current platform or `@capture-eval-context` to snapshot the current evaluation state.
+* [Introspection and Environment](introspection-environment.md) – e.g., `@namespace`, `@platform`, `@capture-eval`, for querying state and capturing the evaluation context.
 
 * [Execution](execution.md) - `@wire`, `@mesh`, `@schedule`, `@run` to execute shards code.
+
+* [Macros and Templating](macros-templating.md) - `@define`, `@template`, `@macro` and `@ast` to group shards together for the purpose of reusing blocks of code.
 
 --8<-- "includes/license.md"
