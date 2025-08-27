@@ -9,14 +9,14 @@ if(APPLE)
 
   # Set deployment target BEFORE any language enabling or project() calls
   if(IOS)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.3" CACHE STRING "Minimum iOS deployment version" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.3" CACHE STRING "Minimum iOS deployment version")
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET}")
   elseif(VISIONOS)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "1.2" CACHE STRING "Minimum visionOS deployment version" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "1.2" CACHE STRING "Minimum visionOS deployment version")
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-xros${CMAKE_OSX_DEPLOYMENT_TARGET}")
   else()
     set(MACOSX TRUE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.5" CACHE STRING "Minimum macOS deployment version" FORCE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.5" CACHE STRING "Minimum macOS deployment version")
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
   endif()
 
