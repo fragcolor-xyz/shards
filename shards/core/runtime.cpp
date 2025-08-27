@@ -3191,6 +3191,24 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     SHLOG_INFO("! shards beforeUnload called !");
   };
 
+  result->deriveTableIndices = InternalCore::deriveTableIndices;
+
+  result->triggerVarValueChange = [](SHWireRef wire, SHStringWithLen name, const SHVar *key, bool isGlobal, const SHVar *var) {
+    auto &sc = SHWire::sharedFromRef(wire);
+    if (var->trackingMask == 0)
+      return false;
+
+    auto mesh = sc->mesh.lock();
+    if (!mesh)
+      return false;
+
+    auto nameStr = std::string_view(name.string, size_t(name.len));
+    OnTrackedVarSet ev{sc->id, nameStr, *key, *var, isGlobal, sc.get()};
+    mesh->dispatcher.trigger(ev);
+
+    return true;
+  };
+
   setupCoreLoggingAPI(result);
 
   return result;

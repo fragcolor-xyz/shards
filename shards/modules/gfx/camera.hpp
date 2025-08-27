@@ -49,7 +49,7 @@ struct TargetCameraStateTable : public shards::TableVar {
       shards::CoreInfo::FloatType,
       shards::CoreInfo::Float2Type,
   }};
-  static inline shards::Type Type = shards::Type::TableOf(_types, _keys);
+  static inline shards::TypeInfo Type = shards::TypeInfo::FixedTableOf(_types, _keys);
 
   TargetCameraStateTable()
       : shards::TableVar(),                     //

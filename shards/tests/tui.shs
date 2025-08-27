@@ -3,9 +3,10 @@
     "Hello" | Set(hello-text TrackingMask: 1)
     0 >= counter
     "" >= text
+    "abc" | Set(second-var TrackingMask: 22)
   })
   
-  Track([hello-text] {
+  Track([hello-text second-var] {
     Inc(counter)
     TUI.VBox({
       TUI.HBox({
@@ -33,8 +34,17 @@
       })
       
       TUI.Filler
+
+      Track(second-var {
+        second-var | TUI.Text
+      } Mask: 22)
     })
   }) | TUI.RunOnce
+
+  Once({
+    "Ciao Mondo" > hello-text
+    "def" > second-var
+  })
   
   ; Track([hello-text] {
   ;   Inc(counter)

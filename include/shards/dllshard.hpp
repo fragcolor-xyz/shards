@@ -267,6 +267,8 @@ public:
   static uint32_t getSourceFileId(SHStringWithLen path) { return sCore._core->getSourceFileId(path); }
   static SHStringWithLen getSourceFileName(uint32_t file_id) { return sCore._core->getSourceFileName(file_id); }
 
+  static bool deriveTableIndices(SHTableTypeInfo &info) { return sCore._core->deriveTableIndices(&info); }
+
 private:
   static inline CoreLoader sCore{};
 };
@@ -464,6 +466,7 @@ inline void abortWire(SHContext *ctx, struct SHStringWithLen msg) { Core::abortW
 inline void abortWire(SHContext *ctx, std::string_view msg) { Core::abortWire(ctx, toSWL(msg)); }
 inline void log(std::string_view msg) { Core::log(toSWL(msg)); }
 inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<Core>(blk); }
+inline bool deriveTableIndices(SHTableTypeInfo &info) { return Core::deriveTableIndices(info); }
 }; // namespace shards
 
 #endif
