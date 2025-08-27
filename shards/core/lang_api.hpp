@@ -63,8 +63,6 @@ inline void setupCoreLang(SHCore *result) {
 
   result->getSourceFileId = InternalCore::getSourceFileId;
   result->getSourceFileName = InternalCore::getSourceFileName;
-
-  result->deriveTableIndices = InternalCore::deriveTableIndices;
 }
 } // namespace shards
 

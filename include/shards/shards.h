@@ -1169,6 +1169,9 @@ typedef struct SHLogSettings_ {
 
 typedef void(__cdecl *SHSetupLogger)(const SHLogSettings *logSettings);
 
+typedef SHBool(__cdecl *SHTriggerVarValueChange)(SHWireRef wire, struct SHStringWithLen name, const struct SHVar *key,
+                                               bool isGlobal, const struct SHVar *var);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1379,6 +1382,9 @@ typedef struct _SHCore {
 
   // Utility to deal with SHTableTypeInfo
   SHDeriveTableIndices deriveTableIndices;
+
+  // Utility to trigger var value change (which trigger tracking mask events)
+  SHTriggerVarValueChange triggerVarValueChange;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
