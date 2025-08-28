@@ -1408,7 +1408,7 @@ struct ParallelBase : public CapturingSpawners {
     if (_threads.valueType == SHType::Int) {
       if (_threads.payload.intValue > 0) {
         SPDLOG_DEBUG("ParallelBase: Creating taskflow with {} threads", _threads.payload.intValue);
-        _ownedExecutor.emplace(_threads.payload.intValue);
+        _ownedExecutor.reset(new tf::Executor(_threads.payload.intValue));
         _executor = &*_ownedExecutor;
       } else {
         _executor = nullptr;
@@ -1633,8 +1633,8 @@ protected:
   std::vector<std::shared_ptr<SHMesh>> _meshes;
   std::vector<ManyWire *> _wires;
   Var _threads{};
-  std::optional<tf::Executor> _ownedExecutor;
   tf::Executor *_executor{};
+  std::unique_ptr<tf::Executor> _ownedExecutor;
 };
 
 struct TryMany : public ParallelBase {
