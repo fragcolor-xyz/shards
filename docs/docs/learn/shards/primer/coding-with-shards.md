@@ -24,7 +24,7 @@ For example, `Math.Add` has the parameter `Operand` which is defined by the user
 
 ![The parameters set for a shard affects it's behavior.](assets/shard-parameter.png)
 
-In code form, parameters are defined by the user within the parentheses of the shard itself, after the shard's name. The above examples will appear as `5 Math.Add(Operand: 1)` and `5 Math.Add(3)` in code. 
+In code form, parameters are defined by the user within the parentheses after the shard's name. The above examples will appear as `5 Math.Add(Operand: 1)` and `5 Math.Add(3)` in code. 
  
 Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
@@ -153,7 +153,7 @@ For the full list of data types and more in-depth reading, check out the `Types`
 
 To better work with data across your code, we can assign them to data containers known as *variables*.
 
-Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing out the entire float each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever it is needed.
+Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing out the entire float each time, you could assign it to a variable called `pi-value` and simply use that variable whenever it is needed.
 
 === "Without Variables"
 
@@ -168,7 +168,7 @@ Imagine a scenario where you have a float `3.141592653589793` that you need to r
     pi-value | Math.Add(pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
     ```
 
-    1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
+    1. 3.141592653589793 is assigned to the variable `pi-value`. We'll learn more about assigning variables in a bit!
 
 Some example of variable names:
 
@@ -231,7 +231,7 @@ When defining variables in your program, you can use `Once` to ensure that varia
 
 `@define` has a syntax as such:
 
-=== "Code"
+=== "Creating @define"
 
     ```shards
 
@@ -244,7 +244,7 @@ When defining variables in your program, you can use `Once` to ensure that varia
 
 When used in code:
 
-=== "Code"
+=== "Using @define"
 
     ```shards
     @send-message("Hello World!")
@@ -252,7 +252,7 @@ When used in code:
 
 `@template` similarly allows you to group shards together to create a definition in the current environment. `@template` however allows you pass parameters into the new shard.
 
-=== "Code"
+=== "Creating @template"
 
     ```shards
 
@@ -264,7 +264,7 @@ When used in code:
 
 When used in code:
 
-=== "Code"
+=== "Using @template"
 
     ```shards
 
@@ -279,43 +279,82 @@ When used in code:
     Hello World!
     ```
 
-Let us now take a look at how we can utilize `@define` in a code snippet that counts from 1 to 5 multiple times.
+Let us now take a look at how we can utilize `@define`. Let's say we have a player that can be damaged by different sources.
 
 === "Code"
     
     ```shards
 
-    Repeat(
-     Action: {
-       Msg("1")
-       Msg("2")
-       Msg("3")
-       Msg("4")
-       Msg("5")
-     }
-     Times: 5)
+    @wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
+
+			Msg("Player gets damaged by monster!")
+			current-player-health | Math.Subtract(10) > current-player-health
+			current-player-health | Log("Player's Current Health")
+
+			Msg("Player gets damaged by trap!")
+			current-player-health | Math.Subtract(10) > current-player-health
+			current-player-health | Log("Player's Current Health")
+
+			Msg("Player gets damaged by harsh environment!")
+			current-player-health | Math.Subtract(10) > current-player-health
+			current-player-health | Log("Player's Current Health")
+    } Looped: false)
     ```
 
-We can replace the block of the code in the `Action` parameter above with a `@define` to make the count from 1 to 5 code reusable and factor it out under a new shard called `msg-one-to-five`.
+We can replace code that is repeated in the `Action` parameter above with a `@define` to make it less verbose and more readable.
 
-=== "Code"
+=== "Using @define"
     
     ```shards
-    
-    @define(msg-one-to-five {
-      Msg("1")
-      Msg("2")
-      Msg("3")
-      Msg("4")
-      Msg("5")
-    })
 
-    Repeat(
-     Action: {
-        @msg-one-to-five
-     }
-     Times: 5)
+		@define(damage-player {
+			current-player-health | Math.Subtract(10) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
+
+    @wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
+
+			Msg("Player gets damaged by monster!")
+			@damage-player
+
+			Msg("Player gets damaged by trap!")
+			@damage-player
+
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player
+    } Looped: false)
     ```
+
+Currently the `@damage-player`definition we created can only do 10 damage to the player. If we want to vary the amount of damage that can be done, we can instead use `@template`
+
+=== "Using @template"
+		```shards
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
+
+    @wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
+
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
+
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
+
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+    } Looped: false)
+		```
 
 ## The Wire
 
@@ -398,7 +437,7 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
 - The maximum number of iterations, which is typically used for debugging purposes.
 
 !!! note
-    If your program has animations, we recommend that you set the first value to `(/ 1.0 60.0)` which emulates 60 frames per second (60 FPS).
+    If your program has animations, we recommend that you set the first value to `(1.0 | Math.Divide(60.0))` which emulates 60 frames per second (60 FPS).
 
     === "Running a Mesh at 60 FPS"
     
@@ -410,107 +449,65 @@ Let us now take a look at what a basic Shards program will look like!
 
 ## Writing a sample program
 
-Do you recall the `hungry-cat` loop from the previous chapter? Let us try to implement a simpler modified version of it using the concepts learned in this chapter.
+Do you remember the example where our player gets damaged when learning about `@define` and `@template`? Let's build on that example using the concepts we have learnt in this chapter.
 
-![The modified overview of the hungry-cat loop.](assets/modified-hungry-cat-loop.png)
+### @template and @wire
 
-In this example, the "cat" starts off with 0 hunger. At the end of each loop, we increase the hunger by 1. Once the value of hunger is greater than 0, the cat starts to make cat noises.
+=== "Code So Far"
+		```shards
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
 
-### @define and @wire
+		@wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
 
-Let us first define the `make-cat-noises` Wire.
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
 
-=== "make-cat-noises"
-    
-    ```shards
-    @wire(make-cat-noises {
-      Msg ("Meow")
-      Msg ("Meow") 
-      Msg( "Meow")
-      Msg ("Meow")
-      Msg ("Meow") 
-      Msg( "Meow")
-      Msg ("Meow")
-      Msg ("Meow") 
-      Msg( "Meow")
-      Msg ("Meow")
-      Msg ("Meow") 
-      Msg( "Meow")
-    })
-    ```
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
 
-We can employ the `Repeat` shard we saw earlier to make our code more efficient. 
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+		} Looped: true)
+		```
 
-=== "make-cat-noises"
-    
-    ```shards
-    @wire(make-cat-noises {
-      Repeat(
-       Action: ({
-        Msg("Meow")
-       })
-       Times: 12)
-    })
-    ```
-Going a step further, we can better organize our code by creating new shards with `@define`. Look at how much neater it is now!
+For this example, we have made our `main-game` `Looped: true`. Now, let's make our player try to heal their health after it falls below a certain value. First, let's create a new definition called `@heal-player`.
 
-=== "make-cat-noises"
-    
-    ```shards
-    define(meows {
-      Repeat(
-       Action: {(
-        ("Meow"))}
-       Times: 12)
-    })
+=== "Code So Far"
+		```shards
+		@define(heal-player {
+			current-player-health | Math.Add(5) > current-player-health
+		})
 
-    @wire(mews {
-        @meows
-    } Looped: false)
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
 
+		@wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
 
-    ```
-### The Loop
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
 
-With the `make-cat-noises` Wire done, let us now look at creating the full `hungry-cat` program loop.
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
 
-=== "hungry-cat"
-    
-    ```shards
-    @wire(hungry-cat {
-
-    } Looped: true)
-    ```
-
-We want to first create a variable to track the cat's hunger level. Create the `hunger` variable and assign the value of 0 to it. Remember to create the variable within `Setup` to prevent it from being reassigned at each iteration of the loop.
-
-=== "hungry-cat"
-    
-    ```shards
-    @wire(hungry-cat
-      Once({
-        0 >= hunger
-      })
-    Looped: true) ;; (1)
-    ```
-
-    1. Code within a `Once` will only be run once in a program.
-
-Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard to increase the value of `hunger` every time the Wire loops.
-
-=== "hungry-cat"
-    
-    ```shards
-    @wire(hungry-cat {
-      Once({
-       0 >= hunger})
-      Math.Inc(hunger)
-    } Looped: true)
-    ```
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+		} Looped: true)
+		```
 
 ### Conditionals
 
-A conditional can be used to check if `hunger` is greater than 0. When the cat's hunger level has risen above 0, we want the cat to start making cat noises. Some conditional shards that you can use are:
+A conditional can be used to check if the player's health has fallen below a specific value. There are two different conditionals that can be used:
 
 - [`When`](../../../../reference/shards/shards/General/When/)
 - [`If`](../../../../reference/shards/shards/General/If/)
@@ -519,46 +516,51 @@ A conditional can be used to check if `hunger` is greater than 0. When the cat's
 
 `If` is similar to `When`, but it has an additional parameter `Else` that allows it to have a syntax that reads as such: `If` a condition is met, `Then` a specified action occurs, `Else` another action is executed instead.
 
-For this example, using `When` would suffice as we only need `make-cat-noises` to run `When` hunger `IsMore` than 0.
+For this example, using `When` would suffice as we only need `@heal-player` to run when `current-player-health` falls below 20.
 
-=== "hungry-cat"
-    
+=== "Adding Conditional"
     ```shards
-    @mesh(main)
+		@define(heal-player {
+			current-player-health | Math.Add(5) > current-player-health
+			Log("Player healed!")
+		})
+		
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
 
-    @wire(make-cat-noises {
-        Repeat(
-            Times: 12
-            Action: {
-                Msg("Meow")
-            }
-        )
-    } Looped: false)
+		@wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
 
-    @wire(hungry-cat {
-      Once({
-       0 >= hunger})
-      hunger
-      When(
-       Predicate: IsMore(0) ;; (1)
-       Action: {Detach(make-cat-noises)}
-      ) ;; (2)
-      Math.Inc(hunger)
-    })
-    ```
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
 
-    1. [`IsMore`](../../../../reference/shards/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
-    2. [`Detach`](../../../../reference/shards/shards/General/Detach/) is used to schedule a Wire on the Mesh. You will learn more about using `Detach` in the following chapter!
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
+
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+
+			current-player-health
+			When(Predicate: IsLess(20) Action: {
+				@heal-player
+			})
+		} Looped: true)
+		```
+
+    1. [`IsLess`](../../../../reference/shards/shards/General/IsLess/) compares the input to its parameter and outputs `true` if the input has a lower value. In this case, it is comparing the value of `current-player-health` to 0.
 
 ### Debugging
 
-What if you wanted to check the value of `hunger` in each loop iteration? 
-We can employ a shard that is useful when you wish to debug your code - the [`Log`](../../../../reference/shards/shards/Math/Log/) shard.
+If you look closely, you will notice that we used the [`Log`](../../../../reference/shards/shards/Math/Log/) shard, which is useful for debugging code .
 
 !!! note "Debugging"
     Debugging is the process of attempting to find the cause of an error or undesirable behavior in your program. When attempting to debug your code, functions or tools that allow you to check the value of variables at various points in your code can be useful in helping you narrow down where the errors could be originating from.
 
-`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we will use `Log` to verify the value of `hunger` before the conditional check with `When` occurs. Upon running the code, you will see that when the value of `hunger` becomes 1, the cat starts to make noises.
+`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we use `Log` to verify the value of `current-player-health` at each point health change.
 
 ### Readying the Mesh
 
@@ -570,75 +572,179 @@ Before our program can run, do not forget to:
 
 - `run` the Mesh.
 
-=== "hungry-cat"
-    
+=== "Adding Conditional"
     ```shards
-    @mesh(main)
+		@mesh(main)
+		@define(heal-player {
+			current-player-health | Math.Add(5) > current-player-health
+			Log("Player healed!")
+		})
+		
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
 
-    @wire(make-cat-noises {
-        Repeat(
-            Times: 12
-            Action: {
-                Msg("Meow")
-            }
-        )
-    } Looped: false)
+		@wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
 
-    @wire(hungry-cat {
-      Once({
-       0 >= hunger})
-      hunger
-      When(
-       Predicate: IsMore(0) ;; (1)
-       Action: {Detach(make-cat-noises)}
-      ) ;; (2)
-      Math.Inc(hunger)
-    })
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
 
-    @schedule(main hungry-cat)
-    @run(main) ;; (1)
-    ```
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
 
-    1. We set the Mesh to only run 3 iterations. This means that the `hungry-cat` loop will only occur 3 times.
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+
+			current-player-health
+			When(Predicate: IsLess(20) Action: {
+				@heal-player
+			})
+		} Looped: true)
+
+		@schedule(
+			Mesh: main 
+			Wire: main-game
+		)
+		@run(
+			Mesh: main 
+			TickTimer: 1.0 
+			Runs: 4
+		)
+		```
+
+    1. We set the Mesh to only run 4 iterations. This means that the `main-game` loop will only occur 3 times.
     
 === "Results"
     
     ```
-    [hungry-cat] Hunger Level: 0
-    [hungry-cat] Hunger Level: 1
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [hungry-cat] Hunger Level: 2
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 30
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: 25
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: 23
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 13
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: 8
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: 6
+		[main-game] Player healed!: 11
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 1
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: -4
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: -6
+		[main-game] Player healed!: -1
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: -11
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: -16
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: -18
+		[main-game] Player healed!: -13
     ```
+
+Notice that our player's health falls below 0. Let's have player death occur by using another wire.
+
+=== "Player Death wire"
+		```shards
+		@wire(player-death {
+			Msg("Player has died!")
+		} Looped: true)
+		```
+
+Now let's create another conditional to check when player's health is 0 or less. Then let's switch our wire's flow to the `player-death` wire when this happen. 
+
+!!! note "Wire Flow"
+    We are being a bit cheeky and using the shard [`SwitchTo`](../../../../reference/shards/shards/General/SwitchTo/) here to tease you on what is to come! Wire flow will be taught in the next chapter. For now, just know that we are using `SwitchTo` to execute the `player-death` wire instead of the `main-game` wire once player health is 0 or less.
+
+=== "Final Code"
+		```shards
+		@mesh(main)
+
+		@wire(player-death {
+			Msg("Player has died!")
+		} Looped: true)
+
+		@define(heal-player {
+			current-player-health | Math.Add(5) > current-player-health
+			Log("Player healed!")
+		})
+
+		@template(damage-player [damage-amount] {
+			current-player-health | Math.Subtract(damage-amount) > current-player-health
+			current-player-health | Log("Player's Current Health")
+		})
+
+		@wire(main-game {
+			Once({
+				40 >= current-player-health ;; initializing our player health variable
+			})
+
+			Msg("Player gets damaged by monster!")
+			@damage-player(10)
+
+			Msg("Player gets damaged by trap!")
+			@damage-player(5)
+
+			Msg("Player gets damaged by harsh environment!")
+			@damage-player(2)
+
+			current-player-health
+			When(Predicate: IsLess(20) Action: {
+				@heal-player
+			})
+
+			current-player-health
+			When(Predicate: IsLessEqual(0) Action: {
+				SwitchTo(player-death) ;; Switching execution to player-death wire
+			})
+		} Looped: true)
+
+		@schedule(
+			Mesh: main 
+			Wire: main-game
+		)
+		@run(
+			Mesh: main 
+			TickTimer: 1.0 
+			Runs: 4
+		)
+		```
+
+=== "Result"
+		```shards
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 30
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: 25
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: 23
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 13
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: 8
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: 6
+		[main-game] Player healed!: 11
+		[main-game] Player gets damaged by monster!
+		[main-game] Player's Current Health: 1
+		[main-game] Player gets damaged by trap!
+		[main-game] Player's Current Health: -4
+		[main-game] Player gets damaged by harsh environment!
+		[main-game] Player's Current Health: -6
+		[main-game] Player healed!: -1
+		[player-death] Player has died!
+		```
 
 Congratulations! You have now learned the fundamentals of writing a Shards program.
 
 We will next look at how you can manipulate the flow of Shards to give you better control of how your program utilizes different Wires.
-
-<!-- TODO Pop Quizzes 
-## Pop Quiz
-Here's a short quiz to test your understanding of this chapter. -->
 
 --8<-- "includes/license.md"

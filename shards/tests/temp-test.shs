@@ -1,8 +1,0 @@
-@mesh(main)
-
-@wire(name-name {
-  1 | Log("result ???")
-} Looped: false)
-
-@schedule(main name-name)
-@run(main 1.0)
