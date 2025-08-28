@@ -8,7 +8,7 @@ license: CC-BY-SA-4.0
 Include `@i2`, `@i3`, `@i4`, `@i8`, `@i16`
 
 * These built-in functions construct integer vector types (int2, int3, int4, int8, int16).
-* If they are called in expression position and have only constants for parameters, the value is evaluated at compile time.
+* If they are called in expression position and have only constants for parameters, the value is evaluated at compose time.
 * Otherwise (if any of its parameters are variables or if the function was called in pipeline position), the value is evaluated at runtime.
 * Can only accept both constants and variables as values for its parameters, however they must be of type int.
 * If only one value was provided for its parameter, the function will automatically fill the remaining parameters with the provided value.
@@ -33,7 +33,7 @@ Include `@i2`, `@i3`, `@i4`, `@i8`, `@i16`
     === "Expression Position"
     
         ```shards
-        Math.Add(Operand: @i2(1 1)) ;; compile time evaluation
+        Math.Add(Operand: @i2(1 1)) ;; compose time evaluation
         ```
     Because `@i2` was used to provide a value for the `Operand` parameter in the `Math.Add` shard, it is in expression position.
 
@@ -50,7 +50,7 @@ Include `@i2`, `@i3`, `@i4`, `@i8`, `@i16`
 Include `@f2`, `@f3`, `@f4`
 
 * These built-in functions construct float vector types (float2, float3, float4).
-* If they are called in expression position and have only constants for parameters, the value is evaluated at compile time.
+* If they are called in expression position and have only constants for parameters, the value is evaluated at compose time.
 * Otherwise (if any of its parameters are variables or if the function was called in pipeline position), the value is evaluated at runtime.
 * Can only accept both constants and variables as values for its parameters, however they must be of `Type::Float`.
 * If only one value was provided for its parameter, the function will automatically fill the remaining parameters with the provided value.

@@ -200,7 +200,7 @@ If you define a constant in your program using `@define`, it will have a global 
 
 Passthrough determines if data can pass through shards unaltered. It allows you to better control the state of the data moving through your program.
 
-Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can wrap the segment of code that we want the input value to Passthrough with `{}`. `{}` saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the within the `{}` will run as per usual, except that the final output will be replaced with the initial input passed into `{}`, thereby creating a passthrough effect.
+Most shards take in data, process the data, and output the results. To allow data to emerge from these shards unaltered, we can wrap the segment of code that we want the input value to Passthrough with `{}`. `{}` creates a sub block and saves the initial value passed in, and outputs the saved value at the end. Any shards passed into the within the `{}` will run as per usual, except that the final output will be replaced with the initial input passed into `{}`, thereby creating a passthrough effect.
 
 Shards that have a `Passthrough` parameter and has that parameter set to true will also output its input unchanged.
 

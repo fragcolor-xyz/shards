@@ -445,6 +445,19 @@ When the Mesh is run, the Wires are executed in sequence and your program is sta
         @run(mesh-name (1.0 | Math.Divide(60.0)))
         ```
 
+!!! note "Parentheses to Control Evaluation Order"
+    By default, Shards evaluates pipelines from left to right. Parentheses let you group expressions so a section is evaluated first, and its result is then passed to the surrounding pipeline. So writing `1 | Math.Add((3 | Math.Subtract(1)))`, is like writing
+
+    === "Inline Expression equivalent"
+    
+        ```shards
+        3 | Math.Subtract(1) = x
+				1 | Math.Add(x)
+        ```
+
+!!! note "Compose-time Evaluations"
+		Writing an expression within parenthesis after `#`, eg. `#(3 | Math.Add(2))`, will have the resulting value of the expression be used. However, compose-time evaluation evaluates the expression at compose time instead of run time.
+
 Let us now take a look at what a basic Shards program will look like!
 
 ## Writing a sample program
