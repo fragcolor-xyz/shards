@@ -640,7 +640,7 @@ extension SHVar: CustomStringConvertible {
     }
 }
 
-class OwnedVar : Hashable, Equatable {
+class OwnedVar: Hashable, Equatable {
     var v: SHVar
     var borrowed = false
 
@@ -2151,10 +2151,14 @@ public class RefCounted<T> {
     deinit {
         assert(manualCount == 1, "RefCounted object deallocated with incorrect reference count (should be 1): \(manualCount)")
     }
+
+    public var refCount: Int {
+        manualCount
+    }
 }
 
 public struct ObjectInfo<T> {
-    var info: SHObjectInfo = SHObjectInfo()
+    var info: SHObjectInfo = .init()
     var vendor: Int32 = 0
     var type: Int32 = 0
 

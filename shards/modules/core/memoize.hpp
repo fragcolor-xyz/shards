@@ -155,7 +155,7 @@ struct Trigger {
     auto res = _action.compose(data);
     if (res.failed)
       throw ComposeError("Failed to compose Trigger action");
-    return res.outputType;
+    return data.inputType;
   }
 
   SHExposedTypesInfo requiredVariables() { return _action.composeResult().requiredInfo; }
@@ -164,7 +164,7 @@ struct Trigger {
 
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  void activate(SHContext *context, const SHVar &input) {
     auto &vars = _variables.get();
     bool trigger = true;
     if (vars.valueType == SHType::Seq) {
@@ -178,13 +178,10 @@ struct Trigger {
     }
 
     if (trigger) {
-      _action.activate(context, input, _lastOutput);
+      SHVar output{};
+      _action.activate(context, input, output);
     }
-
-    return _lastOutput;
   }
-
-  SHVar _lastOutput{};
 };
 } // namespace shards
 
