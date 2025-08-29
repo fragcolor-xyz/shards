@@ -156,13 +156,13 @@ struct Type {
     return res;
   }
 
-  static Type TableOf(SHTypesInfo types, bool fixedStructTable = false) {
+  static Type TableOf(SHTypesInfo types) {
     Type res;
-    res._type = {SHType::Table, {.table = {.types = types, .fixedStructTable = fixedStructTable}}};
+    res._type = {SHType::Table, {.table = {.types = types}}};
     return res;
   }
 
-  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys, bool fixedStructTable = false) {
+  template <size_t N> static Type TableOf(SHTypesInfo types, const std::array<SHVar, N> &keys) {
     Type res;
     if (N > 0 && N != types.len) {
       throw std::logic_error("TableOf: keys and types length mismatch");
@@ -170,7 +170,7 @@ struct Type {
 
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
     res._type = {SHType::Table,
-                 {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types, .fixedStructTable = fixedStructTable}}};
+                 {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
     return res;
   }
 
