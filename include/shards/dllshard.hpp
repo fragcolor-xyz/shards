@@ -66,7 +66,7 @@ struct CoreLoader {
     handle = GetModuleHandle(NULL);
     ifaceproc = (SHShardsInterface)GetProcAddress(handle, "shardsInterface");
 #else
-    auto handle = dlopen(NULL, RTLD_NOW);
+    handle = dlopen(NULL, RTLD_NOW);
     ifaceproc = (SHShardsInterface)dlsym(handle, "shardsInterface");
 #endif
 
