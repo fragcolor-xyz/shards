@@ -1405,6 +1405,7 @@ struct ParallelBase : public CapturingSpawners {
       SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
     }
 
+#if !SH_EMSCRIPTEN
     if (_threads.valueType == SHType::Int) {
       if (_threads.payload.intValue > 0) {
         SPDLOG_DEBUG("ParallelBase: Creating taskflow with {} threads", _threads.payload.intValue);
@@ -1413,7 +1414,9 @@ struct ParallelBase : public CapturingSpawners {
       } else {
         _executor = nullptr;
       }
-    } else {
+    } else
+#endif // We'd like to use the existing threads in emscripten's case since it has issues creating threads on demand, needs to yield to the main loop
+    {
       _executor = &TaskFlowInstance::instance();
     }
   }
