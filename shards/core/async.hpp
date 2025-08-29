@@ -252,16 +252,14 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   } call{std::forward<FUNC>(func), logging::ThreadState::get().current};
 
   context->onWorkerThread = true;
-  DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));
+  DEFER(context->onWorkerThread = false);
 
   getTidePool().schedule(&call);
 
   while (!call.complete && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
+    if (shards::unsafeSuspend(context, 0) != SHWireState::Continue)
       break;
   }
-
-  context->onWorkerThread = false;
 
   if (unlikely(!call.complete)) {
     cancel();
@@ -320,16 +318,14 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
   } call{std::forward<FUNC>(func)};
 
   context->onWorkerThread = true;
-  DEFER(shassert(!context->onWorkerThread && "context still flagged on worker thread"));
+  DEFER(context->onWorkerThread = false);
 
   getTidePool().schedule(&call);
 
   while (!call.complete.load(std::memory_order_acquire) && context->shouldContinue()) {
-    if (shards::suspend(context, 0) != SHWireState::Continue)
+    if (shards::unsafeSuspend(context, 0) != SHWireState::Continue)
       break;
   }
-
-  context->onWorkerThread = false;
 
   if (unlikely(!call.complete)) {
     cancel();

@@ -47,8 +47,9 @@ struct Track {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR("Tracks the variables and executes the action when they change."); }
 
-  PARAM_VAR(_variables, "Variables", "A single variable or a sequence of variables to track for changes.", {CoreInfo::AnyType});
-  PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::ShardsOrNoneSeq});
+  PARAM_VAR(_variables, "Variables", "A single variable or a sequence of variables to track for changes.",
+            {CoreInfo::AnyVarType, CoreInfo::AnyVarSeqType});
+  PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::Shards});
   PARAM_VAR(_mask, "Mask", "The mask to use to determine which variables to track.", {CoreInfo::IntOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_mask));
 
@@ -137,6 +138,54 @@ struct Track {
 
     return _lastOutput;
   }
+};
+
+struct Trigger {
+  // a shard that will wait for a bool variable to be true or a sequence of bool variables to be all true
+  // and then trigger the action
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHOptionalString help() { return SHCCSTR("Triggers the action when the variables are true"); }
+
+  PARAM_PARAMVAR(_variables, "Variables", "A single variable or a sequence of variables to track for changes.",
+                 {CoreInfo::BoolVarType});
+  PARAM(ShardsVar, _action, "Action", "The action to execute when the variables change.", {CoreInfo::Shards});
+  PARAM_IMPL(PARAM_IMPL_FOR(_variables), PARAM_IMPL_FOR(_action));
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    auto res = _action.compose(data);
+    if (res.failed)
+      throw ComposeError("Failed to compose Trigger action");
+    return res.outputType;
+  }
+
+  SHExposedTypesInfo requiredVariables() { return _action.composeResult().requiredInfo; }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &vars = _variables.get();
+    bool trigger = true;
+    if (vars.valueType == SHType::Seq) {
+      for (auto &variable : vars) {
+        trigger = trigger && variable.payload.boolValue;
+        variable.payload.boolValue = false; // reset the variable
+      }
+    } else {
+      trigger = vars.payload.boolValue;
+      vars.payload.boolValue = false; // reset the variable
+    }
+
+    if (trigger) {
+      _action.activate(context, input, _lastOutput);
+    }
+
+    return _lastOutput;
+  }
+
+  SHVar _lastOutput{};
 };
 } // namespace shards
 

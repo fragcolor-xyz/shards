@@ -287,3 +287,22 @@ Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log
 })
 
 1 | Do(tail-call-restart) | Log
+
+@wire(trigger-it-1 {
+  none
+  Trigger(trigger-1 Inc(trigger-1-count))
+  none
+})
+
+true >= trigger-1
+0 >= trigger-1-count
+
+Do(trigger-it-1)
+trigger-1-count | Assert.Is(1)
+
+Do(trigger-it-1)
+trigger-1-count | Assert.Is(1) ; should not trigger
+
+true > trigger-1
+Do(trigger-it-1)
+trigger-1-count | Assert.Is(2)

@@ -107,6 +107,7 @@ void setSharedVariable(std::string_view name, const SHVar &value);
 void unsetSharedVariable(std::string_view name);
 SHVar getSharedVariable(std::string_view name);
 SHWireState suspend(SHContext *context, double seconds);
+SHWireState unsafeSuspend(SHContext *context, double seconds);
 entt::id_type findId(SHContext *ctx) noexcept;
 
 Shard *createShard(std::string_view name);

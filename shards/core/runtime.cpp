@@ -653,15 +653,7 @@ void releaseVariable(SHVar *variable) {
   }
 }
 
-SHWireState suspend(SHContext *context, double seconds) {
-  if (unlikely(!context->shouldContinue())) {
-    throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
-  } else if (unlikely(context->onWorkerThread)) {
-    throw ActivationError("Trying to suspend a context on worker thread!");
-  } else if (unlikely(!context->continuation)) {
-    throw ActivationError("Trying to suspend a context without coroutine!");
-  }
-
+SHWireState unsafeSuspend(SHContext *context, double seconds) {
   if (seconds <= 0) {
     context->next = SHDuration(0);
   } else {
@@ -678,6 +670,18 @@ SHWireState suspend(SHContext *context, double seconds) {
   ++context->stepCounter;
 
   return context->getState();
+}
+
+FLATTEN SHWireState suspend(SHContext *context, double seconds) {
+  if (unlikely(!context->shouldContinue())) {
+    throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
+  } else if (unlikely(context->onWorkerThread)) {
+    throw ActivationError("Trying to suspend a context on worker thread!");
+  } else if (unlikely(!context->continuation)) {
+    throw ActivationError("Trying to suspend a context without coroutine!");
+  }
+
+  return unsafeSuspend(context, seconds);
 }
 
 ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjusted_max) {
