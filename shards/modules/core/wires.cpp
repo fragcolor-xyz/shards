@@ -1330,7 +1330,7 @@ struct ParallelBase : public CapturingSpawners {
       _policy = WaitUntil(value.payload.enumValue);
       break;
     case 2:
-      _threads = std::max(int64_t(1), value.payload.intValue);
+      _threads = value;
       break;
     default:
       break;
@@ -1344,16 +1344,22 @@ struct ParallelBase : public CapturingSpawners {
     case 1:
       return Var::Enum(_policy, CoreCC, 'tryM');
     case 2:
-      return Var(_threads);
+      return _threads;
     default:
       return Var::Empty;
+    }
+  }
+
+  void validateThreadCountAtLeastOne() {
+    if (_threads.valueType == SHType::Int && _threads.payload.intValue < 1) {
+      throw ComposeError("Threads must be >= 1");
     }
   }
 
   void compose(const SHInstanceData &data, const SHTypeInfo &inputType) {
     WireBase::resolveWire();
 
-    if (_threads > 0) {
+    if (_threads.valueType == SHType::None || _threads.payload.intValue > 0) {
       mode = RunWireMode::Async;
       capturing = true;
     } else {
@@ -1398,6 +1404,21 @@ struct ParallelBase : public CapturingSpawners {
 
       SHLOG_TRACE("ParallelBase: warmed up {} variables", _vars.size());
     }
+
+#if !SH_EMSCRIPTEN
+    if (_threads.valueType == SHType::Int) {
+      if (_threads.payload.intValue > 0) {
+        SPDLOG_DEBUG("ParallelBase: Creating taskflow with {} threads", _threads.payload.intValue);
+        _ownedExecutor.reset(new tf::Executor(_threads.payload.intValue));
+        _executor = &*_ownedExecutor;
+      } else {
+        _executor = nullptr;
+      }
+    } else
+#endif // We'd like to use the existing threads in emscripten's case since it has issues creating threads on demand, needs to yield to the main loop
+    {
+      _executor = &TaskFlowInstance::instance();
+    }
   }
 
   void cleanup(SHContext *context) {
@@ -1411,6 +1432,9 @@ struct ParallelBase : public CapturingSpawners {
       destroyVar(v);
     }
     _outputs.clear();
+
+    _executor = nullptr;
+    _ownedExecutor.reset();
 
     // _wires seem to be used only in StepMany and DoMany
     for (auto &cref : _wires) {
@@ -1442,8 +1466,6 @@ struct ParallelBase : public CapturingSpawners {
   static constexpr size_t MinWiresAdded = 4;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    assert(_threads > 0);
-
     auto len = getLength(input);
 
     if (len == 0) {
@@ -1468,8 +1490,6 @@ struct ParallelBase : public CapturingSpawners {
 
     auto poolBatch = _pool->acquireBatch(len);
 
-    // https://taskflow.github.io/taskflow/LimitTheMaximumConcurrency.html
-    tf::Semaphore semaphore(std::max<size_t>(1, _threads));
     auto outerLogCtx = shards::logging::ThreadState::get().current;
     flow.for_each_index(size_t(0), len, size_t(1), [&, outerLogCtx](auto &idx) {
       auto &logState = shards::logging::ThreadState::get();
@@ -1550,7 +1570,8 @@ struct ParallelBase : public CapturingSpawners {
       _pool->release(cref);
     });
 
-    auto future = TaskFlowInstance::instance().run(std::move(flow));
+    shassert(_executor && "Executor is not set");
+    auto future = _executor->run(std::move(flow));
 
     // we done if we are here
     while (true) {
@@ -1614,7 +1635,9 @@ protected:
       _successes; // don't use bool cos std lib uses bit vectors behind the scenes and won't work with multiple threads
   std::vector<std::shared_ptr<SHMesh>> _meshes;
   std::vector<ManyWire *> _wires;
-  int64_t _threads{0};
+  Var _threads{};
+  tf::Executor *_executor{};
+  std::unique_ptr<tf::Executor> _ownedExecutor;
 };
 
 struct TryMany : public ParallelBase {
@@ -1648,17 +1671,13 @@ struct TryMany : public ParallelBase {
                "internal "
                "failure (eg.through Assert)"),
        {WaitUntilEnumInfo::Type}},
-      {"Threads", SHCCSTR("The number of cpu threads to use. Number specified can not be lower than 1."), {CoreInfo::IntType}}};
+      {"Threads",
+       SHCCSTR("The number of cpu threads to use. Number specified can not be lower than 1."),
+       {CoreInfo::NoneType, CoreInfo::IntType}}};
 
   static SHParametersInfo parameters() { return _params; }
 
-  void setup() { _threads = 1; }
-
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_threads < 1) {
-      throw ComposeError("TryMany, threads must be >= 1");
-    }
-
     if (data.inputType.seqTypes.len == 1) {
       // copy single input type
       _inputType = data.inputType.seqTypes.elements[0];
@@ -1694,8 +1713,6 @@ struct TryMany : public ParallelBase {
 
 struct Expand : public ParallelBase {
   int64_t _width{10};
-
-  void setup() { _threads = 1; }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("This shard takes a value of any type as input. This value is provided as input to every scheduled copy of "
@@ -1744,7 +1761,7 @@ struct Expand : public ParallelBase {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_threads < 1) {
+    if (_threads.valueType == SHType::Int && _threads.payload.intValue < 1) {
       throw ComposeError("Expand, threads must be >= 1");
     }
 
@@ -1991,7 +2008,7 @@ struct WhenDone : Spawn {
 struct DoMany : public TryMany {
   bool _composeSync{};
 
-  void setup() { _threads = 0; } // we don't use threads
+  void setup() { _threads = Var(0); } // we don't use threads
 
   static SHOptionalString inputHelp() { return InputManyWire; }
 

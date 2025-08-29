@@ -49,7 +49,7 @@ template <class T> struct ShardWrapper {
   static inline ShardMetadata metadata;
   static inline uint32_t crc = 0;
 
-  static __cdecl Shard *create() {
+  static Shard *create() {
     auto self = new (std::align_val_t{16}) ShardWrapper<T>();
     Shard *result = reinterpret_cast<Shard *>(self);
 
