@@ -8,8 +8,6 @@ license: CC-BY-SA-4.0
 Include `@i2`, `@i3`, `@i4`, `@i8`, `@i16`
 
 * These built-in functions construct integer vector types (int2, int3, int4, int8, int16).
-* If they are called in expression position and have only constants for parameters, the value is evaluated at compose time.
-* Otherwise (if any of its parameters are variables or if the function was called in pipeline position), the value is evaluated at runtime.
 * Can only accept both constants and variables as values for its parameters, however they must be of type int.
 * If only one value was provided for its parameter, the function will automatically fill the remaining parameters with the provided value.
 
@@ -26,32 +24,11 @@ Include `@i2`, `@i3`, `@i4`, `@i8`, `@i16`
       @i16(1) | Log("i16 value")
     ```
 
-!!! note
-    **Expression Position VS Pipeline Position**
-    When a built-in function is called to provide a value for a parameter of another function or shard, it is in expression position. If a built-in shard is called in its own standalone line however, for example as the input for a shard, it is in pipeline position.
-
-    === "Expression Position"
-    
-        ```shards
-        Math.Add(Operand: @i2(1 1)) ;; compose time evaluation
-        ```
-    Because `@i2` was used to provide a value for the `Operand` parameter in the `Math.Add` shard, it is in expression position.
-
-    === "Pipeline Position"
-    
-        ```shards
-        @i2(1 1) ;; runtime evaluation
-        Log("value")
-        ```
-        Because `@i2` is it's own standalone step, it is in pipeline position.
-
 
 ## Float Vectors
 Include `@f2`, `@f3`, `@f4`
 
 * These built-in functions construct float vector types (float2, float3, float4).
-* If they are called in expression position and have only constants for parameters, the value is evaluated at compose time.
-* Otherwise (if any of its parameters are variables or if the function was called in pipeline position), the value is evaluated at runtime.
 * Can only accept both constants and variables as values for its parameters, however they must be of `Type::Float`.
 * If only one value was provided for its parameter, the function will automatically fill the remaining parameters with the provided value.
 
