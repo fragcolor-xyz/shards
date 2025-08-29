@@ -17,44 +17,6 @@ inline boost::uuids::uuid var2Uuid(const SHVar &v) {
   return uuid;
 }
 
-struct ShardsCRDT : CRDT<boost::uuids::uuid, OwnedVar> {
-  ShardsCRDT() : CRDT<boost::uuids::uuid, OwnedVar>(boost::uuids::nil_uuid()) {}
-
-  void init(boost::uuids::uuid id, int64_t preallocate) {
-    shassert(node_id_ == boost::uuids::nil_uuid() && "CRDT already initialized");
-    node_id_ = id;
-    data_.reserve(preallocate);
-  }
-};
-
-struct CRDTTypes {
-  SHVAR_OBJECT_DECL('crdt', "CRDT", CRDT, ShardsCRDT);
-
-  static inline std::array<SHVar, 8> ChangesTableKeys{
-      Var("col-name"),     //
-      Var("col-name-key"), //
-      Var("col-version"),  //
-      Var("db-version"),   //
-      Var("flags"),        //
-      Var("node-id"),      //
-      Var("record-id"),    //
-      Var("value"),        //
-  };
-  static inline Types ChangesTableTypes{
-      CoreInfo::AnyType,   //
-      CoreInfo::AnyType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::IntType,   //
-      CoreInfo::Int16Type, //
-      CoreInfo::Int16Type, //
-      CoreInfo::AnyType,   //
-  };
-  static inline TypeInfo ChangesTableType = TypeInfo::FixedTableOf(ChangesTableTypes, ChangesTableKeys);
-  static inline Type ChangesTableVarType = Type::VariableOf(ChangesTableType);
-  static inline Type ChangesTableSeqType = Type::SeqOf(ChangesTableType);
-};
-
 struct CRDTNew {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CRDTTypes::CRDT; }
