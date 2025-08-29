@@ -1172,6 +1172,9 @@ typedef void(__cdecl *SHSetupLogger)(const SHLogSettings *logSettings);
 typedef SHBool(__cdecl *SHTriggerVarValueChange)(SHWireRef wire, struct SHStringWithLen name, const struct SHVar *key,
                                                bool isGlobal, const struct SHVar *var);
 
+typedef struct SHContext *(__cdecl *SHCreateEmptyContext)(struct SHContext *context);
+typedef void(__cdecl *SHDestroyContext)(struct SHContext *context);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1385,6 +1388,10 @@ typedef struct _SHCore {
 
   // Utility to trigger var value change (which trigger tracking mask events)
   SHTriggerVarValueChange triggerVarValueChange;
+
+  // Utility to create and destroy contexts
+  SHCreateEmptyContext createEmptyContext;
+  SHDestroyContext destroyContext;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

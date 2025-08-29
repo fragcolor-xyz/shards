@@ -2330,6 +2330,14 @@ class Shards {
             return .mustInterrupt
         }
     }
+
+    static func createEmptyContext(context: Context) -> Context {
+        return Context(context: G.Core.pointee.createEmptyContext(context.context))
+    }
+
+    static func destroyContext(context: Context) {
+        G.Core.pointee.destroyContext(context.context)
+    }
 }
 
 #if canImport(UIKit)

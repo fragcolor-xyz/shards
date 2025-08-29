@@ -3209,6 +3209,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return true;
   };
 
+  result->createEmptyContext = [](SHContext *context) {
+    Coroutine foo{};
+    auto ctx = new SHContext(&foo, context->currentWire());
+    ctx->wireStack.push_back(context->currentWire());
+    ctx->onWorkerThread = true; // our coroutine is not valid, so we need to set this to true
+    return ctx;
+  };
+  result->destroyContext = [](SHContext *context) { delete context; };
+
   setupCoreLoggingAPI(result);
 
   return result;
