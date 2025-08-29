@@ -653,34 +653,26 @@ void releaseVariable(SHVar *variable) {
   }
 }
 
-SHWireState suspend(SHContext *context, double seconds, bool sleepOnWorker) {
+SHWireState suspend(SHContext *context, double seconds) {
   if (unlikely(!context->shouldContinue())) {
     throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
+  } else if (unlikely(context->onWorkerThread)) {
+    throw ActivationError("Trying to suspend a context on worker thread!");
   } else if (unlikely(!context->continuation)) {
     throw ActivationError("Trying to suspend a context without coroutine!");
   }
 
-  if (unlikely(context->onWorkerThread) && sleepOnWorker) {
-    // ok in this case use thread sleep and exit
-    if (seconds <= 0.0) {
-      // yield to other threads
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
-    }
+  if (seconds <= 0) {
+    context->next = SHDuration(0);
   } else {
-    if (seconds <= 0) {
-      context->next = SHDuration(0);
-    } else {
-      context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
-    }
-
-    auto currentWire = context->currentWire();
-    coroSuspended(context);
-    coroutineSuspend(*context->continuation);
-    shassert(context->currentWire() == currentWire);
-    coroResumed(context);
+    context->next = SHClock::now().time_since_epoch() + SHDuration(seconds);
   }
+
+  auto currentWire = context->currentWire();
+  coroSuspended(context);
+  coroutineSuspend(*context->continuation);
+  shassert(context->currentWire() == currentWire);
+  coroResumed(context);
 
   // still advancing the step counter, to flag we are in another time step
   ++context->stepCounter;
@@ -773,7 +765,6 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
     }
 
     {
-
 #ifdef TRACY_ENABLE
 #define ZoneNoCallstack(varname, name, active)                                                                               \
   static constexpr tracy::SourceLocationData TracyConcat(__tracy_source_location, TracyLine){name, TracyFunction, TracyFile, \
@@ -3208,15 +3199,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
     return true;
   };
-
-  result->createEmptyContext = [](SHContext *context) {
-    Coroutine foo{};
-    auto ctx = new SHContext(&foo, context->currentWire());
-    ctx->wireStack.push_back(context->currentWire());
-    ctx->onWorkerThread = true; // our coroutine is not valid, so we need to set this to true
-    return ctx;
-  };
-  result->destroyContext = [](SHContext *context) { delete context; };
 
   setupCoreLoggingAPI(result);
 

@@ -529,7 +529,7 @@ struct Query : public Base {
       } else if (rc == SQLITE_BUSY) {
         if (retry) {
           // Try again after yield or next frame
-          shards::suspend(context, 0.0, true);
+          std::this_thread::yield();
         } else {
           throw ActivationError("SQLite database is busy and retry is disabled");
         }
@@ -588,7 +588,7 @@ struct Query : public Base {
       } else if (rc == SQLITE_BUSY) {
         if (retry) {
           // Try again after yield or next frame
-          shards::suspend(context, 0.0, true);
+          std::this_thread::yield();
         } else {
           throw ActivationError("SQLite database is busy and retry is disabled");
         }

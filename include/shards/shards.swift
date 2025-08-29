@@ -2331,12 +2331,8 @@ class Shards {
         }
     }
 
-    static func createEmptyContext(context: Context) -> Context {
-        return Context(context: G.Core.pointee.createEmptyContext(context.context))
-    }
-
-    static func destroyContext(context: Context) {
-        G.Core.pointee.destroyContext(context.context)
+    static func abortWire(context: Context, errorText: SHStringWithLen) {
+        G.Core.pointee.abortWire(context.context, errorText)
     }
 }
 
