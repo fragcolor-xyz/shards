@@ -3,7 +3,7 @@ authors: Fragcolor & contributors
 license: CC-BY-SA-4.0
 ---
 
-![Fragcolor Logo](assets/Fragcolor-Logomark-01.png){ width=300 }
+![Fragcolor Logo](assets/fragcolor_icon_color.svg){ width=300 }
 
 # Welcome to Fragcolor documentation!
 
@@ -24,7 +24,7 @@ To make this vision a reality, we're dedicated to creating programming tools tha
 
 | | | |
 | :----------: | :----------: |:----------: |
-|[![](assets/GettingStartedLogo.png){ width=180 }](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){ width=180 }](./learn/shards/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/RareEngineLogo_2.png){ width=180 }]()<br> <span style="font-weight:600;font-size:20px">[Rare Engine]()</span> |
+|[![](assets/GettingStartedLogo.png){ width=180 }](./learn/index.md) <br> <span style="font-weight:600;font-size:20px">[Getting Started](./learn/index.md)</span> | [![](assets/ShardsLogo.png){ width=180 }](./learn/shards/index.md)<br> <span style="font-weight:600;font-size:20px">[Shards](./learn/shards/index.md)</span> | [![](assets/fbl-logo-1.svg){ width=180 }]()<br> <span style="font-weight:600;font-size:20px">[Formabble Engine]()</span> |
 | | | |
 
 --8<-- "includes/license.md"

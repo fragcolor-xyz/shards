@@ -4,19 +4,19 @@ In this chapter, we will be learning how to code with Shards so that you can wri
 
 ## The shard
 
-A shard in its most basic code form consists of its name surrounded by parentheses.
+A shard in its most basic code form consists of its name and parameters(when applicable).
 
-![Some shard examples.](assets/shards-examples.png)
+```shards
+Math.Add(Operand: 1)
+
+Msg("Hello")
+
+Wait(Wire: main-gfx Timeout: 2.0)
+```
 
 The above example consists of 3 different predefined shards.
 
-Shards are named to make their purpose rather intuitive. [`(Msg)`](../../../../reference/shards/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../../reference/shards/shards/Math/Add/) is a Mathematics shard that adds numbers together.
-
-!!! note
-    It is a good practice to name your code based on its purpose. This allows others to easily understand what your code achieves without getting too technical.
-
-    For example, the code `(Msg "Hello World!")` can be easily understood to be sending the message "Hello World" to the console. You do not need to delve into how `(Msg)` was coded to understand what it can do.
-
+Shards are named to make their purpose rather intuitive. [`Msg`](../../../../reference/shards/shards/General/Msg) is the Message shard that prints a message to the console, while [`Math.Add`](../../../../reference/shards/shards/Math/Add/) is a Mathematics shard that adds numbers together.
 
 A shard can take in an input, process that input, and produce an output. Shards also have *parameters* that behave as user-defined settings.
 
@@ -24,7 +24,7 @@ For example, `Math.Add` has the parameter `Operand` which is defined by the user
 
 ![The parameters set for a shard affects it's behavior.](assets/shard-parameter.png)
 
-In code form, parameters are defined by the user within the parentheses of the shard itself, after the shard's name. The above examples will appear as `5 (Math.Add 1)` and `5 (Math.Add 3)` in code. 
+In code form, parameters are defined by the user within the parentheses after the shard's name. The above examples will appear as `5 Math.Add(Operand: 1)` and `5 Math.Add(3)` in code. 
  
 Some shards have multiple parameters. When specifying values for multiple parameters, you will have to prepend your values with the parameter they are for if some parameters are skipped.
 
@@ -34,72 +34,75 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 
 === "1 Parameter (Implicit)"
 
-    ```{.clojure .annotate linenums="1"}
-    (Repeat
-        (-> (Msg "Hello World!"))) ;; (1)(2)
+    ```shards
+    Repeat({
+        Msg("Hello World")
+    }) ;; (1)(2)
     ```
 
-    1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `(Msg "Hello World")` to it.
+    1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `Msg("Hello World")` to it.
     2. Since the other parameters are not defined, they will assume their default values. In this case, the `Repeat` shard will not run at all as `Times` has a default value of 0.
 
 === "2 Parameters (Explicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        :Action (-> (Msg "Hello World!")) ;; (1)
-        :Times 2) ;; (2)
+
+    ```shards
+    Repeat(
+        Action: {Msg("Hello World!")} ;; (1)
+        Times: 2
+    ) ;; (2)
     ```
 
     1. The parameters are explicitly declared for clarity.
     2. Repeats the `Action` twice.
 
 === "2 Parameters (Implicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat ;; (1)
-        (-> (Msg "Hello World!"))
-        2)
+
+    ```shards
+    Repeat( ;; (1)
+        {Msg("Hello World!")}
+        2
+    )
     ```
 
     1. Both parameters can be implicit since they are resolved in order. In this case, `Action` is the first implicit parameter, and `Times` is the second implicit parameter.
 
 === "2 Parameters (Implicit 1st)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        (-> (Msg "Hello World!")) ;; (1)
-        :Times 2)
+
+    ```shards
+    Repeat(
+        {Msg("Hello World!")} ;; (1)
+        Times: 2
+    )
     ```
 
     1. You can still implicitly declare the first parameter, while fully declaring the other parameters. Note that it does not work vice versa. You cannot implicitly declare parameters if a parameter before it has been explicitly declared.
 
 === "(INCORRECT) 2 Parameters (Implicit 2nd)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat 
-        :Action (-> (Msg "Hello World!")) 
-        2) ;; (1)
+
+    ```shards
+    Repeat(
+        Action: {Msg("Hello World!")} 
+        2
+    ) ;; (1)
     ```
 
     1. This will not work as you cannot implicitly declare the second parameter if the first has been fully declared.
 
 === "3 Parameters (Explicit)"
-    
-    ```{.clojure .annotate linenums="1"}
-    (Repeat
-       :Action (-> (Msg "Hello World!"))
-       :Forever true ;; (1)
-       :Until ( ;; some condition )
+
+    ```shards
+    Repeat(
+       Action: Msg("Hello World!")
+       Forever: true ;; (1)
+       Until: { ;; some condition }
        ) ;; (2)
     ```
 
     1. The `Times` parameter is skipped and `Forever` is declared instead. Since we are skipping a parameter, we must fully declare the parameters that come after it.
     2. `Until` takes a shard that returns `true` or `false`. `Repeat` will loop forever until the shard specified in `Until` evaluates to `true`.
 
-!!! note "`->`"
-    When using shards for a parameter (e.g., `Action`), you must always place `->` before the first shard.
-
-    [`->`](../../../../reference/shards/lisp/misc/) is a shard container used to group multiple shards together. We will see how to eliminate the use of `->` later in the segment for `defshards`.
+!!! note "`{}`"
+    When using groups of shards for a parameters (e.g., `Action`), you must place those shards in a `{}` container or an error will be thrown.
 
 To find out more about the input/output/parameter of a shard, you can search for the shard in the search bar above and check out its documentation page.
 
@@ -150,31 +153,30 @@ For the full list of data types and more in-depth reading, check out the `Types`
 
 To better work with data across your code, we can assign them to data containers known as *variables*.
 
-Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing out the entire float each time, you could assign it to a variable called `.pi-value` and simply use that variable whenever it is needed.
+Imagine a scenario where you have a float `3.141592653589793` that you need to reuse in code multiple times. Instead of typing out the entire float each time, you could assign it to a variable called `pi-value` and simply use that variable whenever it is needed.
 
 === "Without Variables"
 
-    ```{.clojure .annotate linenums="1"}
-    3.141592653589793 (Math.Add 3.141592653589793) (Math.Multiply 3.141592653589793) (Math.Subtract 3.141592653589793)
+    ```shards
+    3.141592653589793 | Math.Add(3.141592653589793) | Math.Multiply(3.141592653589793) | Math.Subtract(3.141592653589793)
     ```
+
 === "With Variables"
 
-    ```{.clojure .annotate linenums="1"}
-    3.141592653589793 = .pi-value ;; (1)
-    .pi-value (Math.Add .pi-value) (Math.Multiply .pi-value) (Math.Subtract .pi-value)
+    ```shards
+    3.141592653589793 = pi-value ;; (1)
+    pi-value | Math.Add(pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
     ```
 
-    1. 3.141592653589793 is assigned to the variable `.pi-value`. We'll learn more about assigning variables in a bit!
-  
-Variable names always start with a `.` period.
+    1. 3.141592653589793 is assigned to the variable `pi-value`. We'll learn more about assigning variables in a bit!
 
 Some example of variable names:
 
-- `.x`
+- `x`
 
-- `.number-of-apples`
+- `number-of-apples`
 
-- `.is-verified` 
+- `is-verified` 
 
 How you assign data to variables depends on the variable type. The main differences between variables are as follows:
 
@@ -198,121 +200,197 @@ Here are the variable types and the symbols used to create and assign to them:
 | Variable Type   | Shard       | Alias  | Description                          |
 | :-------------- | :---------- | :----- | :----------------------------------- |
 | Local, Constant | `Ref`       | `=`    | Creates a local constant variable.   | 
-| Local, Mutable  | `Set`       | `>=`   | Creates a local mutable variable.    |
-| Global, Mutable | `Set`       | `>==`  | Creates a global mutable variable.   |
+| Local, Mutable  | `Set(Global: false)`       | `>=`   | Creates a local mutable variable.    |
+| Global, Mutable | `Set(Global: true)`       | none | Creates a global mutable variable.   |
 | Mutable         | `Update`    | `>`    | Updates a mutable variable.          |
 
 In summary:
 
 - Use `=` to create **constant** variables.
 
-- Otherwise, use `>=` to create **local** variables, or `>==` to make them **global**.
+- Otherwise, use `>=` to create **local** variables.
 
 - Use `>` to update variable values.
 
-When defining variables in your program, you can use `Setup` to ensure that variables defined within it will only ever be defined once within a program.
+When defining variables in your program, you can use `Once` to ensure that variables defined within it will only ever be defined once within a program.
 
-=== "Defining Variables in Setup"
+=== "Defining Variables in Once"
 
-    ```{.clojure .annotate linenums="1"}
-    (Setup
-     10 >= .timer
-     100 >= max-points) ;; (1)
+    ```shards
+    Once({
+     10 >= timer
+     100 >= max-points
+    }) ;; (1)
     ```
 
-    1. Code within a `Setup` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
-
-`Setup` is an alias of the shard [`Once`](../../../../reference/shards/shards/General/Once/), with its `Every` parameter set to 1 to ensure that code defined in its `Action` parameter will only be run once.
+    1. Code within a `Once` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
 
 ## Grouping shards
 
-[`defshards`](../../../../reference/shards/lisp/macros/#defshards) allows you to group multiple shards to form a new shard, thereby eliminating the use of `->`. It is useful for organizing your code and improving readability.
+[`@define`](../../../reference/shards/built-ins/macros-templating.md) Creates a named definition in the current environment. These definitions can then be used inline in your script for substitution. By creating a named definition using a group of shards, you can reduce repeating huge chunks of code and improve readability.
 
-`defshards` has a syntax as such:
+<!-- `@define` has a syntax as such:
 
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
+=== "Creating @define"
 
-    (defshards shard-name []
-        ;; your shards here
+    ```shards
+
+    @define( message-groups {
+        Msg("Hello World 1")
+        Msg("Hello World 2")
+     }
     )
-    ```
-
-The square brackets `[]` are where you can define parameters. For example:
-
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
-
-    (defshards send-message [message]
-        (Msg "Message Incoming...")
-        (Msg message))
     ```
 
 When used in code:
 
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
+=== "Using @define"
 
-    (send-message "Hello World!")
+    ```shards
+    @send-message("Hello World!")
+    ``` -->
+
+[`@template`](../../../reference/shards/built-ins/macros-templating.md) similarly allows you to group shards together to create a definition in the current environment. `@template` however allows you pass parameters into the new shard.
+
+<!-- === "Creating @template"
+
+    ```shards
+
+    @template(send-message [message] {
+        Msg ("Message Incoming...")
+        Msg(message)
+    })
+    ```
+
+When used in code:
+
+=== "Using @template"
+
+    ```shards
+
+    @send-message("Hello World!")
     ```
 
 === "Result"
-    
-    ```{.clojure .annotate linenums="1"}
+
+    ```shards
 
     Message Incoming...
     Hello World!
-    ```
+    ``` -->
 
-Let us now take a look at how we can utilize `defshards` in a code snippet that counts from 1 to 5 multiple times.
-
-=== "Code"
-    
-    ```{.clojure .annotate linenums="1"}
-
-    (Repeat
-     :Action
-     (-> (Msg "1")
-         (Msg "2")
-         (Msg "3")
-         (Msg "4")
-         (Msg "5"))
-     :Times 5)
-    ```
-
-We can replace the use of `->` above with `defshards` to make the count from 1 to 5 code reusable and factor it out under a new shard called `msg-one-to-five`.
+Let us now take a look at how we can utilize `@define`. Let's say we have a player that can be damaged by different sources.
 
 === "Code"
     
-    ```{.clojure .annotate linenums="1"}
-    
-    (defshards msg-one-to-five []
-      (Msg "1")
-      (Msg "2")
-      (Msg "3")
-      (Msg "4")
-      (Msg "5"))
+```shards
 
-    (Repeat
-     :Action (msg-one-to-five)
-     :Times 5)
-    ```
-!!! note
-    The parameter will still require a `->` if it contains multiple shards.
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
 
-    === "Code"
+	Msg("Player gets damaged by monster!")
+	current-player-health | Math.Subtract(10) > current-player-health
+	current-player-health | Log("Player's Current Health")
+
+	Msg("Player gets damaged by trap!")
+	current-player-health | Math.Subtract(10) > current-player-health
+	current-player-health | Log("Player's Current Health")
+
+	Msg("Player gets damaged by harsh environment!")
+	current-player-health | Math.Subtract(10) > current-player-health
+	current-player-health | Log("Player's Current Health")
+} Looped: false)
+```
+
+We can replace code that is repeated in the `Action` parameter above with a `@define` to make it less verbose and more readable.
+
+=== "Using @define"
     
-        ```{.clojure .annotate linenums="1"}
-  
-        (Repeat
-         :Action
-         (-> (msg-one-to-five)
-             (Msg "6"))
-         :Times 5)
-        ```
+```shards
+
+@define(damage-player {
+	current-player-health | Math.Subtract(10) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
+
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
+
+	Msg("Player gets damaged by monster!")
+	@damage-player
+
+	Msg("Player gets damaged by trap!")
+	@damage-player
+
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player
+} Looped: false)
+```
+
+Currently the `@damage-player`definition we created can only do 10 damage to the player. If we want to vary the amount of damage that can be done, we can instead use `@template`
+
+=== "Using @template"
+```shards
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
+
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
+
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
+
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
+
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
+} Looped: false)
+```
+
+
+## Manipulating Evaluation Order
+
+In shards there are a few clever tools you can employ to manipulate the evaluation order should you need to.
+
+### Parentheses
+By default, Shards evaluates pipelines from left to right. Parentheses let you group expressions so a section is evaluated first, and its result is then passed to the surrounding pipeline.
+
+=== "Parenthesis equivalent"
+
+```shards
+1 | Math.Add((3 | Math.Subtract(1))) ;; Is the same as ...
+
+3 | Math.Subtract(1) = x
+1 | Math.Add(x)
+```
+
+### \#
+
+When you prefix a parenthesized expression with `#`, eg. `#(3 | Math.Add(2))`, it evaluates at [construct time](shards-lifecycle.md) and embeds the resulting value.
+
+=== "Const Evaluation"
+
+```shards
+#(3 | Math.Add(2)) ;; this will be evaluated at construct time.
+```
+
+!!! note "Pipeline `|`"
+		Shards evaluates pipelines left → right. The `|` is optional sugar that visually separates steps; it does not change semantics.
+
+		=== " `|` sugar"
+		```shards
+		3 Math.Add(1) ;; is the same as
+		3 | Math.Add(1)
+		```
 
 ## The Wire
 
@@ -320,23 +398,23 @@ A Wire is made up of a sequence of shards, queued for execution from left to rig
 
 ![A Wire is made up of a sequence of shards.](assets/what-is-a-wire.png)
 
-To create a Wire, we use [`defwire`](../../../../reference/shards/lisp/macros/#defwire).
+To create a Wire, we use [`@wire`](../../../../reference/shards/lisp/macros/#defwire).
 
 === "Creating a Wire"
     
-    ```{.clojure .annotate linenums="1"}
-    (defwire wire-name 
-      ;; shards here
-    )
-    ```
+```shards
+@wire( wire-name 
+	;; shards here
+)
+```
 
 !!! note
-    The syntax for `defwire` is different from `defshards` as you cannot define parameters. Square brackets `[]` are not used. Instead, `defwire` inherits variables from the parent wire unless the variables are pure.
+    `@wire` inherits variables from the parent wire unless the variables are pure.
 
 !!! note
-    Unlike `defshards` which group shards up for organization, `defwire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
+    Unlike `@define` which group shards up for organization, `@wire` groups shards up to fulfill a purpose. As Wires are created with a purpose in mind, they should be appropriately named to reflect it.
 
-A Wire's lifetime ends once the final shard within it has been executed. To keep a Wire alive even after it has reached its end, we can set it to be loopable. This is called a Looped Wire.
+A Wire's lifetime ends once the final shard within it has been executed. To keep a Wire alive after it has reached its end, we can set it to be loopable. This is called a Looped Wire.
 
 ![A Looped Wire is kept alive even after the final shard is executed.](assets/what-is-a-looped-wire.png)
 
@@ -345,15 +423,15 @@ A Looped Wire will continue running until its exit conditions have been met.
 !!! note
     You will learn more about the entering and exiting of Looped Wires in the next chapter!
 
-To create a Looped Wire, we use [`defloop`](../../../../reference/shards/lisp/macros/#defloop).
+To create a Looped Wire, we use @wire with its `Looped` parameter set to true.
 
 === "Creating a Looped Wire"
     
-    ```{.clojure .annotate linenums="1"}
-    (defloop loop-name 
-      ;; shards here
-    )
-    ```
+```shards
+@wire(loop-name {
+ ;; shards here
+}Looped: true)
+```
 
 ## The Mesh
 
@@ -361,13 +439,13 @@ Wires are queued for execution within a Mesh, from left to right, top to bottom.
 
 ![Wires are queued for execution within a Mesh.](assets/what-is-a-mesh.png)
 
-To queue a Wire on a Mesh, we use [`schedule`](../../../../reference/shards/lisp/misc/#schedule).
+To queue a Wire on a Mesh, we use [`@schedule`](../../../../reference/shards/lisp/misc/#schedule).
 
 === "Scheduling a Wire"
     
-    ```{.clojure .annotate linenums="1"}
-    (schedule mesh-name wire-name)
-    ```
+```shards
+@schedule(mesh-name wire-name)
+```
 
 !!! note
     We will learn more about controlling the flow of Shards with Wires and Meshes in the following chapter.
@@ -379,160 +457,145 @@ To get Shards running, a specific hierarchy and sequence must be followed. Your 
 
 ![The hierarchy of a Shards program.](assets/shards-hierarchy.png)
 
-When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`run`](../../../../reference/shards/lisp/misc/#run).
+When the Mesh is run, the Wires are executed in sequence and your program is started. This is done using the aptly named command [`@run`](../../../../reference/shards/lisp/misc/#run).
 
 === "Running a Mesh"
     
-    ```{.clojure .annotate linenums="1"}
-    (run mesh-name)
-    ```
+```shards
+@run(mesh-name)
+```
 
-`run` can take in two optional values:
+`@run` can take in two optional values:
 
 - The interval between each iteration of the Mesh.
 
 - The maximum number of iterations, which is typically used for debugging purposes.
 
 !!! note
-    If your program has animations, we recommend that you set the first value to `(/ 1.0 60.0)` which emulates 60 frames per second (60 FPS).
+    If your program has animations, we recommend that you set the first value to `(1.0 | Math.Divide(60.0))` which emulates 60 frames per second (60 FPS).
 
-    === "Running a Mesh at 60 FPS"
-    
-        ```{.clojure .annotate linenums="1"}
-        (run mesh-name (/ 1.0 60.0))
-        ```
+	=== "Running a Mesh at 60 FPS"
+	
+	```shards
+	@run(mesh-name (1.0 | Math.Divide(60.0)))
+	```
 
 Let us now take a look at what a basic Shards program will look like!
 
 ## Writing a sample program
 
-Do you recall the `hungry-cat` loop from the previous chapter? Let us try to implement a simpler modified version of it using the concepts learned in this chapter.
+Do you remember the example where our player gets damaged when learning about `@define` and `@template`? Let's build on that example using the concepts we have learnt in this chapter.
 
-![The modified overview of the hungry-cat loop.](assets/modified-hungry-cat-loop.png)
+### @template and @wire
 
-In this example, the "cat" starts off with 0 hunger. At the end of each loop, we increase the hunger by 1. Once the value of hunger is greater than 0, the cat starts to make cat noises.
+=== "Code So Far"
+```shards
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
 
-### defshards and defwire
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
 
-Let us first define the `make-cat-noises` Wire.
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
 
-=== "make-cat-noises"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defwire make-cat-noises
-      (Msg "Meow") (Msg "Meow") (Msg "Meow")
-      (Msg "Mew") (Msg "Mew") (Msg "Mew")
-      (Msg "Meow") (Msg "Meow") (Msg "Meow")
-      (Msg "Mew") (Msg "Mew") (Msg "Mew"))
-    ```
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
 
-We can employ the `Repeat` shard we saw earlier to make our code more efficient. 
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
+} Looped: true)
+```
 
-=== "make-cat-noises"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defwire make-cat-noises
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3)
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
-    ```
-Going a step further, we can better organize our code by creating new shards with `defshards`. Look at how much neater it is now!
+For this example, we have made our `main-game` `Looped: true`. Now, let's make our player try to heal their health after it falls below a certain value. First, let's create a new definition called `@heal-player`.
 
-=== "make-cat-noises"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defshards meows []
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3))
+=== "Code So Far"
+```shards
+@define(heal-player {
+	current-player-health | Math.Add(5) > current-player-health
+})
 
-    (defshards mews []
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
 
-    (defwire make-cat-noises
-      (meows) (mews) (meows) (mews))
-    ```
-### The Loop
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
 
-With the `make-cat-noises` Wire done, let us now look at creating the full `hungry-cat` program loop.
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
 
-=== "hungry-cat"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat)
-    ```
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
 
-We want to first create a variable to track the cat's hunger level. Create the `.hunger` variable and assign the value of 0 to it. Remember to create the variable within `Setup` to prevent it from being reassigned at each iteration of the loop.
-
-=== "hungry-cat"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)) ;; (1)
-    ```
-
-    1. Code within a `Setup` will only be run once in a program.
-
-Next, use the [`Math.Inc`](../../../../reference/shards/shards/Math/Inc/) shard to increase the value of `.hunger` every time the Wire loops.
-
-=== "hungry-cat"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      (Math.Inc .hunger))
-    ```
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
+} Looped: true)
+```
 
 ### Conditionals
 
-A conditional can be used to check if `.hunger` is greater than 0. When the cat's hunger level has risen above 0, we want the cat to start making cat noises. Some conditional shards that you can use are:
+A conditional can be used to check if the player's health has fallen below a specific value. There are two different conditionals that can be used:
 
 - [`When`](../../../../reference/shards/shards/General/When/)
 - [`If`](../../../../reference/shards/shards/General/If/)
 
-`When` allows you to specify what happens if a condition is met. The syntax reads as such: `When` a condition is met, `Then` a specified action happens.
+`When` allows you to specify what happens if a condition is met. The syntax reads as such: `When` a condition is met, a specified action happens.
 
 `If` is similar to `When`, but it has an additional parameter `Else` that allows it to have a syntax that reads as such: `If` a condition is met, `Then` a specified action occurs, `Else` another action is executed instead.
 
-For this example, using `When` would suffice as we only need `make-cat-noises` to run `When` hunger `IsMore` than 0.
+For this example, using `When` would suffice as we only need `@heal-player` to run when `current-player-health` falls below 20.
 
-=== "hungry-cat"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      (When
-       :Predicate (IsMore 0) ;; (1)
-       :Action (-> (Detach make-cat-noises))) ;; (2)
-      (Math.Inc .hunger))
-    ```
+=== "Adding Conditional"
+```shards
+@define(heal-player {
+	current-player-health | Math.Add(5) > current-player-health
+	Log("Player healed!")
+})
 
-    1. [`IsMore`](../../../../reference/shards/shards/General/IsMore/) compares the input to its parameter and outputs `true` if the input has a greater value. In this case, it is comparing the value of `.hunger` to 0.
-    2. [`Detach`](../../../../reference/shards/shards/General/Detach/) is used to schedule a Wire on the Mesh. You will learn more about using `Detach` in the following chapter!
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
+
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
+
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
+
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
+
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
+
+	current-player-health
+	When(Predicate: IsLess(20) Action: {
+		@heal-player
+	})
+} Looped: true)
+```
+
+    1. [`IsLess`](../../../../reference/shards/shards/General/IsLess/) compares the input to its parameter and outputs `true` if the input has a lower value. In this case, it is comparing the value of `current-player-health` to 0.
 
 ### Debugging
 
-What if you wanted to check the value of `.hunger` in each loop iteration? 
-We can employ a shard that is useful when you wish to debug your code - the [`Log`](../../../../reference/shards/shards/Math/Log/) shard.
+If you look closely, you will notice that we used the [`Log`](../../../../reference/shards/shards/Math/Log/) shard, which is useful for debugging code .
 
 !!! note "Debugging"
     Debugging is the process of attempting to find the cause of an error or undesirable behavior in your program. When attempting to debug your code, functions or tools that allow you to check the value of variables at various points in your code can be useful in helping you narrow down where the errors could be originating from.
 
-`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we will use `Log` to verify the value of `.hunger` before the conditional check with `When` occurs. Upon running the code, you will see that when the value of `.hunger` becomes 1, the cat starts to make noises.
+`Log` is useful as it can be placed at any point of your code to check the value passing through it. In this example, we use `Log` to verify the value of `current-player-health` at each point health change.
 
 ### Readying the Mesh
 
@@ -544,77 +607,179 @@ Before our program can run, do not forget to:
 
 - `run` the Mesh.
 
-=== "hungry-cat"
-    
-    ```{.clojure .annotate linenums="1"}
-    (defmesh main)
+=== "Adding Conditional"
+```shards
+@mesh(main)
+@define(heal-player {
+	current-player-health | Math.Add(5) > current-player-health
+	Log("Player healed!")
+})
 
-    (defshards meows []
-      (Repeat
-       :Action (-> (Msg "Meow"))
-       :Times 3))
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
 
-    (defshards mews []
-      (Repeat
-       :Action (-> (Msg "Mew"))
-       :Times 3))
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
 
-    (defwire make-cat-noises
-      (meows) (mews) (meows) (mews))
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
 
-    (defloop hungry-cat
-      (Setup
-       0 >= .hunger)
-      .hunger (Log "Hunger Level")
-      (When
-       :Predicate (IsMore 0)
-       :Action (-> (Detach make-cat-noises)))
-      (Math.Inc .hunger))
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
 
-    (schedule main hungry-cat)
-    (run main 1 3) ;; (1)
-    ```
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
 
-    1. We set the Mesh to only run 3 iterations. This means that the `hungry-cat` loop will only occur 3 times.
+	current-player-health
+	When(Predicate: IsLess(20) Action: {
+		@heal-player
+	})
+} Looped: true)
+
+@schedule(
+	Mesh: main 
+	Wire: main-game
+)
+@run(
+	Mesh: main 
+	TickTimer: 1.0 
+	Runs: 4
+)
+```
+
+    1. We set the Mesh to only run 4 iterations. This means that the `main-game` loop will only occur 3 times.
     
 === "Results"
     
-    ```
-    [hungry-cat] Hunger Level: 0
-    [hungry-cat] Hunger Level: 1
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [hungry-cat] Hunger Level: 2
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Meow
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    [make-cat-noises] Mew
-    ```
+```
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 30
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: 25
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: 23
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 13
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: 8
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: 6
+[main-game] Player healed!: 11
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 1
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: -4
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: -6
+[main-game] Player healed!: -1
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: -11
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: -16
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: -18
+[main-game] Player healed!: -13
+```
+
+Notice that our player's health falls below 0. Let's have player death occur by using another wire.
+
+=== "Player Death wire"
+```shards
+@wire(player-death {
+	Msg("Player has died!")
+} Looped: true)
+```
+
+Now let's create another conditional to check when player's health is 0 or less. Then let's switch our wire's flow to the `player-death` wire when this happen. 
+
+!!! note "Wire Flow"
+    We are being a bit cheeky and using the shard [`SwitchTo`](../../../../reference/shards/shards/General/SwitchTo/) here to tease you on what is to come! Wire flow will be taught in the next chapter. For now, just know that we are using `SwitchTo` to execute the `player-death` wire instead of the `main-game` wire once player health is 0 or less.
+
+=== "Final Code"
+```shards
+@mesh(main)
+
+@wire(player-death {
+	Msg("Player has died!")
+} Looped: true)
+
+@define(heal-player {
+	current-player-health | Math.Add(5) > current-player-health
+	Log("Player healed!")
+})
+
+@template(damage-player [damage-amount] {
+	current-player-health | Math.Subtract(damage-amount) > current-player-health
+	current-player-health | Log("Player's Current Health")
+})
+
+@wire(main-game {
+	Once({
+		40 >= current-player-health ;; initializing our player health variable
+	})
+
+	Msg("Player gets damaged by monster!")
+	@damage-player(10)
+
+	Msg("Player gets damaged by trap!")
+	@damage-player(5)
+
+	Msg("Player gets damaged by harsh environment!")
+	@damage-player(2)
+
+	current-player-health
+	When(Predicate: IsLess(20) Action: {
+		@heal-player
+	})
+
+	current-player-health
+	When(Predicate: IsLessEqual(0) Action: {
+		SwitchTo(player-death) ;; Switching execution to player-death wire
+	})
+} Looped: true)
+
+@schedule(
+	Mesh: main 
+	Wire: main-game
+)
+@run(
+	Mesh: main 
+	TickTimer: 1.0 
+	Runs: 4
+)
+```
+
+=== "Result"
+```shards
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 30
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: 25
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: 23
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 13
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: 8
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: 6
+[main-game] Player healed!: 11
+[main-game] Player gets damaged by monster!
+[main-game] Player's Current Health: 1
+[main-game] Player gets damaged by trap!
+[main-game] Player's Current Health: -4
+[main-game] Player gets damaged by harsh environment!
+[main-game] Player's Current Health: -6
+[main-game] Player healed!: -1
+[player-death] Player has died!
+```
 
 Congratulations! You have now learned the fundamentals of writing a Shards program.
 
 We will next look at how you can manipulate the flow of Shards to give you better control of how your program utilizes different Wires.
-
-<!-- TODO Pop Quizzes 
-## Pop Quiz
-Here's a short quiz to test your understanding of this chapter. -->
 
 --8<-- "includes/license.md"

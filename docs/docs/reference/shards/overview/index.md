@@ -99,7 +99,9 @@ Shards to schedule another Wire:
 
 Shards to control the flow of Wires:
 
-- [Start](../../../reference/shards/shards/General/Start/)
+- [SwitchTo](../../../reference/shards/shards/General/SwitchTo/)
+
+- [Suspend](../../../reference/shards/shards/General/Suspend/)
 
 - [Resume](../../../reference/shards/shards/General/Resume/)
 
@@ -110,6 +112,8 @@ Shards to run code in bulk:
 - [Expand](../../../reference/shards/shards/General/Expand/) (Creates copies of a Wire)
 
 - [TryMany](../../../reference/shards/shards/General/TryMany/) (Creates clones for each input to try)
+
+- [DoMany](../../../reference/shards/shards/General/TryMany/) (Creates clones for each input to try)
 
 For more information on Shards Flow, check out the primer guide [here](../../../learn/shards/primer/the-flow/).
 

@@ -11,7 +11,7 @@ Select the project you wish to download:
 
 - Download [Shards](https://github.com/fragcolor-xyz/shards/releases)
 
-- Download Rare Engine (Coming Soon!)
+- Download Formabble Engine (Coming Soon!)
 
 Unsure of where to go from here? Why not [learn more](../learn/) about our projects with our primers and tutorials here!
 

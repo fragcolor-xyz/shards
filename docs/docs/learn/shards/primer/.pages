@@ -3,4 +3,5 @@ nav:
   - what-is-shards.md
   - coding-with-shards.md
   - the-flow.md
+  - shards-lifecycle.md
   - working-with-data.md
