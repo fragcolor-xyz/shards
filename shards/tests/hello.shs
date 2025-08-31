@@ -127,10 +127,12 @@ n/text | Log
 """
 "Hello World!" | Log
 @x-defined | Log
+ext/my-var | Log
 """
 {Shards.Read(OutputType: AstType::Json) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log}
 {Shards.Read(OutputType: AstType::Bytes) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = my-wire}
-{WireComposer(my-wire) | Assert.Is("OK")}
+{my-wire | WireComposer({"ext/my-var": @type(Type::Int)}) | Assert.Is("OK")}
+1 = ext/my-var
 WireRunner(my-wire)
 
 ["B" "C" "D" "E" "F"] >= bcdef

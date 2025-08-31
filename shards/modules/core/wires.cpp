@@ -15,6 +15,7 @@
 #include <shards/log/log.hpp>
 #include <shards/shards.h>
 #include <shards/shards.hpp>
+#include <shards/core/params.hpp>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -1415,7 +1416,8 @@ struct ParallelBase : public CapturingSpawners {
         _executor = nullptr;
       }
     } else
-#endif // We'd like to use the existing threads in emscripten's case since it has issues creating threads on demand, needs to yield to the main loop
+#endif // We'd like to use the existing threads in emscripten's case since it has issues creating threads on demand, needs to
+       // yield to the main loop
     {
       _executor = &TaskFlowInstance::instance();
     }
@@ -2276,14 +2278,14 @@ public:
 };
 
 struct WireComposer : public BaseLoader<WireComposer> {
-  static inline Parameters params{
-      {"Wire", SHCCSTR("The wire variable to compose."), {CoreInfo::WireType, CoreInfo::WireVarType}},
-  };
+  WireComposer() { _extraVars = TableVar(); }
 
-  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  PARAM_PARAMVAR(_extraVars, "ExtraVariables", "A table with extra {name: type} variable types to add to the wire.",
+                 {CoreInfo::TypeTableType, CoreInfo::TypeVarTableType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_extraVars));
+
+  static SHTypesInfo inputTypes() { return CoreInfo::WireType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-
-  static SHParametersInfo parameters() { return params; }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() {
@@ -2295,48 +2297,27 @@ struct WireComposer : public BaseLoader<WireComposer> {
         "Attempts to compose the specified wire and outputs \"OK\" if successful, or an error message if the composition fails.");
   }
 
-  ParamVar _wire{};
-  SHVar _wireHash{};
-  SHWire *_wirePtr = nullptr;
-  SHExposedTypeInfo _requiredWire{};
-
-  void setParam(int index, const SHVar &value) {
-    if (index == 0) {
-      _wire = value;
-    }
-  }
-
-  SHVar getParam(int index) {
-    if (index == 0) {
-      return _wire;
-    }
-    return Var::Empty;
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    BaseLoader<WireComposer>::compose(data);
+    return CoreInfo::StringType;
   }
 
   void cleanup(SHContext *context) {
     BaseLoader<WireComposer>::cleanup(context);
-    _wire.cleanup();
-    _wirePtr = nullptr;
+    PARAM_CLEANUP(context);
   }
 
   void warmup(SHContext *context) {
     BaseLoader<WireComposer>::warmup(context);
-    _wire.warmup(context);
-  }
-
-  SHExposedTypesInfo requiredVariables() {
-    if (_wire.isVariable()) {
-      _requiredWire = SHExposedTypeInfo{_wire.variableName(), SHCCSTR("The wire to compose."), CoreInfo::WireType};
-      return {&_requiredWire, 1, 0};
-    } else {
-      return {};
-    }
+    PARAM_WARMUP(context);
   }
 
   std::string _errorMessage;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto wireVar = _wire.get();
+    auto wireVar = input;
     wire = SHWire::sharedFromRef(wireVar.payload.wireValue);
     if (unlikely(!wire)) {
       throw ComposeError("WireComposer: Could not find a wire to compose");
@@ -2345,7 +2326,15 @@ struct WireComposer : public BaseLoader<WireComposer> {
     try {
       SHInstanceData data{};
       data.inputType = _inputTypeCopy;
-      data.shared = _sharedCopy;
+      auto sharedCopy = _sharedCopy;
+      auto &extraVars = asTable(_extraVars.get());
+      for (auto &[name, type] : extraVars) {
+        if (name.valueType != SHType::String) {
+          throw ComposeError("WireComposer: Extra variables key must be a string");
+        }
+        sharedCopy.push_back(SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue});
+      }
+      data.shared = sharedCopy;
       data.wire = wire.get();
       wire->mesh = context->main->mesh;
 
