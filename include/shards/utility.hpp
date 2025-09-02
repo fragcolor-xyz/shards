@@ -864,13 +864,14 @@ template <typename T> struct hash<shards::TOwnedVar<T>> {
 
 template <typename SH_CORE> auto format_as(const shards::TOwnedVar<SH_CORE> &ov) { return (SHVar &)ov; }
 
-#define FIXED_TABLE_FIELD(name, index)                         \
+#define FIXED_TABLE_FIELD(name, index)                                 \
   shards::OwnedVar &name() { return map().tree().nth(index)->second; } \
   const shards::OwnedVar &name() const { return map().tree().nth(index)->second; }
 
+// Important, fields must be declared in lexicographic order!!
 #define DEFINE_FIXED_TABLE(ClassName, ...)                                                                    \
-  struct ClassName : shards::TableVar {                                                                               \
-    using MapType = ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar>;                                                     \
+  struct ClassName : shards::TableVar {                                                                       \
+    using MapType = ShardsAlignedMap<shards::OwnedVar, shards::OwnedVar>;                                     \
     constexpr MapType &map() { return *static_cast<MapType *>(payload.tableValue.opaque); }                   \
     constexpr const MapType &map() const { return *static_cast<const MapType *>(payload.tableValue.opaque); } \
     ClassName(){__VA_ARGS__} FIELDS                                                                           \

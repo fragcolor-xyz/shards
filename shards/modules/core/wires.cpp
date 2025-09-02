@@ -2278,11 +2278,17 @@ public:
 };
 
 struct WireComposer : public BaseLoader<WireComposer> {
-  WireComposer() { _extraVars = TableVar(); }
+  WireComposer() {
+    _mutableVars = TableVar();
+    _immutableVars = TableVar();
+  }
 
-  PARAM_PARAMVAR(_extraVars, "ExtraVariables", "A table with extra {name: type} variable types to add to the wire.",
+  PARAM_PARAMVAR(_mutableVars, "MutableVariables", "A table with extra {name: type} mutable variable types to add to the wire.",
                  {CoreInfo::TypeTableType, CoreInfo::TypeVarTableType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_extraVars));
+  PARAM_PARAMVAR(_immutableVars, "ImmutableVariables",
+                 "A table with extra {name: type} immutable variable types to add to the wire.",
+                 {CoreInfo::TypeTableType, CoreInfo::TypeVarTableType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_mutableVars), PARAM_IMPL_FOR(_immutableVars));
 
   static SHTypesInfo inputTypes() { return CoreInfo::WireType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -2327,12 +2333,21 @@ struct WireComposer : public BaseLoader<WireComposer> {
       SHInstanceData data{};
       data.inputType = _inputTypeCopy;
       auto sharedCopy = _sharedCopy;
-      auto &extraVars = asTable(_extraVars.get());
+      auto &extraVars = asTable(_mutableVars.get());
       for (auto &[name, type] : extraVars) {
         if (name.valueType != SHType::String) {
           throw ComposeError("WireComposer: Extra variables key must be a string");
         }
-        sharedCopy.push_back(SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue});
+        sharedCopy.push_back(
+            SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue, .isMutable = true});
+      }
+      auto &immutableVars = asTable(_immutableVars.get());
+      for (auto &[name, type] : immutableVars) {
+        if (name.valueType != SHType::String) {
+          throw ComposeError("WireComposer: Immutable variables key must be a string");
+        }
+        sharedCopy.push_back(
+            SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue, .isMutable = false});
       }
       data.shared = sharedCopy;
       data.wire = wire.get();

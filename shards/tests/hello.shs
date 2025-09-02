@@ -127,12 +127,15 @@ n/text | Log
 """
 "Hello World!" | Log
 @x-defined | Log
-ext/my-var | Log
+2 > ext/my-mutable-var
+ext/my-mutable-var | Log
+ext/my-immutable-var | Log
 """
 {Shards.Read(OutputType: AstType::Json) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log}
 {Shards.Read(OutputType: AstType::Bytes) | Log | Shards.Distill(Name: "my wire" Defines: {x-defined: 10}) | Log = my-wire}
-{my-wire | WireComposer({"ext/my-var": @type(Type::Int)}) | Assert.Is("OK")}
-1 = ext/my-var
+{my-wire | WireComposer(MutableVariables: {"ext/my-mutable-var": @type(Type::Int)} ImmutableVariables: {"ext/my-immutable-var": @type(Type::Int)}) | Assert.Is("OK")}
+1 >= ext/my-mutable-var
+1 = ext/my-immutable-var
 WireRunner(my-wire)
 
 ["B" "C" "D" "E" "F"] >= bcdef
