@@ -261,7 +261,7 @@ struct Connection {
         lock = std::unique_lock<std::mutex>(transactionMutex, std::adopt_lock);
         return true;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return false;
   }
