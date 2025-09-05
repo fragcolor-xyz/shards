@@ -250,13 +250,10 @@ struct Connection {
   std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
   
-  // Helper for timeout-based transaction lock acquisition with cancellation support
+  // Helper for transaction lock acquisition with cancellation support
   bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex>& lock, SHContext* context, 
-                                   std::atomic<bool>& cancelled,
-                                   std::chrono::milliseconds timeout = std::chrono::milliseconds(100)) {
-    auto deadline = std::chrono::steady_clock::now() + timeout;
-    
-    while (std::chrono::steady_clock::now() < deadline && context->shouldContinue() && !cancelled.load()) {
+                                   std::atomic<bool>& cancelled) {
+    while (context->shouldContinue() && !cancelled.load()) {
       if (transactionMutex.try_lock()) {
         lock = std::unique_lock<std::mutex>(transactionMutex, std::adopt_lock);
         return true;
@@ -664,7 +661,7 @@ struct Query : public Base {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
             if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock within timeout or cancelled");
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
             }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -875,7 +872,7 @@ struct LoadExtension : public Base {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
             if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock within timeout or cancelled");
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
             }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -938,7 +935,7 @@ struct RawQuery : public Base {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
             if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock within timeout or cancelled");
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
             }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
@@ -1007,7 +1004,7 @@ struct Backup : public Base {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
             if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock within timeout or cancelled");
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
             }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
