@@ -247,7 +247,7 @@ public:
   static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                  \
   static inline Type _definedAs{                                                                            \
       {SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
-  static inline ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, shards::CoreCC,       \
+  static inline shards::ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, shards::CoreCC,       \
                                                                         SH_CONCAT(_definedAs, TypeId)};
 
 #endif
