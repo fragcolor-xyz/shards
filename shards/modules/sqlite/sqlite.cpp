@@ -249,6 +249,19 @@ struct Connection {
   std::mutex mutex;
   std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
+  
+  // Helper for transaction lock acquisition with cancellation support
+  bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex>& lock, SHContext* context, 
+                                   std::atomic<bool>& cancelled) {
+    while (context->shouldContinue() && !cancelled.load()) {
+      if (transactionMutex.try_lock()) {
+        lock = std::unique_lock<std::mutex>(transactionMutex, std::adopt_lock);
+        return true;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
+  }
 
   Connection(const char *path, bool readOnly) {
     std::unique_lock<std::shared_mutex> l(globalMutex); // WRITE LOCK this
@@ -638,13 +651,18 @@ struct Query : public Base {
     // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
 
+    // Use cancellation flag to interrupt lock acquisition
+    std::atomic<bool> cancelled{false};
+    
     return awaitne(
         context,
         [&]() -> SHVar {
           // ok if we are not within a transaction, we need to check if transaction lock is locked!
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            transactionLock.emplace(_connection->transactionMutex);
+            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
+            }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
@@ -697,7 +715,10 @@ struct Query : public Base {
           SH_SQLITE_DEBUG_LOG("sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
           return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
         },
-        [] {});
+        [&] {
+          // Cancellation handler: signal to interrupt lock acquisition
+          cancelled.store(true);
+        });
   }
 };
 
@@ -842,12 +863,17 @@ struct LoadExtension : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
+    // Use cancellation flag to interrupt lock acquisition
+    std::atomic<bool> cancelled{false};
+    
     return awaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            transactionLock.emplace(_connection->transactionMutex);
+            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
+            }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
@@ -864,7 +890,10 @@ struct LoadExtension : public Base {
 
           return input;
         },
-        [] {});
+        [&] {
+          // Cancellation handler: signal to interrupt lock acquisition
+          cancelled.store(true);
+        });
   }
 };
 
@@ -897,12 +926,17 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
+    // Use cancellation flag to interrupt lock acquisition
+    std::atomic<bool> cancelled{false};
+    
     return awaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            transactionLock.emplace(_connection->transactionMutex);
+            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
+            }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::scoped_lock<std::mutex> l2(_connection->mutex);
@@ -919,7 +953,10 @@ struct RawQuery : public Base {
 
           return input;
         },
-        [] {});
+        [&] {
+          // Cancellation handler: signal to interrupt lock acquisition
+          cancelled.store(true);
+        });
   }
 };
 
@@ -958,12 +995,17 @@ struct Backup : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, true);
 
+    // Use cancellation flag to interrupt lock acquisition
+    std::atomic<bool> cancelled{false};
+    
     return awaitne(
         context,
         [&] {
           std::optional<std::unique_lock<std::mutex>> transactionLock;
           if (!_withinTransaction) {
-            transactionLock.emplace(_connection->transactionMutex);
+            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
+              throw ActivationError("Failed to acquire transaction lock or cancelled");
+            }
           }
           std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
           std::unique_lock<std::mutex> l2(_connection->mutex);
@@ -1008,7 +1050,10 @@ struct Backup : public Base {
 
           return input;
         },
-        [] {});
+        [&] {
+          // Cancellation handler: signal to interrupt lock acquisition
+          cancelled.store(true);
+        });
   }
 };
 
