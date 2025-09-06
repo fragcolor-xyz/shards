@@ -102,6 +102,10 @@ Something else"""
   individual-terms | Assert.Is([
     "%Hello%" "%this%" "%is%" "%just%" "%test%" "%string,%" "%with%" "%in%" "%the%" "%middle%"
   ])
+
+  "Hello" | StringToBytes >= hello-bytes
+  "0xFFFFFFFF" | HexToBytes | AppendTo(hello-bytes)
+  hello-bytes | BytesToString | String.CleanUTF8 | Assert.Is("Hello\0\0\0\0")
 })
 
 @mesh(root)

@@ -878,6 +878,32 @@ struct ToUTF16 {
     return Var(_utf16Bytes);
   }
 };
+
+struct CleanUTF8 {
+  static SHOptionalString help() { return SHCCSTR("Removes or replaces invalid UTF-8 sequences from the input string."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
+
+  std::string _cleanBuffer;
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _cleanBuffer = SHSTRING_PREFER_SHSTRVIEW(input);
+
+    // Check if the entire string is valid UTF-8 first
+    if (utf8valid(_cleanBuffer.data()) == 0) {
+      // String is completely valid, return as-is
+      return input;
+    }
+
+    if (utf8makevalid(_cleanBuffer.data(), '\0') != 0) {
+      throw ActivationError("Failed to clean UTF-8 string");
+    };
+
+    return Var(_cleanBuffer);
+  }
+};
+
 } // namespace shards
 
 SHARDS_REGISTER_FN(strings) {
@@ -903,4 +929,5 @@ SHARDS_REGISTER_FN(strings) {
   REGISTER_SHARD("String.FromCodePoints", FromCodePointsShard);
   REGISTER_SHARD("String.FromUTF16", shards::FromUTF16);
   REGISTER_SHARD("String.ToUTF16", shards::ToUTF16);
+  REGISTER_SHARD("String.CleanUTF8", shards::CleanUTF8);
 }
