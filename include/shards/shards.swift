@@ -2338,6 +2338,14 @@ class Shards {
     static func abortWire(context: Context, errorText: SHStringWithLen) {
         G.Core.pointee.abortWire(context.context, errorText)
     }
+
+    static func addShardAlias(original: String, alias: String) {
+        let originalChars = original.utf8CString
+        let aliasChars = alias.utf8CString
+        let originalName = SHStringWithLen.from(originalChars)
+        let aliasName = SHStringWithLen.from(aliasChars)
+        G.Core.pointee.addShardAlias(originalName, aliasName)
+    }
 }
 
 #if canImport(UIKit)

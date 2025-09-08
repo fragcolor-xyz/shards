@@ -1170,7 +1170,9 @@ typedef struct SHLogSettings_ {
 typedef void(__cdecl *SHSetupLogger)(const SHLogSettings *logSettings);
 
 typedef SHBool(__cdecl *SHTriggerVarValueChange)(SHWireRef wire, struct SHStringWithLen name, const struct SHVar *key,
-                                               bool isGlobal, const struct SHVar *var);
+                                                 bool isGlobal, const struct SHVar *var);
+
+typedef void(__cdecl *SHAddShardAlias)(struct SHStringWithLen originalName, struct SHStringWithLen aliasName);
 
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
@@ -1385,6 +1387,9 @@ typedef struct _SHCore {
 
   // Utility to trigger var value change (which trigger tracking mask events)
   SHTriggerVarValueChange triggerVarValueChange;
+
+  // Utility to add shard alias
+  SHAddShardAlias addShardAlias;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

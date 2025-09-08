@@ -1474,9 +1474,8 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
     }
   }
 
-  auto err = fmt::format(
-      "Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), {}",
-      param.name, value, varType, param.valueTypes, formatShardSourceLocation(shard));
+  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), {}", param.name,
+                         value, varType, param.valueTypes, formatShardSourceLocation(shard));
 #if SH_DEBUG_TYPE_MATCHING
   // Put a breakpoint here to debug
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
@@ -2673,6 +2672,16 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->registerShard = [](const char *fullName, SHShardConstructor constructor) noexcept {
     API_TRY_CALL(registerShard, shards::registerShard(fullName, constructor);)
+  };
+
+  result->addShardAlias = [](SHStringWithLen originalName, SHStringWithLen aliasName) {
+    // find constructor using original and add alias to it
+    auto it = shards::GetGlobals().ShardsRegister.find(std::string_view{originalName.string, size_t(originalName.len)});
+    if (it != shards::GetGlobals().ShardsRegister.end()) {
+      API_TRY_CALL(registerShard, shards::registerShard(aliasName.string, it->second);)
+    } else {
+      SHLOG_ERROR("Original shard not found for alias: {}", aliasName.string);
+    }
   };
 
   result->registerObjectType = [](int32_t vendorId, int32_t typeId, SHObjectInfo info) noexcept {
