@@ -60,7 +60,7 @@
       Math.Inc(y)
       [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
     } Times: 10)
-  } @db-file)
+  } @db-file Immediate: true)
   [] | DB.Query("SELECT * FROM integers" @db-file) | Log
   Assert.Is({x: [88 100 102 12 13 14 15 16 17 18 19 20 21] y: [99 101 none 23 24 25 26 27 28 29 30 31 32]})
   Msg("Test 3 passed")

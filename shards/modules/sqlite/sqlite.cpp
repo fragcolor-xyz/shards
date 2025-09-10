@@ -731,14 +731,16 @@ struct Transaction : public Base {
 
   SHComposeResult _composeResult{};
 
-  void setup() {}
+  Transaction() { _immediate = Var(false); }
 
   PARAM(ShardsVar, _queries, "Queries", "The Shards logic executing various DB queries.", {CoreInfo::ShardsOrNone});
   PARAM_PARAMVAR(_dbName, "Database",
                  "The sqlite database filename. If left empty, it will first check for an exposed variable named "
                  "'sqlite/database', and if that doesn't exist, it will use 'shards.db' as the default.",
                  {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName));
+  PARAM_VAR(_immediate, "Immediate", "Whether to write lock the database immediately vs sqlite DEFERRED mode.",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_queries), PARAM_IMPL_FOR(_dbName), PARAM_IMPL_FOR(_immediate));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -793,7 +795,8 @@ struct Transaction : public Base {
           std::scoped_lock<std::mutex> l2(_connection->mutex);
 
           SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
-          auto rc = sqlite3_exec(_connection->get(), "BEGIN;", nullptr, nullptr, nullptr);
+          auto rc = sqlite3_exec(_connection->get(), _immediate.payload.boolValue ? "BEGIN IMMEDIATE;" : "BEGIN DEFERRED;",
+                                 nullptr, nullptr, nullptr);
           if (rc != SQLITE_OK) {
             throw ActivationError(sqlite3_errmsg(_connection->get()));
           }
