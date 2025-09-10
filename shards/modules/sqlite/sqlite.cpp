@@ -249,10 +249,9 @@ struct Connection {
   std::mutex mutex;
   std::mutex transactionMutex;
   static inline std::shared_mutex globalMutex;
-  
+
   // Helper for transaction lock acquisition with cancellation support
-  bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex>& lock, SHContext* context, 
-                                   std::atomic<bool>& cancelled) {
+  bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex> &lock, SHContext *context, std::atomic<bool> &cancelled) {
     while (context->shouldContinue() && !cancelled.load()) {
       if (transactionMutex.try_lock()) {
         lock = std::unique_lock<std::mutex>(transactionMutex, std::adopt_lock);
@@ -653,7 +652,7 @@ struct Query : public Base {
 
     // Use cancellation flag to interrupt lock acquisition
     std::atomic<bool> cancelled{false};
-    
+
     return awaitne(
         context,
         [&]() -> SHVar {
@@ -672,8 +671,12 @@ struct Query : public Base {
                 new Statement(_connection->get(), _query.get().payload.stringValue)); // _query is full terminated cos cloned
           }
 
-          sqlite3_reset(prepared->get());
-          sqlite3_clear_bindings(prepared->get());
+          DEFER({
+            // it is better to do this at the end, as this will also trigger implicit commit and unlock write lock
+            sqlite3_reset(prepared->get());
+            sqlite3_clear_bindings(prepared->get());
+          });
+
           int expectedNumParameters = sqlite3_bind_parameter_count(prepared->get());
 
           int rc;
@@ -865,7 +868,7 @@ struct LoadExtension : public Base {
 
     // Use cancellation flag to interrupt lock acquisition
     std::atomic<bool> cancelled{false};
-    
+
     return awaitne(
         context,
         [&] {
@@ -928,7 +931,7 @@ struct RawQuery : public Base {
 
     // Use cancellation flag to interrupt lock acquisition
     std::atomic<bool> cancelled{false};
-    
+
     return awaitne(
         context,
         [&] {
@@ -997,7 +1000,7 @@ struct Backup : public Base {
 
     // Use cancellation flag to interrupt lock acquisition
     std::atomic<bool> cancelled{false};
-    
+
     return awaitne(
         context,
         [&] {
