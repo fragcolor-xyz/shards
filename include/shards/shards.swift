@@ -2348,7 +2348,7 @@ class Shards {
     }
 }
 
-#if canImport(UIKit)
+#if canImport(UIKit) && !WIDGETS
     import UIKit
 
     extension UIView {
