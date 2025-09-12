@@ -37,13 +37,6 @@ struct WireVariableSlot {
 };
 
 struct WireRuntimeVariableInfo {
-  static inline const uint32_t IdNone = 0;
-  static inline const uint32_t IdFlagsExternal = 1 << 31;
-  static inline const uint32_t IdFlagsInherited = 1 << 30;
-  static inline const uint32_t IdFlagsGlobal = 1 << 29;
-  static inline const uint32_t IdFlagsRef = 1 << 28;
-  static inline const uint32_t IdFlagMask = IdFlagsExternal | IdFlagsInherited | IdFlagsGlobal | IdFlagsRef;
-  static inline const uint32_t IdValueMask = IdFlagsRef - 1;
 
   // Pointers to variables
   // for local variables, this will point into variableStorage
@@ -71,7 +64,7 @@ struct WireRuntimeVariableInfo {
   uint32_t numGlobalVariables{};
 
   struct VariableScope {
-    std::unordered_map<std::string_view, size_t> variableLookup;
+    std::unordered_map<std::string, size_t> variableLookup;
   };
 
   // Maps shard sequence id to variable a given variable scope
@@ -125,7 +118,6 @@ struct WireRuntimeVariableInfo {
   }
 
   WireVariableSlot variableFromId(size_t vid) {
-    vid = vid & IdValueMask;
     shassert(vid < variables.size() && "Invalid local variable id");
     return &variableSlots[vid];
   }
@@ -134,7 +126,7 @@ struct WireRuntimeVariableInfo {
     auto it = variableScopes.find(shard->seqId);
     if (it == variableScopes.end())
       return nullptr;
-    auto search = it->second.variableLookup.find(name);
+    auto search = it->second.variableLookup.find(std::string(name)); // TODO: optimize
     if (search == it->second.variableLookup.end())
       return nullptr;
     return variableFromId(search->second);
@@ -177,7 +169,7 @@ struct WireRuntimeVariableInfo {
     // Now search through scopes from this point backward
     while (true) {
       auto &scope = it->second;
-      auto search = scope.variableLookup.find(name);
+      auto search = scope.variableLookup.find(std::string(name)); // TODO: optimize
       if (search != scope.variableLookup.end()) {
         return variableFromId(search->second);
       }

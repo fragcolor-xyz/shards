@@ -8,6 +8,7 @@
 #include "pmr/shared_temp_allocator.hpp"
 #include "wire_runtime.hpp"
 #include "variable_accessor.hpp"
+#include <shards/iterator.hpp>
 #include <spdlog/spdlog.h>
 
 typedef void (*SHCAnnotatePasshtrough)(const SHInstanceData &);
@@ -266,7 +267,7 @@ struct CompositionContext {
 
   // Checks if a reference variable is valid at this point in time
   void checkReferenceIsValid(VariableAccessorChain chain, size_t version);
-  void checkReferenceIsValidInternal(TrackedReference* reference, VariableAccessorChain chain, size_t version);
+  void checkReferenceIsValidInternal(TrackedReference *reference, VariableAccessorChain chain, size_t version);
 
   // Temporary
   SHTypeInfo &previousOutputType() { return currentScope().previousOutputType; }
@@ -290,6 +291,16 @@ private:
   void flowAppendVA(VariableAccessor va);
   void flowClearUndeterministic();
 };
+
+bool typeRequiresInvalidationWhenUpdated(const SHTypeInfo& type);
+inline bool typesRequireInvalidationWhenUpdated(const SHTypesInfo& types) {
+  for(auto& t : types) {
+    if (typeRequiresInvalidationWhenUpdated(t)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 } // namespace compose
 using compose::CompositionContext;

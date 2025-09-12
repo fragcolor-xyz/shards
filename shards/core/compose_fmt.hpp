@@ -14,7 +14,7 @@ template <> struct formatter<shards::compose::VariableAccessor> {
     if (va.is<shards::compose::VA_Variable>()) {
       auto &va1 = va.as<shards::compose::VA_Variable>();
       if (!va1.debugName.empty()) {
-        return format_to(ctx.out(), "{}/{}", va1.debugName, va1.index);
+        return format_to(ctx.out(), "{}({})", va1.debugName, va1.index);
       } else {
         return format_to(ctx.out(), "{}", va1.index);
       }
@@ -26,7 +26,7 @@ template <> struct formatter<shards::compose::VariableAccessor> {
     } else if (va.is<shards::compose::VA_WireOutput>()) {
       auto &va1 = va.as<shards::compose::VA_WireOutput>();
       if (!va1.debugName.empty()) {
-        return format_to(ctx.out(), "<wire:{}/{}>", va1.debugName, va1.wireId);
+        return format_to(ctx.out(), "<wire:{}({})>", va1.debugName, va1.wireId);
       } else {
         return format_to(ctx.out(), "<wire:{}>", va1.wireId);
       }
@@ -60,7 +60,7 @@ template <> struct formatter<shards::compose::VariableRef> {
   template <typename ParseContext> constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
   template <typename FormatContext> auto format(shards::compose::VariableRef const &ref, FormatContext &ctx) const {
     if (ref.isValid()) {
-      return format_to(ctx.out(), "{}/{} (type: {})", ref->id, ref->exposed.name, ref->exposed.exposedType);
+      return format_to(ctx.out(), "{}({}, type: {})", ref->exposed.name, ref->id, ref->exposed.exposedType);
     }
     return format_to(ctx.out(), "unknown");
   }

@@ -188,8 +188,11 @@ void CompositionContext::step() {
     }
   }
 
+  // if (!hasCompose && !scope->annotations.isAnnotated) {
+  // throw ComposeError(fmt::format("non-annotated shard: {} (id: {})", scope->shardName, scope->bottom->id));
+  // }
   if (!hasCompose && !scope->annotations.isAnnotated) {
-    throw ComposeError(fmt::format("non-annotated shard: {} (id: {})", scope->shardName, scope->bottom->id));
+    SPDLOG_LOGGER_DEBUG(logger, "non-annotated shard: {} (id: {})", scope->shardName, scope->bottom->id);
   }
 
 #ifndef NDEBUG
@@ -980,6 +983,14 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     }
 
     if (composeWireRoot) {
+      static constexpr uint32_t IdNone = 0;
+      static constexpr uint32_t IdFlagsExternal = 1 << 31;
+      static constexpr uint32_t IdFlagsInherited = 1 << 30;
+      static constexpr uint32_t IdFlagsGlobal = 1 << 29;
+      static constexpr uint32_t IdFlagsRef = 1 << 28;
+      static constexpr uint32_t IdFlagMask = IdFlagsExternal | IdFlagsInherited | IdFlagsGlobal | IdFlagsRef;
+      static constexpr uint32_t IdValueMask = IdFlagsRef - 1;
+
       // Finalize and populate wire variable data
       SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis", scope.wireName());
       pmr::set<size_t> allRequiredVariables(ctx.getAllocator());
@@ -990,6 +1001,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
       pmr::vector<WireRuntimeVariableInfo::VariableDecl> externalVariables(ctx.getAllocator());
       pmr::vector<WireRuntimeVariableInfo::VariableDecl> globalVariables(ctx.getAllocator());
       pmr::unordered_map<size_t, size_t> variableRemapping(ctx.getAllocator());
+      pmr::unordered_map<size_t, size_t> reverseRemapping(ctx.getAllocator());
       using VarDecl = WireRuntimeVariableInfo::VariableDecl;
       for (auto &[k, v] : composeWireRoot->shardSeqId) {
         orderedShards.emplace(v.seqId, &v);
@@ -1036,24 +1048,24 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
             auto &vs = runtimeVariableInfo->variableScopes.emplace(shardInfo->seqId, WireRuntimeVariableInfo::VariableScope{})
                            .first->second;
             if (var.kind == VariableKind::Inherited) {
-              size_t newVarId = inheritedVariables.size() | WireRuntimeVariableInfo::IdFlagsInherited;
+              size_t newVarId = inheritedVariables.size() | IdFlagsInherited;
               vs.variableLookup[var.exposed.name] = newVarId;
               inheritedVariables.emplace_back(std::move(vd));
               targetIt = variableRemapping.emplace(v, newVarId).first;
 
               allRequiredVariables.insert(v);
             } else if (var.kind == VariableKind::External) {
-              size_t newVarId = externalVariables.size() | WireRuntimeVariableInfo::IdFlagsExternal;
+              size_t newVarId = externalVariables.size() | IdFlagsExternal;
               vs.variableLookup[var.exposed.name] = newVarId;
               externalVariables.emplace_back(std::move(vd));
               targetIt = variableRemapping.emplace(v, newVarId).first;
             } else if (var.kind == VariableKind::Global) {
-              size_t newVarId = globalVariables.size() | WireRuntimeVariableInfo::IdFlagsGlobal;
+              size_t newVarId = globalVariables.size() | IdFlagsGlobal;
               vs.variableLookup[var.exposed.name] = newVarId;
               globalVariables.emplace_back(std::move(vd));
               targetIt = variableRemapping.emplace(v, newVarId).first;
             } else if (var.kind == VariableKind::Local && var.referenceTarget) {
-              size_t newVarId = refVariables.size() | WireRuntimeVariableInfo::IdFlagsRef;
+              size_t newVarId = refVariables.size() | IdFlagsRef;
               vs.variableLookup[var.exposed.name] = newVarId;
               refVariables.emplace_back(std::move(vd));
               targetIt = variableRemapping.emplace(v, newVarId).first;
@@ -1064,6 +1076,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
               localVariables.emplace_back(std::move(vd));
               targetIt = variableRemapping.emplace(v, newVarId).first;
             }
+            reverseRemapping.emplace(targetIt->second, targetIt->first);
           }
 
           auto &vs = runtimeVariableInfo->variableScopes.emplace(shardInfo->seqId, WireRuntimeVariableInfo::VariableScope{})
@@ -1105,15 +1118,27 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         runtimeVariableInfo->variables.emplace_back(std::move(v));
       }
 
+      // For debug info, etc.
+      pmr::unordered_map<size_t, VariableRef> mapToComposeVariable(ctx.getAllocator());
+
       // Fixup scope references
       for (auto &[k, v] : runtimeVariableInfo->variableScopes) {
         for (auto &[name, id] : v.variableLookup) {
-          if (id & WireRuntimeVariableInfo::IdFlagsRef) {
-            id += runtimeVariableInfo->refOffset();
-          } else if (id & WireRuntimeVariableInfo::IdFlagsInherited) {
-            id += runtimeVariableInfo->inheritedOffset();
-          } else if (id & WireRuntimeVariableInfo::IdFlagsExternal) {
-            id += runtimeVariableInfo->externalOffset();
+          auto srcIdx = reverseRemapping.find(id);
+
+          if (id & IdFlagsRef) {
+            id = (id & IdValueMask) + runtimeVariableInfo->refOffset();
+          } else if (id & IdFlagsInherited) {
+            id = (id & IdValueMask) + runtimeVariableInfo->inheritedOffset();
+          } else if (id & IdFlagsExternal) {
+            id = (id & IdValueMask) + runtimeVariableInfo->externalOffset();
+          } else if (id & IdFlagsGlobal) {
+            id = (id & IdValueMask) + runtimeVariableInfo->globalOffset();
+          }
+
+          if (srcIdx != reverseRemapping.end()) {
+            reverseRemapping.erase(srcIdx);
+            mapToComposeVariable.emplace(id, &ctx.variables[srcIdx->second]);
           }
         }
       }
@@ -1124,8 +1149,15 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
                             var.exposed.exposedType);
       }
 
-      SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis done", scope.wireName());
+      SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} variables ({} total)", scope.wireName(),
+                          runtimeVariableInfo->variables.size());
+      for (size_t i = 0; i < runtimeVariableInfo->variables.size(); i++) {
+        auto& composeVar = mapToComposeVariable.find(i)->second;
+        SPDLOG_LOGGER_DEBUG(compose::logger, "  [{}] ({}) {} (id: {}, type: {})", i, magic_enum::enum_name(composeVar->kind), composeVar->exposed.name, composeVar->id, (const SHTypeInfo &)runtimeVariableInfo->variables[i].type);
+      }
+
       runtimeVariableInfo->initStorage();
+      SPDLOG_LOGGER_DEBUG(compose::logger, "Wire {} analysis done", scope.wireName());
     }
 
     return result;
@@ -1135,6 +1167,21 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     }
     throw;
   }
+}
+
+bool typeRequiresInvalidationWhenUpdated(const SHTypeInfo &t) {
+  // Table can remove keys invalidating references
+  // Ignore fixed struct table
+  if (t.basicType == SHType::Table && !t.table.fixedStructTable)
+    return true;
+  // Seq can resize due to assignment, invalidating reference
+  if (t.basicType == SHType::Seq)
+    return true;
+  // This might be seq/table, no way to know during compose
+  if (t.basicType == SHType::Any)
+    return true;
+  // Any other type can stay valid as a reference
+  return false;
 }
 
 } // namespace compose

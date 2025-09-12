@@ -1674,6 +1674,11 @@ struct Update : public SetUpdateBase {
       if (!_key.isVariable()) {
         invalidationPath.append(compose::VariableAccessor::key(_key));
       } // Otherwise invalidate the entire table
+
+      // Invalidate the target reference
+      if (compose::typesRequireInvalidationWhenUpdated(tableInnerValueTypes)) {
+        ctx.invalidateReferencePath(invalidationPath);
+      }
     } else {
       auto &exposed = existingVariable->exposed;
       if (!matchTypes(data.inputType, exposed.exposedType, true, true, true)) {
@@ -1686,15 +1691,17 @@ struct Update : public SetUpdateBase {
 
       // just a variable, keep unchanged!
       _exposedInfo.push_back(exposed);
+
+      // Invalidate the target reference
+      if (compose::typeRequiresInvalidationWhenUpdated(exposed.exposedType)) {
+        ctx.invalidateReferencePath(invalidationPath);
+      }
     }
 
     // always lift this limit in a Set/Update
     _exposedInfo._innerInfo.elements[0].exposedType.fixedSize = 0;
     _exposedInfo._innerInfo.elements[0].declared = false;
     _exposedInfo._innerInfo.elements[0].internalId = existingVariable->id;
-
-    // Invalidate the target reference
-    ctx.invalidateReferencePath(invalidationPath);
 
     return data.inputType;
   }
@@ -3301,7 +3308,7 @@ struct Take {
   }
 
   SHSeq _cachedSeq{};
-  SHVar _output{};
+  SHVar _tmpSeqOutput{.valueType = SHType::Seq};
   SHVar _indices{};
   SHVar *_indicesVar{nullptr};
   ExposedInfo _exposedInfo{};
@@ -3316,10 +3323,7 @@ struct Take {
   Type _seqOutputType{};
   std::vector<SHTypeInfo> _seqOutputTypes;
 
-  void destroy() {
-    destroyVar(_indices);
-    destroyVar(_output);
-  }
+  void destroy() { destroyVar(_indices); }
 
   void cleanup(SHContext *context) {
     if (_indicesVar) {
@@ -3424,7 +3428,7 @@ struct Take {
     CompositionContext::get(data).annotateSubPath(_indices);
 
     if (data.inputType.basicType == SHType::Seq) {
-      OVERRIDE_ACTIVATE(data, activateSeq);
+      OVERRIDE_ACTIVATE2(data, activateSeq);
       if (_seqOutput) {
         // multiple values, leave SHType::Seq
         return data.inputType;
@@ -3466,9 +3470,15 @@ struct Take {
         }
 
         _vectorOutput.valueType = _vectorOutputType->shType;
+
+        // Non-reference output
+        CompositionContext::get(data).annotateClearVariable();
+
         return _vectorOutputType->type;
       } else if (data.inputType.basicType == SHType::Bytes) {
         OVERRIDE_ACTIVATE(data, activateBytes);
+        // Non-reference output
+        CompositionContext::get(data).annotateClearVariable();
         if (_seqOutput) {
           return CoreInfo::IntSeqType;
         } else {
@@ -3476,17 +3486,24 @@ struct Take {
         }
       } else if (data.inputType.basicType == SHType::String) {
         OVERRIDE_ACTIVATE(data, activateString);
+        // Non-reference output
+        CompositionContext::get(data).annotateClearVariable();
         if (_seqOutput) {
           return CoreInfo::IntSeqType;
         } else {
           return CoreInfo::IntType;
         }
       } else if (data.inputType.basicType == SHType::Table) {
+        if (_seqOutput) {
+          // Non-reference output
+          CompositionContext::get(data).annotateClearVariable();
+        }
+
         if (_indices.valueType != SHType::ContextVar && !_seqOutput) {
           // If not a variable and not multiple values, we can use fast path
-          OVERRIDE_ACTIVATE(data, activateFastTable);
+          OVERRIDE_ACTIVATE2(data, activateFastTable);
         } else {
-          OVERRIDE_ACTIVATE(data, activateTable);
+          OVERRIDE_ACTIVATE2(data, activateTable);
         }
 
         if (data.inputType.table.keys.len > 0 && _indices.valueType != SHType::ContextVar) {
@@ -3587,8 +3604,8 @@ struct Take {
     }
   }
 
-#define ACTIVATE_INDEXABLE(__name__, __len__, __val__)                                                                     \
-  ALWAYS_INLINE SHVar __name__(SHContext *context, const SHVar &input) {                                                   \
+#define ACTIVATE_INDEXABLE(__name__, __len__, __by_ref__, __val__)                                                         \
+  ALWAYS_INLINE SHVar &__name__(SHContext *context, const SHVar &input) {                                                  \
     shassert_extended(context, input.valueType == SHType::Seq || input.valueType == SHType::String ||                      \
                                    input.valueType == SHType::Bytes && "Take: Expected seq, string or bytes input type."); \
     const auto inputLen = size_t(__len__);                                                                                 \
@@ -3598,7 +3615,12 @@ struct Take {
       if (index < 0 || size_t(index) >= inputLen) {                                                                        \
         throw OutOfRangeEx(inputLen, index);                                                                               \
       }                                                                                                                    \
-      return __val__;                                                                                                      \
+      if constexpr (__by_ref__ != 0) {                                                                                     \
+        return __val__;                                                                                                    \
+      } else {                                                                                                             \
+        _tmpSeqOutput = __val__;                                                                                           \
+        return _tmpSeqOutput;                                                                                              \
+      }                                                                                                                    \
     } else {                                                                                                               \
       const uint32_t nindices = indices.payload.seqValue.len;                                                              \
       shards::arrayResize(_cachedSeq, nindices);                                                                           \
@@ -3609,19 +3631,22 @@ struct Take {
         }                                                                                                                  \
         _cachedSeq.elements[i] = __val__;                                                                                  \
       }                                                                                                                    \
-      return shards::Var(_cachedSeq);                                                                                      \
+      _tmpSeqOutput.payload.seqValue = _cachedSeq;                                                                         \
+      return _tmpSeqOutput;                                                                                                \
     }                                                                                                                      \
   }
 
-  ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, input.payload.seqValue.elements[index])
-  ACTIVATE_INDEXABLE(activateString, SHSTRLEN(input), shards::Var(input.payload.stringValue[index]))
-  ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, shards::Var(input.payload.bytesValue[index]))
+  ACTIVATE_INDEXABLE(activateSeq, input.payload.seqValue.len, 1, input.payload.seqValue.elements[index])
+  ACTIVATE_INDEXABLE(activateString, SHSTRLEN(input), 0, shards::Var(input.payload.stringValue[index]))
+  ACTIVATE_INDEXABLE(activateBytes, input.payload.bytesSize, 0, shards::Var(input.payload.bytesValue[index]))
+
+  static inline auto EmptyReturnValue = Var::Empty;
 
   // If the key is a constant, at compose time, we can cache the result, unless version changes
   SHVar *_fastValue = nullptr;
   uint64_t _fastTableId = 0;
   uint64_t _fastVersion = 0xFFFFFFFFFFFFFFFF;
-  SHVar activateFastTable(SHContext *context, const SHVar &input) {
+  SHVar &activateFastTable(SHContext *context, const SHVar &input) {
     shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
 
     SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
@@ -3636,7 +3661,7 @@ struct Take {
     const auto val = table->find(fk);
     if (val == table->end()) {
       // well if there is no value, we should return empty and avoid setting the cache yet
-      return Var::Empty;
+      return EmptyReturnValue;
     }
 
     _fastValue = &val->second;
@@ -3647,7 +3672,7 @@ struct Take {
     return *_fastValue;
   }
 
-  SHVar activateTable(SHContext *context, const SHVar &input) {
+  SHVar &activateTable(SHContext *context, const SHVar &input) {
     shassert_extended(context, input.valueType == SHType::Table && "Take: Expected table input type.");
 
     const auto &indices = _indicesVar ? *_indicesVar : _indices;
@@ -3657,7 +3682,7 @@ struct Take {
       auto fk = shards::OwnedVar::Foreign(key);
       const auto val = table->find(fk);
       if (val == table->end()) {
-        return Var::Empty;
+        return EmptyReturnValue;
       } else {
         return val->second;
       }
@@ -3673,7 +3698,8 @@ struct Take {
           _cachedSeq.elements[i] = *val;
         }
       }
-      return Var(_cachedSeq);
+      _tmpSeqOutput.valueType = SHType::Seq;
+      return _tmpSeqOutput;
     }
   }
 
@@ -3702,7 +3728,7 @@ struct Take {
     return _vectorOutput;
   }
 
-  SHVar activate(SHContext *context, const SHVar &input) {
+  SHVar &activate(SHContext *context, const SHVar &input) {
     // Take branches during validation into different inlined shards
     // If we hit this, maybe that type of input is not yet implemented
     throw ActivationError("Take path not implemented for this type.");

@@ -32,10 +32,13 @@ v | Assert.Is(2)
 {a: {b: ""}} >= var
 
 var:a = ref
+ref:b = ref-to-b | Log("ref-to-b")
 "second" | Update(ref "b")
 var | Log("var")
+ref-to-b | Log("ref-to-b")
 "third" | Update(ref "b")
 var | Log("var")
+ref-to-b | Log("ref-to-b")
 
 @wire(b {
   "hello" >= v
