@@ -2825,7 +2825,7 @@ struct SeqUser : VariableBase {
     _cell = _target->payload.tableValue.api->tableAt(_target->payload.tableValue, kv);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) {
+  SHTypeInfo composeV2(const SHInstanceData &data, bool checkTracking = true) {
     shassert(data.privateContext && "Private context should be valid");
     auto inherited = reinterpret_cast<CompositionContext *>(data.privateContext);
     auto info = findExposedVariablePtr(inherited->inherited, _name);
@@ -2834,7 +2834,7 @@ struct SeqUser : VariableBase {
       throw ComposeError(fmt::format("Variable {} not found.", _name));
     }
 
-    if (info->trackingMask != 0) {
+    if (checkTracking && info->trackingMask != 0) {
       throw ComposeError(fmt::format("Variable {} is tracked and can only be updated using Update.", _name));
     }
 
@@ -2888,7 +2888,7 @@ struct Count : SeqUser {
       // shortcut, don't run full compose in this case!
       OVERRIDE_ACTIVATE(data, activateFromInput);
     } else {
-      SeqUser::composeV2(data);
+      SeqUser::composeV2(data, false);
     }
     return CoreInfo::IntType;
   }

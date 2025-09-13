@@ -3168,6 +3168,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     (*smesh)->unregisterErrorEvent(userData);
   };
 
+  result->registerVariableChangeEvent =
+      [](SHMeshRef mesh, void *userData,
+         void (*callback)(void *userData, SHStringWithLen name, const SHVar *key, bool isGlobal, const SHVar *value)) {
+        auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+        (*smesh)->registerVariableChangeEvent(userData, callback);
+      };
+
+  result->unregisterVariableChangeEvent = [](SHMeshRef mesh, void *userData) {
+    auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+    (*smesh)->unregisterVariableChangeEvent(userData);
+  };
+
   result->fastStringStore = [](SHStringWithLen str) {
     std::string_view sv(str.string, size_t(str.len));
     return shards::fast_string::store(sv);

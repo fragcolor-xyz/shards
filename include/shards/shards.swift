@@ -2090,6 +2090,7 @@ class MeshController {
         let context = Unmanaged.passUnretained(self).toOpaque()
 
         // Store the callback using the context pointer as the key
+        variableChangeCallbacks.removeValue(forKey: context)
         variableChangeCallbacks[context] = callback
 
         // Register with Shards
@@ -2397,7 +2398,7 @@ class Shards {
 #if canImport(Combine)
     import Combine
 
-    class ShardsPublisher: Publisher {
+    class ShardsPublisher: Publisher, Equatable {
         typealias Output = Void
         typealias Failure = Never
 
@@ -2443,6 +2444,10 @@ class Shards {
                 }
             }
         }
+
+        static func == (lhs: ShardsPublisher, rhs: ShardsPublisher) -> Bool {
+            return lhs.name == rhs.name && lhs.global == rhs.global && lhs.mesh.nativeRef == rhs.mesh.nativeRef && lhs.variable == rhs.variable
+        }
     }
 
     class ShardsSubscription: Subscription {
@@ -2464,11 +2469,15 @@ class Shards {
         }
     }
 
-    class ObservableVar: ObservableObject {
+    class ObservableVar: ObservableObject, Equatable {
         var objectWillChange: ShardsPublisher
 
-        init(mesh: MeshController, variable: OwnedVar?, name: String, global: Bool) {
+        init(mesh: MeshController, name: String, global: Bool = false, variable: OwnedVar? = nil) {
             objectWillChange = ShardsPublisher(mesh: mesh, variable: variable, name: name, global: global)
+        }
+
+        static func == (lhs: ObservableVar, rhs: ObservableVar) -> Bool {
+            return lhs.objectWillChange == rhs.objectWillChange
         }
     }
 #endif
