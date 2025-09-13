@@ -1174,6 +1174,12 @@ typedef SHBool(__cdecl *SHTriggerVarValueChange)(SHWireRef wire, struct SHString
 
 typedef void(__cdecl *SHAddShardAlias)(struct SHStringWithLen originalName, struct SHStringWithLen aliasName);
 
+typedef void(__cdecl *SHRegisterVariableChangeEvent)(SHMeshRef mesh, void *userData,
+                                                     void (*callback)(void *userData, SHStringWithLen name,
+                                                                      const struct SHVar *key, bool isGlobal,
+                                                                      const struct SHVar *var));
+typedef void(__cdecl *SHUnregisterVariableChangeEvent)(SHMeshRef mesh, void *userData);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1390,6 +1396,10 @@ typedef struct _SHCore {
 
   // Utility to add shard alias
   SHAddShardAlias addShardAlias;
+
+  // Utility to register variable change event
+  SHRegisterVariableChangeEvent registerVariableChangeEvent;
+  SHUnregisterVariableChangeEvent unregisterVariableChangeEvent;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

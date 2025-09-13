@@ -454,6 +454,7 @@ struct XPendBase {
   static inline thread_local std::string _scratchStr;
 
   ParamVar _collection{};
+  bool _isGlobal{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -494,10 +495,7 @@ struct XPendBase {
                                            data.inputType, cons.exposedType.seqTypes.elements[0]));
           }
         }
-        if (cons.trackingMask != 0) {
-          SHLOG_ERROR("AppendTo/PrependTo: Variable {} cannot be tracked.", _collection.variableName());
-          throw ComposeError("AppendTo/PrependTo: Variable cannot be tracked.");
-        }
+        _isGlobal = cons.global;
         // Validation Ok if here..
         return data.inputType;
       }
@@ -526,7 +524,19 @@ struct XPendBase {
   }
 
   void cleanup(SHContext *context) { _collection.cleanup(); }
-  void warmup(SHContext *context) { _collection.warmup(context); }
+  void warmup(SHContext *context) {
+    _collection.warmup(context);
+    _dispatcherPtr = &context->main->mesh.lock()->dispatcher;
+  }
+
+  entt::dispatcher *_dispatcherPtr{nullptr};
+
+  void maybeSendEvents(SHContext *context, SHVar &var) {
+    if (var.trackingMask != 0) {
+      OnTrackedVarSet ev{context->main->id, _collection.variableNameView(), Var::Empty, var, _isGlobal, context->currentWire()};
+      _dispatcherPtr->trigger(ev);
+    }
+  }
 };
 
 struct AppendTo : public XPendBase {
@@ -566,10 +576,14 @@ struct AppendTo : public XPendBase {
       _scratchStr.append((char *)input.payload.bytesValue, input.payload.bytesSize);
       Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
       cloneVar(collection, tmp);
-    } break;
+      break;
+    }
     default:
       throw ActivationError(fmt::format("AppendTo, case not implemented for type {}", collection.valueType));
     }
+
+    maybeSendEvents(context, collection);
+
     return input;
   }
 };
@@ -613,10 +627,14 @@ struct PrependTo : public XPendBase {
       _scratchStr.append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
       Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
       cloneVar(collection, tmp);
-    } break;
+      break;
+    }
     default:
       throw ActivationError("PrependTo, case not implemented");
     }
+
+    maybeSendEvents(context, collection);
+
     return input;
   }
 };

@@ -1877,9 +1877,12 @@ class WireController {
     }
 
     private func addExternalVar(
-        name: String, varPtr: UnsafeMutablePointer<SHVar>, varType: UnsafePointer<SHTypeInfo>? = nil
+        name: String, varPtr: UnsafeMutablePointer<SHVar>, varType: UnsafePointer<SHTypeInfo>? = nil, trackingMask: UInt8 = 0
     ) {
         varPtr.pointee.flags |= UInt16(SHVAR_FLAGS_EXTERNAL)
+        if trackingMask != 0 {
+            varPtr.pointee.trackingMask |= trackingMask
+        }
         var ev = SHExternalVariable()
         ev.var = varPtr
         if let varType = varType {
@@ -1895,41 +1898,41 @@ class WireController {
         }
     }
 
-    func addExternal(name: String, owned: OwnedVar) {
-        addExternalVar(name: name, varPtr: owned.ptr())
+    func addExternal(name: String, owned: OwnedVar, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: owned.ptr(), trackingMask: trackingMask)
         references.append(owned)
     }
 
-    func addExternal(name: String, owned: inout OwnedVar) {
-        addExternalVar(name: name, varPtr: owned.ptr())
+    func addExternal(name: String, owned: inout OwnedVar, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: owned.ptr(), trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, owned: inout OwnedVar, varType: inout SHTypeInfo) {
-        addExternalVar(name: name, varPtr: owned.ptr(), varType: &varType)
+    func addExternal(name: String, owned: inout OwnedVar, varType: inout SHTypeInfo, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: owned.ptr(), varType: &varType, trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, sequence: inout SeqVar) {
-        addExternalVar(name: name, varPtr: sequence.ptr())
+    func addExternal(name: String, sequence: inout SeqVar, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: sequence.ptr(), trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, sequence: inout SeqVar, varType: inout SHTypeInfo) {
-        addExternalVar(name: name, varPtr: sequence.ptr(), varType: &varType)
+    func addExternal(name: String, sequence: inout SeqVar, varType: inout SHTypeInfo, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: sequence.ptr(), varType: &varType, trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, table: inout TableVar) {
-        addExternalVar(name: name, varPtr: table.ptr())
+    func addExternal(name: String, table: inout TableVar, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: table.ptr(), trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, table: inout TableVar, varType: inout SHTypeInfo) {
-        addExternalVar(name: name, varPtr: table.ptr(), varType: &varType)
+    func addExternal(name: String, table: inout TableVar, varType: inout SHTypeInfo, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: table.ptr(), varType: &varType, trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, raw: inout SHVar) {
-        addExternalVar(name: name, varPtr: &raw)
+    func addExternal(name: String, raw: inout SHVar, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: &raw, trackingMask: trackingMask)
     }
 
-    func addExternal(name: String, raw: inout SHVar, varType: inout SHTypeInfo) {
-        addExternalVar(name: name, varPtr: &raw, varType: &varType)
+    func addExternal(name: String, raw: inout SHVar, varType: inout SHTypeInfo, trackingMask: UInt8 = 0) {
+        addExternalVar(name: name, varPtr: &raw, varType: &varType, trackingMask: trackingMask)
     }
 
     func isRunning() -> Bool {
@@ -2059,6 +2062,49 @@ class MeshController {
 
         // Unregister with Shards
         G.Core.pointee.unregisterErrorEvent(nativeRef, userData)
+    }
+
+    // Store callbacks to prevent deallocation while in use
+    private var variableChangeCallbacks: [UnsafeMutableRawPointer: (String, SHVar?, Bool, SHVar?) -> Void] = [:]
+
+    // C function that will be called by Shards when a variable changes
+    private let variableChangeCallbackBridge:
+        @convention(c) (UnsafeMutableRawPointer?, SHStringWithLen, UnsafePointer<SHVar>?, Bool, UnsafePointer<SHVar>?) -> Void = {
+            userData, name, key, isGlobal, value in
+            guard let userData = userData else { return }
+            // Get the Swift closure from context
+            let callbackHolder = Unmanaged<MeshController>.fromOpaque(userData)
+                .takeUnretainedValue()
+
+            if let callback = callbackHolder.variableChangeCallbacks[userData] {
+                let nameStr = name.toString() ?? "Unknown variable"
+                callback(nameStr, key == nil ? nil : key?.pointee, isGlobal, value == nil ? nil : value?.pointee)
+            }
+        }
+
+    // Register a callback that will be called when a variable changes
+    func registerVariableChangeEvent(callback: @escaping (String, SHVar?, Bool, SHVar?) -> Void)
+        -> UnsafeMutableRawPointer
+    {
+        // Create a context pointer to pass to the C function
+        let context = Unmanaged.passUnretained(self).toOpaque()
+
+        // Store the callback using the context pointer as the key
+        variableChangeCallbacks[context] = callback
+
+        // Register with Shards
+        G.Core.pointee.registerVariableChangeEvent(nativeRef, context, variableChangeCallbackBridge)
+
+        return context
+    }
+
+    // Unregister a previously registered variable change callback
+    func unregisterVariableChangeEvent(userData: UnsafeMutableRawPointer) {
+        // Remove from our map
+        variableChangeCallbacks.removeValue(forKey: userData)
+
+        // Unregister with Shards
+        G.Core.pointee.unregisterVariableChangeEvent(nativeRef, userData)
     }
 
     var nativeRef = SHMeshRef(bitPattern: 0)
@@ -2347,6 +2393,85 @@ class Shards {
         G.Core.pointee.addShardAlias(originalName, aliasName)
     }
 }
+
+#if canImport(Combine)
+    import Combine
+
+    class ShardsPublisher: Publisher {
+        typealias Output = Void
+        typealias Failure = Never
+
+        private var subscribers: [AnySubscriber<Void, Never>] = []
+
+        private let name: String
+        private let global: Bool
+        private let mesh: MeshController
+        private let variable: OwnedVar?
+        private var handle: UnsafeMutableRawPointer? = nil
+
+        init(mesh: MeshController, variable: OwnedVar?, name: String, global: Bool) {
+            self.mesh = mesh
+            self.variable = variable
+            self.name = name
+            self.global = global
+            handle = mesh.registerVariableChangeEvent(callback: { name, _, isGlobal, value in
+                if name == self.name, isGlobal == self.global {
+                    self.variable?.assign(other: value!)
+                    self.triggerUpdate()
+                }
+            })
+        }
+
+        deinit {
+            mesh.unregisterVariableChangeEvent(userData: self.handle!)
+        }
+
+        func receive<S>(subscriber: S) where S: Subscriber, S.Input == Void, S.Failure == Never {
+            let anySubscriber = AnySubscriber(subscriber)
+            subscribers.append(anySubscriber)
+
+            // Send subscription
+            let subscription = ShardsSubscription(publisher: self, subscriber: anySubscriber)
+            subscriber.receive(subscription: subscription)
+        }
+
+        // This is your direct bridge - no Combine overhead
+        func triggerUpdate() {
+            DispatchQueue.main.async {
+                for subscriber in self.subscribers {
+                    _ = subscriber.receive(()) // Direct SwiftUI notification
+                }
+            }
+        }
+    }
+
+    class ShardsSubscription: Subscription {
+        private weak var publisher: ShardsPublisher?
+        private var subscriber: AnySubscriber<Void, Never>?
+
+        init(publisher: ShardsPublisher, subscriber: AnySubscriber<Void, Never>) {
+            self.publisher = publisher
+            self.subscriber = subscriber
+        }
+
+        func request(_: Subscribers.Demand) {
+            // SwiftUI typically requests .unlimited
+        }
+
+        func cancel() {
+            subscriber = nil
+            // Remove from publisher's subscriber list
+        }
+    }
+
+    class ObservableVar: ObservableObject {
+        var objectWillChange: ShardsPublisher
+
+        init(mesh: MeshController, variable: OwnedVar?, name: String, global: Bool) {
+            objectWillChange = ShardsPublisher(mesh: mesh, variable: variable, name: name, global: global)
+        }
+    }
+#endif
 
 #if canImport(UIKit) && !WIDGETS
     import UIKit
