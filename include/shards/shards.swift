@@ -2395,89 +2395,34 @@ class Shards {
     }
 }
 
-#if canImport(Combine)
-    import Combine
-
-    class ShardsPublisher: Publisher, Equatable {
-        typealias Output = Void
-        typealias Failure = Never
-
-        private var subscribers: [AnySubscriber<Void, Never>] = []
-
+#if canImport(SwiftUI)
+    class VarObserver: ObservableObject {
+        @Published var changeCounter: Int = 0
+        
+        private let mesh: MeshController
         private let name: String
         private let global: Bool
-        private let mesh: MeshController
-        private let variable: OwnedVar?
         private var handle: UnsafeMutableRawPointer? = nil
-
-        init(mesh: MeshController, variable: OwnedVar?, name: String, global: Bool) {
+        
+        init(mesh: MeshController, name: String, global: Bool = false) {
             self.mesh = mesh
-            self.variable = variable
             self.name = name
             self.global = global
-            handle = mesh.registerVariableChangeEvent(callback: { name, _, isGlobal, value in
-                if name == self.name, isGlobal == self.global {
-                    self.variable?.assign(other: value!)
-                    self.triggerUpdate()
-                }
-            })
-        }
-
-        deinit {
-            mesh.unregisterVariableChangeEvent(userData: self.handle!)
-        }
-
-        func receive<S>(subscriber: S) where S: Subscriber, S.Input == Void, S.Failure == Never {
-            let anySubscriber = AnySubscriber(subscriber)
-            subscribers.append(anySubscriber)
-
-            // Send subscription
-            let subscription = ShardsSubscription(publisher: self, subscriber: anySubscriber)
-            subscriber.receive(subscription: subscription)
-        }
-
-        // This is your direct bridge - no Combine overhead
-        func triggerUpdate() {
-            DispatchQueue.main.async {
-                for subscriber in self.subscribers {
-                    _ = subscriber.receive(()) // Direct SwiftUI notification
+            
+            // Direct callback - no Combine overhead
+            handle = mesh.registerVariableChangeEvent { [weak self] varName, _, isGlobal, _ in
+                if varName == name && isGlobal == global {
+                    DispatchQueue.main.async {
+                        self?.changeCounter += 1
+                    }
                 }
             }
         }
-
-        static func == (lhs: ShardsPublisher, rhs: ShardsPublisher) -> Bool {
-            return lhs.name == rhs.name && lhs.global == rhs.global && lhs.mesh.nativeRef == rhs.mesh.nativeRef && lhs.variable == rhs.variable
-        }
-    }
-
-    class ShardsSubscription: Subscription {
-        private weak var publisher: ShardsPublisher?
-        private var subscriber: AnySubscriber<Void, Never>?
-
-        init(publisher: ShardsPublisher, subscriber: AnySubscriber<Void, Never>) {
-            self.publisher = publisher
-            self.subscriber = subscriber
-        }
-
-        func request(_: Subscribers.Demand) {
-            // SwiftUI typically requests .unlimited
-        }
-
-        func cancel() {
-            subscriber = nil
-            // Remove from publisher's subscriber list
-        }
-    }
-
-    class ObservableVar: ObservableObject, Equatable {
-        var objectWillChange: ShardsPublisher
-
-        init(mesh: MeshController, name: String, global: Bool = false, variable: OwnedVar? = nil) {
-            objectWillChange = ShardsPublisher(mesh: mesh, variable: variable, name: name, global: global)
-        }
-
-        static func == (lhs: ObservableVar, rhs: ObservableVar) -> Bool {
-            return lhs.objectWillChange == rhs.objectWillChange
+        
+        deinit {
+            if let handle = handle {
+                mesh.unregisterVariableChangeEvent(userData: handle)
+            }
         }
     }
 #endif
