@@ -2427,10 +2427,11 @@ class Shards {
     }
 #endif
 
-#if canImport(UIKit) && !WIDGETS
+#if canImport(UIKit)
     import UIKit
 
     extension UIView {
+#if !WIDGETS
         var safeArea: UIEdgeInsets {
             if #available(iOS 11, *) {
                 if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
@@ -2441,8 +2442,10 @@ class Shards {
             }
             return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
         }
+#endif
     }
 
+#if !WIDGETS
     @_cdecl("shards_get_uiview_safe_area")
     public func getViewSafeArea(
         uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?
@@ -2450,6 +2453,7 @@ class Shards {
         let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
         uiEdgeInsets.pointee = view.safeArea
     }
+#endif
 
     extension OwnedVar {
         public static func from(image: UIImage) -> OwnedVar? {
