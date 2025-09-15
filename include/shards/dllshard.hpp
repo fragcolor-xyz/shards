@@ -105,6 +105,8 @@ struct CoreLoader {
 
 class Core {
 public:
+  static struct SHTable tableNew() { return sCore._core->tableNew(); }
+
   static void registerShard(const char *fullName, SHShardConstructor constructor) {
     sCore._core->registerShard(fullName, constructor);
   }
@@ -130,21 +132,21 @@ public:
   static void destroyVar(SHVar &var) { sCore._core->destroyVar(&var); }
 
 #define SH_ARRAY_INTERFACE(_arr_, _val_, _short_)                                                                 \
-  static void _short_##Free(_arr_ &seq) { sCore._core->_short_##Free(&seq); };                                    \
+  static void _short_##Free(_arr_ *seq) { sCore._core->_short_##Free(seq); };                                    \
                                                                                                                   \
-  static void _short_##Resize(_arr_ &seq, uint64_t size) { sCore._core->_short_##Resize(&seq, size); };           \
+  static void _short_##Resize(_arr_ *seq, uint64_t size) { sCore._core->_short_##Resize(seq, size); };           \
                                                                                                                   \
-  static void _short_##Push(_arr_ &seq, const _val_ &value) { sCore._core->_short_##Push(&seq, &value); };        \
+  static void _short_##Push(_arr_ *seq, const _val_ *value) { sCore._core->_short_##Push(seq, value); };        \
                                                                                                                   \
-  static void _short_##Insert(_arr_ &seq, uint64_t index, const _val_ &value) {                                   \
-    sCore._core->_short_##Insert(&seq, index, &value);                                                            \
+  static void _short_##Insert(_arr_ *seq, uint64_t index, const _val_ *value) {                                   \
+    sCore._core->_short_##Insert(seq, index, value);                                                            \
   };                                                                                                              \
                                                                                                                   \
-  static _val_ _short_##Pop(_arr_ &seq) { return sCore._core->_short_##Pop(&seq); };                              \
+  static _val_ _short_##Pop(_arr_ *seq) { return sCore._core->_short_##Pop(seq); };                              \
                                                                                                                   \
-  static void _short_##FastDelete(_arr_ &seq, uint64_t index) { sCore._core->_short_##FastDelete(&seq, index); }; \
+  static void _short_##FastDelete(_arr_ *seq, uint64_t index) { sCore._core->_short_##FastDelete(seq, index); }; \
                                                                                                                   \
-  static void _short_##SlowDelete(_arr_ &seq, uint64_t index) { sCore._core->_short_##SlowDelete(&seq, index); }
+  static void _short_##SlowDelete(_arr_ *seq, uint64_t index) { sCore._core->_short_##SlowDelete(seq, index); }
 
   SH_ARRAY_INTERFACE(SHSeq, SHVar, seq);
   SH_ARRAY_INTERFACE(SHTypesInfo, SHTypeInfo, types);
@@ -426,7 +428,7 @@ private:
   T *ptr;
 };
 
-template <typename S, typename T, void (*arrayResize)(S &, uint64_t), void (*arrayFree)(S &), void (*arrayPush)(S &, const T &),
+template <typename S, typename T, void (*arrayResize)(S *, uint64_t), void (*arrayFree)(S *), void (*arrayPush)(S *, const T *),
           typename Allocator = std::allocator<T>>
 class IterableArray {
 public:
@@ -440,15 +442,15 @@ public:
   IterableArray() : _seq({}), _owned(true) {}
 
   // Not OWNING!
-  IterableArray(const seq_type &seq) : _seq(seq), _owned(false) {}
+  IterableArray(const seq_type seq) : _seq(seq), _owned(false) {}
 
   // implicit converter
   IterableArray(const SHVar &v) : _seq(v.payload.seqValue), _owned(false) { assert(v.valueType == SHType::Seq); }
 
-  IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(_seq, s); }
+  IterableArray(size_t s) : _seq({}), _owned(true) { arrayResize(&_seq, s); }
 
   IterableArray(size_t s, T v) : _seq({}), _owned(true) {
-    arrayResize(_seq, s);
+    arrayResize(&_seq, s);
     for (size_t i = 0; i < s; i++) {
       _seq[i] = v;
     }
@@ -456,7 +458,7 @@ public:
 
   IterableArray(const_iterator first, const_iterator last) : _seq({}), _owned(true) {
     size_t size = last - first;
-    arrayResize(_seq, size);
+    arrayResize(&_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq.elements[i] = *first++;
     }
@@ -464,7 +466,7 @@ public:
 
   IterableArray(const IterableArray &other) : _seq({}), _owned(true) {
     size_t size = other._seq.len;
-    arrayResize(_seq, size);
+    arrayResize(&_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq.elements[i] = other._seq.elements[i];
     }
@@ -487,7 +489,7 @@ public:
     _seq = {};
     _owned = true;
     size_t size = other._seq.len;
-    arrayResize(_seq, size);
+    arrayResize(&_seq, size);
     for (size_t i = 0; i < size; i++) {
       _seq.elements[i] = other._seq.elements[i];
     }
@@ -496,7 +498,7 @@ public:
 
   ~IterableArray() {
     if (_owned) {
-      arrayFree(_seq);
+      arrayFree(&_seq);
     }
   }
 
@@ -522,15 +524,16 @@ public:
   T *data() { return (T *)_seq; }
   size_t size() const { return _seq.len; }
   bool empty() const { return _seq.elements == nullptr || size() == 0; }
-  void resize(size_t nsize) { arrayResize(_seq, nsize); }
-  void push_back(const T &value) { arrayPush(_seq, value); }
-  void clear() { arrayResize(_seq, 0); }
+  void resize(size_t nsize) { arrayResize(&_seq, nsize); }
+  void push_back(const T &value) { arrayPush(&_seq, value); }
+  void clear() { arrayResize(&_seq, 0); }
   operator seq_type() const { return _seq; }
 };
 
 using IterableSeq = IterableArray<SHSeq, SHVar, &Core::seqResize, &Core::seqFree, &Core::seqPush>;
 using IterableExposedInfo =
     IterableArray<SHExposedTypesInfo, SHExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
+
 
 template <typename E, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 class EnumInfo : public TEnumInfo<Core, E, Name_, Help_, VendorId_, TypeId_, IsFlags_> {
