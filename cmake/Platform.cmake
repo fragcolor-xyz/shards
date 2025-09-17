@@ -347,7 +347,11 @@ if(USE_LLD)
 endif()
 
 if(DESKTOP_LINUX)
-  add_link_options(-export-dynamic)
+  if(CLANG)
+    add_link_options(-Wl,-export-dynamic)
+  else()
+    add_link_options(-export-dynamic)
+  endif()
 
   if(USE_VALGRIND)
     add_compile_definitions(BOOST_USE_VALGRIND SHARDS_VALGRIND)
