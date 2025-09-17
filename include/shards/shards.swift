@@ -228,7 +228,7 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     }
 }
 
-extension SHVar: CustomStringConvertible {
+extension SHVar: @retroactive CustomStringConvertible, @retroactive Hashable, @retroactive Equatable {
     public var description: String {
         typename
     }
@@ -635,6 +635,21 @@ extension SHVar: CustomStringConvertible {
             flags &= ~UInt16(SHVAR_FLAGS_REF_COUNTED)
             withUnsafeMutablePointer(to: &self) { ptr in
                 G.Core.pointee.destroyVar(ptr)
+            }
+        }
+    }
+    
+    public func hash(into hasher: inout Hasher) {
+        let hash = withUnsafePointer(to: self) { ptr in
+            G.Core.pointee.hashVar(ptr)
+        }
+        hasher.combine(hash.int2)
+    }
+
+    public static func == (lhs: SHVar, rhs: SHVar) -> Bool {
+        withUnsafePointer(to: lhs) { lhsPtr in
+            withUnsafePointer(to: rhs) { rhsPtr in
+                G.Core.pointee.isEqualVar(lhsPtr, rhsPtr)
             }
         }
     }
@@ -2398,27 +2413,39 @@ class Shards {
 #if canImport(SwiftUI)
     class VarObserver: ObservableObject {
         @Published var changeCounter: Int = 0
-        
+
         private let mesh: MeshController
         private let name: String
+        private let key: OwnedVar?
         private let global: Bool
         private var handle: UnsafeMutableRawPointer? = nil
-        
-        init(mesh: MeshController, name: String, global: Bool = false) {
+
+        init(mesh: MeshController, name: String, key: OwnedVar? = nil, global: Bool = false) {
             self.mesh = mesh
             self.name = name
+            self.key = key
             self.global = global
-            
+
             // Direct callback - no Combine overhead
-            handle = mesh.registerVariableChangeEvent { [weak self] varName, _, isGlobal, _ in
-                if varName == name && isGlobal == global {
-                    DispatchQueue.main.async {
-                        self?.changeCounter += 1
+            if key != nil {
+                handle = mesh.registerVariableChangeEvent { [weak self] varName, tableKey, isGlobal, _ in
+                    if varName == name && isGlobal == global && tableKey == key!.v {
+                        DispatchQueue.main.async {
+                            self?.changeCounter += 1
+                        }
+                    }
+                }
+            } else {
+                handle = mesh.registerVariableChangeEvent { [weak self] varName, _, isGlobal, _ in
+                    if varName == name && isGlobal == global {
+                        DispatchQueue.main.async {
+                            self?.changeCounter += 1
+                        }
                     }
                 }
             }
         }
-        
+
         deinit {
             if let handle = handle {
                 mesh.unregisterVariableChangeEvent(userData: handle)
@@ -2431,29 +2458,29 @@ class Shards {
     import UIKit
 
     extension UIView {
-#if !WIDGETS
-        var safeArea: UIEdgeInsets {
-            if #available(iOS 11, *) {
-                if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
-                    .windows.first
-                {
-                    return window.safeAreaInsets
+        #if !WIDGETS
+            var safeArea: UIEdgeInsets {
+                if #available(iOS 11, *) {
+                    if let window = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?
+                        .windows.first
+                    {
+                        return window.safeAreaInsets
+                    }
                 }
+                return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
             }
-            return UIEdgeInsets(top: 0.0, left: 0.0, bottom: 0.0, right: 0.0)
-        }
-#endif
+        #endif
     }
 
-#if !WIDGETS
-    @_cdecl("shards_get_uiview_safe_area")
-    public func getViewSafeArea(
-        uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?
-    ) {
-        let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
-        uiEdgeInsets.pointee = view.safeArea
-    }
-#endif
+    #if !WIDGETS
+        @_cdecl("shards_get_uiview_safe_area")
+        public func getViewSafeArea(
+            uiEdgeInsets: UnsafeMutablePointer<UIEdgeInsets>, viewPtr: UnsafeMutableRawPointer?
+        ) {
+            let view = Unmanaged<UIView>.fromOpaque(viewPtr!).takeUnretainedValue()
+            uiEdgeInsets.pointee = view.safeArea
+        }
+    #endif
 
     extension OwnedVar {
         public static func from(image: UIImage) -> OwnedVar? {
