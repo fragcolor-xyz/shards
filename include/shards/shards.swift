@@ -228,7 +228,7 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
     }
 }
 
-extension SHVar: @retroactive CustomStringConvertible, @retroactive Hashable, @retroactive Equatable {
+extension SHVar: CustomStringConvertible, Hashable, Equatable {
     public var description: String {
         typename
     }
