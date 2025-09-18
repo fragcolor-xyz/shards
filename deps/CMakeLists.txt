@@ -75,6 +75,9 @@ if(NOT EMSCRIPTEN)
 
     set(LIBRE_SSL_DIR "" CACHE FILEPATH "Use libressl from this path, not setting this will download the sources automatically")
 
+    # Set patch command for LibreSSL - skip patching for now
+    set(LIBRESSL_PATCH_COMMAND "")
+
     if(LIBRE_SSL_DIR)
       set(libressl_SOURCE_DIR ${LIBRE_SSL_DIR})
 
@@ -91,6 +94,51 @@ if(NOT EMSCRIPTEN)
       FetchContent_MakeAvailable(libressl)
     endif()
 
+    # Fix iOS endian compatibility issue after LibreSSL is available
+    if(APPLE AND (IOS OR CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*" OR CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*" OR CMAKE_OSX_SYSROOT MATCHES ".*xros.*"))
+      message(STATUS "Fixing iOS endian compatibility in LibreSSL source files...")
+
+      # Define the replacement text for iOS endian compatibility
+      set(IOS_ENDIAN_REPLACEMENT "/* iOS/Apple platforms endian function compatibility */
+#if defined(__APPLE__) && (defined(TARGET_OS_IOS) || defined(TARGET_OS_VISIONOS) || defined(__arm64__))
+#include <libkern/OSByteOrder.h>
+#define be32toh(x) OSSwapBigToHostInt32(x)
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#define be64toh(x) OSSwapBigToHostInt64(x)
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+#define htole32(x) OSSwapHostToLittleInt32(x)
+#else
+#include <endian.h>
+#endif")
+
+      # List of all files that need endian.h replacement
+      set(ENDIAN_FILES
+        "crypto/rc4/rc4_enc.c"
+        "crypto/des/cfb_enc.c"
+        "crypto/modes/xts128.c"
+        "crypto/modes/modes_local.h"
+        "crypto/crypto_internal.h"
+        "crypto/sha/sha1.c"
+        "crypto/sha/sha256.c"
+        "crypto/sha/sha3.c"
+        "crypto/sha/sha512.c"
+        "crypto/whrlpool/wp_block.c"
+        "ssl/d1_pkt.c"
+      )
+
+      # Fix each file
+      foreach(ENDIAN_FILE ${ENDIAN_FILES})
+        set(FULL_PATH "${libressl_SOURCE_DIR}/${ENDIAN_FILE}")
+        if(EXISTS "${FULL_PATH}")
+          file(READ "${FULL_PATH}" FILE_CONTENT)
+          string(REPLACE "#include <endian.h>" "${IOS_ENDIAN_REPLACEMENT}" FILE_CONTENT "${FILE_CONTENT}")
+          file(WRITE "${FULL_PATH}" "${FILE_CONTENT}")
+          message(STATUS "Fixed iOS endian compatibility in ${ENDIAN_FILE}")
+        endif()
+      endforeach()
+    endif()
+
     # Set source dir property used later by rust openssl-sys
     message(STATUS "libressl_SOURCE_DIR=${libressl_SOURCE_DIR}")
     set_property(GLOBAL PROPERTY libressl_SOURCE_DIR ${libressl_SOURCE_DIR})
@@ -102,6 +150,7 @@ if(NOT EMSCRIPTEN)
     add_library(OpenSSL::Crypto ALIAS crypto)
     target_link_libraries(OpenSSL INTERFACE ssl)
     target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+
   endif()
 endif()
 
