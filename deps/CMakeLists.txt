@@ -75,9 +75,6 @@ if(NOT EMSCRIPTEN)
 
     set(LIBRE_SSL_DIR "" CACHE FILEPATH "Use libressl from this path, not setting this will download the sources automatically")
 
-    # Set patch command for LibreSSL - skip patching for now
-    set(LIBRESSL_PATCH_COMMAND "")
-
     if(LIBRE_SSL_DIR)
       set(libressl_SOURCE_DIR ${LIBRE_SSL_DIR})
 
@@ -89,7 +86,6 @@ if(NOT EMSCRIPTEN)
         libressl
         URL https://develop.fragcolor.com/libressl-3.9.2.tar.gz
         URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
-        ${LIBRESSL_PATCH_COMMAND}
       )
       FetchContent_MakeAvailable(libressl)
     endif()
@@ -127,14 +123,20 @@ if(NOT EMSCRIPTEN)
         "ssl/d1_pkt.c"
       )
 
-      # Fix each file
+      # Fix each file (with guard against repeated application)
       foreach(ENDIAN_FILE ${ENDIAN_FILES})
         set(FULL_PATH "${libressl_SOURCE_DIR}/${ENDIAN_FILE}")
         if(EXISTS "${FULL_PATH}")
           file(READ "${FULL_PATH}" FILE_CONTENT)
-          string(REPLACE "#include <endian.h>" "${IOS_ENDIAN_REPLACEMENT}" FILE_CONTENT "${FILE_CONTENT}")
-          file(WRITE "${FULL_PATH}" "${FILE_CONTENT}")
-          message(STATUS "Fixed iOS endian compatibility in ${ENDIAN_FILE}")
+          # Only apply fix if not already applied (check for our marker comment)
+          string(FIND "${FILE_CONTENT}" "/* iOS/Apple platforms endian function compatibility */" ALREADY_FIXED)
+          if(ALREADY_FIXED EQUAL -1)
+            string(REPLACE "#include <endian.h>" "${IOS_ENDIAN_REPLACEMENT}" FILE_CONTENT "${FILE_CONTENT}")
+            file(WRITE "${FULL_PATH}" "${FILE_CONTENT}")
+            message(STATUS "Fixed iOS endian compatibility in ${ENDIAN_FILE}")
+          else()
+            message(STATUS "iOS endian compatibility already applied to ${ENDIAN_FILE}")
+          endif()
         endif()
       endforeach()
     endif()
