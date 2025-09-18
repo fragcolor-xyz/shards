@@ -205,7 +205,18 @@ struct Format {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
   static SHOptionalString outputHelp() { return SHCCSTR("A string consisting of all the elements of the sequence."); }
 
+  PARAM_VAR(_fullBytes, "FullBytes", "Whether to display bytes as a full string in the output.", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_fullBytes))
+
   CachedStreamBuf _buffer;
+  DocsFriendlyFormatter _formatter;
+
+  Format() { _fullBytes = Var(true); }
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    _formatter.fullBytes = _fullBytes.payload.boolValue;
+    return outputTypes().elements[0];
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.payload.seqValue.len == 0)
@@ -214,7 +225,7 @@ struct Format {
     std::ostream stream(&_buffer);
     _buffer.reset();
     for (auto &v : input.payload.seqValue) {
-      stream << v;
+      _formatter.format(stream, v);
     }
     _buffer.done();
     return Var(_buffer.str());

@@ -5,15 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and Development Commands
 
 ### Essential Commands
-- **Bootstrap**: `./bootstrap` - Initialize dependencies and tools (run first)
-- **Build**: `./build.sh` - Create debug build using CMake/Ninja
+- **Build**: `cmake --build build --target shards` - Create debug build using CMake/Ninja
 - **Format**: `./format.sh` - Format C++ code with clang-format
 - **Tests**: `./run_tests` - Run Shards language test suite (requires built executable)
-- **Update**: `./update.sh` - Update git submodules and dependencies
-
-### Just Commands
-- `just pull` - Git pull and update dependencies in one command
-- `just build-docker-image` - Build Docker image with current commit
 
 ## Architecture Overview
 

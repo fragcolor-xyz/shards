@@ -6,6 +6,7 @@ use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_VALUE_IGNORED;
+use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
 use egui::RichText;
@@ -65,6 +66,12 @@ pub struct TextField {
   password: ClonedVar,
   #[shard_param("Hint", "Hint to show in the text field.", [common_type::string, common_type::string_var, common_type::none])]
   hint: ParamVar,
+  #[shard_param(
+    "DesiredRows",
+    "The desired number of rows to display.",
+    INT_VAR_OR_NONE_SLICE
+  )]
+  desired_rows: ParamVar,
   #[shard_warmup]
   parents: ParamVar,
   #[shard_required]
@@ -86,6 +93,7 @@ impl Default for TextField {
       multiline: false.into(),
       password: false.into(),
       hint: ParamVar::default(),
+      desired_rows: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
@@ -221,6 +229,14 @@ impl Shard for TextField {
 
     let clip_text: bool = (&self.clip_text.0).try_into().unwrap(); // qed, shards validation
     text_edit = text_edit.clip_text(clip_text);
+
+    text_edit = text_edit.desired_rows(
+      if let Ok(desired_rows) = TryInto::<usize>::try_into(self.desired_rows.get()) {
+        desired_rows
+      } else {
+        1
+      },
+    );
 
     let response = ui.add(text_edit);
 

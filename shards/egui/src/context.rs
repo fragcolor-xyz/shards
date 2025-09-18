@@ -7,7 +7,6 @@ use crate::egui_host::EguiHost;
 use crate::util;
 
 use crate::widgets::image_util::AutoTexturePtr;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
 use shards::core::register_shard;

@@ -13,8 +13,6 @@ use shards::types::WireState;
 use shards::types::{ShardsVar, Table, Var};
 use shards::Shards;
 
-use crate::util::with_object_stack_var;
-use crate::EGUI_UI_TYPE;
 
 #[derive(shards::shards_enum)]
 #[enum_info(
@@ -77,14 +75,6 @@ impl From<PopupLocation> for egui::AboveOrBelow {
 struct Scope {
   parents: ParamVar,
   requiring: ExposedTypes,
-  contents: ShardsVar,
-  exposing: ExposedTypes,
-}
-
-struct Tab {
-  parents: ParamVar,
-  requiring: ExposedTypes,
-  title: ParamVar,
   contents: ShardsVar,
   exposing: ExposedTypes,
 }

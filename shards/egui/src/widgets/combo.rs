@@ -269,13 +269,22 @@ impl LegacyShard for Combo {
       };
 
       let seq: Seq = input.try_into()?;
+      let empty_seq = seq.len() == 0;
       let mut response = combo.show_index(ui, index, seq.len(), |i| {
+        if empty_seq {
+          return "undefined".to_owned();
+        }
         // TODO type might not be string so we need a way to convert in all cases
         let str: &str = (&seq[i]).try_into().unwrap();
         str.to_owned()
       });
 
-      if *index >= seq.len() {
+      if empty_seq {
+        if *index != 0 {
+          *index = 0;
+          response.changed = true;
+        }
+      } else if *index >= seq.len() {
         // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
         *index = seq.len() - 1;
         response.changed = true;
