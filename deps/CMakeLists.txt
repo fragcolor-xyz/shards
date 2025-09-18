@@ -90,55 +90,23 @@ if(NOT EMSCRIPTEN)
       FetchContent_MakeAvailable(libressl)
     endif()
 
-    # Fix iOS endian compatibility issue after LibreSSL is available
+    # Fix iOS endian compatibility - prevent HAVE_ENDIAN_H from being defined on iOS
+    # This allows LibreSSL's compat/endian.h to use the Apple-specific code path
     if(APPLE AND (IOS OR CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*" OR CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*" OR CMAKE_OSX_SYSROOT MATCHES ".*xros.*"))
-      message(STATUS "Fixing iOS endian compatibility in LibreSSL source files...")
-
-      # Define the replacement text for iOS endian compatibility
-      set(IOS_ENDIAN_REPLACEMENT "/* iOS/Apple platforms endian function compatibility */
-#if defined(__APPLE__) && (defined(TARGET_OS_IOS) || defined(TARGET_OS_VISIONOS) || defined(__arm64__))
-#include <libkern/OSByteOrder.h>
-#define be32toh(x) OSSwapBigToHostInt32(x)
-#define htobe32(x) OSSwapHostToBigInt32(x)
-#define be64toh(x) OSSwapBigToHostInt64(x)
-#define htobe64(x) OSSwapHostToBigInt64(x)
-#define le32toh(x) OSSwapLittleToHostInt32(x)
-#define htole32(x) OSSwapHostToLittleInt32(x)
-#else
-#include <endian.h>
-#endif")
-
-      # List of all files that need endian.h replacement
-      set(ENDIAN_FILES
-        "crypto/rc4/rc4_enc.c"
-        "crypto/des/cfb_enc.c"
-        "crypto/modes/xts128.c"
-        "crypto/modes/modes_local.h"
-        "crypto/crypto_internal.h"
-        "crypto/sha/sha1.c"
-        "crypto/sha/sha256.c"
-        "crypto/sha/sha3.c"
-        "crypto/sha/sha512.c"
-        "crypto/whrlpool/wp_block.c"
-        "ssl/d1_pkt.c"
-      )
-
-      # Fix each file (with guard against repeated application)
-      foreach(ENDIAN_FILE ${ENDIAN_FILES})
-        set(FULL_PATH "${libressl_SOURCE_DIR}/${ENDIAN_FILE}")
-        if(EXISTS "${FULL_PATH}")
-          file(READ "${FULL_PATH}" FILE_CONTENT)
-          # Only apply fix if not already applied (check for our marker comment)
-          string(FIND "${FILE_CONTENT}" "/* iOS/Apple platforms endian function compatibility */" ALREADY_FIXED)
-          if(ALREADY_FIXED EQUAL -1)
-            string(REPLACE "#include <endian.h>" "${IOS_ENDIAN_REPLACEMENT}" FILE_CONTENT "${FILE_CONTENT}")
-            file(WRITE "${FULL_PATH}" "${FILE_CONTENT}")
-            message(STATUS "Fixed iOS endian compatibility in ${ENDIAN_FILE}")
-          else()
-            message(STATUS "iOS endian compatibility already applied to ${ENDIAN_FILE}")
-          endif()
-        endif()
-      endforeach()
+      message(STATUS "Fixing iOS endian compatibility by ensuring HAVE_ENDIAN_H is not defined...")
+      # Force HAVE_ENDIAN_H to be undefined for iOS so LibreSSL uses its Apple compatibility code
+      if(TARGET ssl_obj)
+        target_compile_definitions(ssl_obj PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET crypto_obj)
+        target_compile_definitions(crypto_obj PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET ssl)
+        target_compile_definitions(ssl PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET crypto)
+        target_compile_definitions(crypto PRIVATE -UHAVE_ENDIAN_H)
+      endif()
     endif()
 
     # Set source dir property used later by rust openssl-sys
