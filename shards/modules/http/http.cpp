@@ -669,13 +669,13 @@ struct PeerError {
 };
 
 struct Server {
-  Server() : _port(Var(7070)) {}
+  Server() : _port(Var(7070)), _ssl_enabled(Var(false)) {}
 
   static inline Parameters params{
       {"Handler", SHCCSTR("The wire that will be spawned and handle a remote request."), {CoreInfo::WireOrNone}},
       {"Endpoint", SHCCSTR("The URL from where your service can be accessed by a client."), {CoreInfo::StringType}},
       {"Port", SHCCSTR("The port this service will use."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"SSL", SHCCSTR("Enable HTTPS with SSL/TLS. Uses embedded self-signed certificate if no cert files specified."), {CoreInfo::BoolType}},
+      {"SSL", SHCCSTR("Enable HTTPS with SSL/TLS. Uses embedded self-signed certificate if no cert files specified."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
       {"CertFile", SHCCSTR("Path to SSL certificate file (PEM format). Optional - uses embedded cert if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}},
       {"KeyFile", SHCCSTR("Path to SSL private key file (PEM format). Optional - uses embedded key if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}}};
 
