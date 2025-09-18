@@ -68,6 +68,7 @@ inline SHVar getDefaultValue(const SHTypeInfo &type) {
 
 struct DocsFriendlyFormatter {
   bool ignoreNone{};
+  bool fullBytes{};
 
   std::ostream &format(std::ostream &os, const SHStringWithLen &var);
   std::ostream &format(std::ostream &os, const SHVar &var);

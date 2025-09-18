@@ -1193,24 +1193,31 @@ impl Shard for LayoutShard {
         } else {
           // no frame to render, render only the scroll area (if applicable) and inner layout
           if let Some(scroll_area) = scroll_area {
-            scroll_area
-              .id_source(scroll_area_id)
-              .show(ui, |ui| {
-                // inside of scroll area
-                ui.allocate_ui_with_layout(max_size, layout, |ui| {
-                  ui.set_min_size(min_size); // set minimum size of entire layout
+            // let parent_layout = ui.layout();
+            let mut max_rect = ui.max_rect();
+            max_rect.set_width(max_size.x);
+            max_rect.set_height(max_size.y);
+            ui.allocate_ui_at_rect(max_rect, |ui| {
+              ui.set_min_size(min_size); // set minimum size of entire layout
+              
+              scroll_area
+                .id_source(scroll_area_id)
+                .show(ui, |ui| {
+                  // inside of scroll area
+                  ui.with_layout(layout, |ui| {
 
-                  util::activate_ui_contents(
-                    context,
-                    input,
-                    ui,
-                    &mut self.parents,
-                    &mut self.contents,
-                  )
+                    util::activate_ui_contents(
+                      context,
+                      input,
+                      ui,
+                      &mut self.parents,
+                      &mut self.contents,
+                    )
+                  })
+                  .inner
                 })
                 .inner
-              })
-              .inner
+            }).inner
           } else {
             // inside of frame, no scroll area to render, render inner layout
             ui.allocate_ui_with_layout(max_size, layout, |ui| {

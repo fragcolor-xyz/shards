@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
+#![feature(unsafe_cell_access)]
 #![feature(result_flattening)]
 // Required for shards-egui C++ bindings
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]

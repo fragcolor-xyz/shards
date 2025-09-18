@@ -20,6 +20,7 @@ mod reset;
 mod style;
 mod painter;
 mod debug;
+mod cursor;
 pub mod style_util;
 
 pub fn register_shards() {
@@ -28,4 +29,5 @@ pub fn register_shards() {
   style::register_shards();
   painter::register_shards();
   debug::register_shards();
+  cursor::register_shards();
 }
