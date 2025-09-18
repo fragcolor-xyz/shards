@@ -25,18 +25,20 @@ use shards::types::NONE_TYPES;
   "Identifies UI properties to retrieve from the UI context"
 )]
 pub enum Property {
-  #[enum_value("Return the remaining space within an UI widget. (float4)")]
-  RemainingSpace = 0x0,
+  #[enum_value("Return pixel rectangle that is available inside this widget (float4)")]
+  PixelRect = 0x0,
+  #[enum_value("Return remaining size inside this widget (float2)")]
+  RemainingSize = 0x1,
   #[enum_value("The screen size of the UI. (float2)")]
-  ScreenSize = 0x1,
+  ScreenSize = 0x2,
   #[enum_value("The amounts of pixels that correspond to 1 UI point. (float)")]
-  PixelsPerPoint = 0x2,
+  PixelsPerPoint = 0x3,
   #[enum_value("Returns true when anything is being dragged. (bool)")]
-  IsAnythingBeingDragged = 0x3,
+  IsAnythingBeingDragged = 0x4,
   #[enum_value("The position of the UI cursor")]
-  CursorPosition = 0x4,
+  CursorPosition = 0x5,
   #[enum_value("True if the current UI area is being hovered over. (bool)")]
-  IsHovered = 0x5,
+  IsHovered = 0x6,
 }
 
 lazy_static! {
@@ -98,7 +100,8 @@ impl Shard for PropertyShard {
     self.compose_helper(data)?;
 
     let require_ui_parent = match (&self.property.0).try_into()? {
-      Property::RemainingSpace => true,
+      Property::PixelRect => true,
+      Property::RemainingSize => true,
       _ => false,
     };
 
@@ -109,7 +112,8 @@ impl Shard for PropertyShard {
     util::require_context(&mut self.required);
 
     match (&self.property.0).try_into()? {
-      Property::RemainingSpace => Ok(common_type::float4),
+      Property::PixelRect => Ok(common_type::float4),
+      Property::RemainingSize => Ok(common_type::float2),
       Property::ScreenSize => Ok(common_type::float2),
       Property::PixelsPerPoint => Ok(common_type::float),
       Property::IsAnythingBeingDragged => Ok(common_type::bool),
@@ -126,7 +130,7 @@ impl Shard for PropertyShard {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;
         Ok(Some(egui_ctx.pixels_per_point().into()))
       }
-      Property::RemainingSpace => {
+      Property::PixelRect => {
         let ui = ui?.ok_or("No parent UI")?;
         let target_size = ui.available_size();
         let target_pos = ui.next_widget_position().to_vec2();
@@ -139,6 +143,11 @@ impl Shard for PropertyShard {
         // Float4 rect as (X0, Y0, X1, Y1)
         let result_rect: Var = (min.x, min.y, max.x, max.y).into();
         Ok(Some(result_rect))
+      }
+      Property::RemainingSize => {
+        let ui = ui?.ok_or("No parent UI")?;
+        let target_size = ui.available_size();
+        Ok(Some((target_size.x, target_size.y).into()))
       }
       Property::ScreenSize => {
         let egui_ctx = &util::get_current_context(&self.contexts)?.egui_ctx;

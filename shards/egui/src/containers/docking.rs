@@ -1,16 +1,20 @@
-use super::DockArea;
 use super::Tab;
-use super::TabData;
 use super::EXPERIMENTAL_TRUE;
 use crate::util;
 
+use crate::util::with_object_stack_var;
 use crate::CONTEXTS_NAME;
+use crate::EGUI_UI_TYPE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 
 use crate::PARENTS_UI_NAME;
 use shards::core::register_legacy_shard;
+use shards::core::register_shard;
+use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
+use shards::shard::Shard;
 use shards::shardsc;
+use shards::types::ClonedVar;
 use shards::types::Context;
 
 use shards::types::ExposedTypes;
@@ -25,15 +29,40 @@ use shards::types::Table;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
+use shards::types::WireState;
 use shards::types::ANY_TYPES;
 
+use shards::types::BYTES_TYPES;
+use shards::types::FRAG_CC;
+use shards::types::INT_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
 use shards::types::STRING_TYPES;
-use shards::types::INT_TYPES;
 
+use std::cell::UnsafeCell;
 use std::convert::TryInto;
+use std::sync::Arc;
 
 const TAB_NAME: &'static str = "UI.Tab";
+
+#[derive(serde::Deserialize, serde::Serialize)]
+struct TabRef {
+  title: String,
+  type_id: usize,
+}
+
+struct TabData {
+  title: Option<Var>,
+  contents: Option<shards::Shards>,
+}
+
+struct DockState {
+  pub tabs: Arc<UnsafeCell<egui_dock::DockState<TabRef>>>,
+}
+ref_counted_object_type_impl!(DockState);
+static DOCK_OUTPUT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"uidk"));
+lazy_static! {
+  static ref DOCK_OUTPUT_TYPES: Vec<Type> = vec![DOCK_OUTPUT_TYPE];
+}
 
 lazy_static! {
   static ref TAB_PARAMETERS: Parameters = vec![
@@ -50,17 +79,19 @@ lazy_static! {
     )
       .into(),
   ];
-  static ref DOCKAREA_PARAMETERS: Parameters = vec![(
-    cstr!("Contents"),
-    cstr!("The UI contents containing tabs."),
-    &SHARDS_OR_NONE_TYPES[..],
-  )
-    .into(),
-  (
-    cstr!("DefaultTab"),
-    cstr!("The index of the tab to open by default. 0 being the right most tab."),
-    &INT_TYPES[..],
-  ).into(),
+  static ref DOCKAREA_PARAMETERS: Parameters = vec![
+    (
+      cstr!("Contents"),
+      cstr!("The UI contents containing tabs."),
+      &SHARDS_OR_NONE_TYPES[..],
+    )
+      .into(),
+    (
+      cstr!("DefaultTab"),
+      cstr!("The index of the tab to open by default. 0 being the right most tab."),
+      &INT_TYPES[..],
+    )
+      .into(),
   ];
 }
 
@@ -212,6 +243,20 @@ impl LegacyShard for Tab {
   }
 }
 
+struct DockArea {
+  instance: ParamVar,
+  requiring: ExposedTypes,
+  contents: ParamVar,
+  parents: ParamVar,
+  exposing: ExposedTypes,
+  headers: Vec<ParamVar>,
+  shards: Vec<ShardsVar>,
+  tabs: Arc<UnsafeCell<egui_dock::DockState<TabRef>>>,
+  tabs_var: ClonedVar,
+  tab_data: Vec<TabData>,
+  default_tab: i64,
+}
+
 impl Default for DockArea {
   fn default() -> Self {
     let mut ctx = ParamVar::default();
@@ -226,7 +271,9 @@ impl Default for DockArea {
       exposing: Vec::new(),
       headers: Vec::new(),
       shards: Vec::new(),
-      tabs: egui_dock::DockState::new(Vec::new()),
+      tabs: Arc::new(UnsafeCell::new(egui_dock::DockState::new(Vec::new()))),
+      tabs_var: ClonedVar::default(),
+      tab_data: Vec::new(),
       default_tab: 0,
     }
   }
@@ -264,7 +311,7 @@ impl LegacyShard for DockArea {
   }
 
   fn outputTypes(&mut self) -> &Types {
-    &ANY_TYPES
+    &DOCK_OUTPUT_TYPES
   }
 
   fn outputHelp(&mut self) -> OptionalString {
@@ -372,7 +419,7 @@ impl LegacyShard for DockArea {
     }
 
     // Always passthrough the input
-    Ok(data.inputType)
+    Ok(DOCK_OUTPUT_TYPE)
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -387,17 +434,25 @@ impl LegacyShard for DockArea {
       s.warmup(ctx);
     }
 
-    self.tabs = egui_dock::DockState::new(Vec::new());
+    self.tabs = Arc::new(UnsafeCell::new(egui_dock::DockState::new(Vec::new())));
+    let tabs = unsafe { self.tabs.as_mut_unchecked() };
     for (h, s) in std::iter::zip(self.headers.iter_mut(), self.shards.iter_mut()) {
       let td = TabData::new(h, s);
-      self.tabs.push_to_first_leaf(td);
+      tabs.push_to_first_leaf(td);
     }
 
     // Focus on specified default tab
-    if self.tabs.surfaces_count() > 0 {
-      let tab_index = self.default_tab.clamp(0, self.tabs.surfaces_count() as i64 - 1);
-      self.tabs.set_active_tab((0.into(), 0.into(), (tab_index as usize).into()));
+    if tabs.surfaces_count() > 0 {
+      let tab_index = self.default_tab.clamp(0, tabs.surfaces_count() as i64 - 1);
+      tabs.set_active_tab((0.into(), 0.into(), (tab_index as usize).into()));
     }
+
+    self.tabs_var.assign(&Var::new_ref_counted(
+      DockState {
+        tabs: self.tabs.clone(),
+      },
+      &DOCK_OUTPUT_TYPE,
+    ));
 
     Ok(())
   }
@@ -417,52 +472,151 @@ impl LegacyShard for DockArea {
   }
 
   fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
-    if self.tabs.surfaces_count() == 0 {
-      return Ok(None);
+    let tabs = unsafe { self.tabs.as_mut_unchecked() };
+    if tabs.surfaces_count() == 0 {
+      return Ok(Some(self.tabs_var.0));
     }
 
     let gui_ctx = util::get_current_context(&self.instance)?;
     let style = egui_dock::Style::from_egui(gui_ctx.egui_ctx.style().as_ref());
 
-    let dock = egui_dock::DockArea::new(&mut self.tabs).style(style);
+    let mut area = egui_dock::DockArea::new(tabs).style(style);
 
     let parents_stack_var = self.parents.get().clone();
     let mut viewer = MyTabViewer::new(context, &mut self.parents);
     if let Some(ui) = util::get_current_parent_opt(&parents_stack_var)? {
-      dock.show_inside(ui, &mut viewer);
+      area.show_inside(ui, &mut viewer);
     } else {
-      dock.show(&gui_ctx.egui_ctx, &mut viewer);
+      area.show(&gui_ctx.egui_ctx, &mut viewer);
     }
 
     // Always passthrough the input
-    Ok(None)
+    Ok(Some(self.tabs_var.0))
   }
 }
+
+#[derive(shards::shard)]
+#[shard_info("UI.SaveDockState", "Save the state of the DockArea")]
+pub struct SaveShard {
+  #[shard_param("DockState", "The state of the DockArea", &DOCK_OUTPUT_TYPES)]
+  dock_state: ParamVar,
+  #[shard_required]
+  requiring: ExposedTypes,
+  data: Vec<u8>,
+}
+
+impl Default for SaveShard {
+  fn default() -> Self {
+    Self {
+      dock_state: ParamVar::default(),
+      requiring: Vec::new(),
+      data: Vec::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for SaveShard {
+  fn input_types(&mut self) -> &Types {
+    &ANY_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BYTES_TYPES
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(BYTES_TYPES[0])
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let dock_state = unsafe {
+      (*Var::from_ref_counted_object::<DockState>(&input, &DOCK_OUTPUT_TYPE).unwrap())
+        .tabs
+        .as_mut_unchecked()
+    };
+
+    if let Ok(json) = bitcode::serialize(&mut *dock_state) {
+    } else {
+      return Err("Failed to save dock state");
+    }
+    let data = dock_state.save();
+    Ok(Some(Var::new(data)))
+  }
+}
+
+#[derive(shards::shard)]
+#[shard_info("UI.RestoreDockState", "Restore the state of the DockArea")]
+pub struct RestoreShard {}
 
 pub fn register_shards() {
   register_legacy_shard::<DockArea>();
   register_legacy_shard::<Tab>();
+  register_shard::<SaveShard>();
+  // register_shard::<RestoreShard>();
 }
 
 struct MyTabViewer<'a> {
   context: &'a Context,
   parents: &'a mut ParamVar,
+  tabs: &'a [TabData],
 }
 
 impl<'a> MyTabViewer<'a> {
-  pub fn new(context: &'a Context, parents: &'a mut ParamVar) -> MyTabViewer<'a> {
-    Self { context, parents }
+  pub fn new(
+    context: &'a Context,
+    parents: &'a mut ParamVar,
+    tabs: &'a [TabData],
+  ) -> MyTabViewer<'a> {
+    Self {
+      context,
+      parents,
+      tabs,
+    }
   }
 }
 
 impl<'a> egui_dock::TabViewer for MyTabViewer<'a> {
-  type Tab = TabData;
+  type Tab = TabRef;
 
   fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
-    tab.activate(self.context, &mut self.parents, ui);
+    unsafe {
+      if let Some(shards) = self.tabs[tab.type_id].contents {
+        with_object_stack_var(self.parents, ui, &EGUI_UI_TYPE, || {
+          let input = Var::default();
+          let mut output = Var::default();
+          let _wire_state: WireState = (*shards::core::Core).runShards.unwrap()(
+            shards,
+            self.context as *const _ as *mut _,
+            &input,
+            &mut output,
+          )
+          .into();
+
+          Ok(())
+        })
+        .unwrap();
+      }
+    }
   }
 
   fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-    tab.get_title().into()
+    if let Some(title) = &self.tabs[tab.type_id].title {
+      let str: &str = title.try_into().unwrap();
+      str.into()
+    } else {
+      "Untitled".into()
+    }
   }
 }

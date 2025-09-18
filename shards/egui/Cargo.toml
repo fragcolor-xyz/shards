@@ -29,6 +29,7 @@ bitcode = { version = "0.6.3", features = ["serde"] }
 compile-time-crc32 = "0.1.2"
 nanoid = "0.4.0"
 num-traits = "0.2"
+serde = { version = "1", features = ["derive"] }
 
 [build-dependencies]
 bindgen = "0.69"
