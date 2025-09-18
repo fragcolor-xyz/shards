@@ -2401,11 +2401,9 @@ class Shards {
         G.Core.pointee.abortWire(context.context, errorText)
     }
 
-    static func addShardAlias(original: String, alias: String) {
-        let originalChars = original.utf8CString
-        let aliasChars = alias.utf8CString
-        let originalName = SHStringWithLen.from(originalChars)
-        let aliasName = SHStringWithLen.from(aliasChars)
+    static func addShardAlias(original: StaticString, alias: StaticString) {
+        let originalName = SHStringWithLen.fromStatic(original)
+        let aliasName = SHStringWithLen.fromStatic(alias)
         G.Core.pointee.addShardAlias(originalName, aliasName)
     }
 }

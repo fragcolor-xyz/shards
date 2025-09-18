@@ -86,9 +86,27 @@ if(NOT EMSCRIPTEN)
         libressl
         URL https://develop.fragcolor.com/libressl-3.9.2.tar.gz
         URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
-        ${LIBRESSL_PATCH_COMMAND}
       )
       FetchContent_MakeAvailable(libressl)
+    endif()
+
+    # Fix iOS endian compatibility - prevent HAVE_ENDIAN_H from being defined on iOS
+    # This allows LibreSSL's compat/endian.h to use the Apple-specific code path
+    if(APPLE AND (IOS OR CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*" OR CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*" OR CMAKE_OSX_SYSROOT MATCHES ".*xros.*"))
+      message(STATUS "Fixing iOS endian compatibility by ensuring HAVE_ENDIAN_H is not defined...")
+      # Force HAVE_ENDIAN_H to be undefined for iOS so LibreSSL uses its Apple compatibility code
+      if(TARGET ssl_obj)
+        target_compile_options(ssl_obj PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET crypto_obj)
+        target_compile_options(crypto_obj PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET ssl)
+        target_compile_options(ssl PRIVATE -UHAVE_ENDIAN_H)
+      endif()
+      if(TARGET crypto)
+        target_compile_options(crypto PRIVATE -UHAVE_ENDIAN_H)
+      endif()
     endif()
 
     # Set source dir property used later by rust openssl-sys
@@ -102,6 +120,7 @@ if(NOT EMSCRIPTEN)
     add_library(OpenSSL::Crypto ALIAS crypto)
     target_link_libraries(OpenSSL INTERFACE ssl)
     target_include_directories(OpenSSL INTERFACE ${libressl_SOURCE_DIR}/include)
+
   endif()
 endif()
 
