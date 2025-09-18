@@ -48,7 +48,7 @@
         [script-path timestamps] | Log("Triggered change on script" Level: LogLevel::Debug)
         Maybe({
             script-path | FS.Read | Shards.Read(
-              BasePath: (script-path | FS.Parent)
+              Filename: #(script-path)
               Include: include-dirs
               OutputType: AstType::AdvancedObject
             )
@@ -99,7 +99,7 @@
     }
     
     Get(_wt "tag") | Memoize({
-      Msg((["Reloaded wire " wire-name] | String.Format) Level: LogLevel::Info Name: "reload")
+      Msg((["==== Reloaded wire " wire-name " ===="] | String.Format) Level: LogLevel::Info Name: "reload")
       false > _we
     })
     WhenNot({_we} {
