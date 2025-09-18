@@ -10,8 +10,10 @@
 #define BOOST_ERROR_CODE_HEADER_ONLY
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/filesystem.hpp>
 
@@ -19,6 +21,7 @@ namespace fs = boost::filesystem;
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http;   // from <boost/beast/http.hpp>
 namespace net = boost::asio;    // from <boost/asio.hpp>
+namespace ssl = net::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 #include <cctype>
@@ -37,6 +40,58 @@ using tcp = net::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 using namespace std;
 
 static auto logger = shards::logging::getOrCreate("http");
+
+// Embedded self-signed certificate for localhost (development use only)
+static const char* embedded_cert_pem = R"(-----BEGIN CERTIFICATE-----
+MIIDgTCCAmmgAwIBAgIUf3JVEFY5h4g5NQ6zfiEgjgtFcd8wDQYJKoZIhvcNAQEL
+BQAwUDELMAkGA1UEBhMCVVMxDDAKBgNVBAgMA0RldjEOMAwGA1UEBwwFTG9jYWwx
+DzANBgNVBAoMBlNoYXJkczESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI1MDkxODAx
+NTcxMloXDTI2MDkxODAxNTcxMlowUDELMAkGA1UEBhMCVVMxDDAKBgNVBAgMA0Rl
+djEOMAwGA1UEBwwFTG9jYWwxDzANBgNVBAoMBlNoYXJkczESMBAGA1UEAwwJbG9j
+YWxob3N0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn6wbqFfbUcUu
+3rxgmfQ4ZojaVG0DG5dytXpi04IOuKYf12noFgB6JTU6zwuCQzDirI80uZ8NZLWk
+gQ59pEEWY5lCFj1zaFQKK7eaT5KNr8C+TZSqCsl4NUKZODblfvNse+04LTEu2HJM
+V4xtWxcy9csQrViIeJue21/rkl7+XSKbrlFDqIyVUAbXFbN27CSu2bwAt4FiCqC0
+4798JG5h6Ud9ddceNJDAzza1dAYum/96H8uoji9W+Ds4znf0LYqqCTKFhSLZ/AYl
+cfB0r8JY44I2j2h8Bgkk349vE9a9J+XYQ+UcoemliK61Zqf1MsCScH8QDITJREjx
+0V5h6dXXBQIDAQABo1MwUTAdBgNVHQ4EFgQUuwJJIHn5x0YbJak/QM4NviR/dV4w
+HwYDVR0jBBgwFoAUuwJJIHn5x0YbJak/QM4NviR/dV4wDwYDVR0TAQH/BAUwAwEB
+/zANBgkqhkiG9w0BAQsFAAOCAQEAMijv3vegSULHtdoYqm+KKPIKkmtregviA2ZR
+bkS4KmrFbV/bXDPe15JQq0zE2L5Uka2nfPPs2V/2JfVu1RUQX/WAdniiX82ZeHGA
+O7/kBKnn4ZyuZftOgKuPvoz2rTT50AutkiF10rMNGH+Wumvk9TuSws1UaI0qt65p
+EsDaNvVfoWQ5SWMhIakYlOJq59vzUvwIkF8UrBRjrCqc9MOY9GFpr/fGJ9Q2hwpb
+1H7I9OOHimZPP9Ty4hr6JRLMz5hxlUi0yxx4AFecNAyeYTUJsjMAgVKam4cv8S2s
+0v37eXs3GF1JHPlGNuHg/J3NSwZeOy7+sUUN9xMQMdeKav5PwQ==
+-----END CERTIFICATE-----)";
+
+static const char* embedded_key_pem = R"(-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCfrBuoV9tRxS7e
+vGCZ9DhmiNpUbQMbl3K1emLTgg64ph/XaegWAHolNTrPC4JDMOKsjzS5nw1ktaSB
+Dn2kQRZjmUIWPXNoVAort5pPko2vwL5NlKoKyXg1Qpk4NuV+82x77TgtMS7YckxX
+jG1bFzL1yxCtWIh4m57bX+uSXv5dIpuuUUOojJVQBtcVs3bsJK7ZvAC3gWIKoLTj
+v3wkbmHpR3111x40kMDPNrV0Bi6b/3ofy6iOL1b4OzjOd/QtiqoJMoWFItn8BiVx
+8HSvwljjgjaPaHwGCSTfj28T1r0n5dhD5Ryh6aWIrrVmp/UywJJwfxAMhMlESPHR
+XmHp1dcFAgMBAAECggEABrcWbLAuUCt58NUlygDZcXp/IZu/4/AJ23nwDuTfghQP
+9NmdtnVaOV0DDadH2PbtreyjW+QLUhxJuoeUQiSYnzqGyCKTNAHSQyMOTnhSFOBk
+QII0IdR17loKXSVHWjprmM1jXDW/LtfTwATXqiy+01OZ7nQI93cDqXUOfwCjHG2n
+kC+wY8kaWLPX+yTPpkQM4jMxmSXoWXYgQQ9RLf7o94EgytId0uhk4r76jsXqB3Al
+MUmNUXtJDLiV4ipcK7I4yovXuqpkb6dNVaVAr0NgbUWqBdQ2zvNG3kTkh5si+HuJ
+X1P+DQmCZg+DmvQT0FiWebIfm7AcSQZKglDKvB6aiwKBgQDUWJHXdoJ/wrKhDonU
+PyMqz4DOMYzfm0+0VsMdReb2+VMcH+KOB9vS+SPM5VXSICWKLXFZuoTVNvcdOyml
+vuxfXUCnzZNlT3lwamFtNlr5ALHGGlqYraKdIACYNpydlQ+7qLPHgeUSWp6jGFxE
+g7yEHd0KYr7z8JfVS+i12ZnSXwKBgQDAf2gWMufR8dMw+cCTwLy2DukJszZ2oUrs
+fPc7QRefXi/FWg8Z1ppkkAZiMM9z0ak3vb85vE9C7dg4r+LiU5iIxW2WRR2xY2nh
+25NsS20rnk+AiN/6yV+V1iZwaawgi9PTBgn/BI6/y0rZeXFdzaRMy/A8wkXgO2i9
+3KRw9iq5GwKBgDdO8n26gncgkUJd9QxxfYlzDsumIFlFrNb+GkgPov8FJd6Xd30j
+EuC6v9ZojZfzg5OgDnweluaqMGdOt6RSPGMCeQq8Av5KWwkqzEGT/NIKmkNNLffC
+ki523XDIGLb60mRApsL6VF4ZeGRmvfGiloGa/a3s1mvXaNTHts9W5DflAoGAB+y2
+0kMiPAhik1+UyABlRHF0souIMHYPaZDzdKMHX+42tT8x4/RrwrwTJzOvNqto9fx/
+xNa1xKGaBytmgb7DRs4p5sfNoyHemAe8F/c69VK9HyODZQWpQ7ffOT2Aco6PF97l
+xnPflJG/8RgIzL3Mh8TVjQrKaaLIexh8RJI9zAUCgYEAgaOFr90vD3Dlf+NZZjm6
+Zkrow8cTkv+Y++k7i/7rgk6M7GM4Q2Wfv7HXdbRdvT3zSlvcmvfJhqQCMhGW/v7/
+E5fABcBgSDx4tNXzLCwtAARYB+UgcyfbgvwEWBI0DgFoadpgMIuykD681BhLOVQK
+IV5WFlI6Cf4er5LowEvwx/Q=
+-----END PRIVATE KEY-----)";
 
 inline std::string url_encode(const std::string_view &value) {
   std::ostringstream escaped;
@@ -545,16 +600,56 @@ struct Peer : public std::enable_shared_from_this<Peer> {
 
   std::shared_ptr<SHWire> wire;
   std::shared_ptr<tcp::socket> socket;
+  std::shared_ptr<ssl::stream<tcp::socket>> ssl_socket;
   std::deque<SHVar *> injectedVariables;
   entt::scoped_connection _onCleanupConnection;
+  bool use_ssl{false};
 
   ~Peer() { cleanup(); }
 
   void cleanup() {
+    ssl_socket.reset();
     socket.reset();
 
     // injectedVariables are cleaned up separately in wireOnStop
     // to avoid double-free issues
+  }
+
+  // Helper template to get the correct stream type
+  template<typename Handler>
+  void async_read_header(beast::flat_buffer& buffer, http::request_parser<http::string_body>& parser, Handler&& handler) {
+    if (use_ssl) {
+      http::async_read_header(*ssl_socket, buffer, parser, std::forward<Handler>(handler));
+    } else {
+      http::async_read_header(*socket, buffer, parser, std::forward<Handler>(handler));
+    }
+  }
+
+  template<typename Handler>
+  void async_read(beast::flat_buffer& buffer, http::request_parser<http::string_body>& parser, Handler&& handler) {
+    if (use_ssl) {
+      http::async_read(*ssl_socket, buffer, parser, std::forward<Handler>(handler));
+    } else {
+      http::async_read(*socket, buffer, parser, std::forward<Handler>(handler));
+    }
+  }
+
+  template<typename Response, typename Handler>
+  void async_write(Response& response, Handler&& handler) {
+    if (use_ssl) {
+      http::async_write(*ssl_socket, response, std::forward<Handler>(handler));
+    } else {
+      http::async_write(*socket, response, std::forward<Handler>(handler));
+    }
+  }
+
+  template<typename Buffer, typename Handler>
+  void async_write_raw(const Buffer& buffer, Handler&& handler) {
+    if (use_ssl) {
+      net::async_write(*ssl_socket, buffer, std::forward<Handler>(handler));
+    } else {
+      net::async_write(*socket, buffer, std::forward<Handler>(handler));
+    }
   }
 };
 
@@ -570,7 +665,10 @@ struct Server {
   static inline Parameters params{
       {"Handler", SHCCSTR("The wire that will be spawned and handle a remote request."), {CoreInfo::WireOrNone}},
       {"Endpoint", SHCCSTR("The URL from where your service can be accessed by a client."), {CoreInfo::StringType}},
-      {"Port", SHCCSTR("The port this service will use."), {CoreInfo::IntType, CoreInfo::IntVarType}}};
+      {"Port", SHCCSTR("The port this service will use."), {CoreInfo::IntType, CoreInfo::IntVarType}},
+      {"SSL", SHCCSTR("Enable HTTPS with SSL/TLS. Uses embedded self-signed certificate if no cert files specified."), {CoreInfo::BoolType}},
+      {"CertFile", SHCCSTR("Path to SSL certificate file (PEM format). Optional - uses embedded cert if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}},
+      {"KeyFile", SHCCSTR("Path to SSL private key file (PEM format). Optional - uses embedded key if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -592,6 +690,9 @@ struct Server {
   std::deque<ParamVar> _vars;
   SeqVar _cache;
   SHExposedTypesInfo _mergedReqs;
+  bool _ssl_enabled{false};
+  std::string _cert_file;
+  std::string _key_file;
 
   void destroy() { arrayFree(_mergedReqs); }
 
@@ -606,6 +707,23 @@ struct Server {
     case 2:
       _port = val;
       break;
+    case 3:
+      _ssl_enabled = val.payload.boolValue;
+      break;
+    case 4:
+      if (val.valueType != SHType::None) {
+        _cert_file = SHSTRVIEW(val);
+      } else {
+        _cert_file.clear();
+      }
+      break;
+    case 5:
+      if (val.valueType != SHType::None) {
+        _key_file = SHSTRVIEW(val);
+      } else {
+        _key_file.clear();
+      }
+      break;
     default:
       break;
     }
@@ -619,6 +737,12 @@ struct Server {
       return Var(_endpoint);
     case 2:
       return _port;
+    case 3:
+      return Var(_ssl_enabled);
+    case 4:
+      return _cert_file.empty() ? Var::Empty : Var(_cert_file);
+    case 5:
+      return _key_file.empty() ? Var::Empty : Var(_key_file);
     default:
       return Var::Empty;
     }
@@ -715,22 +839,61 @@ struct Server {
       peer->_onCleanupConnection = peer->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Server::wireOnCleanup>(this);
     }
 
-    peer->socket.reset(new tcp::socket(*_ioc));
-    _acceptor->async_accept(*peer->socket, [context, peer, this](beast::error_code ec) {
+    peer->use_ssl = _ssl_enabled;
+
+    if (_ssl_enabled) {
+      peer->ssl_socket.reset(new ssl::stream<tcp::socket>(*_ioc, *_ssl_context));
+    } else {
+      peer->socket.reset(new tcp::socket(*_ioc));
+    }
+
+    auto& socket_to_accept = _ssl_enabled ? peer->ssl_socket->next_layer() : *peer->socket;
+    _acceptor->async_accept(socket_to_accept, [context, peer, this](beast::error_code ec) {
       if (!ec) {
-        auto mesh = context->main->mesh.lock();
-        if (mesh) {
-          peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
-          mesh->schedule(peer->wire, Var::Empty, false);
+        if (_ssl_enabled) {
+          // Perform SSL handshake
+          peer->ssl_socket->async_handshake(ssl::stream_base::server, [context, peer, this](beast::error_code ssl_ec) {
+            if (!ssl_ec) {
+              // SSL handshake successful, schedule the wire
+              auto mesh = context->main->mesh.lock();
+              if (mesh) {
+                peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
+                mesh->schedule(peer->wire, Var::Empty, false);
+              } else {
+                // Clean up injected variables
+                for (auto var : peer->injectedVariables) {
+                  releaseVariable(var);
+                }
+                peer->injectedVariables.clear();
+                _pool->release(peer);
+              }
+            } else {
+              SHLOG_DEBUG("SSL handshake failed: {}", ssl_ec.message());
+              // Clean up injected variables
+              for (auto var : peer->injectedVariables) {
+                releaseVariable(var);
+              }
+              peer->injectedVariables.clear();
+              _pool->release(peer);
+            }
+          });
         } else {
-          // Clean up injected variables
-          for (auto var : peer->injectedVariables) {
-            releaseVariable(var);
+          // No SSL, schedule directly
+          auto mesh = context->main->mesh.lock();
+          if (mesh) {
+            peer->wire->getVariable("Http.Server.Socket"_swl) = Var::Object(peer, CoreCC, Peer::PeerCC);
+            mesh->schedule(peer->wire, Var::Empty, false);
+          } else {
+            // Clean up injected variables
+            for (auto var : peer->injectedVariables) {
+              releaseVariable(var);
+            }
+            peer->injectedVariables.clear();
+            _pool->release(peer);
           }
-          peer->injectedVariables.clear();
-          _pool->release(peer);
         }
       } else {
+        SHLOG_DEBUG("Accept failed: {}", ec.message());
         // Clean up injected variables
         for (auto var : peer->injectedVariables) {
           releaseVariable(var);
@@ -779,11 +942,12 @@ struct Server {
       _acceptor.reset();
     }
 
-    // Stop and reset io_context
+    // Stop and reset io_context and SSL context
     if (_ioc) {
       _ioc->stop();
       _ioc.reset();
     }
+    _ssl_context.reset();
 
     _port.cleanup(context);
     _is_running = false;
@@ -800,6 +964,31 @@ struct Server {
 
     if (!_is_running) {
       _ioc.reset(new net::io_context());
+
+      // Initialize SSL context if SSL is enabled
+      if (_ssl_enabled) {
+        _ssl_context.reset(new ssl::context(ssl::context::tlsv12_server));
+
+        try {
+          // Configure SSL context
+          _ssl_context->set_options(ssl::context::default_workarounds | ssl::context::no_sslv2 | ssl::context::single_dh_use);
+
+          // Load certificate and key
+          if (!_cert_file.empty() && !_key_file.empty()) {
+            // Use provided certificate files
+            _ssl_context->use_certificate_chain_file(_cert_file);
+            _ssl_context->use_private_key_file(_key_file, ssl::context::pem);
+            SHLOG_DEBUG("Using provided SSL certificate: {} and key: {}", _cert_file, _key_file);
+          } else {
+            // Use embedded certificate
+            _ssl_context->use_certificate_chain(net::buffer(embedded_cert_pem, strlen(embedded_cert_pem)));
+            _ssl_context->use_private_key(net::buffer(embedded_key_pem, strlen(embedded_key_pem)), ssl::context::pem);
+            SHLOG_DEBUG("Using embedded SSL certificate for localhost");
+          }
+        } catch (const std::exception& e) {
+          throw ActivationError(fmt::format("Failed to configure SSL context: {}", e.what()));
+        }
+      }
 
       auto port = _port.get().payload.intValue;
       // ensure port is in range of 1-65535
@@ -867,6 +1056,7 @@ struct Server {
 
   // The io_context is required for all I/O
   std::unique_ptr<net::io_context> _ioc;
+  std::unique_ptr<ssl::context> _ssl_context;
   std::deque<Peer> _peers;
   std::unique_ptr<tcp::acceptor> _acceptor;
 };
@@ -924,7 +1114,7 @@ struct Read {
     parser.header_limit(32 * 1024);                               // 32KB header limit
     parser.body_limit(std::numeric_limits<std::uint64_t>::max()); // No body limit
 
-    http::async_read_header(*peer->socket, buffer, parser, [&](beast::error_code ec, std::size_t nbytes) {
+    peer->async_read_header(buffer, parser, [&](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
         if (ec == beast::error::timeout) {
           _last_error = ec;
@@ -955,7 +1145,7 @@ struct Read {
     has_error = false;
 
     // Continue with the same parser for the body
-    http::async_read(*peer->socket, buffer, parser, [&](beast::error_code ec, std::size_t nbytes) {
+    peer->async_read(buffer, parser, [&](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
         if (ec == beast::error::timeout) {
           _last_error = ec;
@@ -1103,7 +1293,7 @@ struct Response {
     _response.prepare_payload();
 
     bool done = false;
-    http::async_write(*peer->socket, _response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+    peer->async_write(_response, [&, peer](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
         throw PeerError{"Response", ec, peer};
       } else {
@@ -1225,14 +1415,25 @@ struct Chunk {
 
       done = false;
       http::response_serializer<http::empty_body> _serializer{_response};
-      http::async_write_header(*peer->socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
-        if (ec) {
-          throw PeerError{"Chunk", ec, peer};
-        } else {
-          SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
-          done = true;
-        }
-      });
+      if (peer->use_ssl) {
+        http::async_write_header(*peer->ssl_socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
+          if (ec) {
+            throw PeerError{"Chunk", ec, peer};
+          } else {
+            SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
+            done = true;
+          }
+        });
+      } else {
+        http::async_write_header(*peer->socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
+          if (ec) {
+            throw PeerError{"Chunk", ec, peer};
+          } else {
+            SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
+            done = true;
+          }
+        });
+      }
 
       // we suspend here, that's why we captured & above!!
       while (!done) {
@@ -1248,7 +1449,7 @@ struct Chunk {
 
     done = false;
     auto chunkStr = fmt::format("{:X}\r\n{}\r\n", input_view.size(), input_view);
-    net::async_write(*peer->socket, net::buffer(chunkStr), [&, peer](beast::error_code ec, std::size_t nbytes) {
+    peer->async_write_raw(net::buffer(chunkStr), [&, peer](beast::error_code ec, std::size_t nbytes) {
       if (ec) {
         throw PeerError{"Chunk", ec, peer};
       } else {
@@ -1389,7 +1590,7 @@ struct SendFile {
       _404_response.body() = "File not found.";
       _404_response.prepare_payload();
 
-      http::async_write(*peer->socket, _404_response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+      peer->async_write(_404_response, [&, peer](beast::error_code ec, std::size_t nbytes) {
         if (ec) {
           throw PeerError{"SendFile:1", ec, peer};
         } else {
@@ -1418,7 +1619,7 @@ struct SendFile {
       }
 
       _response.prepare_payload();
-      http::async_write(*peer->socket, _response, [&, peer](beast::error_code ec, std::size_t nbytes) {
+      peer->async_write(_response, [&, peer](beast::error_code ec, std::size_t nbytes) {
         if (ec) {
           throw PeerError{"SendFile:2", ec, peer};
         } else {

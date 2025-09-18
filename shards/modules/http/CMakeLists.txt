@@ -29,7 +29,7 @@ if(HTTP_SUPPORTED)
   target_include_directories(shards-module-http PRIVATE ../core)
 
   if(NOT EMSCRIPTEN)
-    target_link_libraries(shards-module-http Boost::beast Boost::asio Boost::context)
+    target_link_libraries(shards-module-http Boost::beast Boost::asio Boost::context OpenSSL)
     target_include_directories(shards-module-http PRIVATE $<TARGET_PROPERTY:OpenSSL,INTERFACE_INCLUDE_DIRECTORIES>)
   else()
     target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
