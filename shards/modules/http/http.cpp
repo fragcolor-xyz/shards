@@ -651,6 +651,15 @@ struct Peer : public std::enable_shared_from_this<Peer> {
       net::async_write(*socket, buffer, std::forward<Handler>(handler));
     }
   }
+
+  template<typename Serializer, typename Handler>
+  void async_write_header(Serializer& serializer, Handler&& handler) {
+    if (use_ssl) {
+      http::async_write_header(*ssl_socket, serializer, std::forward<Handler>(handler));
+    } else {
+      http::async_write_header(*socket, serializer, std::forward<Handler>(handler));
+    }
+  }
 };
 
 struct PeerError {
@@ -974,7 +983,10 @@ struct Server {
           _ssl_context->set_options(ssl::context::default_workarounds | ssl::context::no_sslv2 | ssl::context::single_dh_use);
 
           // Load certificate and key
-          if (!_cert_file.empty() && !_key_file.empty()) {
+          if (!_cert_file.empty() || !_key_file.empty()) {
+            if (_cert_file.empty() || _key_file.empty()) {
+              throw ActivationError("SSL requires both CertFile and KeyFile parameters, or neither (to use embedded cert)");
+            }
             // Use provided certificate files
             _ssl_context->use_certificate_chain_file(_cert_file);
             _ssl_context->use_private_key_file(_key_file, ssl::context::pem);
@@ -1415,25 +1427,14 @@ struct Chunk {
 
       done = false;
       http::response_serializer<http::empty_body> _serializer{_response};
-      if (peer->use_ssl) {
-        http::async_write_header(*peer->ssl_socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
-          if (ec) {
-            throw PeerError{"Chunk", ec, peer};
-          } else {
-            SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
-            done = true;
-          }
-        });
-      } else {
-        http::async_write_header(*peer->socket, _serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
-          if (ec) {
-            throw PeerError{"Chunk", ec, peer};
-          } else {
-            SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
-            done = true;
-          }
-        });
-      }
+      peer->async_write_header(_serializer, [&, peer](beast::error_code ec, std::size_t nbytes) {
+        if (ec) {
+          throw PeerError{"Chunk", ec, peer};
+        } else {
+          SHLOG_TRACE("Chunk: async_write bytes (chunk headers): {}", nbytes);
+          done = true;
+        }
+      });
 
       // we suspend here, that's why we captured & above!!
       while (!done) {
