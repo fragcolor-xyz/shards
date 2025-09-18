@@ -699,7 +699,7 @@ struct Server {
   std::deque<ParamVar> _vars;
   SeqVar _cache;
   SHExposedTypesInfo _mergedReqs;
-  bool _ssl_enabled{false};
+  ParamVar _ssl_enabled;
   std::string _cert_file;
   std::string _key_file;
 
@@ -717,7 +717,7 @@ struct Server {
       _port = val;
       break;
     case 3:
-      _ssl_enabled = val.payload.boolValue;
+      _ssl_enabled = val;
       break;
     case 4:
       if (val.valueType != SHType::None) {
@@ -747,7 +747,7 @@ struct Server {
     case 2:
       return _port;
     case 3:
-      return Var(_ssl_enabled);
+      return _ssl_enabled;
     case 4:
       return _cert_file.empty() ? Var::Empty : Var(_cert_file);
     case 5:
@@ -848,18 +848,18 @@ struct Server {
       peer->_onCleanupConnection = peer->wire->dispatcher.sink<SHWire::OnCleanupEvent>().connect<&Server::wireOnCleanup>(this);
     }
 
-    peer->use_ssl = _ssl_enabled;
+    peer->use_ssl = _ssl_enabled.get().payload.boolValue;
 
-    if (_ssl_enabled) {
+    if (_ssl_enabled.get().payload.boolValue) {
       peer->ssl_socket.reset(new ssl::stream<tcp::socket>(*_ioc, *_ssl_context));
     } else {
       peer->socket.reset(new tcp::socket(*_ioc));
     }
 
-    auto& socket_to_accept = _ssl_enabled ? peer->ssl_socket->next_layer() : *peer->socket;
+    auto& socket_to_accept = _ssl_enabled.get().payload.boolValue ? peer->ssl_socket->next_layer() : *peer->socket;
     _acceptor->async_accept(socket_to_accept, [context, peer, this](beast::error_code ec) {
       if (!ec) {
-        if (_ssl_enabled) {
+        if (_ssl_enabled.get().payload.boolValue) {
           // Perform SSL handshake
           peer->ssl_socket->async_handshake(ssl::stream_base::server, [context, peer, this](beast::error_code ssl_ec) {
             if (!ssl_ec) {
@@ -929,6 +929,7 @@ struct Server {
     }
 
     _port.warmup(context);
+    _ssl_enabled.warmup(context);
   }
 
   void cleanup(SHContext *context) {
@@ -959,6 +960,7 @@ struct Server {
     _ssl_context.reset();
 
     _port.cleanup(context);
+    _ssl_enabled.cleanup(context);
     _is_running = false;
   }
 
@@ -975,7 +977,7 @@ struct Server {
       _ioc.reset(new net::io_context());
 
       // Initialize SSL context if SSL is enabled
-      if (_ssl_enabled) {
+      if (_ssl_enabled.get().payload.boolValue) {
         _ssl_context.reset(new ssl::context(ssl::context::tlsv12_server));
 
         try {
