@@ -1835,9 +1835,6 @@ extension IShard {}
 }
 
 func createSwiftShard<T: IShard>(_: T.Type) -> UnsafeMutablePointer<Shard>? {
-    #if DEBUG
-        print("Creating swift shard: \(T.name)")
-    #endif
     let shard = T()
     let cwrapper = UnsafeMutablePointer<SwiftShard>.allocate(capacity: 1)
     cwrapper.initialize(to: SwiftShard())
