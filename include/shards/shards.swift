@@ -374,6 +374,13 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
         v.payload.float2Value = value
         self = v
     }
+    
+    init(value: SIMD16<Int8>) {
+        var v = SHVar()
+        v.valueType = Int16
+        v.payload.int16Value = value
+        self = v
+    }
 
     public static func object(vendorId: Int32, typeId: Int32, value: UnsafeMutableRawPointer?) -> SHVar {
         var v = SHVar()
@@ -456,6 +463,17 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
         set {
             assert(type == .Float, "Double variable expected!")
             payload.floatValue = SHFloat(newValue)
+        }
+    }
+    
+    public var int16: SIMD16<Int8> {
+        get {
+            assert(type == .Int16, "Int16 variable expected!")
+            return payload.int16Value
+        }
+        set {
+            assert(type == .Int16, "Float4 variable expected!")
+            payload.int16Value = newValue
         }
     }
 
