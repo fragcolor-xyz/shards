@@ -1,0 +1,20 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+    "projectTitle": "Shards",
+    "description": "Shards is a revolutionary programming language that embraces the dynamic flow of data, offering intuitive visual and textual programming, true concurrency, and high performance for interactive applications, game development, and real-time systems.",
+    "branch": "devel",
+    "excludeFolders": [
+        "deps",
+        "ai"
+    ],
+    "excludeFiles": [
+        "CHANGELOG.md",
+        "changelog.md",
+        "CHANGELOG.mdx",
+        "changelog.mdx",
+        "LICENSE.md",
+        "license.md",
+        "CODE_OF_CONDUCT.md",
+        "code_of_conduct.md"
+    ]
+}
