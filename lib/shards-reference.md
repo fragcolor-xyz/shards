@@ -1572,7 +1572,7 @@ In: Takes input values of type `Int`, `Float`, `String`, or a collection  of `In
 Out: Outputs a vector of four color channels (RGBA). (Any)
 
 # And
-If the input of the preceding shard is true, the flow continues; otherwise, the flow stops. This shard is typically used within conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional flow, it might restart the current wire, which can be used as a trick in certain scenarios.
+If the input of the preceding shard is true, the flow continues; otherwise, the flow stops. This shard is typically used within conditional flows (e.g., If, When) to chain conditions. Note: Outside a conditional flow, it can be used to restart the current wire and control flow.
 
 In: If true, the flow continues; otherwise, it stops. (Bool)
 Out: The output of this shard will be the input of the current conditional flow or wire. (Bool)

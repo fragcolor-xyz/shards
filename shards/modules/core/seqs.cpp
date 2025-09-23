@@ -641,14 +641,14 @@ struct Zip {
 
 struct Extend {
   static SHOptionalString help() {
-    return SHCCSTR("Extends the mutable sequence parameter with the elements of the input sequence.");
+    return SHCCSTR("Extends the mutable sequence provided in the `Target` parameter with the elements of the input sequence.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence to be appended to the target sequence."); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
-  static SHOptionalString outputHelp() { return SHCCSTR("The input sequence (pass-through)."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The input sequence (passthrough)."); }
 
   PARAM_PARAMVAR(_target, "Target", "The mutable sequence to extend.", {CoreInfo::AnyVarSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_target));

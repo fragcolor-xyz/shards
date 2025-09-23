@@ -9,9 +9,14 @@ namespace shards {
 struct Memoize {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Computes a value"); }
+  static SHOptionalString inputHelp() { return SHCCSTR("Whenever the cached value for input is changed, the shards in Evaluate will activate."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR(
+        "Outputs the cached output of Evaluate.");
+  }
+  static SHOptionalString help() { return SHCCSTR("Activates the shards provided in `Evaluate` whenever the cached value of the provided input is changed."); }
 
-  PARAM(ShardsVar, _evaluate, "Evaluate", "The shards to evaluate the cached value based on input", {shards::CoreInfo::Shards});
+  PARAM(ShardsVar, _evaluate, "Evaluate", "The shards to activate whenever the cached value of the provided input is changed.", {shards::CoreInfo::Shards});
   PARAM_IMPL(PARAM_IMPL_FOR(_evaluate));
 
   OwnedVar _lastInput;

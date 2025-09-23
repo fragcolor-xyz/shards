@@ -81,6 +81,10 @@ struct Produce : public Base {
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
+  static SHOptionalString help() {
+    return SHCCSTR("Pushes its input value into the channel specified in `Name`. This value can then be grabbed by other wires in other meshes using `Consume`");
+  }
+
   static SHParametersInfo parameters() { return producerParams; }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -200,6 +204,10 @@ struct Consumers : public Base {
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   static SHParametersInfo parameters() { return consumerParams; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Gets and removes values that was previously pushed into the channel specified in `Name` by `Produce` whenever they are available.");
+  }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {

@@ -540,7 +540,7 @@ struct XPendBase {
 };
 
 struct AppendTo : public XPendBase {
-  static SHOptionalString help() { return SHCCSTR("Appends the input to the context variable passed to `Collection:`."); }
+  static SHOptionalString help() { return SHCCSTR("Adds the input as an element to the end of the variable passed to `Collection`."); }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to append to the collection."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The input to this shard is passed through as its output."); }
 

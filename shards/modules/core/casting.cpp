@@ -410,7 +410,7 @@ struct BitSwap32 {
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the reversed bytes as an integer."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes a 32-bit integer, reverses their order of its bytes, and outputs the result as an integer. "
+    return SHCCSTR("This shard takes a 32-bit integer, reverses the order of its bytes, and outputs the result as an integer. "
                    "This is useful for converting between different endianness formats.");
   }
 
@@ -429,7 +429,7 @@ struct BitSwap64 {
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the reversed bytes as an integer."); }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard takes a 64-bit integer, reverses their order of its bytes, and outputs the result as an integer. "
+    return SHCCSTR("This shard takes a 64-bit integer, reverses the order of its bytes, and outputs the result as an integer. "
                    "This is useful for converting between different endianness formats.");
   }
 
