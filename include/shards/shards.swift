@@ -374,7 +374,7 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
         v.payload.float2Value = value
         self = v
     }
-    
+
     init(value: SIMD16<Int8>) {
         var v = SHVar()
         v.valueType = Int16
@@ -465,7 +465,7 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
             payload.floatValue = SHFloat(newValue)
         }
     }
-    
+
     public var int16: SIMD16<Int8> {
         get {
             assert(type == .Int16, "Int16 variable expected!")
@@ -656,7 +656,7 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
             }
         }
     }
-    
+
     public func hash(into hasher: inout Hasher) {
         let hash = withUnsafePointer(to: self) { ptr in
             G.Core.pointee.hashVar(ptr)
@@ -2497,91 +2497,79 @@ class Shards {
 
     extension OwnedVar {
         public static func from(image: UIImage) -> OwnedVar? {
-            #if canImport(UIKit)
-                guard let cgImage = image.cgImage else {
-                    print("Unable to get CGImage.")
-                    return nil
-                }
+            guard let cgImage = image.cgImage else {
+                print("Unable to get CGImage.")
+                return nil
+            }
 
-                // Base width/height from the cgImage
-                let width = cgImage.width
-                let height = cgImage.height
-                let bytesPerPixel = 4 // RGBA
-                var drawWidth = width
-                var drawHeight = height
+            // Base width/height from the cgImage
+            let width = cgImage.width
+            let height = cgImage.height
+            let bytesPerPixel = 4 // RGBA
+            var drawWidth = width
+            var drawHeight = height
 
-                // Adjust width/height if orientation is rotated 90 or 270 degrees
-                var transform = CGAffineTransform.identity
-                switch image.imageOrientation {
-                case .down, .downMirrored:
-                    transform =
-                        transform
-                            .translatedBy(x: CGFloat(width), y: CGFloat(height))
-                            .rotated(by: .pi)
-                case .left, .leftMirrored:
-                    swap(&drawWidth, &drawHeight)
-                    transform =
-                        transform
-                            .translatedBy(x: CGFloat(drawWidth), y: 0)
-                            .rotated(by: .pi / 2)
-                case .right, .rightMirrored:
-                    swap(&drawWidth, &drawHeight)
-                    transform =
-                        transform
-                            .translatedBy(x: 0, y: CGFloat(drawHeight))
-                            .rotated(by: -.pi / 2)
-                default:
-                    break
-                }
+            // Adjust width/height if orientation is rotated 90 or 270 degrees
+            var transform = CGAffineTransform.identity
+            switch image.imageOrientation {
+            case .down, .downMirrored:
+                transform =
+                    transform
+                        .translatedBy(x: CGFloat(width), y: CGFloat(height))
+                        .rotated(by: .pi)
+            case .left, .leftMirrored:
+                swap(&drawWidth, &drawHeight)
+                transform =
+                    transform
+                        .translatedBy(x: CGFloat(drawWidth), y: 0)
+                        .rotated(by: .pi / 2)
+            case .right, .rightMirrored:
+                swap(&drawWidth, &drawHeight)
+                transform =
+                    transform
+                        .translatedBy(x: 0, y: CGFloat(drawHeight))
+                        .rotated(by: -.pi / 2)
+            default:
+                break
+            }
 
-                let rowStride = drawWidth * bytesPerPixel
-                let totalBytes = drawHeight * rowStride
+            let rowStride = drawWidth * bytesPerPixel
+            let totalBytes = drawHeight * rowStride
 
-                let result = OwnedVar()
-                result.v.valueType = VarType.Image.asSHType()
-                result.v.payload.imageValue = G.Core.pointee.imageNew(UInt32(totalBytes))
+            let result = OwnedVar()
+            result.v.valueType = VarType.Image.asSHType()
+            result.v.payload.imageValue = G.Core.pointee.imageNew(UInt32(totalBytes))
 
-                // Update final image dimensions after orientation adjustments
-                result.v.payload.imageValue.pointee.width = UInt16(drawWidth)
-                result.v.payload.imageValue.pointee.height = UInt16(drawHeight)
-                result.v.payload.imageValue.pointee.channels = UInt8(bytesPerPixel)
-                result.v.payload.imageValue.pointee.rowStride = UInt16(rowStride)
-                result.v.payload.imageValue.pointee.flags = UInt8(SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
+            // Update final image dimensions after orientation adjustments
+            result.v.payload.imageValue.pointee.width = UInt16(drawWidth)
+            result.v.payload.imageValue.pointee.height = UInt16(drawHeight)
+            result.v.payload.imageValue.pointee.channels = UInt8(bytesPerPixel)
+            result.v.payload.imageValue.pointee.rowStride = UInt16(rowStride)
+            result.v.payload.imageValue.pointee.flags = UInt8(SHIMAGE_FLAGS_PREMULTIPLIED_ALPHA)
 
-                let colorSpace = CGColorSpaceCreateDeviceRGB()
-                let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
 
-                guard
-                    let context = CGContext(
-                        data: result.v.payload.imageValue.pointee.data,
-                        width: drawWidth,
-                        height: drawHeight,
-                        bitsPerComponent: 8,
-                        bytesPerRow: rowStride,
-                        space: colorSpace,
-                        bitmapInfo: bitmapInfo
-                    )
-                else {
-                    print("Unable to create CGContext.")
-                    return nil
-                }
+            guard
+                let context = CGContext(
+                    data: result.v.payload.imageValue.pointee.data,
+                    width: drawWidth,
+                    height: drawHeight,
+                    bitsPerComponent: 8,
+                    bytesPerRow: rowStride,
+                    space: colorSpace,
+                    bitmapInfo: bitmapInfo
+                )
+            else {
+                print("Unable to create CGContext.")
+                return nil
+            }
 
-                context.concatenate(transform)
-                let rect = CGRect(x: 0, y: 0, width: width, height: height)
-                context.draw(cgImage, in: rect)
+            context.concatenate(transform)
+            let rect = CGRect(x: 0, y: 0, width: width, height: height)
+            context.draw(cgImage, in: rect)
 
-                return result
-            #elseif canImport(AppKit)
-                guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
-                else {
-                    print("Unable to get CGImage from NSImage")
-                    return nil
-                }
-
-                // Create a temporary UIImage to use the existing conversion code
-                let tempImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
-                return OwnedVar.from(image: tempImage)
-            #endif
+            return result
         }
     }
 
@@ -2601,7 +2589,7 @@ class Shards {
             payload.colorValue.a = UInt8(a * 255)
         }
 
-        var uiColor: UIColor {
+        var nativeColor: UIColor {
             assert(valueType == VarType.Color.asSHType(), "Value is not a color")
             return UIColor(
                 red: CGFloat(payload.colorValue.r) / 255.0,
@@ -2610,7 +2598,13 @@ class Shards {
                 alpha: CGFloat(payload.colorValue.a) / 255.0
             )
         }
+    }
+#endif
 
+#if canImport(CoreGraphics)
+    import CoreGraphics
+
+    extension SHVar {
         func toCGImage() throws -> CGImage {
             let imageValue = payload.imageValue!
             let channels = Int(imageValue.pointee.channels)
@@ -2699,6 +2693,26 @@ class Shards {
             context.draw(cgImage, in: rect)
 
             return result
+        }
+    }
+
+    extension SHVar {
+        init(color: NSColor) {
+            self.init()
+            valueType = VarType.Color.asSHType()
+            payload.colorValue.r = UInt8(color.redComponent * 255)
+            payload.colorValue.g = UInt8(color.greenComponent * 255)
+            payload.colorValue.b = UInt8(color.blueComponent * 255)
+        }
+
+        var nativeColor: NSColor {
+            assert(valueType == VarType.Color.asSHType(), "Value is not a color")
+            return NSColor(
+                red: CGFloat(payload.colorValue.r) / 255.0,
+                green: CGFloat(payload.colorValue.g) / 255.0,
+                blue: CGFloat(payload.colorValue.b) / 255.0,
+                alpha: CGFloat(payload.colorValue.a) / 255.0
+            )
         }
     }
 #endif
