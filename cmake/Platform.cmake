@@ -14,6 +14,7 @@ if(APPLE)
     else()
       set(CMAKE_OSX_DEPLOYMENT_TARGET "16.3" CACHE STRING "Minimum iOS deployment version" FORCE)
     endif()
+
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET}")
   elseif(VISIONOS)
     if(APPLE_DEPLOYMENT_TARGET)
@@ -21,14 +22,17 @@ if(APPLE)
     else()
       set(CMAKE_OSX_DEPLOYMENT_TARGET "1.2" CACHE STRING "Minimum visionOS deployment version" FORCE)
     endif()
+
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-xros${CMAKE_OSX_DEPLOYMENT_TARGET}")
   else()
     set(MACOSX TRUE)
+
     if(APPLE_DEPLOYMENT_TARGET)
       set(CMAKE_OSX_DEPLOYMENT_TARGET "${APPLE_DEPLOYMENT_TARGET}" CACHE STRING "Minimum macOS deployment version" FORCE)
     else()
       set(CMAKE_OSX_DEPLOYMENT_TARGET "14.5" CACHE STRING "Minimum macOS deployment version" FORCE)
     endif()
+
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
   endif()
 
@@ -118,7 +122,9 @@ if(NOT ARCH)
 endif()
 
 if(ARCH)
-  add_compile_options(-march=${ARCH})
+  # Just to not pass to swift
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX,C>:-march=${ARCH}>)
+
   set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -march=${ARCH}")
 endif()
 
