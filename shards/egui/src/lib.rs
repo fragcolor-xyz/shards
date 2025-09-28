@@ -2,7 +2,6 @@
 /* Copyright © 2022 Fragcolor Pte. Ltd. */
 
 #![feature(result_flattening)]
-#![feature(concat_idents)]
 // Required for shards-egui C++ bindings
 #![cfg_attr(all(target_os = "windows", target_arch = "x86"), feature(abi_thiscall))]
 
