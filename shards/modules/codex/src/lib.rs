@@ -20,7 +20,7 @@ struct ApplyPatchShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::string, common_type::none])]
+  #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::none, common_type::string_var])]
   work_dir: ParamVar,
 
   output: AutoTableVar,
