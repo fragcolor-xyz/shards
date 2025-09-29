@@ -4,7 +4,11 @@
 use htmd::HtmlToMarkdown;
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::types::{common_type, AutoSeqVar, ClonedVar, ParamVar, STRINGS_TYPES, STRING_TYPES};
+use shards::shlog_error;
+use shards::types::{
+  common_type, AutoSeqVar, AutoTableVar, ClonedVar, ParamVar, ANY_TABLE_TYPES, STRINGS_TYPES,
+  STRING_TYPES,
+};
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 use pulldown_cmark::{
@@ -108,7 +112,7 @@ impl Shard for MarkdownParseShard {
             for class in classes {
               let class = format!(".{}", class);
               let d = Var::ephemeral_string(&class);
-               self.output.0.push(&d);
+              self.output.0.push(&d);
             }
             for (name, value) in attrs {
               if let Some(value) = value {
