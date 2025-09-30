@@ -71,13 +71,19 @@ public:
 };
 
 class ComposeError : public SHException {
-public:
-  explicit ComposeError(std::string_view msg, bool fatal = true) : SHException(msg), fatal(fatal) {}
-
-  bool triggerFailure() const { return fatal; }
-
-private:
+  enum ContextType {
+    CTX_Shard,
+    CTX_Wire,
+  };
+  union {
+    Shard *shard;
+    SHWire *wire;
+  };
+  ContextType type;
   bool fatal;
+
+  explicit ComposeError(Shard *shard, std::string_view msg, bool fatal = true) : SHException(msg), shard(shard), type(CTX_Shard), fatal(fatal) {}
+  explicit ComposeError(SHWire *wire, std::string_view msg, bool fatal = true) : SHException(msg), wire(wire), type(CTX_Wire), fatal(fatal) {}
 };
 
 class InvalidVarTypeError : public SHException {
@@ -169,8 +175,7 @@ struct Type {
     }
 
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
-    res._type = {SHType::Table,
-                 {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+    res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
     return res;
   }
 

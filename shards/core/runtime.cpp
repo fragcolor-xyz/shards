@@ -933,7 +933,7 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
     }
 #endif
-    throw ComposeError(msg);
+    throw ComposeError(ctx.bottom, msg);
   }
 
   // infer and specialize types if we need to
@@ -954,9 +954,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(msg);
+      throw ComposeError(ctx.bottom,composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -982,9 +980,9 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(msg);
+      // std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
+      // SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
+      throw ComposeError(data.shard, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -1003,8 +1001,8 @@ void validateConnection(InternalCompositionContext &ctx) {
         }
       }
     } else {
-      SHLOG_ERROR("Shard {} needs to implement the compose method", ctx.bottom->name(ctx.bottom));
-      throw ComposeError("Shard has multiple possible output types and is missing the compose method");
+      // SHLOG_ERROR("Shard {} needs to implement the compose method", ctx.bottom->name(ctx.bottom));
+      throw ComposeError(ctx.bottom, "Shard has multiple possible output types and is missing the compose method");
     }
   }
 
@@ -1034,7 +1032,7 @@ void validateConnection(InternalCompositionContext &ctx) {
         });
     if (!shardHasValidOutputTypes) {
       auto msg = fmt::format("Shard {} doesn't have a valid output type", ctx.bottom->name(ctx.bottom));
-      throw ComposeError(msg);
+      throw ComposeError(ctx.bottom, msg);
     }
   }
 #endif
@@ -1050,7 +1048,7 @@ void validateConnection(InternalCompositionContext &ctx) {
       SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
       // check if we are not declaring a mutable var twice, and match the mutability
       if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
-        throw ComposeError(fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+        throw ComposeError(ctx.bottom, fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
       }
       // check that we are not declaring a mutable var twice
       if (!inserted.second && inserted.first->second.isMutable) {
@@ -1059,7 +1057,7 @@ void validateConnection(InternalCompositionContext &ctx) {
           // Allow redeclaration of mutable tables
         } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
           throw ComposeError(
-              fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
+              ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
         }
       }
       // clear declared flag on exposed param
@@ -1129,10 +1127,10 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
 #endif
       if (found) {
-        throw ComposeError(fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+        throw ComposeError(ctx.bottom, fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
                                        required.second.exposedType, found->exposedType, required.first));
       } else {
-        throw ComposeError(fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+        throw ComposeError(ctx.bottom, fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
       }
     } else {
       // Add required stuff that we do not expose ourself
@@ -1288,7 +1286,7 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
           }
         }
         // and finally throw it
-        throw ComposeError(verboseMsg);
+        throw ComposeError(ctx.bottom, verboseMsg);
       }
     }
   }
@@ -1404,7 +1402,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
       if (!matchTypes(type, res.outputType, true, true, true)) {
         std::string err =
             fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
-        throw ComposeError(std::move(err));
+        throw ComposeError(wire, std::move(err));
       }
     }
   }
