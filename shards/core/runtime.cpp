@@ -954,7 +954,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      throw ComposeError(ctx.bottom,composeResult.error.message.string);
+      throw ComposeError(ctx.bottom, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -1048,7 +1048,8 @@ void validateConnection(InternalCompositionContext &ctx) {
       SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
       // check if we are not declaring a mutable var twice, and match the mutability
       if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
-        throw ComposeError(ctx.bottom, fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+        throw ComposeError(ctx.bottom,
+                           fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
       }
       // check that we are not declaring a mutable var twice
       if (!inserted.second && inserted.first->second.isMutable) {
@@ -1056,8 +1057,8 @@ void validateConnection(InternalCompositionContext &ctx) {
             exposed_param.exposedType.basicType == SHType::Table) {
           // Allow redeclaration of mutable tables
         } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
-          throw ComposeError(
-              ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
+          throw ComposeError(ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name,
+                                                     ctx.wire->name));
         }
       }
       // clear declared flag on exposed param
@@ -1127,10 +1128,12 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
 #endif
       if (found) {
-        throw ComposeError(ctx.bottom, fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+        throw ComposeError(ctx.bottom,
+                           fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
                                        required.second.exposedType, found->exposedType, required.first));
       } else {
-        throw ComposeError(ctx.bottom, fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+        throw ComposeError(ctx.bottom,
+                           fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
       }
     } else {
       // Add required stuff that we do not expose ourself
@@ -1164,6 +1167,55 @@ struct ComposeMemory {
   }
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
+
+inline void logFormatErrorStack(CompositionContext *context) {
+  std::string e;
+  for (size_t i = 0;;) {
+    auto &err = context->errorStack[i];
+    if (i == 0) {
+      e += fmt::format("Composition Error, {}:\n", err.what());
+    }
+    e += fmt::format("[{}] ", i);
+    switch (err.type) {
+    case ComposeError::CTX_Shard:
+      shassert(err.shard);
+      e += fmt::format("{} ({})", err.shard->name(err.shard), formatShardSourceLocation(err.shard));
+      break;
+    case ComposeError::CTX_Wire:
+      shassert(err.wire);
+      e += fmt::format("<wire> {} ({})", err.wire->name, err.wire->id);
+      break;
+    default:
+      e += fmt::format("<unknown>");
+      break;
+    }
+    if (++i >= context->errorStack.size())
+      break;
+    e += "\n";
+  }
+  SHLOG_ERROR("{}", e);
+}
+} // namespace shards
+
+inline SHComposeResult prettyComposeWithContext(const SHWire *wire, SHInstanceData &data) {
+  shards::CompositionContext privateContext;
+  data.privateContext = &privateContext;
+  try {
+    auto validation = shards::composeWire(wire, data);
+    return validation;
+  } catch (const std::exception &e) {
+    logFormatErrorStack(&privateContext);
+    throw;
+  }
+}
+
+void SHMesh::prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
+  auto validation = prettyComposeWithContext(wire.get(), data);
+  shards::arrayFree(validation.exposedInfo);
+  shards::arrayFree(validation.requiredInfo);
+}
+
+namespace shards {
 
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
@@ -1270,12 +1322,21 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     } else {
       ctx.bottom = blk;
       try {
-        validateConnection(ctx);
+        try {
+          validateConnection(ctx);
+        } catch (ComposeError &ex) {
+          if (data.privateContext) {
+            CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+            context->errorStack.push_back(std::move(ex));
+          }
+          throw;
+        }
       } catch (std::exception &ex) {
         auto verboseMsg = fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
                                       formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
+
         // error log it
-        SHLOG_ERROR("{}", verboseMsg);
+        // SHLOG_ERROR("{}", verboseMsg);
         // send error if we can
         if (data.wire) {
           auto mesh = data.wire->mesh.lock();
@@ -1285,8 +1346,16 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
             mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
           }
         }
-        // and finally throw it
-        throw ComposeError(ctx.bottom, verboseMsg);
+
+        throw;
+
+        // if (ownedContext) {
+        //   logFormatErrorStack(ownedContext);
+        //   // Format the error stack
+        //   throw std::runtime_error("Failed to compose wire");
+        // } else {
+        //   throw;
+        // }
       }
     }
   }
@@ -1326,22 +1395,14 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
 
 SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
   // We need to catch exceptions here and add them to the context
-  try {
-    return internalComposeWire(wire, data);
-  } catch (std::exception &ex) {
-    if (data.privateContext) {
-      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
-      context->errorStack.push_back(ex.what());
-    }
-    throw;
-  }
+  return internalComposeWire(wire, data);
 }
 
 void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
     if (!tm(cr.exposedInfo, trait)) {
-      throw ComposeError(fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+      throw ComposeError(wire, fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
     }
   }
 }
@@ -1353,7 +1414,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   bool expected = false;
   if (!wire->composing.compare_exchange_strong(expected, true)) {
     SHLOG_ERROR("Wire {} is already being composed", wire->name);
-    throw ComposeError("Wire is already being composed");
+    throw ComposeError(wire, "Wire is already being composed");
   }
   // defer reset compose state
   DEFER(wire->composing.store(false));
@@ -1414,23 +1475,27 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
 }
 
 SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
-  // We need to catch exceptions here and add them to the context
-  try {
-    return internalComposeWire(wire_, data);
-  } catch (std::exception &ex) {
-    if (data.privateContext) {
-      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
-      context->errorStack.push_back(ex.what());
+  if (!data.privateContext) {
+    return prettyComposeWithContext(wire_, data);
+  } else {
+    // We need to catch exceptions here and add them to the context
+    try {
+      return internalComposeWire(wire_, data);
+    } catch (std::exception &ex) {
+      if (data.privateContext) {
+        // CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+        // context->errorStack.push_back(ex.what());
 
-      // also send error event if possible
-      auto mesh = wire_->mesh.lock();
-      if (mesh) {
-        std::string_view what{ex.what()};
-        shards::OwnedVar err{Var(what)};
-        mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
+        // also send error event if possible
+        auto mesh = wire_->mesh.lock();
+        if (mesh) {
+          std::string_view what{ex.what()};
+          shards::OwnedVar err{Var(what)};
+          mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
+        }
       }
+      throw;
     }
-    throw;
   }
 }
 

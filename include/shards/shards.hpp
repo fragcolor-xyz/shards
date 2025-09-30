@@ -71,9 +71,11 @@ public:
 };
 
 class ComposeError : public SHException {
+public:
   enum ContextType {
     CTX_Shard,
     CTX_Wire,
+    CTX_Unknown,
   };
   union {
     Shard *shard;
@@ -82,8 +84,11 @@ class ComposeError : public SHException {
   ContextType type;
   bool fatal;
 
-  explicit ComposeError(Shard *shard, std::string_view msg, bool fatal = true) : SHException(msg), shard(shard), type(CTX_Shard), fatal(fatal) {}
-  explicit ComposeError(SHWire *wire, std::string_view msg, bool fatal = true) : SHException(msg), wire(wire), type(CTX_Wire), fatal(fatal) {}
+  explicit ComposeError(Shard *shard, std::string_view msg, bool fatal = true)
+      : SHException(msg), shard(shard), type(CTX_Shard), fatal(fatal) {}
+  explicit ComposeError(const SHWire *wire, std::string_view msg, bool fatal = true)
+      : SHException(msg), wire(const_cast<SHWire *>(wire)), type(CTX_Wire), fatal(fatal) {}
+  explicit ComposeError(std::string_view msg, bool fatal = true) : SHException(msg), type(CTX_Unknown), fatal(fatal) {}
 };
 
 class InvalidVarTypeError : public SHException {
