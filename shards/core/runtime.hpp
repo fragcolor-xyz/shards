@@ -504,7 +504,7 @@ struct RuntimeCallbacks {
 struct CompositionContext {
   pmr::SharedTempAllocator tempAllocator;
   shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::vector<std::string> errorStack;
+  std::vector<shards::ComposeError> errorStack;
 
   shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
 
@@ -528,26 +528,7 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   ~SHMesh() { terminate(); }
 
-  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-    shards::CompositionContext privateContext;
-    data.privateContext = &privateContext;
-    try {
-      auto validation = shards::composeWire(wire.get(), data);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
-    } catch (const std::exception &e) {
-      // build a reverse stack error log from privateContext.errorStack
-      std::string errors;
-      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
-        errors += *it;
-        if (++it == privateContext.errorStack.rend())
-          break;
-        errors += "\n";
-      }
-      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
-      throw;
-    }
-  }
+  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data);
 
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     ZoneScoped;
