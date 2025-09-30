@@ -59,20 +59,23 @@ struct TextureShard {
 
   PARAM_VAR(_interpretAs, "InterpretAs",
             "Type to interpret image data as. (From image only, Default: UNormSRGB for RGBA8 images, UNorm for other formats)",
-            {ShardsTypes::TextureTypeEnumInfo::Type});
+            {CoreInfo::NoneType, ShardsTypes::TextureTypeEnumInfo::Type});
   PARAM_PARAMVAR(_format, "Format",
                  "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
                  {ShardsTypes::TextureFormatEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
   PARAM_PARAMVAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)",
-                 {CoreInfo::Int2Type, Type::VariableOf(CoreInfo::Int2Type)});
+                 {CoreInfo::NoneType, CoreInfo::Int2Type, Type::VariableOf(CoreInfo::Int2Type)});
   PARAM_PARAMVAR(_mipLevels, "MipLevels", "The number of mip levels to create. (Render target only)",
-                 {CoreInfo::IntType, Type::VariableOf(CoreInfo::IntType)});
+                 {CoreInfo::NoneType, CoreInfo::IntType, Type::VariableOf(CoreInfo::IntType)});
   PARAM_VAR(_dimension, "Dimension", "The type of texture to create. (Render target only)",
-            {ShardsTypes::TextureDimensionEnumInfo::Type});
+            {CoreInfo::NoneType, ShardsTypes::TextureDimensionEnumInfo::Type});
   PARAM_PARAMVAR(_addressing, "Addressing", "For sampling, sets the address modes.",
-                 {ShardsTypes::TextureAddressingEnumInfo::Type, Type::SeqOf(ShardsTypes::TextureAddressingEnumInfo::Type)});
-  PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.", {ShardsTypes::TextureFilteringEnumInfo::Type});
-  PARAM_PARAMVAR(_label, "Label", "Debug label for this object.", {CoreInfo::StringOrStringVar, {CoreInfo::NoneType}});
+                 {CoreInfo::NoneType, ShardsTypes::TextureAddressingEnumInfo::Type,
+                  Type::SeqOf(ShardsTypes::TextureAddressingEnumInfo::Type)});
+  PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.",
+                 {CoreInfo::NoneType, ShardsTypes::TextureFilteringEnumInfo::Type});
+  PARAM_PARAMVAR(_label, "Label", "Debug label for this object.",
+                 {CoreInfo::StringOrStringVar, {CoreInfo::NoneType}});
   PARAM_IMPL(PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution), PARAM_IMPL_FOR(_mipLevels),
              PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering), PARAM_IMPL_FOR(_label));
 
@@ -103,6 +106,7 @@ struct TextureShard {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
+
     textureVar.reset();
     texture.reset();
   }
@@ -111,7 +115,10 @@ struct TextureShard {
     return !_dimension->isNone() ? gfx::TextureDimension(_dimension.payload.enumValue) : gfx::TextureDimension::D2;
   }
 
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
     if (!_interpretAs->isNone()) {
       if (_format->valueType != SHType::None)
         throw ComposeError("Can not specify Format and InterpretAs parameters at the same time");
