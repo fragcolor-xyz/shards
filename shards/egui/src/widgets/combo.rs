@@ -271,12 +271,12 @@ impl LegacyShard for Combo {
       let seq: Seq = input.try_into()?;
       let empty_seq = seq.len() == 0;
       let mut response = combo.show_index(ui, index, seq.len(), |i| {
-        if empty_seq {
+        if i > seq.len() {
           return "undefined".to_owned();
         }
         // TODO type might not be string so we need a way to convert in all cases
-        let str: &str = (&seq[i]).try_into().unwrap();
-        str.to_owned()
+        let str = TryInto::<&str>::try_into(&seq[i]).unwrap();
+        return str.to_owned();
       });
 
       if empty_seq {
