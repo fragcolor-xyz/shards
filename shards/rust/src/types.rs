@@ -5113,8 +5113,6 @@ impl ShardsVar {
     let mut result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
-      let msg: &str = (&result.failureMessage).try_into().unwrap();
-      shlog!("Compose failed with error {}", msg);
       destroyVar(&mut result.failureMessage);
       Err("Composition failed.")
     } else if failed {

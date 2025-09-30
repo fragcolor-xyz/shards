@@ -921,8 +921,8 @@ void validateConnection(InternalCompositionContext &ctx) {
 
   if (!inputMatches) {
     const auto msg =
-        fmt::format("Could not find a matching input type, shard: {} ({}) expected: {}. Found instead: {}",
-                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation(ctx.bottom), inputInfos, ctx.previousOutputType);
+        fmt::format("Could not find a matching input type, expected: {}. Found instead: {}",
+                    inputInfos, ctx.previousOutputType);
 #if SH_DEBUG_TYPE_MATCHING
     // Put a breakpoint here to debug
     for (uint32_t i = 0; inputInfos.len > i; i++) {
@@ -1332,12 +1332,6 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
           throw;
         }
       } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
-                                      formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
-
-        // error log it
-        // SHLOG_ERROR("{}", verboseMsg);
-        // send error if we can
         if (data.wire) {
           auto mesh = data.wire->mesh.lock();
           if (mesh) {
