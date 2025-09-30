@@ -98,3 +98,6 @@ ai/data-gen/shards-reference.md
 
 .flatpak-builder
 test-logs-*
+
+local/
+.claude/
