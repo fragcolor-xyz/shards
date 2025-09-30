@@ -1,0 +1,19 @@
+@wire(capture-loop {
+  Desktop.CaptureFrame
+  Once({
+    ; empty capture, to warm up the capture pipeline
+    @i4(0 0 32 32) | Desktop.Pixels
+  })
+} Looped: true Priority: -1)
+
+@wire(layer-0 {
+  Step(capture-loop)
+  
+  Once({
+    @i4(0 0 32 32) | Desktop.Pixels | Log
+  } Every: 1.0)
+} Looped: true)
+
+@mesh(root)
+@schedule(root layer-0)
+@run(root FPS: 60)

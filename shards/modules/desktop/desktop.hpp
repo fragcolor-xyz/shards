@@ -6,6 +6,8 @@
 
 #include <shards/core/shared.hpp>
 #include <shards/core/runtime.hpp>
+#include <shards/core/params.hpp>
+#include <shards/common_types.hpp>
 #include <cstdlib>
 
 namespace Desktop {
@@ -19,59 +21,25 @@ struct Globals {
 
 template <typename T> class WindowBase {
 public:
+  PARAM_PARAMVAR(_winName, "Title", "The title of the window to look for.", {shards::CoreInfo::StringType, shards::CoreInfo::StringVarType});
+  PARAM_PARAMVAR(_winClass, "Class", "An optional and platform dependent window class.", {shards::CoreInfo::StringType, shards::CoreInfo::StringVarType, shards::CoreInfo::NoneType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_winName), PARAM_IMPL_FOR(_winClass));
+
   void cleanup(SHContext *context) {
     // reset to default
     // force finding it again next run
     _window = WindowDefault();
-
-    _winName.cleanup();
-    _winClass.cleanup();
+    PARAM_CLEANUP(context);
   }
 
   void warmup(SHContext *context) {
-    _winName.warmup(context);
-    _winClass.warmup(context);
+    PARAM_WARMUP(context);
   }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
 
-  static SHParametersInfo parameters() { return SHParametersInfo(windowParams); }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _winName = value;
-      break;
-    case 1:
-      _winClass = value;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    auto res = SHVar();
-    switch (index) {
-    case 0:
-      return _winName;
-    case 1:
-      return _winClass;
-    default:
-      break;
-    }
-    return res;
-  }
-
 protected:
-  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
-      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringOrStringVar),
-      shards::ParamsInfo::Param("Class", SHCCSTR("An optional and platform dependent window class."),
-                                shards::CoreInfo::StringOrStringVar));
-
   static T WindowDefault();
-  shards::ParamVar _winName;
-  shards::ParamVar _winClass;
   T _window;
 };
 
@@ -96,90 +64,20 @@ struct SizeBase {
 };
 
 struct ResizeWindowBase : public WinOpBase {
-  static inline shards::ParamsInfo sizeParams =
-      shards::ParamsInfo(shards::ParamsInfo::Param("Width", SHCCSTR("The desired width."), shards::CoreInfo::IntType),
-                         shards::ParamsInfo::Param("Height", SHCCSTR("The desired height."), shards::CoreInfo::IntType));
-
-  int _width;
-  int _height;
-
-  static SHParametersInfo parameters() { return SHParametersInfo(sizeParams); }
-
-  virtual void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _width = value.payload.intValue;
-      break;
-    case 1:
-      _height = value.payload.intValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    auto res = SHVar();
-    switch (index) {
-    case 0:
-      return shards::Var(_width);
-    case 1:
-      return shards::Var(_height);
-    default:
-      break;
-    }
-    return res;
-  }
+  PARAM_VAR(_width, "Width", "The desired width.", {shards::CoreInfo::IntType});
+  PARAM_VAR(_height, "Height", "The desired height.", {shards::CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height));
 };
 
 struct MoveWindowBase : public WinOpBase {
-  static inline shards::ParamsInfo posParams = shards::ParamsInfo(
-      shards::ParamsInfo::Param("X", SHCCSTR("The desired horizontal coordinates."), shards::CoreInfo::IntType),
-      shards::ParamsInfo::Param("Y", SHCCSTR("The desired vertical coordinates."), shards::CoreInfo::IntType));
-
-  int _x;
-  int _y;
-
-  static SHParametersInfo parameters() { return SHParametersInfo(posParams); }
-
-  virtual void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _x = value.payload.intValue;
-      break;
-    case 1:
-      _y = value.payload.intValue;
-      break;
-    default:
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    auto res = SHVar();
-    switch (index) {
-    case 0:
-      return shards::Var(_x);
-    case 1:
-      return shards::Var(_y);
-    default:
-      break;
-    }
-    return res;
-  }
+  PARAM_VAR(_x, "X", "The desired horizontal coordinates.", {shards::CoreInfo::IntType});
+  PARAM_VAR(_y, "Y", "The desired vertical coordinates.", {shards::CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_x), PARAM_IMPL_FOR(_y));
 };
 
 struct SetTitleBase : public WinOpBase {
-  static inline shards::ParamsInfo windowParams = shards::ParamsInfo(
-      shards::ParamsInfo::Param("Title", SHCCSTR("The title of the window to look for."), shards::CoreInfo::StringType));
-
-  std::string _title;
-
-  static SHParametersInfo parameters() { return SHParametersInfo(windowParams); }
-
-  SHVar getParam(int index) { return shards::Var(_title); }
-
-  virtual void setParam(int index, const SHVar &value) { _title = SHSTRVIEW(value); }
+  PARAM_VAR(_title, "Title", "The title to set for the window.", {shards::CoreInfo::StringType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_title));
 };
 
 struct WaitKeyEventBase {
@@ -195,13 +93,17 @@ struct WaitKeyEventBase {
 };
 
 struct SendKeyEventBase {
-  static inline shards::ParamsInfo params =
-      shards::ParamsInfo(shards::ParamsInfo::Param("Window",
-                                                   SHCCSTR("None or a window variable if we wish to send "
-                                                           "the event only to a specific target window."),
-                                                   Globals::windowVarOrNone));
+  PARAM_PARAMVAR(_window, "Window", "None or a window variable if we wish to send the event only to a specific target window.", {Globals::windowType, Globals::windowVarType, shards::CoreInfo::NoneType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
@@ -212,65 +114,23 @@ struct SendKeyEventBase {
                    "Key down/push events and 1 for Key up/release events.\n * "
                    "The second integer will the scancode of the key.\n");
   }
-
-  std::string _windowVarName;
-  shards::ExposedInfo _exposedInfo;
-
-  SHExposedTypesInfo requiredVariables() {
-    if (_windowVarName.size() == 0) {
-      return {};
-    } else {
-      return SHExposedTypesInfo(_exposedInfo);
-    }
-  }
-
-  void setParam(int index, const SHVar &value) {
-    if (value.valueType == SHType::None) {
-      _windowVarName.clear();
-    } else {
-      _windowVarName = SHSTRVIEW(value);
-      _exposedInfo = shards::ExposedInfo(
-          shards::ExposedInfo::Variable(_windowVarName.c_str(), SHCCSTR("The window to send events to."), Globals::windowType));
-    }
-  }
-
-  SHVar getParam(int index) {
-    if (_windowVarName.size() == 0) {
-      return shards::Var::Empty;
-    } else {
-      return shards::Var(_windowVarName);
-    }
-  }
 };
 
 struct MousePosBase {
-  shards::ParamVar _window{};
-  shards::ExposedInfo _consuming{};
+  PARAM_PARAMVAR(_window, "Window", "None or a window variable we wish to use as relative origin.", {Globals::windowType, Globals::windowVarType, shards::CoreInfo::NoneType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_window));
 
-  static inline shards::ParamsInfo params = shards::ParamsInfo(shards::ParamsInfo::Param(
-      "Window", SHCCSTR("None or a window variable we wish to use as relative origin."), Globals::windowVarOrNone));
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::Int2Type; }
-
-  SHExposedTypesInfo requiredVariables() {
-    if (_window.isVariable()) {
-      _consuming =
-          shards::ExposedInfo(shards::ExposedInfo::Variable(_window.variableName(), SHCCSTR("The window."), Globals::windowType));
-      return SHExposedTypesInfo(_consuming);
-    } else {
-      return {};
-    }
-  }
-
-  void setParam(int index, const SHVar &value) { _window = value; }
-
-  SHVar getParam(int index) { return _window; }
-
-  void cleanup(SHContext *context) { _window.cleanup(); }
-  void warmup(SHContext *context) { _window.warmup(context); }
 };
 
 struct LastInputBase {
