@@ -1845,7 +1845,6 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
   }
   auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
                          validTypes);
-  SHLOG_ERROR("{}", msg);
   throw ComposeError(msg);
 }
 
