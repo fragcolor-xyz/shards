@@ -56,18 +56,19 @@ impl Shard for SetCursorShard {
 
     // Extract Float2 from input
     let pos = unsafe { input.payload.__bindgen_anon_1.float2Value };
+    let target_pos = egui::pos2(pos[0] as f32, pos[1] as f32);
 
     // Calculate the offset from current cursor position to target position
     let current_pos = ui.cursor().min;
-    let target_pos = egui::pos2(pos[0] as f32, pos[1] as f32);
     let offset = target_pos - current_pos;
 
-    // Allocate space to move cursor to the target position
+    // Only allocate space if we're moving forward (positive offset)
+    // For backwards movement, we can't move the cursor back, so we just skip
     if offset.x > 0.0 || offset.y > 0.0 {
-      ui.allocate_space(offset);
+      ui.allocate_space(egui::vec2(offset.x.max(0.0), offset.y.max(0.0)));
     }
 
-    Ok(None)
+    Ok(Some(input.clone()))
   }
 }
 
