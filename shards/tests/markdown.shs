@@ -30,3 +30,38 @@ qux
 -qux
 +QUX
 *** End Patch""" | Codex.ApplyPatch | Log
+
+; Codex.Grep tests
+"""The quick brown fox jumps over the lazy dog.
+The QUICK brown FOX jumps again.
+Lorem ipsum dolor sit amet.
+Another line with FOX in it.
+Quick thinking saves the day.
+This is line six.
+This is line seven.
+Final line with nothing special.""" = grep-test-content
+
+"grep-test.txt" | FS.Write(grep-test-content Overwrite: true)
+
+; Test 1: Basic pattern search
+"fox" | Codex.Grep(File: "grep-test.txt") = matches
+matches | Log("Basic search for 'fox'")
+
+; Test 2: Case insensitive search
+"fox" | Codex.Grep(File: "grep-test.txt" CaseInsensitive: true) = ci-matches
+ci-matches | Log("Case insensitive 'fox'")
+
+; Test 3: With context lines
+"FOX" | Codex.Grep(File: "grep-test.txt" BeforeContext: 1 AfterContext: 1) = context-matches
+context-matches | Log("FOX with context")
+
+; Test 4: Max matches limit
+"quick|fox|line" | Codex.Grep(File: "grep-test.txt" CaseInsensitive: true MaxMatches: 3) = limited-matches
+limited-matches | Log("Limited to 3 matches")
+
+; Test 5: Invert match (lines NOT containing pattern)
+"fox|FOX" | Codex.Grep(File: "grep-test.txt" InvertMatch: true) = inverted-matches
+inverted-matches | Log("Lines without fox/FOX")
+
+; Clean up test file
+; "grep-test.txt" | FS.Remove
