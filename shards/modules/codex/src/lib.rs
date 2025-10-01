@@ -10,9 +10,13 @@ use shards::shard::Shard;
 use shards::shlog_error;
 use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, ParamVar, ANY_TABLE_TYPES, STRINGS_TYPES,
-  STRING_TYPES,
+  STRING_TYPES, SEQ_OF_ANY_TABLE_TYPES, INT_TYPES,
 };
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
+
+use grep_matcher::Matcher;
+use grep_regex::RegexMatcherBuilder;
+use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext, SinkError};
 
 #[derive(shards::shard)]
 #[shard_info("Codex.ApplyPatch", "Apply an OpenAI Codex patch to files with optional working directory.")]
@@ -63,7 +67,7 @@ impl Shard for ApplyPatchShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let patch: &str = input.try_into()?;
-    
+
     // Get working directory - either from parameter or current directory
     let work_dir = if self.work_dir.get().as_ref().is_none() {
       env::current_dir().map_err(|e| {
@@ -80,17 +84,17 @@ impl Shard for ApplyPatchShard {
 
     // Prepare argv as if this was a direct apply_patch call
     let argv = vec!["apply_patch".to_string(), patch.to_string()];
-    
+
     // Use the verified parser
     match maybe_parse_apply_patch_verified(&argv, &work_dir) {
       MaybeApplyPatchVerified::Body(action) => {
         // Successfully parsed and verified the patch
         let mut changes_table = AutoTableVar::new();
-        
+
         // Convert changes to a more detailed format
         for (path, change) in action.changes() {
           let mut change_info = AutoTableVar::new();
-          
+
           match change {
             ApplyPatchFileChange::Add { content } => {
               change_info.0.insert_fast_static("type", &Var::ephemeral_string("add"));
@@ -109,7 +113,7 @@ impl Shard for ApplyPatchShard {
               }
             }
           }
-          
+
           let path_str = path.display().to_string();
           changes_table.0.insert_fast_static(&path_str, &change_info.0.0);
         }
@@ -120,21 +124,21 @@ impl Shard for ApplyPatchShard {
         self.output.0.insert_fast_static("working_directory", &Var::ephemeral_string(&action.cwd.display().to_string()));
         self.output.0.insert_fast_static("patch", &Var::ephemeral_string(&action.patch));
       }
-      
+
       MaybeApplyPatchVerified::CorrectnessError(err) => {
         shlog_error!("Patch correctness error: {}", err);
         self.output.0.insert_fast_static("success", &false.into());
         self.output.0.insert_fast_static("error", &Var::ephemeral_string(&err.to_string()));
         self.output.0.insert_fast_static("error_type", &Var::ephemeral_string("correctness"));
       }
-      
+
       MaybeApplyPatchVerified::ShellParseError(err) => {
         shlog_error!("Shell parse error: {:?}", err);
         self.output.0.insert_fast_static("success", &false.into());
         self.output.0.insert_fast_static("error", &Var::ephemeral_string(&format!("{:?}", err)));
         self.output.0.insert_fast_static("error_type", &Var::ephemeral_string("shell_parse"));
       }
-      
+
       MaybeApplyPatchVerified::NotApplyPatch => {
         shlog_error!("Input does not appear to be a valid apply_patch command");
         self.output.0.insert_fast_static("success", &false.into());
@@ -147,6 +151,215 @@ impl Shard for ApplyPatchShard {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info("Codex.Grep", "Search for regex pattern in file(s) using ripgrep functionality")]
+struct GrepShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("File", "File path to search in", [common_type::string, common_type::string_var])]
+  file: ParamVar,
+
+  #[shard_param("CaseInsensitive", "Enable case-insensitive search", [common_type::bool])]
+  case_insensitive: ClonedVar,
+
+  #[shard_param("LineNumbers", "Include line numbers in output", [common_type::bool])]
+  line_numbers: ClonedVar,
+
+  #[shard_param("BeforeContext", "Number of lines to show before each match", [common_type::int])]
+  before_context: ClonedVar,
+
+  #[shard_param("AfterContext", "Number of lines to show after each match", [common_type::int])]
+  after_context: ClonedVar,
+
+  #[shard_param("MultiLine", "Enable multi-line pattern matching", [common_type::bool])]
+  multi_line: ClonedVar,
+
+  #[shard_param("InvertMatch", "Show lines that don't match the pattern", [common_type::bool])]
+  invert_match: ClonedVar,
+
+  #[shard_param("MaxMatches", "Maximum number of matches to return (0 = unlimited)", [common_type::int])]
+  max_matches: ClonedVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for GrepShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      file: ParamVar::default(),
+      case_insensitive: false.into(),
+      line_numbers: true.into(),
+      before_context: 0i64.into(),
+      after_context: 0i64.into(),
+      multi_line: false.into(),
+      invert_match: false.into(),
+      max_matches: 0i64.into(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for GrepShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_ANY_TABLE_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output.0.clear();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let pattern: &str = input.try_into()?;
+
+    // Get file path
+    let file_path: &str = self.file.get().as_ref().try_into().map_err(|_| {
+      shlog_error!("File parameter must be a string");
+      "File parameter must be a string"
+    })?;
+
+    // Get parameters
+    let case_insensitive: bool = (&self.case_insensitive.0).try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
+    let line_numbers: bool = (&self.line_numbers.0).try_into().map_err(|_| "LineNumbers must be a boolean")?;
+    let before_context: i64 = (&self.before_context.0).try_into().map_err(|_| "BeforeContext must be an integer")?;
+    let after_context: i64 = (&self.after_context.0).try_into().map_err(|_| "AfterContext must be an integer")?;
+    let multi_line: bool = (&self.multi_line.0).try_into().map_err(|_| "MultiLine must be a boolean")?;
+    let invert_match: bool = (&self.invert_match.0).try_into().map_err(|_| "InvertMatch must be a boolean")?;
+    let max_matches: i64 = (&self.max_matches.0).try_into().map_err(|_| "MaxMatches must be an integer")?;
+
+    // Validate parameters
+    if before_context < 0 {
+      return Err("BeforeContext must be >= 0");
+    }
+    if after_context < 0 {
+      return Err("AfterContext must be >= 0");
+    }
+    if max_matches < 0 {
+      return Err("MaxMatches must be >= 0");
+    }
+
+    // Build the regex matcher
+    let matcher = RegexMatcherBuilder::new()
+      .case_insensitive(case_insensitive)
+      .multi_line(multi_line)
+      .build(pattern)
+      .map_err(|e| {
+        shlog_error!("Failed to build regex matcher: {}", e);
+        "Failed to build regex matcher"
+      })?;
+
+    // Build the searcher
+    let mut searcher = SearcherBuilder::new()
+      .line_number(line_numbers)
+      .before_context(before_context as usize)
+      .after_context(after_context as usize)
+      .multi_line(multi_line)
+      .invert_match(invert_match)
+      .build();
+
+    // Clear previous results
+    self.output.0.clear();
+
+    // Custom sink to properly count only matches, not context lines
+    struct GrepSinkImpl {
+      output: AutoSeqVar,
+      file_path: String,
+      line_numbers: bool,
+      match_count: i64,
+      max_matches: i64,
+    }
+
+    impl Sink for GrepSinkImpl {
+      type Error = std::io::Error;
+
+      fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
+        if self.match_count >= self.max_matches {
+          return Ok(false); // Stop searching
+        }
+
+        let line = String::from_utf8_lossy(mat.bytes());
+        let mut match_table = AutoTableVar::new();
+
+        if self.line_numbers {
+          if let Some(lnum) = mat.line_number() {
+            match_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+          }
+        }
+
+        match_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
+        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        match_table.0.insert_fast_static("is_match", &true.into());
+
+        self.output.0.push(&match_table.0.0);
+        self.match_count += 1;
+
+        Ok(true) // Continue searching
+      }
+
+      fn context(&mut self, _searcher: &Searcher, context: &SinkContext<'_>) -> Result<bool, Self::Error> {
+        // Context lines don't count toward match limit
+        let line = String::from_utf8_lossy(context.bytes());
+        let mut context_table = AutoTableVar::new();
+
+        if self.line_numbers {
+          if let Some(lnum) = context.line_number() {
+            context_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+          }
+        }
+
+        context_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
+        context_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        context_table.0.insert_fast_static("is_match", &false.into());
+
+        self.output.0.push(&context_table.0.0);
+
+        Ok(true) // Continue searching
+      }
+    }
+
+    let max = if max_matches == 0 { i64::MAX } else { max_matches };
+    let mut sink = GrepSinkImpl {
+      output: AutoSeqVar::new(),
+      file_path: file_path.to_string(),
+      line_numbers,
+      match_count: 0,
+      max_matches: max,
+    };
+
+    // Search the file
+    let result = searcher.search_path(&matcher, Path::new(file_path), &mut sink);
+
+    // Handle search errors
+    if let Err(e) = result {
+      shlog_error!("Grep search failed: {}", e);
+      return Err("Grep search failed");
+    }
+
+    // Transfer results to self.output
+    self.output = sink.output;
+
+    Ok(Some(self.output.0.0))
+  }
+}
+
 #[no_mangle]
 pub extern "C" fn shardsRegister_codex_rust(core: *mut shards::shardsc::SHCore) {
   unsafe {
@@ -154,4 +367,5 @@ pub extern "C" fn shardsRegister_codex_rust(core: *mut shards::shardsc::SHCore) 
   }
 
   register_shard::<ApplyPatchShard>();
+  register_shard::<GrepShard>();
 }

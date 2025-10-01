@@ -14,3 +14,6 @@ lazy_static = "1.5"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1"
 codex-apply-patch = { path = "../../../deps/codex/codex-rs/apply-patch" }
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+grep-regex = "0.1"
