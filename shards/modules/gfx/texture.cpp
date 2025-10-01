@@ -62,7 +62,7 @@ struct TextureShard {
             {CoreInfo::NoneType, ShardsTypes::TextureTypeEnumInfo::Type});
   PARAM_PARAMVAR(_format, "Format",
                  "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
-                 {ShardsTypes::TextureFormatEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
+                 {CoreInfo::NoneType, ShardsTypes::TextureFormatEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
   PARAM_PARAMVAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)",
                  {CoreInfo::NoneType, CoreInfo::Int2Type, Type::VariableOf(CoreInfo::Int2Type)});
   PARAM_PARAMVAR(_mipLevels, "MipLevels", "The number of mip levels to create. (Render target only)",
