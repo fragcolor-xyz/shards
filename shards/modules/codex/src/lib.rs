@@ -152,7 +152,7 @@ impl Shard for ApplyPatchShard {
 }
 
 #[derive(shards::shard)]
-#[shard_info("Codex.Grep", "Search for regex pattern in file(s) using ripgrep functionality")]
+#[shard_info("Grep", "Search for regex pattern in file(s) using ripgrep functionality")]
 struct GrepShard {
   #[shard_required]
   required: ExposedTypes,
@@ -160,26 +160,26 @@ struct GrepShard {
   #[shard_param("File", "File path to search in", [common_type::string, common_type::string_var])]
   file: ParamVar,
 
-  #[shard_param("CaseInsensitive", "Enable case-insensitive search", [common_type::bool])]
-  case_insensitive: ClonedVar,
+  #[shard_param("CaseInsensitive", "Enable case-insensitive search", [common_type::bool, common_type::bool_var])]
+  case_insensitive: ParamVar,
 
-  #[shard_param("LineNumbers", "Include line numbers in output", [common_type::bool])]
-  line_numbers: ClonedVar,
+  #[shard_param("LineNumbers", "Include line numbers in output", [common_type::bool, common_type::bool_var])]
+  line_numbers: ParamVar,
 
-  #[shard_param("BeforeContext", "Number of lines to show before each match", [common_type::int])]
-  before_context: ClonedVar,
+  #[shard_param("BeforeContext", "Number of lines to show before each match", [common_type::int, common_type::int_var])]
+  before_context: ParamVar,
 
-  #[shard_param("AfterContext", "Number of lines to show after each match", [common_type::int])]
-  after_context: ClonedVar,
+  #[shard_param("AfterContext", "Number of lines to show after each match", [common_type::int, common_type::int_var])]
+  after_context: ParamVar,
 
-  #[shard_param("MultiLine", "Enable multi-line pattern matching", [common_type::bool])]
-  multi_line: ClonedVar,
+  #[shard_param("MultiLine", "Enable multi-line pattern matching", [common_type::bool, common_type::bool_var])]
+  multi_line: ParamVar,
 
-  #[shard_param("InvertMatch", "Show lines that don't match the pattern", [common_type::bool])]
-  invert_match: ClonedVar,
+  #[shard_param("InvertMatch", "Show lines that don't match the pattern", [common_type::bool, common_type::bool_var])]
+  invert_match: ParamVar,
 
-  #[shard_param("MaxMatches", "Maximum number of matches to return (0 = unlimited)", [common_type::int])]
-  max_matches: ClonedVar,
+  #[shard_param("MaxMatches", "Maximum number of matches to return (0 = unlimited)", [common_type::int, common_type::int_var])]
+  max_matches: ParamVar,
 
   output: AutoSeqVar,
 }
@@ -189,13 +189,13 @@ impl Default for GrepShard {
     Self {
       required: ExposedTypes::new(),
       file: ParamVar::default(),
-      case_insensitive: false.into(),
-      line_numbers: true.into(),
-      before_context: 0i64.into(),
-      after_context: 0i64.into(),
-      multi_line: false.into(),
-      invert_match: false.into(),
-      max_matches: 0i64.into(),
+      case_insensitive: ParamVar::new(false.into()),
+      line_numbers: ParamVar::new(true.into()),
+      before_context: ParamVar::new(0i64.into()),
+      after_context: ParamVar::new(0i64.into()),
+      multi_line: ParamVar::new(false.into()),
+      invert_match: ParamVar::new(false.into()),
+      max_matches: ParamVar::new(0i64.into()),
       output: AutoSeqVar::new(),
     }
   }
@@ -237,13 +237,13 @@ impl Shard for GrepShard {
     })?;
 
     // Get parameters
-    let case_insensitive: bool = (&self.case_insensitive.0).try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
-    let line_numbers: bool = (&self.line_numbers.0).try_into().map_err(|_| "LineNumbers must be a boolean")?;
-    let before_context: i64 = (&self.before_context.0).try_into().map_err(|_| "BeforeContext must be an integer")?;
-    let after_context: i64 = (&self.after_context.0).try_into().map_err(|_| "AfterContext must be an integer")?;
-    let multi_line: bool = (&self.multi_line.0).try_into().map_err(|_| "MultiLine must be a boolean")?;
-    let invert_match: bool = (&self.invert_match.0).try_into().map_err(|_| "InvertMatch must be a boolean")?;
-    let max_matches: i64 = (&self.max_matches.0).try_into().map_err(|_| "MaxMatches must be an integer")?;
+    let case_insensitive: bool = self.case_insensitive.get().as_ref().try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
+    let line_numbers: bool = self.line_numbers.get().as_ref().try_into().map_err(|_| "LineNumbers must be a boolean")?;
+    let before_context: i64 = self.before_context.get().as_ref().try_into().map_err(|_| "BeforeContext must be an integer")?;
+    let after_context: i64 = self.after_context.get().as_ref().try_into().map_err(|_| "AfterContext must be an integer")?;
+    let multi_line: bool = self.multi_line.get().as_ref().try_into().map_err(|_| "MultiLine must be a boolean")?;
+    let invert_match: bool = self.invert_match.get().as_ref().try_into().map_err(|_| "InvertMatch must be a boolean")?;
+    let max_matches: i64 = self.max_matches.get().as_ref().try_into().map_err(|_| "MaxMatches must be an integer")?;
 
     // Validate parameters
     if before_context < 0 {
