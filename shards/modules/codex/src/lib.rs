@@ -16,8 +16,7 @@ use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
 use grep_matcher::Matcher;
 use grep_regex::RegexMatcherBuilder;
-use grep_searcher::SearcherBuilder;
-use grep_searcher::sinks::UTF8;
+use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext, SinkError};
 
 #[derive(shards::shard)]
 #[shard_info("Codex.ApplyPatch", "Apply an OpenAI Codex patch to files with optional working directory.")]
@@ -279,43 +278,83 @@ impl Shard for GrepShard {
     // Clear previous results
     self.output.0.clear();
 
-    // Track match count
-    let mut match_count = 0i64;
-    let max = if max_matches == 0 { i64::MAX } else { max_matches };
+    // Custom sink to properly count only matches, not context lines
+    struct GrepSinkImpl {
+      output: AutoSeqVar,
+      file_path: String,
+      line_numbers: bool,
+      match_count: i64,
+      max_matches: i64,
+    }
 
-    // Search the file
-    let file_path_clone = file_path.to_string();
-    let result = searcher.search_path(
-      &matcher,
-      Path::new(file_path),
-      UTF8(|lnum, line| {
-        if match_count >= max {
+    impl Sink for GrepSinkImpl {
+      type Error = std::io::Error;
+
+      fn matched(&mut self, _searcher: &Searcher, mat: &SinkMatch<'_>) -> Result<bool, Self::Error> {
+        if self.match_count >= self.max_matches {
           return Ok(false); // Stop searching
         }
 
-        // Create a match table
+        let line = String::from_utf8_lossy(mat.bytes());
         let mut match_table = AutoTableVar::new();
 
-        if line_numbers {
-          match_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+        if self.line_numbers {
+          if let Some(lnum) = mat.line_number() {
+            match_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+          }
         }
 
-        match_table.0.insert_fast_static("line", &Var::ephemeral_string(line));
-        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&file_path_clone));
+        match_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
+        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        match_table.0.insert_fast_static("is_match", &true.into());
 
-        // Add to output
         self.output.0.push(&match_table.0.0);
+        self.match_count += 1;
 
-        match_count += 1;
         Ok(true) // Continue searching
-      }),
-    );
+      }
+
+      fn context(&mut self, _searcher: &Searcher, context: &SinkContext<'_>) -> Result<bool, Self::Error> {
+        // Context lines don't count toward match limit
+        let line = String::from_utf8_lossy(context.bytes());
+        let mut context_table = AutoTableVar::new();
+
+        if self.line_numbers {
+          if let Some(lnum) = context.line_number() {
+            context_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+          }
+        }
+
+        context_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
+        context_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        context_table.0.insert_fast_static("is_match", &false.into());
+
+        self.output.0.push(&context_table.0.0);
+
+        Ok(true) // Continue searching
+      }
+    }
+
+    let max = if max_matches == 0 { i64::MAX } else { max_matches };
+    let mut sink = GrepSinkImpl {
+      output: AutoSeqVar::new(),
+      file_path: file_path.to_string(),
+      line_numbers,
+      match_count: 0,
+      max_matches: max,
+    };
+
+    // Search the file
+    let result = searcher.search_path(&matcher, Path::new(file_path), &mut sink);
 
     // Handle search errors
     if let Err(e) = result {
       shlog_error!("Grep search failed: {}", e);
       return Err("Grep search failed");
     }
+
+    // Transfer results to self.output
+    self.output = sink.output;
 
     Ok(Some(self.output.0.0))
   }
