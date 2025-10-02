@@ -1787,11 +1787,13 @@ extension IShard {}
 
     // Error path unchanged - not performance critical
     if case let .failure(error) = result {
-        var errorMsg = SHStringWithLen()
-        let error = error.message.utf8CString
-        errorMsg.string = error.withUnsafeBufferPointer { $0.baseAddress }
-        errorMsg.len = UInt64(error.count - 1)
-        G.Core.pointee.abortWire(ctx, errorMsg)
+        error.message.withCString { cString in
+            var shString = SHStringWithLen()
+            shString.string = cString
+            let length = error.message.lengthOfBytes(using: .utf8)
+            shString.len = UInt64(length)
+            G.Core.pointee.abortWire(ctx, shString)
+        }
     }
 
     return UnsafePointer(outputPtr)
