@@ -27,6 +27,46 @@ struct FileNotFoundException : public std::runtime_error {
   FileNotFoundException(const std::string &err) : std::runtime_error(err) {}
 };
 
+// Path security helpers
+static bool hasPathTraversal(const fs::path &p) {
+  auto str = p.string();
+  return str.find("../") != std::string::npos || str.find("/..") != std::string::npos ||
+         str.find("..\\") != std::string::npos || str.find("\\..") != std::string::npos;
+}
+
+static void validateBasePath(const fs::path &path, const fs::path &basePath) {
+  if (basePath.empty())
+    return;
+
+  // Normalize paths to remove . and .. components
+  auto absPath = fs::absolute(path).lexically_normal();
+  auto absBase = fs::absolute(basePath).lexically_normal();
+
+  SHLOG_TRACE("validateBasePath: path='{}' basePath='{}'", path.string(), basePath.string());
+  SHLOG_TRACE("validateBasePath: normalized absPath='{}' absBase='{}'", absPath.string(), absBase.string());
+
+  // Check if path is within basePath
+  auto pathStr = absPath.string();
+  auto baseStr = absBase.string();
+
+  // Remove trailing /. or \. from base path if present
+  while (baseStr.size() >= 2 &&
+         (baseStr.back() == '.' && (baseStr[baseStr.size()-2] == '/' || baseStr[baseStr.size()-2] == '\\'))) {
+    baseStr.resize(baseStr.size() - 1); // Remove the '.'
+  }
+
+  // Ensure base path ends with separator for proper prefix check
+  if (!baseStr.empty() && baseStr.back() != '/' && baseStr.back() != '\\') {
+    baseStr += '/';
+  }
+
+  SHLOG_TRACE("validateBasePath: final pathStr='{}' baseStr='{}'", pathStr, baseStr);
+
+  if (pathStr.find(baseStr) != 0) {
+    throw ActivationError("Path is outside allowed BasePath");
+  }
+}
+
 struct Iterate {
   SHSeq _storage = {};
   std::vector<std::string> _strings;
@@ -190,10 +230,66 @@ struct IsDirectory {
 };
 
 struct Remove {
+  bool _checkTraversal = false;
+  ParamVar _basePath{};
+  bool _followSymlinks = true;
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
+      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _checkTraversal = value.payload.boolValue;
+      break;
+    case 1:
+      _basePath = value;
+      break;
+    case 2:
+      _followSymlinks = value.payload.boolValue;
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_checkTraversal);
+    case 1:
+      return _basePath;
+    case 2:
+      return Var(_followSymlinks);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup(SHContext *context) { _basePath.cleanup(); }
+  void warmup(SHContext *context) { _basePath.warmup(context); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+    // Security checks
+    if (_checkTraversal && hasPathTraversal(p)) {
+      throw ActivationError("FS.Remove, path contains traversal pattern (..)");
+    }
+
+    auto basePath = _basePath.get();
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
+    if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+      throw ActivationError("FS.Remove, path is a symlink and FollowSymlinks is disabled");
+    }
+
     if (fs::exists(p)) {
       return Var(fs::remove(p));
     } else {
@@ -203,10 +299,66 @@ struct Remove {
 };
 
 struct RemoveAll {
+  bool _checkTraversal = false;
+  ParamVar _basePath{};
+  bool _followSymlinks = true;
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
+      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _checkTraversal = value.payload.boolValue;
+      break;
+    case 1:
+      _basePath = value;
+      break;
+    case 2:
+      _followSymlinks = value.payload.boolValue;
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_checkTraversal);
+    case 1:
+      return _basePath;
+    case 2:
+      return Var(_followSymlinks);
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup(SHContext *context) { _basePath.cleanup(); }
+  void warmup(SHContext *context) { _basePath.warmup(context); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+    // Security checks
+    if (_checkTraversal && hasPathTraversal(p)) {
+      throw ActivationError("FS.RemoveAll, path contains traversal pattern (..)");
+    }
+
+    auto basePath = _basePath.get();
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
+    if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+      throw ActivationError("FS.RemoveAll, path is a symlink and FollowSymlinks is disabled");
+    }
+
     if (fs::exists(p)) {
       return Var(SHInt(fs::remove_all(p)));
     } else {
@@ -303,7 +455,13 @@ struct Parent {
 
 struct Read {
   std::vector<uint8_t> _buffer;
+  std::ifstream _file;
   bool _binary = false;
+  size_t _maxSize = 0;  // 0 = unlimited (backward compatible)
+  size_t _chunkSize = 0;
+  bool _chunking = false;
+  ParamVar _basePath{};
+  bool _followSymlinks = true;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() {
@@ -311,14 +469,30 @@ struct Read {
     return _types;
   }
 
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType));
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType),
+      ParamsInfo::Param("MaxSize", SHCCSTR("Maximum file size in bytes (default: 0 = unlimited). Set to limit file size and prevent memory exhaustion."), CoreInfo::IntType),
+      ParamsInfo::Param("ChunkSize", SHCCSTR("If set, enables chunked reading. Returns ChunkSize bytes per activation. Returns empty when EOF."), CoreInfo::IntType),
+      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts read operations to this directory."), CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       _binary = bool(Var(value));
+      break;
+    case 1:
+      _maxSize = value.payload.intValue < 0 ? 0 : size_t(value.payload.intValue);
+      break;
+    case 2:
+      _chunkSize = value.payload.intValue < 0 ? 0 : size_t(value.payload.intValue);
+      break;
+    case 3:
+      _basePath = value;
+      break;
+    case 4:
+      _followSymlinks = value.payload.boolValue;
       break;
     }
   }
@@ -327,6 +501,14 @@ struct Read {
     switch (index) {
     case 0:
       return Var(_binary);
+    case 1:
+      return Var(SHInt(_maxSize));
+    case 2:
+      return Var(SHInt(_chunkSize));
+    case 3:
+      return _basePath;
+    case 4:
+      return Var(_followSymlinks);
     default:
       return Var::Empty;
     }
@@ -334,25 +516,112 @@ struct Read {
 
   SHTypeInfo compose(const SHInstanceData &data) { return _binary ? CoreInfo::BytesType : CoreInfo::StringType; }
 
-  void cleanup(SHContext *context) { _buffer = {}; }
+  void cleanup(SHContext *context) {
+    if (_file.is_open()) {
+      _file.close();
+    }
+    _chunking = false;
+    _buffer = {};
+    _basePath.cleanup();
+  }
+
+  void warmup(SHContext *context) { _basePath.warmup(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.clear();
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
-    if (!fs::exists(p)) {
-      SHLOG_ERROR("File is missing: {}", p);
-      throw FileNotFoundException("FS.Read, file does not exist.");
+
+    // Security checks (only on first activation for chunked mode)
+    if (!_chunking) {
+      auto basePath = _basePath.get();
+      if (basePath.valueType == SHType::String) {
+        validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+      }
+
+      if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+        throw ActivationError("FS.Read, path is a symlink and FollowSymlinks is disabled");
+      }
     }
 
-    if (_binary) {
-      std::ifstream file(p.string(), std::ios::binary);
-      _buffer.assign(std::istreambuf_iterator<char>(file), {});
-      return Var(_buffer.data(), uint32_t(_buffer.size()));
+    if (_chunkSize > 0) {
+      // Chunked reading mode - stateful
+      if (!_file.is_open()) {
+        // First activation: validate and open file
+        if (!fs::exists(p)) {
+          SHLOG_ERROR("File is missing: {}", p);
+          throw FileNotFoundException("FS.Read, file does not exist.");
+        }
+
+        ErrorCode ec;
+        auto fileSize = fs::file_size(p, ec);
+        if (ec) {
+          throw ActivationError("FS.Read, unable to determine file size.");
+        }
+
+        if (_maxSize > 0 && fileSize > _maxSize) {
+          throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
+                                " bytes) exceeds MaxSize limit (" + std::to_string(_maxSize) + " bytes).");
+        }
+
+        _file.open(p.string(), std::ios::binary);
+        if (!_file.is_open()) {
+          throw ActivationError("FS.Read, failed to open file for chunked reading.");
+        }
+        _chunking = true;
+      }
+
+      // Read next chunk
+      _buffer.resize(_chunkSize);
+      _file.read(reinterpret_cast<char*>(_buffer.data()), _chunkSize);
+      auto bytesRead = _file.gcount();
+
+      if (bytesRead == 0) {
+        // EOF - close file and return empty
+        _file.close();
+        _chunking = false;
+        if (_binary) {
+          return Var(_buffer.data(), 0);
+        } else {
+          return Var("", 0);
+        }
+      }
+
+      _buffer.resize(bytesRead);
+
+      if (_binary) {
+        return Var(_buffer.data(), uint32_t(_buffer.size()));
+      } else {
+        _buffer.push_back(0);
+        return Var((const char *)_buffer.data(), _buffer.size() - 1);
+      }
     } else {
-      std::ifstream file(p.string(), std::ios::binary);
-      _buffer.assign(std::istreambuf_iterator<char>(file), {});
-      _buffer.push_back(0);
-      return Var((const char *)_buffer.data(), _buffer.size() - 1);
+      // Normal mode: read entire file with size validation
+      if (!fs::exists(p)) {
+        SHLOG_ERROR("File is missing: {}", p);
+        throw FileNotFoundException("FS.Read, file does not exist.");
+      }
+
+      ErrorCode ec;
+      auto fileSize = fs::file_size(p, ec);
+      if (ec) {
+        throw ActivationError("FS.Read, unable to determine file size.");
+      }
+
+      if (_maxSize > 0 && fileSize > _maxSize) {
+        throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
+                              " bytes) exceeds MaxSize limit (" + std::to_string(_maxSize) + " bytes).");
+      }
+
+      if (_binary) {
+        std::ifstream file(p.string(), std::ios::binary);
+        _buffer.assign(std::istreambuf_iterator<char>(file), {});
+        return Var(_buffer.data(), uint32_t(_buffer.size()));
+      } else {
+        std::ifstream file(p.string(), std::ios::binary);
+        _buffer.assign(std::istreambuf_iterator<char>(file), {});
+        _buffer.push_back(0);
+        return Var((const char *)_buffer.data(), _buffer.size() - 1);
+      }
     }
   }
 };
@@ -362,16 +631,20 @@ struct Write {
   SHExposedTypeInfo _requiring;
   bool _overwrite = false;
   bool _append = false;
+  bool _checkTraversal = false;
+  ParamVar _basePath{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline Parameters params{
+  static inline Parameters params = Parameters({
       {"Contents",
        SHCCSTR("The string or bytes to write as the file's contents."),
        {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType}},
       {"Overwrite", SHCCSTR("Overwrite the file if it already exists."), {CoreInfo::BoolType}},
-      {"Append", SHCCSTR("If we should append Contents to an existing file."), {CoreInfo::BoolType}}};
+      {"Append", SHCCSTR("If we should append Contents to an existing file."), {CoreInfo::BoolType}},
+      {"CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), {CoreInfo::BoolType}},
+      {"BasePath", SHCCSTR("Optional base path - restricts write operations to this directory."), CoreInfo::StringOrStringVar}});
 
   static SHParametersInfo parameters() { return params; }
 
@@ -386,6 +659,11 @@ struct Write {
     case 2:
       _append = value.payload.boolValue;
       break;
+    case 3:
+      _checkTraversal = value.payload.boolValue;
+      break;
+    case 4:
+      _basePath = value;
       break;
     }
   }
@@ -398,6 +676,10 @@ struct Write {
       return Var(_overwrite);
     case 2:
       return Var(_append);
+    case 3:
+      return Var(_checkTraversal);
+    case 4:
+      return _basePath;
     default:
       return Var::Empty;
     }
@@ -421,13 +703,30 @@ struct Write {
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext *context) { _contents.cleanup(); }
-  void warmup(SHContext *context) { _contents.warmup(context); }
+  void cleanup(SHContext *context) {
+    _contents.cleanup();
+    _basePath.cleanup();
+  }
+  void warmup(SHContext *context) {
+    _contents.warmup(context);
+    _basePath.warmup(context);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto contents = _contents.get();
     if (contents.valueType != SHType::None) {
       fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+      // Security checks
+      if (_checkTraversal && hasPathTraversal(p)) {
+        throw ActivationError("FS.Write, path contains traversal pattern (..)");
+      }
+
+      auto basePath = _basePath.get();
+      if (basePath.valueType == SHType::String) {
+        validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+      }
+
       if (!_overwrite && !_append && fs::exists(p)) {
         throw ActivationError("FS.Write, file already exists and overwrite flag is not on!.");
       }
@@ -464,6 +763,9 @@ struct Copy {
 
   ParamVar _destination{};
   IfExists _overwrite{IfExists::Fail};
+  bool _checkTraversal = false;
+  ParamVar _basePath{};
+  bool _followSymlinks = true;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
@@ -471,7 +773,10 @@ struct Copy {
   static inline ParamsInfo params = ParamsInfo(
       ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
                         CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type));
+      ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type),
+      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
+      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
+      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
@@ -482,6 +787,15 @@ struct Copy {
     case 1:
       _overwrite = IfExists(value.payload.enumValue);
       break;
+    case 2:
+      _checkTraversal = value.payload.boolValue;
+      break;
+    case 3:
+      _basePath = value;
+      break;
+    case 4:
+      _followSymlinks = value.payload.boolValue;
+      break;
     }
   }
 
@@ -491,18 +805,44 @@ struct Copy {
       return _destination;
     case 1:
       return Var::Enum(_overwrite, CoreCC, IfExistsEnumInfo::TypeId);
+    case 2:
+      return Var(_checkTraversal);
+    case 3:
+      return _basePath;
+    case 4:
+      return Var(_followSymlinks);
     default:
       return Var::Empty;
     }
   }
 
-  void cleanup(SHContext *context) { _destination.cleanup(); }
-  void warmup(SHContext *context) { _destination.warmup(context); }
+  void cleanup(SHContext *context) {
+    _destination.cleanup();
+    _basePath.cleanup();
+  }
+  void warmup(SHContext *context) {
+    _destination.warmup(context);
+    _basePath.warmup(context);
+  }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto src = fs::path(SHSTRING_PREFER_SHSTRVIEW(input));
     if (!fs::exists(src))
       throw FileNotFoundException("Source path does not exist.");
+
+    // Security checks for source
+    if (_checkTraversal && hasPathTraversal(src)) {
+      throw ActivationError("FS.Copy, source path contains traversal pattern (..)");
+    }
+
+    auto basePath = _basePath.get();
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(src, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
+    if (!_followSymlinks && fs::is_symlink(src)) {
+      throw ActivationError("FS.Copy, source is a symlink and FollowSymlinks is disabled");
+    }
 
     fs::copy_options options{};
 
@@ -524,6 +864,15 @@ struct Copy {
     if (dstVar.valueType != SHType::String && dstVar.valueType != SHType::Path)
       throw ActivationError("Destination is not a valid");
     const auto dst = fs::path(SHSTRING_PREFER_SHSTRVIEW(dstVar));
+
+    // Security checks for destination
+    if (_checkTraversal && hasPathTraversal(dst)) {
+      throw ActivationError("FS.Copy, destination path contains traversal pattern (..)");
+    }
+
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(dst, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
 
     ErrorCode err;
     if (fs::is_regular_file(src) && (!fs::exists(dst) || fs::is_regular_file(dst))) {
@@ -593,11 +942,55 @@ struct SetWriteTime {
 };
 
 struct CreateDirectories {
+  bool _checkTraversal = false;
+  ParamVar _basePath{};
+
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
+  static inline ParamsInfo params = ParamsInfo(
+      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
+      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone));
+  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _checkTraversal = value.payload.boolValue;
+      break;
+    case 1:
+      _basePath = value;
+      break;
+    }
+  }
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return Var(_checkTraversal);
+    case 1:
+      return _basePath;
+    default:
+      return Var::Empty;
+    }
+  }
+
+  void cleanup(SHContext *context) { _basePath.cleanup(); }
+  void warmup(SHContext *context) { _basePath.warmup(context); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+    // Security checks
+    if (_checkTraversal && hasPathTraversal(p)) {
+      throw ActivationError("FS.CreateDirectories, path contains traversal pattern (..)");
+    }
+
+    auto basePath = _basePath.get();
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
     if (!fs::exists(p)) {
       if (!fs::create_directories(p)) {
         throw ActivationError(fmt::format("FS.CreateDirectories, failed to create directories for {}.", p));
@@ -670,8 +1063,10 @@ struct Rename {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_PARAMVAR(_newName, "NewName", "The new name for the file", {CoreInfo::StringOrStringVar});
-  PARAM_IMPL(PARAM_IMPL_FOR(_newName));
+  PARAM_PARAMVAR(_newName, "NewName", "The new name for the file", CoreInfo::StringOrStringVar);
+  PARAM_VAR(_checkTraversalParam, "CheckTraversal", "Reject paths with ../ traversal patterns for security", {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_basePathParam, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_IMPL(PARAM_IMPL_FOR(_newName), PARAM_IMPL_FOR(_checkTraversalParam), PARAM_IMPL_FOR(_basePathParam));
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -683,16 +1078,40 @@ struct Rename {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+
+    // Security checks for source
+    bool checkTraversal = _checkTraversalParam.payload.boolValue;
+    if (checkTraversal && hasPathTraversal(p)) {
+      throw ActivationError("FS.Rename, source path contains traversal pattern (..)");
+    }
+
+    auto basePath = _basePathParam.get();
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
     // check exists
     if (!fs::exists(p)) {
       throw ActivationError(fmt::format("FS.Rename, file {} does not exist.", p));
     }
+
     auto newName = SHSTRING_PREFER_SHSTRVIEW(_newName.get());
+    fs::path newPath(newName);
+
+    // Security checks for destination
+    if (checkTraversal && hasPathTraversal(newPath)) {
+      throw ActivationError("FS.Rename, destination path contains traversal pattern (..)");
+    }
+
+    if (basePath.valueType == SHType::String) {
+      validateBasePath(newPath, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
+    }
+
     // check if exists
-    if (fs ::exists(newName)) {
+    if (fs::exists(newPath)) {
       throw ActivationError(fmt::format("FS.Rename, file {} already exists.", newName));
     }
-    fs::rename(p, newName);
+    fs::rename(p, newPath);
     return input;
   }
 };
