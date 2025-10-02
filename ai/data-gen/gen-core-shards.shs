@@ -58,9 +58,7 @@ ForEach({
       Is("Reduce") | Or ; this is an alias of Fold
       Is("WriteFile") | Or ; avoid fs ops files for now
       Is("ReadFile") | Or ; avoid fs ops for now
-      Is("Input") | Or ; avoid input shard, it's confusing
-      Is("Pack") | Or ; avoid packing for now
-      Is("Unpack") ; avoid unpacking for now
+      Is("Input") ; avoid input shard, it's confusing
     } {
       Log("Skipping shard")
     } {

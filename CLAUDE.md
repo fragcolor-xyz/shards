@@ -101,3 +101,4 @@ The build system supports multiple platforms (macOS, Linux, Windows, iOS, etc.).
 
 ### Swift Integration
 Swift files provide iOS/macOS bindings. The main interface is in `include/shards/shards.swift` with module-specific implementations in various directories.
+- just run `cmake --build build/debug --target shards` to simply build
