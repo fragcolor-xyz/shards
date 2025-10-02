@@ -129,6 +129,7 @@ jobs:
           ./shards new ../shards/tests/network.shs
           ./shards new ../shards/tests/network-ws.shs
           ./shards new ../shards/tests/struct.shs
+          ./shards new ../shards/tests/fs-security.shs
           ./shards new ../shards/tests/flows.shs
           ./shards new ../shards/tests/channels.shs
           ./shards new ../shards/tests/imaging.shs

@@ -56,38 +56,38 @@
   | Assert.Is("Test BasePath" true)
   Log("BasePath test passed - allowed path")
 
-  ; Test 4: CheckTraversal detection
+  ; Test 4: BasePath prevents path traversal
   Maybe({
     "../test-traversal.txt"
-    | FS.Write("Should fail" Overwrite: true CheckTraversal: true)
+    | FS.Write("Should fail" Overwrite: true BasePath: base-path)
     Assert.Is(none true) ; Should not reach here
   } {
-    Msg("CheckTraversal test passed - blocked traversal")
-  } Silent: true)
+    Log("BasePath traversal test passed - blocked traversal")
+  })
 
-  ; Test 5: FS.Copy with security params
+  ; Test 5: FS.Copy with BasePath security
   "test-copy-src.txt" | FS.Write("Copy test" Overwrite: true)
   "test-copy-src.txt"
-  | FS.Copy("test-copy-dst.txt" CheckTraversal: false BasePath: base-path)
+  | FS.Copy("test-copy-dst.txt" BasePath: base-path)
 
   "test-copy-dst.txt" | FS.Read | Assert.Is("Copy test" true)
   Log("FS.Copy security test passed")
 
-  ; Test 6: FS.Remove with security
+  ; Test 6: FS.Remove with BasePath security
   "test-remove.txt" | FS.Write("Remove test" Overwrite: true)
-  "test-remove.txt" | FS.Remove(CheckTraversal: false BasePath: base-path)
+  "test-remove.txt" | FS.Remove(BasePath: base-path)
   | Assert.Is(true true)
   Log("FS.Remove security test passed")
 
-  ; Test 7: FS.CreateDirectories with security
-  "test-dir" | FS.CreateDirectories(CheckTraversal: false BasePath: base-path)
+  ; Test 7: FS.CreateDirectories with BasePath security
+  "test-dir" | FS.CreateDirectories(BasePath: base-path)
   "test-dir" | FS.IsDirectory | Assert.Is(true true)
   Log("FS.CreateDirectories security test passed")
 
-  ; Test 8: FS.Rename with security
+  ; Test 8: FS.Rename with BasePath security
   "test-rename-old.txt" | FS.Write("Rename test" Overwrite: true)
   "test-rename-old.txt"
-  | FS.Rename("test-rename-new.txt" CheckTraversal: false BasePath: base-path)
+  | FS.Rename("test-rename-new.txt" BasePath: base-path)
 
   "test-rename-new.txt" | FS.IsFile | Assert.Is(true true)
   Log("FS.Rename security test passed")

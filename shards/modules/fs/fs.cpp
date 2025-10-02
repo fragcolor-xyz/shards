@@ -27,44 +27,60 @@ struct FileNotFoundException : public std::runtime_error {
   FileNotFoundException(const std::string &err) : std::runtime_error(err) {}
 };
 
-// Path security helpers
-static bool hasPathTraversal(const fs::path &p) {
-  auto str = p.string();
-  return str.find("../") != std::string::npos || str.find("/..") != std::string::npos ||
-         str.find("..\\") != std::string::npos || str.find("\\..") != std::string::npos;
-}
-
+// Path security helper
+// Validates that a path is within the allowed basePath by resolving symlinks and checking containment
 static void validateBasePath(const fs::path &path, const fs::path &basePath) {
   if (basePath.empty())
     return;
 
-  // Normalize paths to remove . and .. components
-  auto absPath = fs::absolute(path).lexically_normal();
-  auto absBase = fs::absolute(basePath).lexically_normal();
+  ErrorCode ec;
+
+  // Resolve basePath to its canonical form (must exist)
+  auto canonicalBase = fs::canonical(basePath, ec);
+  if (ec) {
+    throw ActivationError(fmt::format("BasePath does not exist or cannot be resolved: {}", basePath.string()));
+  }
+
+  // For the path, try to resolve it canonically
+  // If it doesn't exist (e.g., for Write operations), resolve the parent directory
+  fs::path resolvedPath;
+  auto canonicalPath = fs::canonical(path, ec);
+
+  if (ec) {
+    // Path doesn't exist, try resolving parent directory
+    auto parent = path.parent_path();
+    if (parent.empty()) {
+      parent = fs::current_path();
+    }
+
+    auto canonicalParent = fs::canonical(parent, ec);
+    if (ec) {
+      throw ActivationError(fmt::format("Path parent directory does not exist: {}", parent.string()));
+    }
+
+    // Combine canonical parent with filename
+    resolvedPath = canonicalParent / path.filename();
+  } else {
+    resolvedPath = canonicalPath;
+  }
 
   SHLOG_TRACE("validateBasePath: path='{}' basePath='{}'", path.string(), basePath.string());
-  SHLOG_TRACE("validateBasePath: normalized absPath='{}' absBase='{}'", absPath.string(), absBase.string());
+  SHLOG_TRACE("validateBasePath: resolved path='{}' canonical base='{}'", resolvedPath.string(), canonicalBase.string());
 
-  // Check if path is within basePath
-  auto pathStr = absPath.string();
-  auto baseStr = absBase.string();
+  // Check if resolved path is within canonical base
+  // Use mismatch to find where paths diverge
+  auto pathIter = resolvedPath.begin();
+  auto baseIter = canonicalBase.begin();
 
-  // Remove trailing /. or \. from base path if present
-  while (baseStr.size() >= 2 &&
-         (baseStr.back() == '.' && (baseStr[baseStr.size()-2] == '/' || baseStr[baseStr.size()-2] == '\\'))) {
-    baseStr.resize(baseStr.size() - 1); // Remove the '.'
+  while (baseIter != canonicalBase.end()) {
+    if (pathIter == resolvedPath.end() || *pathIter != *baseIter) {
+      throw ActivationError("Path is outside allowed BasePath");
+    }
+    ++pathIter;
+    ++baseIter;
   }
 
-  // Ensure base path ends with separator for proper prefix check
-  if (!baseStr.empty() && baseStr.back() != '/' && baseStr.back() != '\\') {
-    baseStr += '/';
-  }
-
-  SHLOG_TRACE("validateBasePath: final pathStr='{}' baseStr='{}'", pathStr, baseStr);
-
-  if (pathStr.find(baseStr) != 0) {
-    throw ActivationError("Path is outside allowed BasePath");
-  }
+  SHLOG_TRACE("validateBasePath: path is within basePath");
 }
 
 struct Iterate {
@@ -230,7 +246,6 @@ struct IsDirectory {
 };
 
 struct Remove {
-  bool _checkTraversal = false;
   ParamVar _basePath{};
   bool _followSymlinks = true;
 
@@ -238,7 +253,6 @@ struct Remove {
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
       ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
       ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -246,12 +260,9 @@ struct Remove {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _checkTraversal = value.payload.boolValue;
-      break;
-    case 1:
       _basePath = value;
       break;
-    case 2:
+    case 1:
       _followSymlinks = value.payload.boolValue;
       break;
     }
@@ -260,10 +271,8 @@ struct Remove {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_checkTraversal);
-    case 1:
       return _basePath;
-    case 2:
+    case 1:
       return Var(_followSymlinks);
     default:
       return Var::Empty;
@@ -276,11 +285,7 @@ struct Remove {
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
 
-    // Security checks
-    if (_checkTraversal && hasPathTraversal(p)) {
-      throw ActivationError("FS.Remove, path contains traversal pattern (..)");
-    }
-
+    // Security check via BasePath
     auto basePath = _basePath.get();
     if (basePath.valueType == SHType::String) {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -299,7 +304,6 @@ struct Remove {
 };
 
 struct RemoveAll {
-  bool _checkTraversal = false;
   ParamVar _basePath{};
   bool _followSymlinks = true;
 
@@ -307,7 +311,6 @@ struct RemoveAll {
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
       ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
       ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -315,12 +318,9 @@ struct RemoveAll {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _checkTraversal = value.payload.boolValue;
-      break;
-    case 1:
       _basePath = value;
       break;
-    case 2:
+    case 1:
       _followSymlinks = value.payload.boolValue;
       break;
     }
@@ -329,10 +329,8 @@ struct RemoveAll {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_checkTraversal);
-    case 1:
       return _basePath;
-    case 2:
+    case 1:
       return Var(_followSymlinks);
     default:
       return Var::Empty;
@@ -345,11 +343,7 @@ struct RemoveAll {
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
 
-    // Security checks
-    if (_checkTraversal && hasPathTraversal(p)) {
-      throw ActivationError("FS.RemoveAll, path contains traversal pattern (..)");
-    }
-
+    // Security check via BasePath
     auto basePath = _basePath.get();
     if (basePath.valueType == SHType::String) {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -631,7 +625,6 @@ struct Write {
   SHExposedTypeInfo _requiring;
   bool _overwrite = false;
   bool _append = false;
-  bool _checkTraversal = false;
   ParamVar _basePath{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -643,7 +636,6 @@ struct Write {
        {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType}},
       {"Overwrite", SHCCSTR("Overwrite the file if it already exists."), {CoreInfo::BoolType}},
       {"Append", SHCCSTR("If we should append Contents to an existing file."), {CoreInfo::BoolType}},
-      {"CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), {CoreInfo::BoolType}},
       {"BasePath", SHCCSTR("Optional base path - restricts write operations to this directory."), CoreInfo::StringOrStringVar}});
 
   static SHParametersInfo parameters() { return params; }
@@ -660,9 +652,6 @@ struct Write {
       _append = value.payload.boolValue;
       break;
     case 3:
-      _checkTraversal = value.payload.boolValue;
-      break;
-    case 4:
       _basePath = value;
       break;
     }
@@ -677,8 +666,6 @@ struct Write {
     case 2:
       return Var(_append);
     case 3:
-      return Var(_checkTraversal);
-    case 4:
       return _basePath;
     default:
       return Var::Empty;
@@ -717,11 +704,7 @@ struct Write {
     if (contents.valueType != SHType::None) {
       fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
 
-      // Security checks
-      if (_checkTraversal && hasPathTraversal(p)) {
-        throw ActivationError("FS.Write, path contains traversal pattern (..)");
-      }
-
+      // Security check via BasePath
       auto basePath = _basePath.get();
       if (basePath.valueType == SHType::String) {
         validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -763,7 +746,6 @@ struct Copy {
 
   ParamVar _destination{};
   IfExists _overwrite{IfExists::Fail};
-  bool _checkTraversal = false;
   ParamVar _basePath{};
   bool _followSymlinks = true;
 
@@ -774,7 +756,6 @@ struct Copy {
       ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
                         CoreInfo::StringStringVarOrNone),
       ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type),
-      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
       ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
       ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
@@ -788,12 +769,9 @@ struct Copy {
       _overwrite = IfExists(value.payload.enumValue);
       break;
     case 2:
-      _checkTraversal = value.payload.boolValue;
-      break;
-    case 3:
       _basePath = value;
       break;
-    case 4:
+    case 3:
       _followSymlinks = value.payload.boolValue;
       break;
     }
@@ -806,10 +784,8 @@ struct Copy {
     case 1:
       return Var::Enum(_overwrite, CoreCC, IfExistsEnumInfo::TypeId);
     case 2:
-      return Var(_checkTraversal);
-    case 3:
       return _basePath;
-    case 4:
+    case 3:
       return Var(_followSymlinks);
     default:
       return Var::Empty;
@@ -830,11 +806,7 @@ struct Copy {
     if (!fs::exists(src))
       throw FileNotFoundException("Source path does not exist.");
 
-    // Security checks for source
-    if (_checkTraversal && hasPathTraversal(src)) {
-      throw ActivationError("FS.Copy, source path contains traversal pattern (..)");
-    }
-
+    // Security checks via BasePath for source
     auto basePath = _basePath.get();
     if (basePath.valueType == SHType::String) {
       validateBasePath(src, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -865,11 +837,7 @@ struct Copy {
       throw ActivationError("Destination is not a valid");
     const auto dst = fs::path(SHSTRING_PREFER_SHSTRVIEW(dstVar));
 
-    // Security checks for destination
-    if (_checkTraversal && hasPathTraversal(dst)) {
-      throw ActivationError("FS.Copy, destination path contains traversal pattern (..)");
-    }
-
+    // Security checks via BasePath for destination
     if (basePath.valueType == SHType::String) {
       validateBasePath(dst, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
     }
@@ -942,23 +910,18 @@ struct SetWriteTime {
 };
 
 struct CreateDirectories {
-  bool _checkTraversal = false;
   ParamVar _basePath{};
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("CheckTraversal", SHCCSTR("Reject paths with ../ traversal patterns for security."), CoreInfo::BoolType),
       ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone));
   static SHParametersInfo parameters() { return SHParametersInfo(params); }
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
-      _checkTraversal = value.payload.boolValue;
-      break;
-    case 1:
       _basePath = value;
       break;
     }
@@ -967,8 +930,6 @@ struct CreateDirectories {
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return Var(_checkTraversal);
-    case 1:
       return _basePath;
     default:
       return Var::Empty;
@@ -981,11 +942,7 @@ struct CreateDirectories {
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
 
-    // Security checks
-    if (_checkTraversal && hasPathTraversal(p)) {
-      throw ActivationError("FS.CreateDirectories, path contains traversal pattern (..)");
-    }
-
+    // Security check via BasePath
     auto basePath = _basePath.get();
     if (basePath.valueType == SHType::String) {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -1064,9 +1021,8 @@ struct Rename {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_newName, "NewName", "The new name for the file", CoreInfo::StringOrStringVar);
-  PARAM_VAR(_checkTraversalParam, "CheckTraversal", "Reject paths with ../ traversal patterns for security", {CoreInfo::BoolType});
   PARAM_PARAMVAR(_basePathParam, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
-  PARAM_IMPL(PARAM_IMPL_FOR(_newName), PARAM_IMPL_FOR(_checkTraversalParam), PARAM_IMPL_FOR(_basePathParam));
+  PARAM_IMPL(PARAM_IMPL_FOR(_newName), PARAM_IMPL_FOR(_basePathParam));
 
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -1079,12 +1035,7 @@ struct Rename {
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
 
-    // Security checks for source
-    bool checkTraversal = _checkTraversalParam.payload.boolValue;
-    if (checkTraversal && hasPathTraversal(p)) {
-      throw ActivationError("FS.Rename, source path contains traversal pattern (..)");
-    }
-
+    // Security checks via BasePath for source
     auto basePath = _basePathParam.get();
     if (basePath.valueType == SHType::String) {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
@@ -1098,11 +1049,7 @@ struct Rename {
     auto newName = SHSTRING_PREFER_SHSTRVIEW(_newName.get());
     fs::path newPath(newName);
 
-    // Security checks for destination
-    if (checkTraversal && hasPathTraversal(newPath)) {
-      throw ActivationError("FS.Rename, destination path contains traversal pattern (..)");
-    }
-
+    // Security checks via BasePath for destination
     if (basePath.valueType == SHType::String) {
       validateBasePath(newPath, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
     }
