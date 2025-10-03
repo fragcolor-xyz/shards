@@ -827,16 +827,23 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   constexpr auto &getVariables() { return variables; }
 
-  void setMetadata(SHVar *var, SHExposedTypeInfo info) {
+  void setMetadata(SHVar *var, SHExposedTypeInfo info, bool force = false) {
     auto it = variablesMetadata.find(var);
-    if (it != variablesMetadata.end()) {
-      if (!shards::matchTypes(info.exposedType, it->second._innerInfo.exposedType, false, true, true)) {
-        throw shards::WarmupError(fmt::format("Metadata for global variable {} already exists and is different!", info.name));
-      } else {
-        return;
+    if (!force) {
+      if (it != variablesMetadata.end()) {
+        if (!shards::matchTypes(info.exposedType, it->second._innerInfo.exposedType, false, true, true)) {
+          throw shards::WarmupError(fmt::format("Metadata for global variable {} already exists and is different!", info.name));
+        } else {
+          return;
+        }
       }
+      variablesMetadata.emplace(var, info);
+    } else {
+      if (it != variablesMetadata.end()) {
+        variablesMetadata.erase(it);
+      }
+      variablesMetadata.emplace(var, info);
     }
-    variablesMetadata.emplace(var, info);
   }
 
   std::optional<SHExposedTypeInfo> getMetadata(SHVar *var) {
