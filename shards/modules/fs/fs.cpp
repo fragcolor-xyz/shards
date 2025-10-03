@@ -258,6 +258,12 @@ struct Remove {
 
   Remove() { _followSymlinks = Var(true); }
 
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
@@ -291,6 +297,12 @@ struct RemoveAll {
   PARAM_IMPL(PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
   RemoveAll() { _followSymlinks = Var(true); }
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -454,14 +466,9 @@ struct Read {
     size_t chunkSize = _chunkSize.payload.intValue < 0 ? 0 : size_t(_chunkSize.payload.intValue);
     size_t maxSize = _maxSize.payload.intValue < 0 ? 0 : size_t(_maxSize.payload.intValue);
 
-    // Check if path changed during chunked reading - reset if so
+    // Check if path changed during chunked reading - this is an error
     if (_chunking && _currentPath != pathStr) {
-      SHLOG_WARNING("FS.Read: Input path changed during chunked reading from '{}' to '{}', resetting", _currentPath, pathStr);
-      if (_file.is_open()) {
-        _file.close();
-      }
-      _chunking = false;
-      _currentPath.clear();
+      throw ActivationError(fmt::format("FS.Read: Cannot change file path during chunked reading. Current: {}, New: {}", _currentPath, pathStr));
     }
 
     // Security checks
@@ -645,6 +652,12 @@ struct Copy {
     _followSymlinks = Var(true);
   }
 
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
@@ -761,6 +774,12 @@ struct CreateDirectories {
 
   PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
   PARAM_IMPL(PARAM_IMPL_FOR(_basePath));
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return data.inputType;
+  }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
