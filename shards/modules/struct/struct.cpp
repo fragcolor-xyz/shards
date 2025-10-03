@@ -574,6 +574,9 @@ struct BytesBuffer {
                             std::to_string(StructBase::MAX_STRUCT_SIZE) + " bytes");
     }
     _storage.resize(size);
+    if (_storage.empty()) {
+      return Var((uint8_t *)nullptr, 0);
+    }
     return Var(&_storage.front(), _storage.size());
   }
 };
