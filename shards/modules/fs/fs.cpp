@@ -246,41 +246,17 @@ struct IsDirectory {
 };
 
 struct Remove {
-  ParamVar _basePath{};
-  bool _followSymlinks = true;
-
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _basePath = value;
-      break;
-    case 1:
-      _followSymlinks = value.payload.boolValue;
-      break;
-    }
-  }
+  Remove() { _followSymlinks = Var(true); }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _basePath;
-    case 1:
-      return Var(_followSymlinks);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup(SHContext *context) { _basePath.cleanup(); }
-  void warmup(SHContext *context) { _basePath.warmup(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
@@ -291,7 +267,7 @@ struct Remove {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
     }
 
-    if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+    if (!_followSymlinks.payload.boolValue && fs::exists(p) && fs::is_symlink(p)) {
       throw ActivationError("FS.Remove, path is a symlink and FollowSymlinks is disabled");
     }
 
@@ -304,41 +280,17 @@ struct Remove {
 };
 
 struct RemoveAll {
-  ParamVar _basePath{};
-  bool _followSymlinks = true;
-
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _basePath = value;
-      break;
-    case 1:
-      _followSymlinks = value.payload.boolValue;
-      break;
-    }
-  }
+  RemoveAll() { _followSymlinks = Var(true); }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _basePath;
-    case 1:
-      return Var(_followSymlinks);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup(SHContext *context) { _basePath.cleanup(); }
-  void warmup(SHContext *context) { _basePath.warmup(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
@@ -349,7 +301,7 @@ struct RemoveAll {
       validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
     }
 
-    if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+    if (!_followSymlinks.payload.boolValue && fs::exists(p) && fs::is_symlink(p)) {
       throw ActivationError("FS.RemoveAll, path is a symlink and FollowSymlinks is disabled");
     }
 
@@ -621,83 +573,29 @@ struct Read {
 };
 
 struct Write {
-  ParamVar _contents{};
-  SHExposedTypeInfo _requiring;
-  bool _overwrite = false;
-  bool _append = false;
-  ParamVar _basePath{};
-
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline Parameters params = Parameters({
-      {"Contents",
-       SHCCSTR("The string or bytes to write as the file's contents."),
-       {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType}},
-      {"Overwrite", SHCCSTR("Overwrite the file if it already exists."), {CoreInfo::BoolType}},
-      {"Append", SHCCSTR("If we should append Contents to an existing file."), {CoreInfo::BoolType}},
-      {"BasePath", SHCCSTR("Optional base path - restricts write operations to this directory."), CoreInfo::StringOrStringVar}});
+  PARAM_PARAMVAR(_contents, "Contents", "The string or bytes to write as the file's contents",
+                 {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType});
+  PARAM_VAR(_overwrite, "Overwrite", "Overwrite the file if it already exists", {CoreInfo::BoolType});
+  PARAM_VAR(_append, "Append", "If we should append Contents to an existing file", {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts write operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_IMPL(PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_overwrite), PARAM_IMPL_FOR(_append), PARAM_IMPL_FOR(_basePath));
 
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _contents = value;
-      break;
-    case 1:
-      _overwrite = value.payload.boolValue;
-      break;
-    case 2:
-      _append = value.payload.boolValue;
-      break;
-    case 3:
-      _basePath = value;
-      break;
-    }
+  Write() {
+    _overwrite = Var(false);
+    _append = Var(false);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _contents;
-    case 1:
-      return Var(_overwrite);
-    case 2:
-      return Var(_append);
-    case 3:
-      return _basePath;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  SHExposedTypesInfo requiredVariables() {
-    if (_contents.isVariable()) {
-      return {&_requiring, 1, 0};
-    } else {
-      return {};
-    }
-  }
-
+  PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(const SHInstanceData &data) {
-    if (_contents.isVariable()) {
-      auto type = findParamVarExposedType(data, _contents);
-      if (!type)
-        throw ComposeError("Content missing");
-      _requiring = *type;
-    }
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     return outputTypes().elements[0];
   }
 
-  void cleanup(SHContext *context) {
-    _contents.cleanup();
-    _basePath.cleanup();
-  }
-  void warmup(SHContext *context) {
-    _contents.warmup(context);
-    _basePath.warmup(context);
-  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto contents = _contents.get();
@@ -710,7 +608,7 @@ struct Write {
         validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
       }
 
-      if (!_overwrite && !_append && fs::exists(p)) {
+      if (!_overwrite.payload.boolValue && !_append.payload.boolValue && fs::exists(p)) {
         throw ActivationError("FS.Write, file already exists and overwrite flag is not on!.");
       }
 
@@ -720,7 +618,7 @@ struct Write {
         fs::create_directories(p.parent_path());
 
       std::ios::openmode flags = std::ios::binary;
-      if (_append) {
+      if (_append.payload.boolValue) {
         flags |= std::ios::app;
       }
       std::ofstream file(p.string(), flags);
@@ -744,62 +642,22 @@ struct Copy {
                  "skip, overwrite, or update the file.",
                  'fsow');
 
-  ParamVar _destination{};
-  IfExists _overwrite{IfExists::Fail};
-  ParamVar _basePath{};
-  bool _followSymlinks = true;
-
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Destination", SHCCSTR("The destination path, can be a file or a directory."),
-                        CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("Behavior", SHCCSTR("What to do when the destination already exists."), IfExistsEnumInfo::Type),
-      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_PARAMVAR(_destination, "Destination", "The destination path, can be a file or a directory", CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_overwrite, "Behavior", "What to do when the destination already exists", {IfExistsEnumInfo::Type});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_destination), PARAM_IMPL_FOR(_overwrite), PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _destination = value;
-      break;
-    case 1:
-      _overwrite = IfExists(value.payload.enumValue);
-      break;
-    case 2:
-      _basePath = value;
-      break;
-    case 3:
-      _followSymlinks = value.payload.boolValue;
-      break;
-    }
+  Copy() {
+    _overwrite = Var::Enum(IfExists::Fail, CoreCC, IfExistsEnumInfo::TypeId);
+    _followSymlinks = Var(true);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _destination;
-    case 1:
-      return Var::Enum(_overwrite, CoreCC, IfExistsEnumInfo::TypeId);
-    case 2:
-      return _basePath;
-    case 3:
-      return Var(_followSymlinks);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup(SHContext *context) {
-    _destination.cleanup();
-    _basePath.cleanup();
-  }
-  void warmup(SHContext *context) {
-    _destination.warmup(context);
-    _basePath.warmup(context);
-  }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto src = fs::path(SHSTRING_PREFER_SHSTRVIEW(input));
@@ -812,13 +670,14 @@ struct Copy {
       validateBasePath(src, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
     }
 
-    if (!_followSymlinks && fs::is_symlink(src)) {
+    if (!_followSymlinks.payload.boolValue && fs::is_symlink(src)) {
       throw ActivationError("FS.Copy, source is a symlink and FollowSymlinks is disabled");
     }
 
     fs::copy_options options{};
 
-    switch (_overwrite) {
+    auto behavior = IfExists(_overwrite.payload.enumValue);
+    switch (behavior) {
     case IfExists::Fail:
       break;
     case IfExists::Skip:
@@ -910,34 +769,14 @@ struct SetWriteTime {
 };
 
 struct CreateDirectories {
-  ParamVar _basePath{};
-
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts operations to this directory."), CoreInfo::StringStringVarOrNone));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_IMPL(PARAM_IMPL_FOR(_basePath));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _basePath = value;
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return _basePath;
-    default:
-      return Var::Empty;
-    }
-  }
-
-  void cleanup(SHContext *context) { _basePath.cleanup(); }
-  void warmup(SHContext *context) { _basePath.warmup(context); }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
