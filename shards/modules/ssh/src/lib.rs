@@ -370,15 +370,17 @@ impl BlockingShard for ExecuteShard {
         let ssh_shell = unsafe {
             Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
         };
-        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
+        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
         // Check if there's a pending interactive command
         {
-            let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+            let mut pending = ssh_shell.pending_interactive.lock()
+                .map_err(|_| "Interactive state lock poisoned")?;
             if pending.is_some() {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
                 // Send Ctrl+C to cancel
-                let mut channel = ssh_shell.channel.lock().unwrap();
+                let mut channel = ssh_shell.channel.lock()
+                    .map_err(|_| "SSH channel lock poisoned")?;
                 let _ = channel.write_all(&[3]);
                 std::thread::sleep(Duration::from_millis(100));
                 *pending = None;
@@ -388,7 +390,8 @@ impl BlockingShard for ExecuteShard {
         // Send command
         let cmd_with_newline = format!("{}\n", cmd);
         {
-            let mut channel = ssh_shell.channel.lock().unwrap();
+            let mut channel = ssh_shell.channel.lock()
+                .map_err(|_| "SSH channel lock poisoned")?;
             channel
                 .write_all(cmd_with_newline.as_bytes())
                 .map_err(|_| "Failed to send command")?;
@@ -405,7 +408,8 @@ impl BlockingShard for ExecuteShard {
 
         for iteration in 0..max_timeout_count {
             let bytes_read = {
-                let mut channel = ssh_shell.channel.lock().unwrap();
+                let mut channel = ssh_shell.channel.lock()
+                    .map_err(|_| "SSH channel lock poisoned")?;
                 channel.read(&mut temp_buf).unwrap_or(0)
             };
 
@@ -462,7 +466,8 @@ impl BlockingShard for ExecuteShard {
         } else {
             // Command is interactive (waiting for input)
             {
-                let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+                let mut pending = ssh_shell.pending_interactive.lock()
+                    .map_err(|_| "Interactive state lock poisoned")?;
                 *pending = Some(InteractiveState {
                     original_cmd: cmd.to_string(),
                 });
@@ -560,11 +565,12 @@ impl BlockingShard for SendInputShard {
         let ssh_shell = unsafe {
             Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
         };
-        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
+        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
         // Check if there's a pending interactive command
         {
-            let pending = ssh_shell.pending_interactive.lock().unwrap();
+            let pending = ssh_shell.pending_interactive.lock()
+                .map_err(|_| "Interactive state lock poisoned")?;
             if pending.is_none() {
                 return Err("No interactive command is pending");
             }
@@ -573,7 +579,8 @@ impl BlockingShard for SendInputShard {
         // Send input (if not empty - empty means just check output)
         if !input_str.is_empty() {
             let input_with_newline = format!("{}\n", input_str);
-            let mut channel = ssh_shell.channel.lock().unwrap();
+            let mut channel = ssh_shell.channel.lock()
+                .map_err(|_| "SSH channel lock poisoned")?;
             channel
                 .write_all(input_with_newline.as_bytes())
                 .map_err(|_| "Failed to send input")?;
@@ -587,7 +594,8 @@ impl BlockingShard for SendInputShard {
         let mut temp_buf = [0u8; 4096];
         for _ in 0..10 {
             let bytes_read = {
-                let mut channel = ssh_shell.channel.lock().unwrap();
+                let mut channel = ssh_shell.channel.lock()
+                    .map_err(|_| "SSH channel lock poisoned")?;
                 channel.read(&mut temp_buf).unwrap_or(0)
             };
 
@@ -615,7 +623,8 @@ impl BlockingShard for SendInputShard {
         if prompt_detected {
             // Interactive session completed
             {
-                let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+                let mut pending = ssh_shell.pending_interactive.lock()
+                    .map_err(|_| "Interactive state lock poisoned")?;
                 *pending = None;
             }
             shlog_trace!("Interactive session completed");
@@ -687,11 +696,12 @@ impl Shard for DisconnectShard {
         // Extract SSH shell object
         let ssh_shell =
             unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
-        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
+        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
         // Close channel
         {
-            let mut channel = ssh_shell.channel.lock().unwrap();
+            let mut channel = ssh_shell.channel.lock()
+                .map_err(|_| "SSH channel lock poisoned")?;
             let _ = channel.send_eof();
             let _ = channel.wait_eof();
             let _ = channel.close();
@@ -700,7 +710,8 @@ impl Shard for DisconnectShard {
 
         // Disconnect session
         {
-            let session = ssh_shell.session.lock().unwrap();
+            let session = ssh_shell.session.lock()
+                .map_err(|_| "SSH session lock poisoned")?;
             let _ = session.disconnect(None, "Disconnecting", None);
         }
 
