@@ -12,6 +12,8 @@ extern crate shards;
 extern crate lazy_static;
 
 use shards::core::register_shard;
+use shards::core::run_blocking;
+use shards::core::BlockingShard;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::types::common_type;
@@ -188,7 +190,13 @@ impl Shard for ConnectShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        Ok(Some(run_blocking(self, context, input)))
+    }
+}
+
+impl BlockingShard for ConnectShard {
+    fn activate_blocking(&mut self, _context: &Context, _input: &Var) -> Result<Var, &'static str> {
         let host: &str = self.host.get().as_ref().try_into()?;
         let port: i64 = self.port.get().as_ref().try_into()?;
         let user: &str = self.user.get().as_ref().try_into()?;
@@ -269,7 +277,7 @@ impl Shard for ConnectShard {
             std::thread::sleep(Duration::from_millis(100));
         }
 
-        shlog_debug!("SSH connection established, shell ready");
+        shlog_trace!("SSH connection established, shell ready");
 
         // Create SSHShell object
         let ssh_shell = SSHShell {
@@ -280,7 +288,7 @@ impl Shard for ConnectShard {
 
         let shell_var = Var::new_ref_counted(ssh_shell, &*SSH_SHELL_TYPE);
         self.output = shell_var.into();
-        Ok(Some(self.output.0))
+        Ok(self.output.0)
     }
 }
 
@@ -347,7 +355,13 @@ impl Shard for ExecuteShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        Ok(Some(run_blocking(self, context, input)))
+    }
+}
+
+impl BlockingShard for ExecuteShard {
+    fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
         let cmd: &str = input.try_into()?;
         let session_var = *self.session.get();
         let should_clean: bool = self.clean_output.get().as_ref().try_into()?;
@@ -362,7 +376,7 @@ impl Shard for ExecuteShard {
         {
             let mut pending = ssh_shell.pending_interactive.lock().unwrap();
             if pending.is_some() {
-                shlog_debug!("New command received while interactive command was pending, sending Ctrl+C");
+                shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
                 // Send Ctrl+C to cancel
                 let mut channel = ssh_shell.channel.lock().unwrap();
                 let _ = channel.write_all(&[3]);
@@ -387,7 +401,7 @@ impl Shard for ExecuteShard {
         let max_timeout_count = 30; // 3 seconds total (30 * 100ms)
         let mut prompt_detected = false;
 
-        shlog_debug!("Starting to read command output");
+        shlog_trace!("Starting to read command output");
 
         for iteration in 0..max_timeout_count {
             let bytes_read = {
@@ -399,7 +413,7 @@ impl Shard for ExecuteShard {
                 output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
                 let output_str = String::from_utf8_lossy(&output_buffer);
 
-                shlog_debug!(
+                shlog_trace!(
                     "Read {} bytes (iteration {}), buffer size: {}, last line: {:?}",
                     bytes_read,
                     iteration,
@@ -410,13 +424,13 @@ impl Shard for ExecuteShard {
                 // Check for prompt
                 if is_prompt(&output_str) {
                     prompt_detected = true;
-                    shlog_debug!("Prompt detected in output, command completed");
+                    shlog_trace!("Prompt detected in output, command completed");
                     break;
                 }
                 timeout_count = 0; // Reset timeout count on new data
             } else {
                 timeout_count += 1;
-                shlog_debug!(
+                shlog_trace!(
                     "No data (iteration {}), timeout_count: {}, buffer_empty: {}",
                     iteration,
                     timeout_count,
@@ -424,7 +438,7 @@ impl Shard for ExecuteShard {
                 );
                 if timeout_count >= 15 && !output_buffer.is_empty() {
                     // No output for 1.5 seconds, likely interactive
-                    shlog_debug!("Command appears to be interactive (timeout without prompt)");
+                    shlog_trace!("Command appears to be interactive (timeout without prompt)");
                     break;
                 }
             }
@@ -469,7 +483,7 @@ impl Shard for ExecuteShard {
         }
 
         self.output = result_table.to_cloned();
-        Ok(Some(self.output.0))
+        Ok(self.output.0)
     }
 }
 
@@ -532,7 +546,13 @@ impl Shard for SendInputShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        Ok(Some(run_blocking(self, context, input)))
+    }
+}
+
+impl BlockingShard for SendInputShard {
+    fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
         let input_str: &str = input.try_into()?;
         let session_var = *self.session.get();
 
@@ -598,7 +618,7 @@ impl Shard for SendInputShard {
                 let mut pending = ssh_shell.pending_interactive.lock().unwrap();
                 *pending = None;
             }
-            shlog_debug!("Interactive session completed");
+            shlog_trace!("Interactive session completed");
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
         } else {
@@ -612,7 +632,7 @@ impl Shard for SendInputShard {
         }
 
         self.output = result_table.to_cloned();
-        Ok(Some(self.output.0))
+        Ok(self.output.0)
     }
 }
 
@@ -684,7 +704,7 @@ impl Shard for DisconnectShard {
             let _ = session.disconnect(None, "Disconnecting", None);
         }
 
-        shlog_debug!("SSH session disconnected");
+        shlog_trace!("SSH session disconnected");
         Ok(None)
     }
 }
@@ -710,5 +730,5 @@ pub extern "C" fn shardsRegister_ssh_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<SendInputShard>();
     register_shard::<DisconnectShard>();
 
-    shlog_debug!("SSH module registered");
+    shlog_trace!("SSH module registered");
 }
