@@ -13,5 +13,5 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-reqwest = { version = "0.12.5", features = ["blocking"] }
+reqwest = { version = "0.12.5" }
 tokio = { version = "1", features = ["full"] }
