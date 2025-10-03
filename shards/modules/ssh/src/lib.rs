@@ -47,6 +47,7 @@ mod ssh_shell {
         pub session: Arc<Mutex<Session>>,
         pub channel: Arc<Mutex<ssh2::Channel>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
+        pub is_connected: Arc<Mutex<bool>>,
     }
 
     #[derive(Clone)]
@@ -57,6 +58,11 @@ mod ssh_shell {
     impl Drop for SSHShell {
         fn drop(&mut self) {
             shlog_trace!("Dropping SSHShell, cleaning up connection");
+
+            // Mark as disconnected
+            if let Ok(mut is_connected) = self.is_connected.lock() {
+                *is_connected = false;
+            }
 
             // Close channel gracefully
             if let Ok(mut channel) = self.channel.lock() {
@@ -131,6 +137,18 @@ fn clean_output(output: &str, cmd: &str) -> String {
     // Join lines and remove empty lines at start/end
     let result = lines.join("\n");
     result.trim().to_string()
+}
+
+// Helper function to check if an IO error indicates connection loss
+fn is_connection_error(err: &std::io::Error) -> bool {
+    use std::io::ErrorKind;
+    matches!(
+        err.kind(),
+        ErrorKind::ConnectionReset
+            | ErrorKind::ConnectionAborted
+            | ErrorKind::BrokenPipe
+            | ErrorKind::UnexpectedEof
+    )
 }
 
 // ============================================================================
@@ -299,6 +317,7 @@ impl BlockingShard for ConnectShard {
             session: Arc::new(Mutex::new(sess)),
             channel: Arc::new(Mutex::new(channel)),
             pending_interactive: Arc::new(Mutex::new(None)),
+            is_connected: Arc::new(Mutex::new(true)),
         };
 
         let shell_var = Var::new_ref_counted(ssh_shell, &*SSH_SHELL_TYPE);
@@ -387,6 +406,15 @@ impl BlockingShard for ExecuteShard {
         };
         let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
+        // Check if connection is still alive
+        {
+            let is_connected = ssh_shell.is_connected.lock()
+                .map_err(|_| "Connection state lock poisoned")?;
+            if !*is_connected {
+                return Err("SSH connection lost");
+            }
+        }
+
         // Check if there's a pending interactive command
         {
             let mut pending = ssh_shell.pending_interactive.lock()
@@ -407,9 +435,15 @@ impl BlockingShard for ExecuteShard {
         {
             let mut channel = ssh_shell.channel.lock()
                 .map_err(|_| "SSH channel lock poisoned")?;
-            channel
-                .write_all(cmd_with_newline.as_bytes())
-                .map_err(|_| "Failed to send command")?;
+            if let Err(e) = channel.write_all(cmd_with_newline.as_bytes()) {
+                if is_connection_error(&e) {
+                    *ssh_shell.is_connected.lock()
+                        .map_err(|_| "Connection state lock poisoned")? = false;
+                    shlog_trace!("Connection lost during write: {:?}", e);
+                    return Err("SSH connection lost");
+                }
+                return Err("Failed to send command");
+            }
         }
 
         // Read output with timeout-based prompt detection
@@ -422,10 +456,29 @@ impl BlockingShard for ExecuteShard {
         shlog_trace!("Starting to read command output");
 
         for iteration in 0..max_timeout_count {
-            let bytes_read = {
+            let read_result = {
                 let mut channel = ssh_shell.channel.lock()
                     .map_err(|_| "SSH channel lock poisoned")?;
-                channel.read(&mut temp_buf).unwrap_or(0)
+                channel.read(&mut temp_buf)
+            };
+
+            let bytes_read = match read_result {
+                Ok(n) => n,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => 0,
+                Err(e) if is_connection_error(&e) => {
+                    *ssh_shell.is_connected.lock()
+                        .map_err(|_| "Connection state lock poisoned")? = false;
+                    shlog_trace!("Connection lost during read: {:?}", e);
+
+                    // Return connection_lost status instead of error
+                    let mut result_table = AutoTableVar::new();
+                    result_table.0.insert_fast_static("status", &Var::ephemeral_string("connection_lost"));
+                    result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
+                    result_table.0.insert_fast_static("message", &Var::ephemeral_string("SSH connection lost"));
+                    self.output = result_table.to_cloned();
+                    return Ok(self.output.0);
+                }
+                Err(_) => 0, // Other errors treated as no data
             };
 
             if bytes_read > 0 {
@@ -582,6 +635,15 @@ impl BlockingShard for SendInputShard {
         };
         let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
+        // Check if connection is still alive
+        {
+            let is_connected = ssh_shell.is_connected.lock()
+                .map_err(|_| "Connection state lock poisoned")?;
+            if !*is_connected {
+                return Err("SSH connection lost");
+            }
+        }
+
         // Check if there's a pending interactive command
         {
             let pending = ssh_shell.pending_interactive.lock()
@@ -596,9 +658,15 @@ impl BlockingShard for SendInputShard {
             let input_with_newline = format!("{}\n", input_str);
             let mut channel = ssh_shell.channel.lock()
                 .map_err(|_| "SSH channel lock poisoned")?;
-            channel
-                .write_all(input_with_newline.as_bytes())
-                .map_err(|_| "Failed to send input")?;
+            if let Err(e) = channel.write_all(input_with_newline.as_bytes()) {
+                if is_connection_error(&e) {
+                    *ssh_shell.is_connected.lock()
+                        .map_err(|_| "Connection state lock poisoned")? = false;
+                    shlog_trace!("Connection lost during write: {:?}", e);
+                    return Err("SSH connection lost");
+                }
+                return Err("Failed to send input");
+            }
         }
 
         // Wait for output
@@ -608,10 +676,29 @@ impl BlockingShard for SendInputShard {
         let mut output_buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
         for _ in 0..10 {
-            let bytes_read = {
+            let read_result = {
                 let mut channel = ssh_shell.channel.lock()
                     .map_err(|_| "SSH channel lock poisoned")?;
-                channel.read(&mut temp_buf).unwrap_or(0)
+                channel.read(&mut temp_buf)
+            };
+
+            let bytes_read = match read_result {
+                Ok(n) => n,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => 0,
+                Err(e) if is_connection_error(&e) => {
+                    *ssh_shell.is_connected.lock()
+                        .map_err(|_| "Connection state lock poisoned")? = false;
+                    shlog_trace!("Connection lost during read: {:?}", e);
+
+                    // Return connection_lost status
+                    let mut result_table = AutoTableVar::new();
+                    result_table.0.insert_fast_static("status", &Var::ephemeral_string("connection_lost"));
+                    result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
+                    result_table.0.insert_fast_static("message", &Var::ephemeral_string("SSH connection lost"));
+                    self.output = result_table.to_cloned();
+                    return Ok(self.output.0);
+                }
+                Err(_) => 0, // Other errors treated as no data
             };
 
             if bytes_read > 0 {
