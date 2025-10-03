@@ -32,6 +32,7 @@ use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::types::STRING_TYPES;
 use shards::types::NONE_TYPES;
+use shards::types::BOOL_TYPES;
 use ssh2::Session;
 use std::io::prelude::*;
 use std::net::{TcpStream, ToSocketAddrs};
@@ -779,7 +780,7 @@ impl Shard for IsConnectedShard {
     }
 
     fn output_types(&mut self) -> &Types {
-        &common_type::bool_types
+        &BOOL_TYPES
     }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
