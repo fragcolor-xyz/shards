@@ -957,6 +957,7 @@ SHTypeInfo & co
 unsafe impl Send for SHObjectInfo {}
 unsafe impl Sync for SHTypeInfo {}
 unsafe impl Sync for SHExposedTypeInfo {}
+unsafe impl Sync for SHExtendedObjectTypeInfo {}
 unsafe impl Sync for SHParameterInfo {}
 unsafe impl Sync for SHStrings {}
 unsafe impl Sync for SHObjectInfo {}

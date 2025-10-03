@@ -1,0 +1,45 @@
+; SSH Module Test
+; This test file demonstrates SSH.Connect, SSH.Execute, SSH.SendInput, and SSH.Disconnect
+
+; Note: Update these with your SSH credentials before running
+@host: "localhost"
+@user: "your-username"
+@key-path: "~/.ssh/id_rsa"
+
+; Connect to SSH server
+@ssh-session: (SSH.Connect Host: host User: user KeyPath: key-path)
+
+; Execute a simple command
+"echo 'Hello from SSH!'" | SSH.Execute(Session: ssh-session) >= result
+result | Log
+
+; Check command completed
+result.status | Assert.Is("completed")
+
+; Test persistent state - directory changes persist
+"cd /tmp" | SSH.Execute(Session: ssh-session)
+"pwd" | SSH.Execute(Session: ssh-session) >= pwd-result
+pwd-result.output | Log
+pwd-result.output | ExpectString | Assert.Contains("/tmp")
+
+; Test environment variable persistence
+"export TEST_VAR=hello" | SSH.Execute(Session: ssh-session)
+"echo $TEST_VAR" | SSH.Execute(Session: ssh-session) >= env-result
+env-result.output | Log
+env-result.output | ExpectString | Assert.Contains("hello")
+
+; Test interactive command detection (python REPL)
+; "python3" | SSH.Execute(Session: ssh-session) >= interactive-result
+; interactive-result.status | Assert.Is("requires_interaction")
+;
+; ; Send input to interactive command
+; "print('Interactive works!')" | SSH.SendInput(Session: ssh-session) >= input-result
+; input-result.output | Log
+;
+; ; Exit interactive session
+; "exit()" | SSH.SendInput(Session: ssh-session)
+
+; Disconnect
+ssh-session | SSH.Disconnect
+
+"SSH tests passed!" | Log
