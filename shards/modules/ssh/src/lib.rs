@@ -748,6 +748,72 @@ impl BlockingShard for SendInputShard {
 }
 
 // ============================================================================
+// SSH.IsConnected Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "SSH.IsConnected",
+    "Check if SSH session is still connected"
+)]
+pub struct IsConnectedShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    output: ClonedVar,
+}
+
+impl Default for IsConnectedShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for IsConnectedShard {
+    fn input_types(&mut self) -> &Types {
+        &SSH_SHELL_TYPE_VEC
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &common_type::bool_types
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(common_type::bool)
+    }
+
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        // Extract SSH shell object
+        let ssh_shell =
+            unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
+        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
+
+        // Check connection status
+        let is_connected = ssh_shell.is_connected.lock()
+            .map_err(|_| "Connection state lock poisoned")?;
+
+        self.output = (*is_connected).into();
+        Ok(Some(self.output.0))
+    }
+}
+
+// ============================================================================
 // Module Registration
 // ============================================================================
 
@@ -766,6 +832,7 @@ pub extern "C" fn shardsRegister_ssh_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<ConnectShard>();
     register_shard::<ExecuteShard>();
     register_shard::<SendInputShard>();
+    register_shard::<IsConnectedShard>();
 
     shlog_trace!("SSH module registered");
 }
