@@ -1,5 +1,5 @@
 ; SSH Module Test
-; This test file demonstrates SSH.Connect, SSH.Execute, SSH.SendInput, and SSH.Disconnect
+; This test file demonstrates SSH.Connect, SSH.Execute, and SSH.SendInput
 
 ; Docker SSH server credentials (see ssh-test-docker/)
 "localhost" = host
@@ -52,7 +52,5 @@ answer-result:output | ExpectString | Log("Answer output")
 
 "Interactive tests completed!" | Log
 
-; Disconnect
-ssh-session | SSH.Disconnect
-
+; Session will automatically disconnect when it goes out of scope
 "SSH tests passed!" | Log

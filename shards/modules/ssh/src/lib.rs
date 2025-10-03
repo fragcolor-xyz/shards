@@ -56,7 +56,22 @@ mod ssh_shell {
 
     impl Drop for SSHShell {
         fn drop(&mut self) {
-            shlog_trace!("Dropping SSHShell");
+            shlog_trace!("Dropping SSHShell, cleaning up connection");
+
+            // Close channel gracefully
+            if let Ok(mut channel) = self.channel.lock() {
+                let _ = channel.send_eof();
+                let _ = channel.wait_eof();
+                let _ = channel.close();
+                let _ = channel.wait_close();
+            }
+
+            // Disconnect session
+            if let Ok(session) = self.session.lock() {
+                let _ = session.disconnect(None, "Session closed", None);
+            }
+
+            shlog_trace!("SSHShell cleanup complete");
         }
     }
 
@@ -646,81 +661,6 @@ impl BlockingShard for SendInputShard {
 }
 
 // ============================================================================
-// SSH.Disconnect Shard
-// ============================================================================
-
-#[derive(shards::shard)]
-#[shard_info(
-    "SSH.Disconnect",
-    "Disconnect from SSH server and close the shell session"
-)]
-pub struct DisconnectShard {
-    #[shard_required]
-    required: ExposedTypes,
-}
-
-impl Default for DisconnectShard {
-    fn default() -> Self {
-        Self {
-            required: ExposedTypes::new(),
-        }
-    }
-}
-
-#[shards::shard_impl]
-impl Shard for DisconnectShard {
-    fn input_types(&mut self) -> &Types {
-        &SSH_SHELL_TYPE_VEC
-    }
-
-    fn output_types(&mut self) -> &Types {
-        &NONE_TYPES
-    }
-
-    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
-        Ok(())
-    }
-
-    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        Ok(())
-    }
-
-    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
-        Ok(common_type::none)
-    }
-
-    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        // Extract SSH shell object
-        let ssh_shell =
-            unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
-        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
-
-        // Close channel
-        {
-            let mut channel = ssh_shell.channel.lock()
-                .map_err(|_| "SSH channel lock poisoned")?;
-            let _ = channel.send_eof();
-            let _ = channel.wait_eof();
-            let _ = channel.close();
-            let _ = channel.wait_close();
-        }
-
-        // Disconnect session
-        {
-            let session = ssh_shell.session.lock()
-                .map_err(|_| "SSH session lock poisoned")?;
-            let _ = session.disconnect(None, "Disconnecting", None);
-        }
-
-        shlog_trace!("SSH session disconnected");
-        Ok(None)
-    }
-}
-
-// ============================================================================
 // Module Registration
 // ============================================================================
 
@@ -739,7 +679,6 @@ pub extern "C" fn shardsRegister_ssh_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<ConnectShard>();
     register_shard::<ExecuteShard>();
     register_shard::<SendInputShard>();
-    register_shard::<DisconnectShard>();
 
     shlog_trace!("SSH module registered");
 }
