@@ -11,11 +11,7 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-use russh::client::{self, Handle, Handler};
-use russh::*;
-use russh_keys::*;
 use shards::core::register_shard;
-use shards::core::run_future;
 use shards::fourCharacterCode;
 use shards::shard::Shard;
 use shards::types::common_type;
@@ -34,17 +30,20 @@ use shards::types::Var;
 use shards::types::FRAG_CC;
 use shards::types::STRING_TYPES;
 use shards::types::NONE_TYPES;
+use ssh2::Session;
+use std::io::prelude::*;
+use std::net::TcpStream;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::time::timeout;
 
 // SSH Shell object wrapper
 mod ssh_shell {
     use super::*;
 
     pub struct SSHShell {
-        pub session: Handle<ClientHandler>,
-        pub channel: ChannelId,
+        pub session: Arc<Mutex<Session>>,
+        pub channel: Arc<Mutex<ssh2::Channel>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
     }
 
@@ -53,7 +52,6 @@ mod ssh_shell {
         pub original_cmd: String,
     }
 
-    // Implement ref-counted object type for SSHShell
     impl Drop for SSHShell {
         fn drop(&mut self) {
             shlog_trace!("Dropping SSHShell");
@@ -66,13 +64,6 @@ mod ssh_shell {
 use ssh_shell::*;
 
 lazy_static! {
-    static ref TOKIO_RUNTIME: Arc<Mutex<tokio::runtime::Runtime>> = Arc::new(Mutex::new(
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(4)
-            .enable_all()
-            .build()
-            .expect("Failed to create Tokio runtime")
-    ));
     static ref SSH_SHELL_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"sshs"));
     static ref SSH_SHELL_TYPE_VEC: Vec<Type> = vec![*SSH_SHELL_TYPE];
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
@@ -116,23 +107,6 @@ fn clean_output(output: &str, cmd: &str) -> String {
     result.trim().to_string()
 }
 
-// Simple SSH client handler
-#[derive(Clone)]
-struct ClientHandler;
-
-#[async_trait::async_trait]
-impl client::Handler for ClientHandler {
-    type Error = russh::Error;
-
-    async fn check_server_key(
-        &mut self,
-        _server_public_key: &key::PublicKey,
-    ) -> Result<bool, Self::Error> {
-        // Accept any server key (for now - in production, should verify)
-        Ok(true)
-    }
-}
-
 // ============================================================================
 // SSH.Connect Shard
 // ============================================================================
@@ -168,9 +142,9 @@ impl Default for ConnectShard {
     fn default() -> Self {
         Self {
             required: ExposedTypes::new(),
-            host: ParamVar::new("localhost".into()),
+            host: ParamVar::new(Var::ephemeral_string("localhost")),
             port: ParamVar::new(22i64.into()),
-            user: ParamVar::new("user".into()),
+            user: ParamVar::new(Var::ephemeral_string("user")),
             key_path: ParamVar::new(Var::default()),
             password: ParamVar::new(Var::default()),
             timeout_secs: ParamVar::new(10i64.into()),
@@ -205,7 +179,7 @@ impl Shard for ConnectShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
         let host: &str = self.host.get().as_ref().try_into()?;
         let port: i64 = self.port.get().as_ref().try_into()?;
         let user: &str = self.user.get().as_ref().try_into()?;
@@ -214,125 +188,79 @@ impl Shard for ConnectShard {
         let key_path_var = self.key_path.get();
         let password_var = self.password.get();
 
-        let host = host.to_string();
-        let user = user.to_string();
-        let key_path = if !key_path_var.is_none() {
-            Some(key_path_var.as_ref().try_into().map(|s: &str| s.to_string())?)
+        // Connect to SSH server
+        let addr = format!("{}:{}", host, port);
+        let tcp = TcpStream::connect_timeout(
+            &addr.parse().map_err(|_| "Invalid host address")?,
+            Duration::from_secs(timeout_secs as u64),
+        )
+        .map_err(|_| "Connection failed")?;
+
+        tcp.set_read_timeout(Some(Duration::from_secs(timeout_secs as u64)))
+            .map_err(|_| "Failed to set timeout")?;
+
+        let mut sess = Session::new().map_err(|_| "Failed to create SSH session")?;
+        sess.set_tcp_stream(tcp);
+        sess.handshake().map_err(|_| "SSH handshake failed")?;
+
+        // Authenticate
+        if !key_path_var.is_none() {
+            let key_path: &str = key_path_var.as_ref().try_into()?;
+            let key_path_expanded = shellexpand::tilde(key_path).to_string();
+            sess.userauth_pubkey_file(user, None, Path::new(&key_path_expanded), None)
+                .map_err(|_| "Public key authentication failed")?;
+        } else if !password_var.is_none() {
+            let password: &str = password_var.as_ref().try_into()?;
+            sess.userauth_password(user, password)
+                .map_err(|_| "Password authentication failed")?;
         } else {
-            None
-        };
-        let password = if !password_var.is_none() {
-            Some(password_var.as_ref().try_into().map(|s: &str| s.to_string())?)
-        } else {
-            None
-        };
-
-        let result = run_future(
-            context,
-            async move {
-                let runtime = TOKIO_RUNTIME.clone();
-                let task: tokio::task::JoinHandle<Result<ClonedVar, String>> = {
-                    let runtime = runtime.lock().unwrap();
-                    runtime.spawn(async move {
-                        // Create SSH config
-                        let config = client::Config::default();
-                        let sh = ClientHandler {};
-
-                        // Connect to SSH server
-                        let mut session = timeout(
-                            Duration::from_secs(timeout_secs as u64),
-                            client::connect(Arc::new(config), (host.as_str(), port as u16), sh),
-                        )
-                        .await
-                        .map_err(|_| "Connection timeout".to_string())?
-                        .map_err(|e| format!("Failed to connect: {}", e))?;
-
-                        // Authenticate
-                        if let Some(key_path) = key_path {
-                            let key_path_expanded = shellexpand::tilde(&key_path).to_string();
-                            let key = load_secret_key(key_path_expanded, None)
-                                .map_err(|e| format!("Failed to load SSH key: {}", e))?;
-                            session
-                                .authenticate_publickey(user.clone(), Arc::new(key))
-                                .await
-                                .map_err(|e| format!("Authentication failed: {}", e))?;
-                        } else if let Some(password) = password {
-                            session
-                                .authenticate_password(user.clone(), password)
-                                .await
-                                .map_err(|e| format!("Password authentication failed: {}", e))?;
-                        } else {
-                            return Err("Either KeyPath or Password must be provided".to_string());
-                        }
-
-                        // Open channel and request PTY
-                        let channel = session
-                            .channel_open_session()
-                            .await
-                            .map_err(|e| format!("Failed to open channel: {}", e))?;
-
-                        channel
-                            .request_pty(false, "xterm", 80, 24, 0, 0, &[])
-                            .await
-                            .map_err(|e| format!("Failed to request PTY: {}", e))?;
-
-                        // Request shell
-                        channel
-                            .request_shell(false)
-                            .await
-                            .map_err(|e| format!("Failed to request shell: {}", e))?;
-
-                        // Drain initial prompt (wait for shell to be ready)
-                        tokio::time::sleep(Duration::from_millis(500)).await;
-                        let mut output_buffer = String::new();
-                        for _ in 0..10 {
-                            match timeout(Duration::from_millis(100), channel.wait()).await {
-                                Ok(Some(msg)) => {
-                                    if let ChannelMsg::Data { ref data } = msg {
-                                        let chunk = String::from_utf8_lossy(data);
-                                        output_buffer.push_str(&chunk);
-                                        if is_prompt(&output_buffer) {
-                                            break;
-                                        }
-                                    }
-                                }
-                                _ => break,
-                            }
-                        }
-
-                        shlog_debug!("SSH connection established, shell ready");
-
-                        // Create SSHShell object
-                        let ssh_shell = SSHShell {
-                            session,
-                            channel,
-                            pending_interactive: Arc::new(Mutex::new(None)),
-                        };
-
-                        let shell_var = Var::new_ref_counted(ssh_shell, &*SSH_SHELL_TYPE);
-                        Ok(shell_var.into())
-                    })
-                };
-
-                task.await
-                    .map_err(|e| shards::core::FastError::Dynamic(e.to_string()))?
-                    .map_err(|s| shards::core::FastError::Dynamic(s))
-            },
-            || {
-                shlog_debug!("SSH connection cancelled");
-            },
-        );
-
-        match result {
-            Ok(output) => {
-                self.output = output;
-                Ok(Some(self.output.0))
-            }
-            Err(e) => {
-                shlog_error!("SSH.Connect failed: {}", e);
-                Err("SSH.Connect failed")
-            }
+            return Err("Either KeyPath or Password must be provided");
         }
+
+        if !sess.authenticated() {
+            return Err("Authentication failed");
+        }
+
+        // Open channel and request PTY
+        let mut channel = sess.channel_session().map_err(|_| "Failed to open channel")?;
+        channel
+            .request_pty("xterm", None, None)
+            .map_err(|_| "Failed to request PTY")?;
+        channel.shell().map_err(|_| "Failed to start shell")?;
+
+        // Set non-blocking mode for timeout-based reads
+        sess.set_blocking(false);
+
+        // Drain initial prompt (wait for shell to be ready)
+        std::thread::sleep(Duration::from_millis(500));
+        let mut output_buffer = Vec::new();
+        let mut temp_buf = [0u8; 4096];
+        for _ in 0..10 {
+            match channel.read(&mut temp_buf) {
+                Ok(n) if n > 0 => {
+                    output_buffer.extend_from_slice(&temp_buf[..n]);
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    if is_prompt(&output_str) {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        shlog_debug!("SSH connection established, shell ready");
+
+        // Create SSHShell object
+        let ssh_shell = SSHShell {
+            session: Arc::new(Mutex::new(sess)),
+            channel: Arc::new(Mutex::new(channel)),
+            pending_interactive: Arc::new(Mutex::new(None)),
+        };
+
+        let shell_var = Var::new_ref_counted(ssh_shell, &*SSH_SHELL_TYPE);
+        self.output = shell_var.into();
+        Ok(Some(self.output.0))
     }
 }
 
@@ -399,147 +327,113 @@ impl Shard for ExecuteShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
         let cmd: &str = input.try_into()?;
         let session_var = *self.session.get();
-        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
         let should_clean: bool = self.clean_output.get().as_ref().try_into()?;
 
-        let cmd = cmd.to_string();
+        // Extract SSH shell object
+        let ssh_shell = unsafe {
+            Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
+        };
+        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
 
-        let result = run_future(
-            context,
-            async move {
-                let ssh_shell = unsafe {
-                    Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)
-                };
-                let ssh_shell = unsafe { &mut *(ssh_shell? as *mut SSHShell) };
-
-                let runtime = TOKIO_RUNTIME.clone();
-                let task: tokio::task::JoinHandle<Result<ClonedVar, String>> = {
-                    let runtime = runtime.lock().unwrap();
-                    let channel = ssh_shell.channel;
-                    let pending_interactive = ssh_shell.pending_interactive.clone();
-                    let cmd_clone = cmd.clone();
-
-                    runtime.spawn(async move {
-                        // Check if there's a pending interactive command
-                        {
-                            let mut pending = pending_interactive.lock().unwrap();
-                            if pending.is_some() {
-                                shlog_info!(
-                                    "New command received while interactive command was pending, cancelling previous"
-                                );
-                                // Send Ctrl+C to cancel
-                                channel
-                                    .data(&[3])
-                                    .await
-                                    .map_err(|e| format!("Failed to send interrupt: {}", e))?;
-                                tokio::time::sleep(Duration::from_millis(100)).await;
-                                // Clear pending state
-                                *pending = None;
-                            }
-                        }
-
-                        // Send command
-                        let cmd_with_newline = format!("{}\n", cmd_clone);
-                        channel
-                            .data(cmd_with_newline.as_bytes())
-                            .await
-                            .map_err(|e| format!("Failed to send command: {}", e))?;
-
-                        // Read output with timeout-based prompt detection
-                        let mut output_buffer = String::new();
-                        let mut timeout_count = 0;
-                        let max_timeout_count = 30; // 3 seconds total (30 * 100ms)
-                        let mut prompt_detected = false;
-
-                        for _ in 0..max_timeout_count {
-                            match timeout(Duration::from_millis(100), channel.wait()).await {
-                                Ok(Some(msg)) => {
-                                    if let ChannelMsg::Data { ref data } = msg {
-                                        let chunk = String::from_utf8_lossy(data);
-                                        output_buffer.push_str(&chunk);
-
-                                        // Check for prompt
-                                        if is_prompt(&output_buffer) {
-                                            prompt_detected = true;
-                                            shlog_debug!("Prompt detected, command completed");
-                                            break;
-                                        }
-                                        timeout_count = 0; // Reset timeout count on new data
-                                    }
-                                }
-                                _ => {
-                                    timeout_count += 1;
-                                    if timeout_count >= 15 && !output_buffer.is_empty() {
-                                        // No output for 1.5 seconds, likely interactive
-                                        shlog_debug!("Command appears to be interactive (timeout without prompt)");
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Determine status and prepare output
-                        let mut result_table = AutoTableVar::new();
-
-                        if prompt_detected {
-                            // Command completed normally
-                            let final_output = if should_clean {
-                                clean_output(&output_buffer, &cmd_clone)
-                            } else {
-                                output_buffer
-                            };
-
-                            result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
-                            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
-                        } else {
-                            // Command is interactive (waiting for input)
-                            {
-                                let mut pending = pending_interactive.lock().unwrap();
-                                *pending = Some(InteractiveState {
-                                    original_cmd: cmd_clone.clone(),
-                                });
-                            }
-
-                            let partial_output = if should_clean {
-                                clean_output(&output_buffer, &cmd_clone)
-                            } else {
-                                output_buffer
-                            };
-
-                            result_table.0.insert_fast_static("status", &Var::ephemeral_string("requires_interaction"));
-                            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&partial_output));
-                            result_table.0.insert_fast_static(
-                                "message",
-                                &Var::ephemeral_string("Command is waiting for input. Use SSH.SendInput to interact.")
-                            );
-                        }
-
-                        Ok(result_table.to_cloned())
-                    })
-                };
-
-                task.await
-                    .map_err(|e| shards::core::FastError::Dynamic(e.to_string()))?
-                    .map_err(|s| shards::core::FastError::Dynamic(s))
-            },
-            || {
-                shlog_debug!("SSH.Execute cancelled");
-            },
-        );
-
-        match result {
-            Ok(output) => {
-                self.output = output;
-                Ok(Some(self.output.0))
-            }
-            Err(e) => {
-                shlog_error!("SSH.Execute failed: {}", e);
-                Err("SSH.Execute failed")
+        // Check if there's a pending interactive command
+        {
+            let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+            if pending.is_some() {
+                shlog_debug!("New command received while interactive command was pending, sending Ctrl+C");
+                // Send Ctrl+C to cancel
+                let mut channel = ssh_shell.channel.lock().unwrap();
+                let _ = channel.write_all(&[3]);
+                std::thread::sleep(Duration::from_millis(100));
+                *pending = None;
             }
         }
+
+        // Send command
+        let cmd_with_newline = format!("{}\n", cmd);
+        {
+            let mut channel = ssh_shell.channel.lock().unwrap();
+            channel
+                .write_all(cmd_with_newline.as_bytes())
+                .map_err(|_| "Failed to send command")?;
+        }
+
+        // Read output with timeout-based prompt detection
+        let mut output_buffer = Vec::new();
+        let mut temp_buf = [0u8; 4096];
+        let mut timeout_count = 0;
+        let max_timeout_count = 30; // 3 seconds total (30 * 100ms)
+        let mut prompt_detected = false;
+
+        for _ in 0..max_timeout_count {
+            let bytes_read = {
+                let mut channel = ssh_shell.channel.lock().unwrap();
+                channel.read(&mut temp_buf).unwrap_or(0)
+            };
+
+            if bytes_read > 0 {
+                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+                let output_str = String::from_utf8_lossy(&output_buffer);
+
+                // Check for prompt
+                if is_prompt(&output_str) {
+                    prompt_detected = true;
+                    shlog_debug!("Prompt detected, command completed");
+                    break;
+                }
+                timeout_count = 0; // Reset timeout count on new data
+            } else {
+                timeout_count += 1;
+                if timeout_count >= 15 && !output_buffer.is_empty() {
+                    // No output for 1.5 seconds, likely interactive
+                    shlog_debug!("Command appears to be interactive (timeout without prompt)");
+                    break;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        // Determine status and prepare output
+        let mut result_table = AutoTableVar::new();
+        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
+
+        if prompt_detected {
+            // Command completed normally
+            let final_output = if should_clean {
+                clean_output(&output_str, cmd)
+            } else {
+                output_str
+            };
+
+            result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
+            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+        } else {
+            // Command is interactive (waiting for input)
+            {
+                let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+                *pending = Some(InteractiveState {
+                    original_cmd: cmd.to_string(),
+                });
+            }
+
+            let partial_output = if should_clean {
+                clean_output(&output_str, cmd)
+            } else {
+                output_str
+            };
+
+            result_table.0.insert_fast_static("status", &Var::ephemeral_string("requires_interaction"));
+            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&partial_output));
+            result_table.0.insert_fast_static(
+                "message",
+                &Var::ephemeral_string("Command is waiting for input. Use SSH.SendInput to interact.")
+            );
+        }
+
+        self.output = result_table.to_cloned();
+        Ok(Some(self.output.0))
     }
 }
 
@@ -602,118 +496,87 @@ impl Shard for SendInputShard {
         Ok(self.output_types()[0])
     }
 
-    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
         let input_str: &str = input.try_into()?;
         let session_var = *self.session.get();
-        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
 
-        let input_str = input_str.to_string();
+        // Extract SSH shell object
+        let ssh_shell = unsafe {
+            Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
+        };
+        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
 
-        let result = run_future(
-            context,
-            async move {
-                let ssh_shell = unsafe {
-                    Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)
-                };
-                let ssh_shell = unsafe { &mut *(ssh_shell? as *mut SSHShell) };
-
-                let runtime = TOKIO_RUNTIME.clone();
-                let task: tokio::task::JoinHandle<Result<ClonedVar, String>> = {
-                    let runtime = runtime.lock().unwrap();
-                    let channel = ssh_shell.channel;
-                    let pending_interactive = ssh_shell.pending_interactive.clone();
-
-                    runtime.spawn(async move {
-                        // Check if there's a pending interactive command
-                        {
-                            let pending = pending_interactive.lock().unwrap();
-                            if pending.is_none() {
-                                return Err("No interactive command is pending".to_string());
-                            }
-                        }
-
-                        // Send input (if not empty - empty means just check output)
-                        if !input_str.is_empty() {
-                            let input_with_newline = format!("{}\n", input_str);
-                            channel
-                                .data(input_with_newline.as_bytes())
-                                .await
-                                .map_err(|e| format!("Failed to send input: {}", e))?;
-                        }
-
-                        // Wait for output
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-
-                        // Read output
-                        let mut output_buffer = String::new();
-                        for _ in 0..10 {
-                            match timeout(Duration::from_millis(100), channel.wait()).await {
-                                Ok(Some(msg)) => {
-                                    if let ChannelMsg::Data { ref data } = msg {
-                                        let chunk = String::from_utf8_lossy(data);
-                                        output_buffer.push_str(&chunk);
-                                    }
-                                }
-                                _ => break,
-                            }
-                        }
-
-                        // Check for prompt
-                        let prompt_detected = is_prompt(&output_buffer);
-
-                        // Clean output
-                        let stripped_bytes = strip_ansi_escapes::strip(&output_buffer);
-                        let cleaned = String::from_utf8_lossy(&stripped_bytes);
-                        let mut lines: Vec<&str> = cleaned.lines().collect();
-                        if prompt_detected && !lines.is_empty() {
-                            lines.pop(); // Remove prompt line
-                        }
-                        let final_output = lines.join("\n");
-
-                        let mut result_table = AutoTableVar::new();
-
-                        if prompt_detected {
-                            // Interactive session completed
-                            {
-                                let mut pending = pending_interactive.lock().unwrap();
-                                *pending = None;
-                            }
-                            shlog_info!("Interactive session completed");
-                            result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
-                            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
-                        } else {
-                            // Still waiting for more input/output
-                            result_table.0.insert_fast_static("status", &Var::ephemeral_string("pending_output"));
-                            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
-                            result_table.0.insert_fast_static(
-                                "message",
-                                &Var::ephemeral_string("Command still running. Use SSH.SendInput to continue.")
-                            );
-                        }
-
-                        Ok(result_table.to_cloned())
-                    })
-                };
-
-                task.await
-                    .map_err(|e| shards::core::FastError::Dynamic(e.to_string()))?
-                    .map_err(|s| shards::core::FastError::Dynamic(s))
-            },
-            || {
-                shlog_debug!("SSH.SendInput cancelled");
-            },
-        );
-
-        match result {
-            Ok(output) => {
-                self.output = output;
-                Ok(Some(self.output.0))
-            }
-            Err(e) => {
-                shlog_error!("SSH.SendInput failed: {}", e);
-                Err("SSH.SendInput failed")
+        // Check if there's a pending interactive command
+        {
+            let pending = ssh_shell.pending_interactive.lock().unwrap();
+            if pending.is_none() {
+                return Err("No interactive command is pending");
             }
         }
+
+        // Send input (if not empty - empty means just check output)
+        if !input_str.is_empty() {
+            let input_with_newline = format!("{}\n", input_str);
+            let mut channel = ssh_shell.channel.lock().unwrap();
+            channel
+                .write_all(input_with_newline.as_bytes())
+                .map_err(|_| "Failed to send input")?;
+        }
+
+        // Wait for output
+        std::thread::sleep(Duration::from_secs(2));
+
+        // Read output
+        let mut output_buffer = Vec::new();
+        let mut temp_buf = [0u8; 4096];
+        for _ in 0..10 {
+            let bytes_read = {
+                let mut channel = ssh_shell.channel.lock().unwrap();
+                channel.read(&mut temp_buf).unwrap_or(0)
+            };
+
+            if bytes_read > 0 {
+                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        // Check for prompt
+        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
+        let prompt_detected = is_prompt(&output_str);
+
+        // Clean output
+        let stripped_bytes = strip_ansi_escapes::strip(&output_str);
+        let cleaned = String::from_utf8_lossy(&stripped_bytes);
+        let mut lines: Vec<&str> = cleaned.lines().collect();
+        if prompt_detected && !lines.is_empty() {
+            lines.pop(); // Remove prompt line
+        }
+        let final_output = lines.join("\n");
+
+        let mut result_table = AutoTableVar::new();
+
+        if prompt_detected {
+            // Interactive session completed
+            {
+                let mut pending = ssh_shell.pending_interactive.lock().unwrap();
+                *pending = None;
+            }
+            shlog_debug!("Interactive session completed");
+            result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
+            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+        } else {
+            // Still waiting for more input/output
+            result_table.0.insert_fast_static("status", &Var::ephemeral_string("pending_output"));
+            result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+            result_table.0.insert_fast_static(
+                "message",
+                &Var::ephemeral_string("Command still running. Use SSH.SendInput to continue.")
+            );
+        }
+
+        self.output = result_table.to_cloned();
+        Ok(Some(self.output.0))
     }
 }
 
@@ -764,54 +627,29 @@ impl Shard for DisconnectShard {
         Ok(common_type::none)
     }
 
-    fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let result = run_future(
-            context,
-            async move {
-                let ssh_shell =
-                    unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE) };
-                let ssh_shell = unsafe { &mut *(ssh_shell? as *mut SSHShell) };
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        // Extract SSH shell object
+        let ssh_shell =
+            unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
+        let ssh_shell = unsafe { &mut *(ssh_shell as *mut SSHShell) };
 
-                let runtime = TOKIO_RUNTIME.clone();
-                let task: tokio::task::JoinHandle<Result<(), String>> = {
-                    let runtime = runtime.lock().unwrap();
-                    let channel = ssh_shell.channel;
-                    let mut session = ssh_shell.session.clone();
-
-                    runtime.spawn(async move {
-                        // Close channel
-                        channel
-                            .eof()
-                            .await
-                            .map_err(|e| format!("Failed to send EOF: {}", e))?;
-
-                        // Disconnect session
-                        session
-                            .disconnect(Disconnect::ByApplication, "", "English")
-                            .await
-                            .map_err(|e| format!("Failed to disconnect: {}", e))?;
-
-                        shlog_debug!("SSH session disconnected");
-                        Ok(())
-                    })
-                };
-
-                task.await
-                    .map_err(|e| shards::core::FastError::Dynamic(e.to_string()))?
-                    .map_err(|s| shards::core::FastError::Dynamic(s))
-            },
-            || {
-                shlog_debug!("SSH.Disconnect cancelled");
-            },
-        );
-
-        match result {
-            Ok(_) => Ok(None),
-            Err(e) => {
-                shlog_error!("SSH.Disconnect failed: {}", e);
-                Err("SSH.Disconnect failed")
-            }
+        // Close channel
+        {
+            let mut channel = ssh_shell.channel.lock().unwrap();
+            let _ = channel.send_eof();
+            let _ = channel.wait_eof();
+            let _ = channel.close();
+            let _ = channel.wait_close();
         }
+
+        // Disconnect session
+        {
+            let session = ssh_shell.session.lock().unwrap();
+            let _ = session.disconnect(None, "Disconnecting", None);
+        }
+
+        shlog_debug!("SSH session disconnected");
+        Ok(None)
     }
 }
 
@@ -836,5 +674,5 @@ pub extern "C" fn shardsRegister_ssh_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<SendInputShard>();
     register_shard::<DisconnectShard>();
 
-    shlog_info!("SSH module registered");
+    shlog_debug!("SSH module registered");
 }
