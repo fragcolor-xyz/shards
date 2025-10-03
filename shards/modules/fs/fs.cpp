@@ -206,6 +206,9 @@ struct ReplaceExtension {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_newExtension.isNone()) {
+      throw ComposeError("NewExtension parameter is required and cannot be None");
+    }
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -368,6 +371,9 @@ struct RelativeTo {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_basePath.isNone()) {
+      throw ComposeError("BasePath parameter is required and cannot be None");
+    }
     return outputTypes().elements[0];
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
@@ -402,12 +408,8 @@ struct Parent {
 struct Read {
   std::vector<uint8_t> _buffer;
   std::ifstream _file;
-  bool _binary = false;
-  size_t _maxSize = 0;  // 0 = unlimited (backward compatible)
-  size_t _chunkSize = 0;
+  std::string _currentPath;  // Track current file for chunked reading
   bool _chunking = false;
-  ParamVar _basePath{};
-  bool _followSymlinks = true;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() {
@@ -415,84 +417,70 @@ struct Read {
     return _types;
   }
 
-  static inline ParamsInfo params = ParamsInfo(
-      ParamsInfo::Param("Bytes", SHCCSTR("If the output should be SHType::Bytes instead of SHType::String."), CoreInfo::BoolType),
-      ParamsInfo::Param("MaxSize", SHCCSTR("Maximum file size in bytes (default: 0 = unlimited). Set to limit file size and prevent memory exhaustion."), CoreInfo::IntType),
-      ParamsInfo::Param("ChunkSize", SHCCSTR("If set, enables chunked reading. Returns ChunkSize bytes per activation. Returns empty when EOF."), CoreInfo::IntType),
-      ParamsInfo::Param("BasePath", SHCCSTR("Optional base path - restricts read operations to this directory."), CoreInfo::StringStringVarOrNone),
-      ParamsInfo::Param("FollowSymlinks", SHCCSTR("Follow symbolic links (default: true). Set to false to reject symlinks."), CoreInfo::BoolType));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
+  PARAM_VAR(_binary, "Bytes", "If the output should be SHType::Bytes instead of SHType::String", {CoreInfo::BoolType});
+  PARAM_VAR(_maxSize, "MaxSize", "Maximum file size in bytes (default: 0 = unlimited). Set to limit file size and prevent memory exhaustion", {CoreInfo::IntType});
+  PARAM_VAR(_chunkSize, "ChunkSize", "If set, enables chunked reading. Returns ChunkSize bytes per activation. Returns empty when EOF", {CoreInfo::IntType});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts read operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_binary), PARAM_IMPL_FOR(_maxSize), PARAM_IMPL_FOR(_chunkSize), PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _binary = bool(Var(value));
-      break;
-    case 1:
-      _maxSize = value.payload.intValue < 0 ? 0 : size_t(value.payload.intValue);
-      break;
-    case 2:
-      _chunkSize = value.payload.intValue < 0 ? 0 : size_t(value.payload.intValue);
-      break;
-    case 3:
-      _basePath = value;
-      break;
-    case 4:
-      _followSymlinks = value.payload.boolValue;
-      break;
-    }
+  Read() {
+    _binary = Var(false);
+    _maxSize = Var(SHInt(0));
+    _chunkSize = Var(SHInt(0));
+    _followSymlinks = Var(true);
   }
 
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_binary);
-    case 1:
-      return Var(SHInt(_maxSize));
-    case 2:
-      return Var(SHInt(_chunkSize));
-    case 3:
-      return _basePath;
-    case 4:
-      return Var(_followSymlinks);
-    default:
-      return Var::Empty;
-    }
+  SHTypeInfo compose(const SHInstanceData &data) {
+    return _binary.payload.boolValue ? CoreInfo::BytesType : CoreInfo::StringType;
   }
-
-  SHTypeInfo compose(const SHInstanceData &data) { return _binary ? CoreInfo::BytesType : CoreInfo::StringType; }
 
   void cleanup(SHContext *context) {
     if (_file.is_open()) {
       _file.close();
     }
     _chunking = false;
+    _currentPath.clear();
     _buffer = {};
-    _basePath.cleanup();
+    PARAM_CLEANUP(context);
   }
 
-  void warmup(SHContext *context) { _basePath.warmup(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     _buffer.clear();
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    std::string pathStr = p.string();
+    size_t chunkSize = _chunkSize.payload.intValue < 0 ? 0 : size_t(_chunkSize.payload.intValue);
+    size_t maxSize = _maxSize.payload.intValue < 0 ? 0 : size_t(_maxSize.payload.intValue);
 
-    // Security checks (only on first activation for chunked mode)
+    // Check if path changed during chunked reading - reset if so
+    if (_chunking && _currentPath != pathStr) {
+      SHLOG_WARNING("FS.Read: Input path changed during chunked reading from '{}' to '{}', resetting", _currentPath, pathStr);
+      if (_file.is_open()) {
+        _file.close();
+      }
+      _chunking = false;
+      _currentPath.clear();
+    }
+
+    // Security checks
     if (!_chunking) {
       auto basePath = _basePath.get();
       if (basePath.valueType == SHType::String) {
         validateBasePath(p, fs::path(SHSTRING_PREFER_SHSTRVIEW(basePath)));
       }
 
-      if (!_followSymlinks && fs::exists(p) && fs::is_symlink(p)) {
+      if (!_followSymlinks.payload.boolValue && fs::exists(p) && fs::is_symlink(p)) {
         throw ActivationError("FS.Read, path is a symlink and FollowSymlinks is disabled");
       }
     }
 
-    if (_chunkSize > 0) {
+    if (chunkSize > 0) {
       // Chunked reading mode - stateful
       if (!_file.is_open()) {
-        // First activation: validate and open file
+        // First activation or reset: validate and open file
+        _currentPath = pathStr;
         if (!fs::exists(p)) {
           SHLOG_ERROR("File is missing: {}", p);
           throw FileNotFoundException("FS.Read, file does not exist.");
@@ -504,9 +492,9 @@ struct Read {
           throw ActivationError("FS.Read, unable to determine file size.");
         }
 
-        if (_maxSize > 0 && fileSize > _maxSize) {
+        if (maxSize > 0 && fileSize > maxSize) {
           throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
-                                " bytes) exceeds MaxSize limit (" + std::to_string(_maxSize) + " bytes).");
+                                " bytes) exceeds MaxSize limit (" + std::to_string(maxSize) + " bytes).");
         }
 
         _file.open(p.string(), std::ios::binary);
@@ -517,15 +505,16 @@ struct Read {
       }
 
       // Read next chunk
-      _buffer.resize(_chunkSize);
-      _file.read(reinterpret_cast<char*>(_buffer.data()), _chunkSize);
+      _buffer.resize(chunkSize);
+      _file.read(reinterpret_cast<char*>(_buffer.data()), chunkSize);
       auto bytesRead = _file.gcount();
 
       if (bytesRead == 0) {
         // EOF - close file and return empty
         _file.close();
         _chunking = false;
-        if (_binary) {
+        _currentPath.clear();
+        if (_binary.payload.boolValue) {
           return Var(_buffer.data(), 0);
         } else {
           return Var("", 0);
@@ -534,7 +523,7 @@ struct Read {
 
       _buffer.resize(bytesRead);
 
-      if (_binary) {
+      if (_binary.payload.boolValue) {
         return Var(_buffer.data(), uint32_t(_buffer.size()));
       } else {
         _buffer.push_back(0);
@@ -553,12 +542,12 @@ struct Read {
         throw ActivationError("FS.Read, unable to determine file size.");
       }
 
-      if (_maxSize > 0 && fileSize > _maxSize) {
+      if (maxSize > 0 && fileSize > maxSize) {
         throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
-                              " bytes) exceeds MaxSize limit (" + std::to_string(_maxSize) + " bytes).");
+                              " bytes) exceeds MaxSize limit (" + std::to_string(maxSize) + " bytes).");
       }
 
-      if (_binary) {
+      if (_binary.payload.boolValue) {
         std::ifstream file(p.string(), std::ios::binary);
         _buffer.assign(std::istreambuf_iterator<char>(file), {});
         return Var(_buffer.data(), uint32_t(_buffer.size()));
@@ -725,11 +714,6 @@ struct LastWriteTime {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  static SHParametersInfo parameters() { return SHParametersInfo{}; }
-
-  void setParam(int index, const SHVar &value) {}
-  SHVar getParam(int index) { return Var::Empty; }
-
   SHVar activate(SHContext *context, const SHVar &input) {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     ErrorCode ec;
@@ -866,8 +850,12 @@ struct Rename {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_newName.isNone()) {
+      throw ComposeError("NewName parameter is required and cannot be None");
+    }
     return data.inputType;
   }
+  
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -914,8 +902,12 @@ struct Is {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_other.isNone()) {
+      throw ComposeError("Other parameter is required and cannot be None");
+    }
     return data.inputType;
   }
+
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -940,8 +932,12 @@ struct IsAny {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_other.isNone()) {
+      throw ComposeError("Other parameter is required and cannot be None");
+    }
     return CoreInfo::BoolType;
   }
+
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -971,10 +967,15 @@ struct IsNotAny {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_other.isNone()) {
+      throw ComposeError("Other parameter is required and cannot be None");
+    }
     return CoreInfo::BoolType;
   }
+
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     auto p2 = fs::path(SHSTRING_PREFER_SHSTRVIEW(_other.get()));
     for (size_t i = 0; i < input.payload.seqValue.len; i++) {
