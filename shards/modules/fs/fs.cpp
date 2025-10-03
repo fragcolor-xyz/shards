@@ -735,6 +735,9 @@ struct SetWriteTime {
   PARAM_REQUIRED_VARIABLES()
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    if (_time.isNone()) {
+      throw ComposeError("Time parameter is required and cannot be None");
+    }
     return data.inputType;
   }
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
