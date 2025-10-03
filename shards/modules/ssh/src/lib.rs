@@ -32,7 +32,7 @@ use shards::types::STRING_TYPES;
 use shards::types::NONE_TYPES;
 use ssh2::Session;
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -66,17 +66,26 @@ use ssh_shell::*;
 lazy_static! {
     static ref SSH_SHELL_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"sshs"));
     static ref SSH_SHELL_TYPE_VEC: Vec<Type> = vec![*SSH_SHELL_TYPE];
+    static ref SSH_SHELL_VAR_TYPE: Type = Type::context_variable(&SSH_SHELL_TYPE_VEC);
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
 }
 
 // Helper function to detect shell prompts
 fn is_prompt(text: &str) -> bool {
-    let lines: Vec<&str> = text.lines().collect();
+    // Strip ANSI codes first before checking for prompt
+    let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
+    let cleaned = String::from_utf8_lossy(&stripped_bytes);
+
+    let lines: Vec<&str> = cleaned.lines().collect();
     if let Some(last) = lines.last() {
         let trimmed = last.trim();
+        // Check for common shell prompt patterns
         trimmed.ends_with("$ ")
+            || trimmed.ends_with("$")
             || trimmed.ends_with("# ")
-            || (trimmed.contains(">") && trimmed.ends_with(">"))
+            || trimmed.ends_with("#")
+            || trimmed.ends_with("> ")
+            || trimmed.ends_with(">")
     } else {
         false
     }
@@ -117,22 +126,22 @@ pub struct ConnectShard {
     #[shard_required]
     required: ExposedTypes,
 
-    #[shard_param("Host", "SSH server hostname or IP address", [common_type::string])]
+    #[shard_param("Host", "SSH server hostname or IP address", [common_type::string, common_type::string_var])]
     host: ParamVar,
 
-    #[shard_param("Port", "SSH server port (default: 22)", [common_type::int])]
+    #[shard_param("Port", "SSH server port (default: 22)", [common_type::int, common_type::int_var])]
     port: ParamVar,
 
-    #[shard_param("User", "SSH username", [common_type::string])]
+    #[shard_param("User", "SSH username", [common_type::string, common_type::string_var])]
     user: ParamVar,
 
-    #[shard_param("KeyPath", "Path to SSH private key file", [common_type::string, common_type::none])]
+    #[shard_param("KeyPath", "Path to SSH private key file", [common_type::string, common_type::string_var, common_type::none])]
     key_path: ParamVar,
 
-    #[shard_param("Password", "SSH password (if not using key)", [common_type::string, common_type::none])]
+    #[shard_param("Password", "SSH password (if not using key)", [common_type::string, common_type::string_var, common_type::none])]
     password: ParamVar,
 
-    #[shard_param("Timeout", "Connection timeout in seconds (default: 10)", [common_type::int])]
+    #[shard_param("Timeout", "Connection timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
     output: ClonedVar,
@@ -190,8 +199,19 @@ impl Shard for ConnectShard {
 
         // Connect to SSH server
         let addr = format!("{}:{}", host, port);
+
+        // Resolve hostname to socket address
+        let socket_addrs: Vec<_> = addr
+            .to_socket_addrs()
+            .map_err(|_| "Failed to resolve hostname")?
+            .collect();
+
+        let socket_addr = socket_addrs
+            .first()
+            .ok_or("No address found for hostname")?;
+
         let tcp = TcpStream::connect_timeout(
-            &addr.parse().map_err(|_| "Invalid host address")?,
+            socket_addr,
             Duration::from_secs(timeout_secs as u64),
         )
         .map_err(|_| "Connection failed")?;
@@ -277,13 +297,13 @@ pub struct ExecuteShard {
     #[shard_required]
     required: ExposedTypes,
 
-    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE])]
+    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE, *SSH_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    #[shard_param("Timeout", "Command timeout in seconds (default: 30)", [common_type::int])]
+    #[shard_param("Timeout", "Command timeout in seconds (default: 30)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
-    #[shard_param("CleanOutput", "Clean ANSI codes and prompts from output (default: true)", [common_type::bool])]
+    #[shard_param("CleanOutput", "Clean ANSI codes and prompts from output (default: true)", [common_type::bool, common_type::bool_var])]
     clean_output: ParamVar,
 
     output: ClonedVar,
@@ -367,7 +387,9 @@ impl Shard for ExecuteShard {
         let max_timeout_count = 30; // 3 seconds total (30 * 100ms)
         let mut prompt_detected = false;
 
-        for _ in 0..max_timeout_count {
+        shlog_debug!("Starting to read command output");
+
+        for iteration in 0..max_timeout_count {
             let bytes_read = {
                 let mut channel = ssh_shell.channel.lock().unwrap();
                 channel.read(&mut temp_buf).unwrap_or(0)
@@ -377,15 +399,29 @@ impl Shard for ExecuteShard {
                 output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
                 let output_str = String::from_utf8_lossy(&output_buffer);
 
+                shlog_debug!(
+                    "Read {} bytes (iteration {}), buffer size: {}, last line: {:?}",
+                    bytes_read,
+                    iteration,
+                    output_buffer.len(),
+                    output_str.lines().last()
+                );
+
                 // Check for prompt
                 if is_prompt(&output_str) {
                     prompt_detected = true;
-                    shlog_debug!("Prompt detected, command completed");
+                    shlog_debug!("Prompt detected in output, command completed");
                     break;
                 }
                 timeout_count = 0; // Reset timeout count on new data
             } else {
                 timeout_count += 1;
+                shlog_debug!(
+                    "No data (iteration {}), timeout_count: {}, buffer_empty: {}",
+                    iteration,
+                    timeout_count,
+                    output_buffer.is_empty()
+                );
                 if timeout_count >= 15 && !output_buffer.is_empty() {
                     // No output for 1.5 seconds, likely interactive
                     shlog_debug!("Command appears to be interactive (timeout without prompt)");
@@ -450,10 +486,10 @@ pub struct SendInputShard {
     #[shard_required]
     required: ExposedTypes,
 
-    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE])]
+    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE, *SSH_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int])]
+    #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
     output: ClonedVar,

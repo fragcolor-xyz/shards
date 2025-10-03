@@ -19,7 +19,7 @@ add_shards_module(ssh
   RUST_TARGETS shards-ssh-rust
   REGISTER_SHARDS rust)
 
-# Link system zlib for libssh2 which needs it
-if(APPLE)
+# Link system zlib for libssh2 compression support
+if(APPLE OR LINUX)
   target_link_libraries(shards-ssh-rust INTERFACE "-lz")
 endif()

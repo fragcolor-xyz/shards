@@ -1,13 +1,14 @@
 ; SSH Module Test
 ; This test file demonstrates SSH.Connect, SSH.Execute, SSH.SendInput, and SSH.Disconnect
 
-; Note: Update these with your SSH credentials before running
+; Docker SSH server credentials (see ssh-test-docker/)
 "localhost" = host
-"your-username" = user
-"~/.ssh/id_rsa" = key-path
+2222 = port
+"testuser" = user
+"test123" = password
 
 ; Connect to SSH server
-SSH.Connect(Host: host User: user KeyPath: key-path) >= ssh-session
+SSH.Connect(Host: host Port: port User: user Password: password) >= ssh-session
 
 ; Execute a simple command
 "echo 'Hello from SSH!'" | SSH.Execute(Session: ssh-session) >= result
@@ -20,25 +21,36 @@ result:status | Assert.Is("completed")
 "cd /tmp" | SSH.Execute(Session: ssh-session)
 "pwd" | SSH.Execute(Session: ssh-session) >= pwd-result
 pwd-result:output | Log("Current directory")
-pwd-result:output | ExpectString | Assert.Contains("/tmp")
+pwd-result:output | ExpectString | Assert.Is("/tmp")
 
 ; Test environment variable persistence
 "export TEST_VAR=hello" | SSH.Execute(Session: ssh-session)
 "echo $TEST_VAR" | SSH.Execute(Session: ssh-session) >= env-result
 env-result:output | Log("Environment variable")
-env-result:output | ExpectString | Assert.Contains("hello")
+env-result:output | ExpectString | Assert.Is("hello")
 
-; Test interactive command detection (python REPL)
-; Commented out - uncomment to test interactive functionality
-; "python3" | SSH.Execute(Session: ssh-session) >= interactive-result
-; interactive-result:status | Assert.Is("requires_interaction")
-;
-; ; Send input to interactive command
-; "print('Interactive works!')" | SSH.SendInput(Session: ssh-session) >= input-result
-; input-result:output | Log("Interactive output")
-;
-; ; Exit interactive session
-; "exit()" | SSH.SendInput(Session: ssh-session)
+; Test interactive command detection with sh read
+"Interactive command test" | Log
+"read -p 'Enter name: ' name && echo \"Hello $name\"" | SSH.Execute(Session: ssh-session) >= interactive-result
+interactive-result | Log("Interactive result")
+interactive-result:status | Assert.Is("requires_interaction")
+
+; Send input to interactive command
+"Alice" | SSH.SendInput(Session: ssh-session) >= input-result
+input-result | Log("Input result")
+input-result:status | Assert.Is("completed")
+input-result:output | ExpectString | Log("Interactive output")
+
+; Test another interactive command - simple yes/no prompt
+"read -p 'Continue? (y/n): ' answer && echo \"Answer: $answer\"" | SSH.Execute(Session: ssh-session) >= prompt-result
+prompt-result:status | Assert.Is("requires_interaction")
+
+; Send yes answer
+"y" | SSH.SendInput(Session: ssh-session) >= answer-result
+answer-result:status | Assert.Is("completed")
+answer-result:output | ExpectString | Log("Answer output")
+
+"Interactive tests completed!" | Log
 
 ; Disconnect
 ssh-session | SSH.Disconnect
