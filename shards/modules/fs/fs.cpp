@@ -465,14 +465,6 @@ struct Read {
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     std::string pathStr = p.string();
 
-    // Check for integer overflow when converting int64 to size_t
-    if (_chunkSize.payload.intValue > static_cast<int64_t>(std::numeric_limits<size_t>::max())) {
-      throw ActivationError("FS.Read: ChunkSize value exceeds platform maximum");
-    }
-    if (_maxSize.payload.intValue > static_cast<int64_t>(std::numeric_limits<size_t>::max())) {
-      throw ActivationError("FS.Read: MaxSize value exceeds platform maximum");
-    }
-
     size_t chunkSize = _chunkSize.payload.intValue < 0 ? 0 : size_t(_chunkSize.payload.intValue);
     size_t maxSize = _maxSize.payload.intValue < 0 ? 0 : size_t(_maxSize.payload.intValue);
 
