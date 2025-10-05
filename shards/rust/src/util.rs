@@ -1,4 +1,5 @@
 use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 
 use crate::{
   core::{deriveType, VarRef},
@@ -6,7 +7,7 @@ use crate::{
     Context, DerivedType, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Type,
     Var,
   },
-  SHExposedTypeInfo, SHExposedTypesInfo, SHInstanceData, SHString, SHVar,
+  SHExposedTypeInfo, SHExposedTypesInfo, SHInstanceData, SHString, SHTypesInfo, SHVar,
 };
 
 pub enum TypeOrDerived {
@@ -87,6 +88,83 @@ pub fn collect_required_variables(
     _ => {}
   }
   Ok(())
+}
+
+extern "C" {
+  fn shards_collect_required_variables_typed(
+    data: *const SHInstanceData,
+    out: *mut SHExposedTypesInfo,
+    var: *const SHVar,
+    valid_types: *const SHTypesInfo,
+    debug_tag: *const c_char,
+  ) -> bool;
+}
+
+/// Check if a type can possibly contain context variables
+/// This is used to optimize compose by skipping collection when impossible
+pub fn has_context_variables(type_: &Type) -> bool {
+  use crate::SHType_ContextVar;
+  use crate::SHType_Seq;
+  use crate::SHType_Table;
+
+  match type_.basicType {
+    SHType_ContextVar => true,
+    SHType_Seq => {
+      let seq_types = unsafe { type_.details.seqTypes };
+      for i in 0..seq_types.len {
+        let t = unsafe { &*seq_types.elements.offset(i as isize) };
+        if has_context_variables(t) {
+          return true;
+        }
+      }
+      false
+    }
+    SHType_Table => {
+      let table_types = unsafe { type_.details.table.types };
+      for i in 0..table_types.len {
+        let t = unsafe { &*table_types.elements.offset(i as isize) };
+        if has_context_variables(t) {
+          return true;
+        }
+      }
+      false
+    }
+    _ => false,
+  }
+}
+
+/// Collects required variables with type validation
+/// This validates that the variable type matches one of the validTypes before collecting
+pub fn collect_required_variables_typed(
+  data: &SHInstanceData,
+  out: &mut ExposedTypes,
+  var: &SHVar,
+  valid_types: &[Type],
+  param_name: &str,
+) -> Result<(), &'static str> {
+  let types_info = SHTypesInfo {
+    elements: valid_types.as_ptr() as *mut Type,
+    len: valid_types.len() as u32,
+    cap: 0,
+  };
+
+  let c_param_name = CString::new(param_name).map_err(|_| "Invalid parameter name")?;
+
+  let success = unsafe {
+    shards_collect_required_variables_typed(
+      data as *const SHInstanceData,
+      out as *mut ExposedTypes as *mut SHExposedTypesInfo,
+      var as *const SHVar,
+      &types_info as *const SHTypesInfo,
+      c_param_name.as_ptr(),
+    )
+  };
+
+  if success {
+    Ok(())
+  } else {
+    Err("Type validation failed for parameter")
+  }
 }
 
 /// Adds required variables from inside a ShardsVar

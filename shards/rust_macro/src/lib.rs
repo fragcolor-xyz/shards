@@ -708,8 +708,16 @@ fn generate_param_wrapper_code(struct_: &syn::ItemStruct) -> Result<ParamWrapper
     match param {
       Param::Single(single) => {
         let var_name = &single.var_name;
+        let param_name = &single.name;
+        let param_types = &single.types;
+        // Add optimization: check at runtime if any types can have context variables
         composes.push(quote! {
-          shards::util::collect_required_variables(&data.shared, out_required, (&self.#var_name).into())?;
+          {
+            let can_have_context_vars = (#param_types).iter().any(|t| shards::util::has_context_variables(t));
+            if can_have_context_vars {
+              shards::util::collect_required_variables_typed(data, out_required, (&self.#var_name).into(), &#param_types[..], #param_name)?;
+            }
+          }
         });
       }
       Param::Set(set) => {
