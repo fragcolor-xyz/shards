@@ -111,20 +111,24 @@ pub fn has_context_variables(type_: &Type) -> bool {
     SHType_ContextVar => true,
     SHType_Seq => {
       let seq_types = unsafe { type_.details.seqTypes };
-      for i in 0..seq_types.len {
-        let t = unsafe { &*seq_types.elements.offset(i as isize) };
-        if has_context_variables(t) {
-          return true;
+      if seq_types.len > 0 && !seq_types.elements.is_null() {
+        for i in 0..seq_types.len {
+          let t = unsafe { &*seq_types.elements.offset(i as isize) };
+          if has_context_variables(t) {
+            return true;
+          }
         }
       }
       false
     }
     SHType_Table => {
       let table_types = unsafe { type_.details.table.types };
-      for i in 0..table_types.len {
-        let t = unsafe { &*table_types.elements.offset(i as isize) };
-        if has_context_variables(t) {
-          return true;
+      if table_types.len > 0 && !table_types.elements.is_null() {
+        for i in 0..table_types.len {
+          let t = unsafe { &*table_types.elements.offset(i as isize) };
+          if has_context_variables(t) {
+            return true;
+          }
         }
       }
       false
