@@ -110,7 +110,6 @@ lazy_static! {
   static ref CLIENT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"htcl"));
   static ref STREAM_TYPE_VEC: Vec<Type> = vec![*STREAM_TYPE];
   static ref STREAM_TYPE_VAR: Type = Type::context_variable(&STREAM_TYPE_VEC);
-  static ref STREAM_TYPE_OR_VAR: Vec<Type> = vec![*STREAM_TYPE, *STREAM_TYPE_VAR];
   static ref ALL_OUTPUT_TYPES: Vec<Type> = vec![
     *BYTES_FULL_OUTPUT_TTYPE,
     common_type::bytes,
@@ -373,7 +372,7 @@ impl RequestBase {
       if self.full_response {
         *STREAM_FULL_OUTPUT_TTYPE
       } else {
-        *STREAM_TYPE_VAR
+        *STREAM_TYPE
       }
     } else if self.as_bytes {
       if self.full_response {
@@ -924,7 +923,7 @@ struct HttpStreamShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Stream", "The stream to read from.", STREAM_TYPE_OR_VAR)]
+  #[shard_param("Stream", "The stream to read from.", [*STREAM_TYPE, *STREAM_TYPE_VAR])]
   stream: ParamVar,
 
   output: ClonedVar,
