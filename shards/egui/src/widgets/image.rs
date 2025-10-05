@@ -4,7 +4,7 @@
 use super::image_util;
 use crate::util;
 use crate::CONTEXTS_NAME;
-use crate::FLOAT2_VAR_SLICE;
+use crate::{FLOAT2_VAR_OR_NONE_SLICE, FLOAT2_VAR_SLICE};
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;

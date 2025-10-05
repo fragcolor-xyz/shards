@@ -13,7 +13,7 @@ use crate::shards::shard::Shard;
 use crate::util::{self};
 use crate::{shards::shard, util::with_possible_panic};
 
-use crate::{CONTEXTS_NAME, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
+use crate::{CONTEXTS_NAME, FLOAT_VAR_OR_NONE_SLICE, FLOAT_VAR_SLICE, PARENTS_UI_NAME};
 
 pub struct AutoGrid {
   pub max_grid_width: Option<f32>,
