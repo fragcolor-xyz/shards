@@ -94,7 +94,7 @@ lazy_static! {
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
 }
 
-// Helper function to detect shell prompts
+// Helper function to detect shell prompts (NOT interactive program prompts)
 fn is_prompt(text: &str) -> bool {
     // Strip ANSI codes first before checking for prompt
     let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
@@ -103,13 +103,22 @@ fn is_prompt(text: &str) -> bool {
     let lines: Vec<&str> = cleaned.lines().collect();
     if let Some(last) = lines.last() {
         let trimmed = last.trim();
-        // Check for common shell prompt patterns
+
+        // Exclude interactive program prompts like >>> (Python), >> (continuation)
+        // These indicate we're IN a program, not at the shell
+        if trimmed.ends_with(">>>") || trimmed.ends_with(">>") {
+            return false;
+        }
+
+        // Check for common SHELL prompt patterns only
         trimmed.ends_with("$ ")
             || trimmed.ends_with("$")
             || trimmed.ends_with("# ")
             || trimmed.ends_with("#")
-            || trimmed.ends_with("> ")
-            || trimmed.ends_with(">")
+            || trimmed.ends_with("> ")  // Windows/PowerShell prompt
+            || trimmed.ends_with(">")   // Single > is OK (but not >> or >>>)
+            || trimmed.ends_with("% ")  // zsh prompt
+            || trimmed.ends_with("%")   // zsh prompt
     } else {
         false
     }
@@ -450,13 +459,16 @@ impl BlockingShard for ExecuteShard {
         // Read output with timeout-based prompt detection
         let mut output_buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
-        let mut timeout_count = 0;
-        let max_timeout_count = 30; // 3 seconds total (30 * 100ms)
+        let mut no_data_count = 0;
+        let max_iterations = 50; // 5 seconds total (50 * 100ms)
         let mut prompt_detected = false;
 
         shlog_trace!("Starting to read command output");
 
-        for iteration in 0..max_timeout_count {
+        // Give shell time to process and echo the command
+        std::thread::sleep(Duration::from_millis(200));
+
+        for iteration in 0..max_iterations {
             let read_result = {
                 let mut channel = ssh_shell.channel.lock()
                     .map_err(|_| "SSH channel lock poisoned")?;
@@ -500,18 +512,28 @@ impl BlockingShard for ExecuteShard {
                     shlog_trace!("Prompt detected in output, command completed");
                     break;
                 }
-                timeout_count = 0; // Reset timeout count on new data
+                no_data_count = 0; // Reset no-data count on new data
             } else {
-                timeout_count += 1;
+                no_data_count += 1;
                 shlog_trace!(
-                    "No data (iteration {}), timeout_count: {}, buffer_empty: {}",
+                    "No data (iteration {}), no_data_count: {}, buffer_empty: {}",
                     iteration,
-                    timeout_count,
+                    no_data_count,
                     output_buffer.is_empty()
                 );
-                if timeout_count >= 15 && !output_buffer.is_empty() {
-                    // No output for 1.5 seconds, likely interactive
-                    shlog_trace!("Command appears to be interactive (timeout without prompt)");
+
+                // Only consider interactive if we have output AND consistent no-data period
+                // AND we're past the minimum wait time
+                if no_data_count >= 20 && !output_buffer.is_empty() && iteration >= 10 {
+                    // Check one more time if there's a prompt we might have missed
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    if is_prompt(&output_str) {
+                        prompt_detected = true;
+                        shlog_trace!("Prompt detected on final check");
+                        break;
+                    }
+                    // No output for 2 seconds after having received some data, likely interactive
+                    shlog_trace!("Command appears to be interactive (no new data for 2s)");
                     break;
                 }
             }
@@ -805,7 +827,9 @@ impl Shard for IsConnectedShard {
             unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
         let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
 
-        // Check connection status
+        // Check connection status flag
+        // Note: We don't probe the connection here to avoid consuming data from the channel
+        // The flag is set to false whenever a connection error is detected in Execute/SendInput
         let is_connected = ssh_shell.is_connected.lock()
             .map_err(|_| "Connection state lock poisoned")?;
 
