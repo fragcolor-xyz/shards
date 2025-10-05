@@ -47,7 +47,7 @@ lazy_static! {
   static ref GFX_QUEUE_TYPES: Vec<Type> = vec![*GFX_QUEUE_TYPE];
   static ref GFX_QUEUE_VAR: Type = Type::context_variable(&GFX_QUEUE_TYPES);
   static ref GFX_QUEUE_VAR_TYPES: Vec<Type> = vec![*GFX_QUEUE_VAR];
-  static ref GFX_QUEUE_VAR_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, *GFX_QUEUE_VAR];
+  static ref GFX_QUEUE_VAR_OR_NONE_TYPES: Vec<Type> = vec![common_type::none, *GFX_QUEUE_TYPE, *GFX_QUEUE_VAR];
   static ref UI_OUTPUT_TYPES: Vec<Type> = vec![UI_OUTPUT_TYPE];
   static ref UI_OUTPUT_SEQ_TYPE: Type = Type::seq(&UI_OUTPUT_TYPES);
   static ref UI_OUTPUT_SEQ_TYPES: Vec<Type> = vec![*UI_OUTPUT_SEQ_TYPE];
