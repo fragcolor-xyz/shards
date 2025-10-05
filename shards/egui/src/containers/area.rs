@@ -21,7 +21,7 @@ lazy_static! {
 struct AreaShard {
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
   pub contents: ShardsVar,
-  #[shard_param("Position", "Defines the position of the UI element. If 'Anchor' is set, this acts as a relative offset (X/Y). Accepts fixed and variable float2 types.", [common_type::float2, common_type::float2_var])]
+  #[shard_param("Position", "Defines the position of the UI element. If 'Anchor' is set, this acts as a relative offset (X/Y). Accepts fixed and variable float2 types.", [common_type::none, common_type::float2, common_type::float2_var])]
   pub position: ParamVar,
   #[shard_param("Pivot", "Specifies the pivot point of the UI element. Can be any predefined anchor type or variable.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub pivot: ParamVar,
