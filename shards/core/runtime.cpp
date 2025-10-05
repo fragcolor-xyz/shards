@@ -2618,8 +2618,11 @@ bool shards_collect_required_variables_typed(const SHInstanceData *data, SHExpos
   } catch (const shards::ComposeError &e) {
     SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
     return false;
+  } catch (const std::exception &e) {
+    SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
+    return false;
   } catch (...) {
-    SHLOG_ERROR("Unknown error during type validation for parameter {}", debugTag);
+    SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
     return false;
   }
 }
