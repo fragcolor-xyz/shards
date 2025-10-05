@@ -41,9 +41,9 @@ struct ImageButton {
     SHARDS_OR_NONE_TYPES
   )]
   action: ShardsVar,
-  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
+  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_OR_NONE_SLICE)]
   scale: ParamVar,
-  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_SLICE)]
+  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_OR_NONE_SLICE)]
   size: ParamVar,
   #[shard_param("ScalingAware", "When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.", BOOL_VAR_OR_NONE_SLICE)]
   scaling_aware: ParamVar,

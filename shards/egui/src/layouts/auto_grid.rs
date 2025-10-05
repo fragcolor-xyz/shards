@@ -234,9 +234,9 @@ struct AutoGridShard {
   pub max_grid_width: ParamVar,
   #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
   pub item_width: ParamVar,
-  #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_SLICE)]
+  #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_OR_NONE_SLICE)]
   pub column_spacing: ParamVar,
-  #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_SLICE)]
+  #[shard_param("RowSpacing", "Spacing between rows.", FLOAT_VAR_OR_NONE_SLICE)]
   pub row_spacing: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
