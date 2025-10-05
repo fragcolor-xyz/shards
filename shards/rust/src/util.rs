@@ -142,10 +142,19 @@ pub fn collect_required_variables_typed(
   valid_types: &[Type],
   param_name: &str,
 ) -> Result<(), &'static str> {
-  let types_info = SHTypesInfo {
-    elements: valid_types.as_ptr() as *mut Type,
-    len: valid_types.len() as u32,
-    cap: 0,
+  // Handle empty types array - create a properly aligned non-null pointer
+  let types_info = if valid_types.is_empty() {
+    SHTypesInfo {
+      elements: std::ptr::NonNull::dangling().as_ptr(),
+      len: 0,
+      cap: 0,
+    }
+  } else {
+    SHTypesInfo {
+      elements: valid_types.as_ptr() as *mut Type,
+      len: valid_types.len() as u32,
+      cap: 0,
+    }
   };
 
   let c_param_name = CString::new(param_name).map_err(|_| "Invalid parameter name")?;
