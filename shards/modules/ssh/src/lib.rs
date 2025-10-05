@@ -124,17 +124,19 @@ fn is_prompt(text: &str) -> bool {
     }
 }
 
-// Helper function to clean output (remove ANSI codes, command echo, prompts)
-fn clean_output(output: &str, cmd: &str) -> String {
+// Helper function to clean output (remove ANSI codes, control chars, and trailing prompts)
+fn clean_output(output: &str) -> String {
     // Strip ANSI escape sequences
     let stripped_bytes = strip_ansi_escapes::strip(output);
     let text = String::from_utf8_lossy(&stripped_bytes);
-    let mut lines: Vec<&str> = text.lines().collect();
 
-    // Remove command echo (first line if it matches the command)
-    if lines.first().map_or(false, |l| l.trim() == cmd.trim() || l.contains(cmd)) {
-        lines.remove(0);
-    }
+    // Remove control characters (except newlines and tabs)
+    // This handles backspace (\b), carriage return (\r), etc. from ZSH ZLE
+    let no_control: String = text.chars()
+        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+        .collect();
+
+    let mut lines: Vec<&str> = no_control.lines().collect();
 
     // Remove trailing prompt if present
     if !lines.is_empty() {
@@ -144,7 +146,7 @@ fn clean_output(output: &str, cmd: &str) -> String {
         }
     }
 
-    // Join lines and remove empty lines at start/end
+    // Join lines and trim
     let result = lines.join("\n");
     result.trim().to_string()
 }
@@ -320,7 +322,67 @@ impl BlockingShard for ConnectShard {
             std::thread::sleep(Duration::from_millis(100));
         }
 
-        shlog_trace!("SSH connection established, shell ready");
+        shlog_trace!("Shell ready, attempting to switch to bash for consistent behavior");
+
+        // Try to switch to bash (inherits environment from login shell)
+        // This is necessary because zsh ignores stty -icanon -echo due to ZLE
+        // If bash is not available, we'll continue with the current shell
+        let _ = channel.write_all(b"command -v bash >/dev/null 2>&1 && exec bash --login\n");
+        let _ = channel.flush();
+
+        // Wait for bash to start (or current shell to continue) and show prompt
+        std::thread::sleep(Duration::from_millis(500));
+        output_buffer.clear();
+        let mut bash_switched = false;
+        for _ in 0..10 {
+            match channel.read(&mut temp_buf) {
+                Ok(n) if n > 0 => {
+                    output_buffer.extend_from_slice(&temp_buf[..n]);
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    // If we see a prompt, we're ready (either bash started or still in original shell)
+                    if is_prompt(&output_str) {
+                        // Check if output contains "bash" to see if we switched
+                        bash_switched = !output_str.contains("command not found") &&
+                                       !output_str.contains("not found");
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        if bash_switched {
+            shlog_trace!("Switched to bash, disabling echo and canonical mode");
+        } else {
+            shlog_trace!("Bash not available or switch failed, continuing with current shell");
+        }
+
+        // Disable echo and canonical mode to prevent command echoes
+        // -echo: stops kernel echo
+        // -icanon: disables canonical mode (line buffering)
+        // This works reliably in bash (unlike zsh where ZLE interferes)
+        let _ = channel.write_all(b"stty -icanon -echo\n");
+        let _ = channel.flush();
+
+        // Drain the command and its output
+        std::thread::sleep(Duration::from_millis(300));
+        output_buffer.clear();
+        for _ in 0..10 {
+            match channel.read(&mut temp_buf) {
+                Ok(n) if n > 0 => {
+                    output_buffer.extend_from_slice(&temp_buf[..n]);
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    if is_prompt(&output_str) {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+
+        shlog_trace!("SSH connection established, echo disabled");
 
         // Create SSHShell object
         let ssh_shell = SSHShell {
@@ -431,11 +493,36 @@ impl BlockingShard for ExecuteShard {
                 .map_err(|_| "Interactive state lock poisoned")?;
             if pending.is_some() {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
-                // Send Ctrl+C to cancel
-                let mut channel = ssh_shell.channel.lock()
-                    .map_err(|_| "SSH channel lock poisoned")?;
-                let _ = channel.write_all(&[3]);
-                std::thread::sleep(Duration::from_millis(100));
+
+                // Send Ctrl+C to cancel the interactive command
+                {
+                    let mut channel = ssh_shell.channel.lock()
+                        .map_err(|_| "SSH channel lock poisoned")?;
+                    let _ = channel.write_all(&[3]);
+                    let _ = channel.flush();
+                }
+
+                // Give the shell time to process Ctrl+C
+                std::thread::sleep(Duration::from_millis(300));
+
+                // Drain any Ctrl+C response or garbage from the buffer
+                // This ensures the channel is clean before we send the next command
+                {
+                    let mut channel = ssh_shell.channel.lock()
+                        .map_err(|_| "SSH channel lock poisoned")?;
+                    let mut drain_buf = [0u8; 4096];
+                    // Try to drain for up to 500ms
+                    for _ in 0..5 {
+                        match channel.read(&mut drain_buf) {
+                            Ok(n) if n > 0 => {
+                                shlog_trace!("Drained {} bytes after Ctrl+C", n);
+                            }
+                            _ => break, // No more data or would block
+                        }
+                        std::thread::sleep(Duration::from_millis(100));
+                    }
+                }
+
                 *pending = None;
             }
         }
@@ -454,6 +541,8 @@ impl BlockingShard for ExecuteShard {
                 }
                 return Err("Failed to send command");
             }
+            // Flush to ensure command is fully transmitted before we start reading
+            let _ = channel.flush();
         }
 
         // Read output with timeout-based prompt detection
@@ -547,7 +636,7 @@ impl BlockingShard for ExecuteShard {
         if prompt_detected {
             // Command completed normally
             let final_output = if should_clean {
-                clean_output(&output_str, cmd)
+                clean_output(&output_str)
             } else {
                 output_str
             };
@@ -565,7 +654,7 @@ impl BlockingShard for ExecuteShard {
             }
 
             let partial_output = if should_clean {
-                clean_output(&output_str, cmd)
+                clean_output(&output_str)
             } else {
                 output_str
             };
