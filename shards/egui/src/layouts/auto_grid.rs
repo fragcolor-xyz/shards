@@ -230,9 +230,9 @@ struct AutoGridShard {
     BOOL_VAR_OR_NONE_SLICE
   )]
   pub striped: ParamVar,
-  #[shard_param("MaxGridWidth", "Maximum grid width.", FLOAT_VAR_SLICE)]
+  #[shard_param("MaxGridWidth", "Maximum grid width.", FLOAT_VAR_OR_NONE_SLICE)]
   pub max_grid_width: ParamVar,
-  #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_SLICE)]
+  #[shard_param("ItemWidth", "The width of each item.", FLOAT_VAR_OR_NONE_SLICE)]
   pub item_width: ParamVar,
   #[shard_param("ColumnSpacing", "Spacing between columns.", FLOAT_VAR_OR_NONE_SLICE)]
   pub column_spacing: ParamVar,
@@ -247,7 +247,7 @@ struct AutoGridShard {
   #[shard_param(
     "MaxTileHeight",
     "Maximum height of each tile for viewport culling.",
-    FLOAT_VAR_SLICE
+    FLOAT_VAR_OR_NONE_SLICE
   )]
   pub max_tile_height: ParamVar,
 }
