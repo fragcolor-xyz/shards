@@ -98,6 +98,8 @@ extern "C" {
     valid_types: *const SHTypesInfo,
     debug_tag: *const c_char,
   ) -> bool;
+
+  fn shards_array_free(arr: *mut SHExposedTypesInfo);
 }
 
 /// Check if a type can possibly contain context variables
@@ -163,19 +165,43 @@ pub fn collect_required_variables_typed(
 
   let c_param_name = CString::new(param_name).map_err(|_| "Invalid parameter name")?;
 
+  // Create a temporary C++ allocated array to receive the results
+  // We MUST NOT pass Rust Vec directly because C++ will use shards::arrayPush
+  // which is incompatible with Rust's allocator
+  let mut temp_out = SHExposedTypesInfo {
+    elements: std::ptr::null_mut(),
+    len: 0,
+    cap: 0,
+  };
+
   let success = unsafe {
     shards_collect_required_variables_typed(
       data as *const SHInstanceData,
-      out as *mut ExposedTypes as *mut SHExposedTypesInfo,
+      &mut temp_out as *mut SHExposedTypesInfo,
       var as *const SHVar,
       &types_info as *const SHTypesInfo,
       c_param_name.as_ptr(),
     )
   };
 
+  // Copy results from C++ array to Rust Vec, then free C++ array
   if success {
+    unsafe {
+      if temp_out.len > 0 && !temp_out.elements.is_null() {
+        for i in 0..temp_out.len {
+          let elem = *temp_out.elements.offset(i as isize);
+          out.push(elem);
+        }
+      }
+      // Free the C++ allocated array
+      shards_array_free(&mut temp_out);
+    }
     Ok(())
   } else {
+    unsafe {
+      // Still need to free even on failure
+      shards_array_free(&mut temp_out);
+    }
     Err("Type validation failed for parameter")
   }
 }

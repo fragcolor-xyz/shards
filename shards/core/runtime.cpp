@@ -2627,6 +2627,12 @@ bool shards_collect_required_variables_typed(const SHInstanceData *data, SHExpos
   }
 }
 
+void shards_array_free(SHExposedTypesInfo *arr) {
+  if (arr) {
+    shards::arrayFree(*arr);
+  }
+}
+
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto &wire = SHWire::sharedFromRef(wireRef);
   std::string_view nameView{name, nameLen};
