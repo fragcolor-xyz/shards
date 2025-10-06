@@ -1168,7 +1168,7 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
-inline void logFormatErrorStack(CompositionContext *context) {
+inline std::string logFormatErrorStack(CompositionContext *context) {
   std::string e;
   for (size_t i = 0;;) {
     auto &err = context->errorStack[i];
@@ -1194,6 +1194,7 @@ inline void logFormatErrorStack(CompositionContext *context) {
     e += "\n";
   }
   SHLOG_ERROR("{}", e);
+  return e;
 }
 } // namespace shards
 
@@ -1204,8 +1205,8 @@ inline SHComposeResult prettyComposeWithContext(const SHWire *wire, SHInstanceDa
     auto validation = shards::composeWire(wire, data);
     return validation;
   } catch (const std::exception &e) {
-    logFormatErrorStack(&privateContext);
-    throw;
+    auto err = logFormatErrorStack(&privateContext);
+    throw ComposeError(err);
   }
 }
 
