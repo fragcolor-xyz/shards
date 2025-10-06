@@ -10,7 +10,7 @@ use crate::Anchor;
 use crate::ANCHOR_TYPES;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_OUTPUT_EQUAL_INPUT;
-use crate::{CONTEXTS_NAME, FLOAT2_VAR_SLICE, PARENTS_UI_NAME};
+use crate::{CONTEXTS_NAME, FLOAT2_VAR_OR_NONE_SLICE, PARENTS_UI_NAME};
 use num_traits::clamp;
 use shards::shard;
 use shards::shard::Shard;
@@ -47,7 +47,7 @@ struct WindowShard {
   #[shard_param(
     "Position",
     "Absolute position; or when anchor is set, relative offset.",
-    FLOAT2_VAR_SLICE
+    FLOAT2_VAR_OR_NONE_SLICE
   )]
   pub position: ParamVar,
   #[shard_param("Anchor", "Corner or center of the screen.", ANCHOR_TYPES)]

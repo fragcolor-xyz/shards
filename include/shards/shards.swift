@@ -1165,6 +1165,8 @@ class ShardsVar {
     private var nativeShards = shards.Shards()
     private var composeResult = SHComposeResult()
     private var paramValue = OwnedVar()
+    private var requiredVariables = ExposedTypes()
+    private var exposedVariables = ExposedTypes()
 
     private func reset() {
         // Free all shards
@@ -1184,6 +1186,9 @@ class ShardsVar {
         }
 
         composeResult = SHComposeResult()
+
+        requiredVariables = ExposedTypes()
+        exposedVariables = ExposedTypes()
     }
 
     func cleanup(context: Context) -> Result<Void, ShardError> {
@@ -1259,6 +1264,11 @@ class ShardsVar {
             return .failure(ShardError(message: composeResult.failureMessage.string))
         }
 
+        requiredVariables = .init()
+        requiredVariables.extend(types: composeResult.requiredInfo)
+        exposedVariables = .init()
+        exposedVariables.extend(types: composeResult.exposedInfo)
+
         return .success(composeResult)
     }
 
@@ -1294,12 +1304,12 @@ class ShardsVar {
         return shardsPtrs.isEmpty
     }
 
-    func getExposing() -> SHExposedTypesInfo {
-        return composeResult.exposedInfo
+    func getExposing() -> ExposedTypes {
+        return exposedVariables
     }
 
-    func getRequiring() -> SHExposedTypesInfo {
-        return composeResult.requiredInfo
+    func getRequiring() -> ExposedTypes {
+        return requiredVariables
     }
 
     deinit {
@@ -1787,11 +1797,13 @@ extension IShard {}
 
     // Error path unchanged - not performance critical
     if case let .failure(error) = result {
-        var errorMsg = SHStringWithLen()
-        let error = error.message.utf8CString
-        errorMsg.string = error.withUnsafeBufferPointer { $0.baseAddress }
-        errorMsg.len = UInt64(error.count - 1)
-        G.Core.pointee.abortWire(ctx, errorMsg)
+        error.message.withCString { cString in
+            var shString = SHStringWithLen()
+            shString.string = cString
+            let length = error.message.lengthOfBytes(using: .utf8)
+            shString.len = UInt64(length)
+            G.Core.pointee.abortWire(ctx, shString)
+        }
     }
 
     return UnsafePointer(outputPtr)

@@ -1180,6 +1180,10 @@ typedef void(__cdecl *SHRegisterVariableChangeEvent)(SHMeshRef mesh, void *userD
                                                                       const struct SHVar *var));
 typedef void(__cdecl *SHUnregisterVariableChangeEvent)(SHMeshRef mesh, void *userData);
 
+typedef SHBool(__cdecl *SHCollectRequiredVariablesTyped)(const struct SHInstanceData *data, SHExposedTypesInfo *out,
+                                                         const struct SHVar *var, const SHTypesInfo *validTypes,
+                                                         SHString debugTag);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1400,6 +1404,9 @@ typedef struct _SHCore {
   // Utility to register variable change event
   SHRegisterVariableChangeEvent registerVariableChangeEvent;
   SHUnregisterVariableChangeEvent unregisterVariableChangeEvent;
+
+  // Utility to collect required variables with type validation
+  SHCollectRequiredVariablesTyped collectRequiredVariablesTyped;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

@@ -1276,6 +1276,12 @@ struct Set : public SetUpdateBase {
 
   SHTypeInfo _tableType{};
 
+  ~Set() {
+    // cleanup any previous table type info
+    shards::arrayFree(_tableType.table.keys);
+    shards::arrayFree(_tableType.table.types);
+  }
+
   static SHOptionalString help() { return SHCCSTR("Creates a mutable variable and assigns a value to it."); }
 
   static inline Parameters setParamsInfo{
@@ -1304,6 +1310,10 @@ struct Set : public SetUpdateBase {
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     _self = data.shard;
+
+    // cleanup any previous table type info
+    shards::arrayFree(_tableType.table.keys);
+    shards::arrayFree(_tableType.table.types);
 
     const SHExposedTypeInfo *existingExposedType = setBaseCompose(data, true, false, false);
 
@@ -1415,7 +1425,13 @@ struct Set : public SetUpdateBase {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
         throw WarmupError("Cannot add metadata to global variable because mesh is not available");
       } else {
-        mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+        if (_isTable) {
+          // Table types can change, so we need to force the metadata update
+          mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]), true);
+        } else {
+          // Regular types can't change, so we can just set the metadata and fail if it already exists
+          mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+        }
       }
     }
   }
@@ -1425,12 +1441,6 @@ struct Set : public SetUpdateBase {
     SetBase::cleanup(context);
 
     _onStartConnection.release();
-
-    // for (size_t i = 0; i < _tableType.table.keys.len; i++) {
-    //   shards::destroyVar(_tableType.table.keys.elements[i]);
-    // }
-    shards::arrayFree(_tableType.table.keys);
-    shards::arrayFree(_tableType.table.types);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {

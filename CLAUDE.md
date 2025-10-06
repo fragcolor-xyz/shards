@@ -67,6 +67,12 @@ Shards is a flow-based programming language with a unique data flow paradigm. Co
 - **Test Types**: Core language, graphics (gfx-*), UI, physics, networking
 - Tests create tag files in `shards/tests/tag_ok/` and `shards/tests/tag_err/`
 
+### Debugging and Logging
+- **Log Levels**: Control logging verbosity with environment variables
+- **Shards Log**: `LOG_shards=debug shards script.shs` - Enable debug logging for shards runtime
+- **Log Levels**: `trace`, `debug`, `info`, `warning`, `error`
+- Example: `LOG_shards=trace shards script.shs` - Show all trace-level logs including detailed path validation
+
 ## Key Directories
 
 ### Source Code
@@ -101,3 +107,5 @@ The build system supports multiple platforms (macOS, Linux, Windows, iOS, etc.).
 
 ### Swift Integration
 Swift files provide iOS/macOS bindings. The main interface is in `include/shards/shards.swift` with module-specific implementations in various directories.
+
+- just run `cmake --build build/debug --target shards` to simply build

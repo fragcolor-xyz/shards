@@ -82,6 +82,9 @@ struct StructBase {
     Tags tag;
   };
 
+  // Maximum struct size to prevent memory exhaustion (16MB)
+  static constexpr size_t MAX_STRUCT_SIZE = 16 * 1024 * 1024;
+
   static inline std::vector<std::regex> rexes{
       std::regex("i8\\[\\d+\\]"),  // i8 array
       std::regex("i16\\[\\d+\\]"), // i16 array
@@ -138,44 +141,63 @@ struct StructBase {
       _members.push_back(d);
 
       // compute size
+      size_t elemSize = 0;
       switch (d.tag) {
       case Tags::i8Array:
-        _size += d.arrlen;
+        elemSize = d.arrlen;
         break;
       case Tags::i16Array:
-        _size += 2 * d.arrlen;
+        if (d.arrlen > SIZE_MAX / 2) {
+          throw SHException("Array size overflow: i16 array too large");
+        }
+        elemSize = 2 * d.arrlen;
         break;
       case Tags::f32Array:
       case Tags::i32Array:
-        _size += 4 * d.arrlen;
+        if (d.arrlen > SIZE_MAX / 4) {
+          throw SHException("Array size overflow: array too large");
+        }
+        elemSize = 4 * d.arrlen;
         break;
       case Tags::f64Array:
       case Tags::i64Array:
-        _size += 8 * d.arrlen;
+        if (d.arrlen > SIZE_MAX / 8) {
+          throw SHException("Array size overflow: array too large");
+        }
+        elemSize = 8 * d.arrlen;
         break;
       case Tags::i8:
-        _size += 1;
+        elemSize = 1;
         break;
       case Tags::i16:
-        _size += 2;
+        elemSize = 2;
         break;
       case Tags::f32:
       case Tags::i32:
-        _size += 4;
+        elemSize = 4;
         break;
       case Tags::f64:
       case Tags::i64:
-        _size += 8;
+        elemSize = 8;
         break;
       case Tags::Bool:
-        _size += 1;
+        elemSize = 1;
         break;
       case Tags::Pointer:
-        _size += sizeof(uintptr_t);
+        elemSize = sizeof(uintptr_t);
         break;
       case Tags::String:
-        _size += sizeof(uintptr_t);
+        elemSize = sizeof(uintptr_t);
         break;
+      }
+
+      // Check for size overflow and max size limit
+      if (_size > SIZE_MAX - elemSize) {
+        throw SHException("Struct size overflow: total size exceeds maximum");
+      }
+      _size += elemSize;
+      if (_size > MAX_STRUCT_SIZE) {
+        throw SHException("Struct size exceeds maximum allowed size of " + std::to_string(MAX_STRUCT_SIZE) + " bytes");
       }
 
       t.next();
@@ -232,6 +254,9 @@ struct Pack : public StructBase {
   }
 
   template <typename T, typename CT> void write(const CT input, size_t offset) {
+    if (offset + sizeof(T) > _storage.size()) {
+      throw ActivationError("Buffer overflow: attempting to write beyond allocated storage");
+    }
     T x = static_cast<T>(input);
     memcpy(&_storage.front() + offset, &x, sizeof(T));
   }
@@ -240,6 +265,10 @@ struct Pack : public StructBase {
   void writeMany(const SHSeq &input, CT SHVarPayload::*value, size_t offset, size_t len) {
     if (len != (size_t)input.len) {
       throw ActivationError("Expected " + std::to_string(len) + " size sequence as value");
+    }
+
+    if (offset + (len * sizeof(T)) > _storage.size()) {
+      throw ActivationError("Buffer overflow: attempting to write array beyond allocated storage");
     }
 
     for (size_t i = 0; i < len; i++) {
@@ -423,6 +452,9 @@ struct Unpack : public StructBase {
   }
 
   template <typename T, typename CT> void read(CT &output, const uint8_t *input, size_t offset) {
+    if (offset + sizeof(T) > _size) {
+      throw ActivationError("Buffer overflow: attempting to read beyond input buffer size");
+    }
     T x;
     memcpy(&x, input + offset, sizeof(T));
     output = static_cast<CT>(x);
@@ -433,8 +465,16 @@ struct Unpack : public StructBase {
 
     uint8_t *inputData = nullptr;
     if (input.valueType == SHType::Bytes) {
+      if (input.payload.bytesSize < _size) {
+        throw ActivationError("Input buffer too small: expected at least " + std::to_string(_size) + " bytes, got " +
+                              std::to_string(input.payload.bytesSize));
+      }
       inputData = (uint8_t *)input.payload.bytesValue;
     } else {
+      // Int type is treated as pointer - cannot validate much beyond null check
+      if (input.payload.intValue == 0) {
+        throw ActivationError("Null pointer provided as input");
+      }
       inputData = reinterpret_cast<uint8_t *>(input.payload.intValue);
     }
 
@@ -525,7 +565,18 @@ struct BytesBuffer {
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _storage.resize(input.payload.intValue);
+    auto size = input.payload.intValue;
+    if (size < 0) {
+      throw ActivationError("Buffer size cannot be negative");
+    }
+    if (static_cast<size_t>(size) > StructBase::MAX_STRUCT_SIZE) {
+      throw ActivationError("Buffer size exceeds maximum allowed size of " +
+                            std::to_string(StructBase::MAX_STRUCT_SIZE) + " bytes");
+    }
+    _storage.resize(size);
+    if (_storage.empty()) {
+      return Var((uint8_t *)nullptr, 0);
+    }
     return Var(&_storage.front(), _storage.size());
   }
 };
@@ -544,7 +595,7 @@ RUNTIME_SHARD_END(Unpack);
 SHARDS_REGISTER_FN(struct) {
   REGISTER_CORE_SHARD(Pack);
   REGISTER_CORE_SHARD(Unpack);
-  REGISTER_SHARD("PtrToString", PtrToString);
+  REGISTER_SHARD("PtrToString!", PtrToString);
   REGISTER_SHARD("BytesBuffer", BytesBuffer);
 }
 } // namespace shards

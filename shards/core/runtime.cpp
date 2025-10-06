@@ -2611,6 +2611,28 @@ const SHObjectInfo *shards_get_object_info(int64_t id) {
   return shards::findObjectInfo(vendorId, typeId);
 }
 
+bool shards_collect_required_variables_typed(const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
+                                             const SHTypesInfo *validTypes, const char *debugTag) {
+  try {
+    return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
+  } catch (const shards::ComposeError &e) {
+    SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
+    return false;
+  } catch (const std::exception &e) {
+    SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
+    return false;
+  } catch (...) {
+    SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
+    return false;
+  }
+}
+
+void shards_array_free(SHExposedTypesInfo *arr) {
+  if (arr) {
+    shards::arrayFree(*arr);
+  }
+}
+
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto &wire = SHWire::sharedFromRef(wireRef);
   std::string_view nameView{name, nameLen};
@@ -3178,6 +3200,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->unregisterVariableChangeEvent = [](SHMeshRef mesh, void *userData) {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
     (*smesh)->unregisterVariableChangeEvent(userData);
+  };
+
+  result->collectRequiredVariablesTyped = [](const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
+                                             const SHTypesInfo *validTypes, const char *debugTag) -> SHBool {
+    return shards_collect_required_variables_typed(data, out, var, validTypes, debugTag);
   };
 
   result->fastStringStore = [](SHStringWithLen str) {

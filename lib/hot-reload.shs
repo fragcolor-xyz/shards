@@ -57,7 +57,7 @@
             Shards.Distill(
               Context: @capture-eval-context
               Name: #(script-path | FS.Filename(true))
-              Namespace: namespace
+              Namespace: #(namespace)
             ) = wire
             
             hot-result:tag = old-tag

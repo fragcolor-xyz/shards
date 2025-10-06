@@ -21,11 +21,11 @@ lazy_static! {
 struct AreaShard {
   #[shard_param("Contents", "The UI contents.", SHARDS_OR_NONE_TYPES)]
   pub contents: ShardsVar,
-  #[shard_param("Position", "Defines the position of the UI element. If 'Anchor' is set, this acts as a relative offset (X/Y). Accepts fixed and variable float2 types.", [common_type::float2, common_type::float2_var])]
+  #[shard_param("Position", "Defines the position of the UI element. If 'Anchor' is set, this acts as a relative offset (X/Y). Accepts fixed and variable float2 types.", [common_type::none, common_type::float2, common_type::float2_var])]
   pub position: ParamVar,
-  #[shard_param("Pivot", "Specifies the pivot point of the UI element. Can be any predefined anchor type or variable.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Pivot", "Specifies the pivot point of the UI element. Can be any predefined anchor type or variable.", [common_type::none, *crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub pivot: ParamVar,
-  #[shard_param("Anchor", "Determines the side of the screen where the UI element is anchored. Accepts predefined anchor types or variables.", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Anchor", "Determines the side of the screen where the UI element is anchored. Accepts predefined anchor types or variables.", [common_type::none, *crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub anchor: ParamVar,
   #[shard_param("Order", "Sets the rendering layer for the UI element. The default layer is 'background'.", [*crate::ORDER_TYPE])]
   pub order: ParamVar,
@@ -138,9 +138,9 @@ struct SubAreaShard {
   pub contents: ShardsVar,
   #[shard_param("Offset", "Relative offset. (X/Y)", [common_type::float2, common_type::float2_var])]
   pub offset: ParamVar,
-  #[shard_param("Anchor", "The anchor for the inner UI, relative to the available space", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Anchor", "The anchor for the inner UI, relative to the available space", [common_type::none, *crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub anchor: ParamVar,
-  #[shard_param("Pivot", "The pivot for the inner UI", [*crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
+  #[shard_param("Pivot", "The pivot for the inner UI", [common_type::none, *crate::ANCHOR_TYPE, *ANCHOR_VAR_TYPE])]
   pub pivot: ParamVar,
   parents: ParamVar,
   inner_exposed: ExposedTypes,
