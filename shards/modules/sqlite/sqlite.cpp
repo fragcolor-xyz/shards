@@ -251,13 +251,15 @@ struct Connection {
   static inline std::shared_mutex globalMutex;
 
   // Helper for transaction lock acquisition with cancellation support
-  bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex> &lock, SHContext *context, std::atomic<bool> &cancelled) {
-    while (context->shouldContinue() && !cancelled.load()) {
+  bool tryLockTransactionWithTimeout(std::unique_lock<std::mutex> &lock, SHContext *context) {
+    while (context->shouldContinue()) {
       if (transactionMutex.try_lock()) {
         lock = std::unique_lock<std::mutex>(transactionMutex, std::adopt_lock);
         return true;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      const auto ss = shards::suspend(context, 0.0);
+      if (ss != SHWireState::Continue)
+        return false;
     }
     return false;
   }
@@ -647,81 +649,68 @@ struct Query : public Base {
     }
     _ensureDb(context, _readOnly.get().payload.boolValue);
 
-    // prevent data race on output, as await code might run in parallel with regular mesh!
     OutputType &output = _output[_outputCount++ % 2];
 
-    // Use cancellation flag to interrupt lock acquisition
-    std::atomic<bool> cancelled{false};
+    // ok if we are not within a transaction, we need to check if transaction lock is locked!
+    std::optional<std::unique_lock<std::mutex>> transactionLock;
+    if (!_withinTransaction) {
+      if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context)) {
+        throw ActivationError("Failed to acquire transaction lock or cancelled");
+      }
+    }
+    std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+    std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-    return awaitne(
-        context,
-        [&]() -> SHVar {
-          // ok if we are not within a transaction, we need to check if transaction lock is locked!
-          std::optional<std::unique_lock<std::mutex>> transactionLock;
-          if (!_withinTransaction) {
-            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock or cancelled");
-            }
-          }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+    if (!prepared) {
+      prepared.reset(new Statement(_connection->get(), _query.get().payload.stringValue)); // _query is full terminated cos cloned
+    }
 
-          if (!prepared) {
-            prepared.reset(
-                new Statement(_connection->get(), _query.get().payload.stringValue)); // _query is full terminated cos cloned
-          }
+    DEFER({
+      // it is better to do this at the end, as this will also trigger implicit commit and unlock write lock
+      sqlite3_reset(prepared->get());
+      sqlite3_clear_bindings(prepared->get());
+    });
 
-          DEFER({
-            // it is better to do this at the end, as this will also trigger implicit commit and unlock write lock
-            sqlite3_reset(prepared->get());
-            sqlite3_clear_bindings(prepared->get());
-          });
+    int expectedNumParameters = sqlite3_bind_parameter_count(prepared->get());
 
-          int expectedNumParameters = sqlite3_bind_parameter_count(prepared->get());
+    int rc;
 
-          int rc;
+    int idx = 0;
+    for (auto value : input) {
+      idx++; // starting from 1 with sqlite
+      switch (value.valueType) {
+      case SHType::Bool:
+        rc = sqlite3_bind_int(prepared->get(), idx, int(value.payload.boolValue));
+        break;
+      case SHType::Int:
+        rc = sqlite3_bind_int64(prepared->get(), idx, value.payload.intValue);
+        break;
+      case SHType::Float:
+        rc = sqlite3_bind_double(prepared->get(), idx, value.payload.floatValue);
+        break;
+      case SHType::String: {
+        auto sv = SHSTRVIEW(value);
+        rc = sqlite3_bind_text(prepared->get(), idx, sv.data(), sv.size(), SQLITE_STATIC);
+      } break;
+      case SHType::Bytes:
+        rc = sqlite3_bind_blob(prepared->get(), idx, value.payload.bytesValue, value.payload.bytesSize, SQLITE_STATIC);
+        break;
+      case SHType::None:
+        rc = sqlite3_bind_null(prepared->get(), idx);
+        break;
+      default:
+        throw ActivationError("Unsupported Var type for sqlite");
+      }
+      if (rc != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(_connection->get()));
+      }
+    }
 
-          int idx = 0;
-          for (auto value : input) {
-            idx++; // starting from 1 with sqlite
-            switch (value.valueType) {
-            case SHType::Bool:
-              rc = sqlite3_bind_int(prepared->get(), idx, int(value.payload.boolValue));
-              break;
-            case SHType::Int:
-              rc = sqlite3_bind_int64(prepared->get(), idx, value.payload.intValue);
-              break;
-            case SHType::Float:
-              rc = sqlite3_bind_double(prepared->get(), idx, value.payload.floatValue);
-              break;
-            case SHType::String: {
-              auto sv = SHSTRVIEW(value);
-              rc = sqlite3_bind_text(prepared->get(), idx, sv.data(), sv.size(), SQLITE_STATIC);
-            } break;
-            case SHType::Bytes:
-              rc = sqlite3_bind_blob(prepared->get(), idx, value.payload.bytesValue, value.payload.bytesSize, SQLITE_STATIC);
-              break;
-            case SHType::None:
-              rc = sqlite3_bind_null(prepared->get(), idx);
-              break;
-            default:
-              throw ActivationError("Unsupported Var type for sqlite");
-            }
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(_connection->get()));
-            }
-          }
+    if (idx < expectedNumParameters)
+      throw ActivationError("Not enough parameters for query");
 
-          if (idx < expectedNumParameters)
-            throw ActivationError("Not enough parameters for query");
-
-          SH_SQLITE_DEBUG_LOG("sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
-          return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
-        },
-        [&] {
-          // Cancellation handler: signal to interrupt lock acquisition
-          cancelled.store(true);
-        });
+    SH_SQLITE_DEBUG_LOG("sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
+    return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
   }
 };
 
@@ -788,47 +777,41 @@ struct Transaction : public Base {
       SH_SUSPEND(context, 0);
     }
 
-    await(
-        context,
-        [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+    {
+      std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+      std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
-          auto rc = sqlite3_exec(_connection->get(), _immediate.payload.boolValue ? "BEGIN IMMEDIATE;" : "BEGIN DEFERRED;",
-                                 nullptr, nullptr, nullptr);
-          if (rc != SQLITE_OK) {
-            throw ActivationError(sqlite3_errmsg(_connection->get()));
-          }
-        },
-        []() {});
+      SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
+      auto rc = sqlite3_exec(_connection->get(), _immediate.payload.boolValue ? "BEGIN IMMEDIATE;" : "BEGIN DEFERRED;", nullptr,
+                             nullptr, nullptr);
+      if (rc != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(_connection->get()));
+      }
+    }
 
     SHVar output{};
     auto state = _queries.activate(context, input, output);
 
-    await(
-        context,
-        [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+    {
+      std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+      std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          if (state != SHWireState::Continue) {
-            // likely something went wrong! lets rollback.
-            SH_SQLITE_DEBUG_LOG("Transaction rollback, db: {}", (void *)_connection->db);
-            auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(_connection->get()));
-            }
-          } else {
-            // commit
-            SH_SQLITE_DEBUG_LOG("Transaction commit, db: {}", (void *)_connection->db);
-            auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(_connection->get()));
-            }
-          }
-        },
-        []() {});
+      if (state != SHWireState::Continue) {
+        // likely something went wrong! lets rollback.
+        SH_SQLITE_DEBUG_LOG("Transaction rollback, db: {}", (void *)_connection->db);
+        auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+        if (rc != SQLITE_OK) {
+          throw ActivationError(sqlite3_errmsg(_connection->get()));
+        }
+      } else {
+        // commit
+        SH_SQLITE_DEBUG_LOG("Transaction commit, db: {}", (void *)_connection->db);
+        auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
+        if (rc != SQLITE_OK) {
+          throw ActivationError(sqlite3_errmsg(_connection->get()));
+        }
+      }
+    }
 
     return input;
   }
@@ -869,37 +852,26 @@ struct LoadExtension : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
-    // Use cancellation flag to interrupt lock acquisition
-    std::atomic<bool> cancelled{false};
+    std::optional<std::unique_lock<std::mutex>> transactionLock;
+    if (!_withinTransaction) {
+      if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context)) {
+        throw ActivationError("Failed to acquire transaction lock or cancelled");
+      }
+    }
+    std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+    std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-    return awaitne(
-        context,
-        [&] {
-          std::optional<std::unique_lock<std::mutex>> transactionLock;
-          if (!_withinTransaction) {
-            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock or cancelled");
-            }
-          }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+    std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
 
-          std::string extPath(_extPath.get().payload.stringValue, _extPath.get().payload.stringLen);
+    auto &entryPoint = _entryPoint.get();
+    if (entryPoint.valueType == SHType::None) {
+      _connection->loadExtension(extPath, std::nullopt);
+    } else {
+      auto entryPointStr = SHSTRING_PREFER_SHSTRVIEW(entryPoint);
+      _connection->loadExtension(extPath, entryPointStr);
+    }
 
-          auto &entryPoint = _entryPoint.get();
-          if (entryPoint.valueType == SHType::None) {
-            _connection->loadExtension(extPath, std::nullopt);
-          } else {
-            auto entryPointStr = SHSTRING_PREFER_SHSTRVIEW(entryPoint);
-            _connection->loadExtension(extPath, entryPointStr);
-          }
-
-          return input;
-        },
-        [&] {
-          // Cancellation handler: signal to interrupt lock acquisition
-          cancelled.store(true);
-        });
+    return input;
   }
 };
 
@@ -932,37 +904,26 @@ struct RawQuery : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, _readOnly.get().payload.boolValue);
 
-    // Use cancellation flag to interrupt lock acquisition
-    std::atomic<bool> cancelled{false};
+    std::optional<std::unique_lock<std::mutex>> transactionLock;
+    if (!_withinTransaction) {
+      if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context)) {
+        throw ActivationError("Failed to acquire transaction lock or cancelled");
+      }
+    }
+    std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+    std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-    return awaitne(
-        context,
-        [&] {
-          std::optional<std::unique_lock<std::mutex>> transactionLock;
-          if (!_withinTransaction) {
-            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock or cancelled");
-            }
-          }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+    char *errMsg = nullptr;
+    std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
+    SH_SQLITE_DEBUG_LOG("Raw query db: {}, {}", (void *)_connection->db, query);
+    int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
 
-          char *errMsg = nullptr;
-          std::string query(input.payload.stringValue, input.payload.stringLen); // we need to make sure we are 0 terminated
-          SH_SQLITE_DEBUG_LOG("Raw query db: {}, {}", (void *)_connection->db, query);
-          int rc = sqlite3_exec(_connection->get(), query.c_str(), nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+      throw ActivationError(errMsg);
+      sqlite3_free(errMsg);
+    }
 
-          if (rc != SQLITE_OK) {
-            throw ActivationError(errMsg);
-            sqlite3_free(errMsg);
-          }
-
-          return input;
-        },
-        [&] {
-          // Cancellation handler: signal to interrupt lock acquisition
-          cancelled.store(true);
-        });
+    return input;
   }
 };
 
@@ -1001,65 +962,54 @@ struct Backup : public Base {
   SHVar activate(SHContext *context, const SHVar &input) {
     ENSURE_DB(context, true);
 
-    // Use cancellation flag to interrupt lock acquisition
-    std::atomic<bool> cancelled{false};
+    std::optional<std::unique_lock<std::mutex>> transactionLock;
+    if (!_withinTransaction) {
+      if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context)) {
+        throw ActivationError("Failed to acquire transaction lock or cancelled");
+      }
+    }
+    std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+    std::unique_lock<std::mutex> l2(_connection->mutex);
 
-    return awaitne(
-        context,
-        [&] {
-          std::optional<std::unique_lock<std::mutex>> transactionLock;
-          if (!_withinTransaction) {
-            if (!_connection->tryLockTransactionWithTimeout(transactionLock.emplace(), context, cancelled)) {
-              throw ActivationError("Failed to acquire transaction lock or cancelled");
-            }
-          }
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::unique_lock<std::mutex> l2(_connection->mutex);
+    auto destPath = SHSTRVIEW(_dest.get());
+    sqlite3 *pDest;
+    auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+    if (rc != SQLITE_OK) {
+      throw ActivationError(sqlite3_errmsg(pDest));
+    }
+    DEFER({ sqlite3_close(pDest); });
 
-          auto destPath = SHSTRVIEW(_dest.get());
-          sqlite3 *pDest;
-          auto rc = sqlite3_open_v2(destPath.data(), &pDest, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-          if (rc != SQLITE_OK) {
-            throw ActivationError(sqlite3_errmsg(pDest));
-          }
-          DEFER({ sqlite3_close(pDest); });
+    auto pBackup = sqlite3_backup_init(pDest, "main", _connection->get(), "main");
+    if (!pBackup) {
+      throw ActivationError(sqlite3_errmsg(pDest));
+    }
+    DEFER({
+      auto rc = sqlite3_backup_finish(pBackup);
+      if (rc != SQLITE_OK) {
+        throw ActivationError(sqlite3_errmsg(pDest));
+      }
+    });
 
-          auto pBackup = sqlite3_backup_init(pDest, "main", _connection->get(), "main");
-          if (!pBackup) {
-            throw ActivationError(sqlite3_errmsg(pDest));
-          }
-          DEFER({
-            auto rc = sqlite3_backup_finish(pBackup);
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(pDest));
-            }
-          });
+    int pages = (int)_pages.get().payload.intValue;
 
-          int pages = (int)_pages.get().payload.intValue;
+    // do 200 pages, unlock, yield a bit, repeat
+    do {
+      rc = sqlite3_backup_step(pBackup, pages);
+      if (!_fast.payload.boolValue && (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED)) {
+        // unlock
+        l2.unlock();
+        // thread wait here 100 ms
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // lock again
+        l2.lock();
+      }
+      // check for errors!
+      if (rc != SQLITE_OK && rc != SQLITE_DONE && rc != SQLITE_BUSY && rc != SQLITE_LOCKED) {
+        throw ActivationError(sqlite3_errmsg(pDest));
+      }
+    } while (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED);
 
-          // do 200 pages, unlock, yield a bit, repeat
-          do {
-            rc = sqlite3_backup_step(pBackup, pages);
-            if (!_fast.payload.boolValue && (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED)) {
-              // unlock
-              l2.unlock();
-              // thread wait here 100 ms
-              std::this_thread::sleep_for(std::chrono::milliseconds(100));
-              // lock again
-              l2.lock();
-            }
-            // check for errors!
-            if (rc != SQLITE_OK && rc != SQLITE_DONE && rc != SQLITE_BUSY && rc != SQLITE_LOCKED) {
-              throw ActivationError(sqlite3_errmsg(pDest));
-            }
-          } while (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED);
-
-          return input;
-        },
-        [&] {
-          // Cancellation handler: signal to interrupt lock acquisition
-          cancelled.store(true);
-        });
+    return input;
   }
 };
 
