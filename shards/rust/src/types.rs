@@ -242,7 +242,7 @@ impl PartialOrd for Var {
 
 impl ClonedVar {
   pub fn new_deserializing(bytes_buffer_var: &Var) -> Self {
-    ClonedVar(unsafe { shards_deserialize_var(bytes_buffer_var) })
+    ClonedVar(unsafe { (*Core).deserializeVar.unwrap_unchecked()(bytes_buffer_var) })
   }
 
   pub fn new_string(s: &str) -> Self {
@@ -484,16 +484,6 @@ impl Drop for Wire {
   }
 }
 
-extern "C" {
-  fn shards_set_wire_debug_id(wire: SHWireRef, id: u64);
-  fn shards_deserialize_var(bytes_buffer_var: *const SHVar) -> SHVar;
-  fn shards_serialize_var(var: *const SHVar) -> SHVar;
-  fn shards_find_enum_id(name: SHStringWithLen) -> i64;
-  fn shards_find_object_type_id(name: SHStringWithLen) -> i64;
-  fn shards_get_enum_info(id: i64) -> *const SHEnumInfo;
-  fn shards_get_object_info(id: i64) -> *const SHObjectInfo;
-}
-
 pub enum EnumInfoId<'a> {
   Int(i64),
   VendorTypePair(i32, i32),
@@ -509,10 +499,12 @@ pub fn get_enum_info(id: EnumInfoId) -> Option<&'static SHEnumInfo> {
         string: name.as_ptr() as *const c_char,
         len: name.len() as u64,
       };
-      unsafe { shards_find_enum_id(name) }
+      unsafe { (*Core).findEnumId.unwrap_unchecked()(name) }
     }
   };
-  let enum_info = unsafe { shards_get_enum_info(id) };
+  let vendor_id = ((id >> 32) & 0xFFFFFFFF) as i32;
+  let enum_id = (id & 0xFFFFFFFF) as i32;
+  let enum_info = unsafe { (*Core).findEnumInfo.unwrap_unchecked()(vendor_id, enum_id) };
   if enum_info.is_null() {
     None
   } else {
@@ -531,7 +523,7 @@ pub fn find_object_type_id(name: &str) -> Option<i64> {
     string: name.as_ptr() as *const c_char,
     len: name.len() as u64,
   };
-  let id = unsafe { shards_find_object_type_id(name) };
+  let id = unsafe { (*Core).findObjectTypeId.unwrap_unchecked()(name) };
   if id == 0 {
     None
   } else {
@@ -555,7 +547,9 @@ pub fn get_object_info(id: ObjectInfoId) -> Option<&'static SHObjectInfo> {
     ObjectInfoId::VendorTypePair(vendor, type_) => (vendor as i64) << 32 | type_ as i64,
     ObjectInfoId::String(name) => find_object_type_id(name).unwrap_or(0),
   };
-  let object_info = unsafe { shards_get_object_info(id) };
+  let vendor_id = ((id >> 32) & 0xFFFFFFFF) as i32;
+  let type_id = (id & 0xFFFFFFFF) as i32;
+  let object_info = unsafe { (*Core).findObjectInfo.unwrap_unchecked()(vendor_id, type_id) };
   if object_info.is_null() {
     None
   } else {
@@ -575,7 +569,7 @@ impl Wire {
   }
 
   pub fn set_debug_id(self, id: u64) -> Self {
-    unsafe { shards_set_wire_debug_id(self.0 .0, id) };
+    unsafe { (*Core).setWireDebugId.unwrap_unchecked()(self.0 .0, id) };
     self
   }
 
@@ -666,10 +660,6 @@ impl AutoShardRef {
   }
 }
 
-extern "C" {
-  fn shards_get_compressed_string(crc_id: u32) -> *const c_char;
-}
-
 impl ShardRef {
   pub fn output_types(&self) -> &[Type] {
     unsafe {
@@ -695,7 +685,7 @@ impl ShardRef {
     unsafe {
       let help = (*self.0).inputHelp.unwrap_unchecked()(self.0);
       if help.crc != 0 {
-        let c_str = shards_get_compressed_string(help.crc);
+        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
         if c_str.is_null() {
           None
         } else {
@@ -717,7 +707,7 @@ impl ShardRef {
     unsafe {
       let help = (*self.0).outputHelp.unwrap_unchecked()(self.0);
       if help.crc != 0 {
-        let c_str = shards_get_compressed_string(help.crc);
+        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
         if c_str.is_null() {
           None
         } else {
@@ -739,7 +729,7 @@ impl ShardRef {
     unsafe {
       let help = (*self.0).help.unwrap_unchecked()(self.0);
       if help.crc != 0 {
-        let c_str = shards_get_compressed_string(help.crc);
+        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
         if c_str.is_null() {
           None
         } else {
@@ -3765,7 +3755,7 @@ impl Var {
   }
 
   pub fn serialize(&self) -> ClonedVar {
-    ClonedVar(unsafe { shards_serialize_var(self) })
+    ClonedVar(unsafe { (*Core).serializeVar.unwrap_unchecked()(self) })
   }
 }
 

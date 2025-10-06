@@ -3,7 +3,7 @@ use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, Parser};
-use shards::core::{Core};
+use shards::core::Core;
 use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
@@ -24,7 +24,6 @@ extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
   fn shards_install_signal_handlers();
   fn shards_decompress_strings();
-  fn shards_get_compressed_string(crc_id: u32) -> *const c_char;
 }
 
 #[derive(Debug, clap::Args)]
@@ -321,7 +320,7 @@ pub fn get_optional_string(os: SHOptionalString) -> &'static str {
     os.string
   } else {
     if os.crc != 0 {
-      unsafe { shards_get_compressed_string(os.crc) }
+      unsafe { (*Core).getCompressedString.unwrap_unchecked()(os.crc) }
     } else {
       panic!("SHOptionalString is empty");
     }

@@ -1075,6 +1075,7 @@ typedef SHOptionalString(__cdecl *SHReadCachedString)(uint32_t id);
 // use this when the cache is not precompiled
 typedef SHOptionalString(__cdecl *SHWriteCachedString)(uint32_t id, const char *str);
 typedef void(__cdecl *SHDecompressStrings)(void);
+typedef const char *(__cdecl *SHGetCompressedString)(uint32_t crc_id);
 
 typedef SHBool(__cdecl *SHIsEqualVar)(const struct SHVar *v1, const struct SHVar *v2);
 typedef int(__cdecl *SHCompareVar)(const struct SHVar *v1, const struct SHVar *v2);
@@ -1183,6 +1184,10 @@ typedef void(__cdecl *SHUnregisterVariableChangeEvent)(SHMeshRef mesh, void *use
 typedef SHBool(__cdecl *SHCollectRequiredVariablesTyped)(const struct SHInstanceData *data, SHExposedTypesInfo *out,
                                                          const struct SHVar *var, const SHTypesInfo *validTypes,
                                                          SHString debugTag);
+
+typedef void(__cdecl *SHSetWireDebugId)(SHWireRef wire, uint64_t id);
+typedef struct SHVar(__cdecl *SHSerializeVar)(const struct SHVar *var);
+typedef struct SHVar(__cdecl *SHDeserializeVar)(const struct SHVar *bytesBufferVar);
 
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
@@ -1407,6 +1412,16 @@ typedef struct _SHCore {
 
   // Utility to collect required variables with type validation
   SHCollectRequiredVariablesTyped collectRequiredVariablesTyped;
+
+  // Utility to get compressed string by CRC ID
+  SHGetCompressedString getCompressedString;
+
+  // Utility to set wire debug ID
+  SHSetWireDebugId setWireDebugId;
+
+  // Utilities for var serialization/deserialization
+  SHSerializeVar serializeVar;
+  SHDeserializeVar deserializeVar;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

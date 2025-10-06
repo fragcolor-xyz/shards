@@ -2591,47 +2591,6 @@ bool sh_current_interface_loaded{false};
 SHCore sh_current_interface{};
 
 extern "C" {
-int64_t shards_find_enum_id(SHStringWithLen name) { return shards::findEnumId(std::string_view{name.string, size_t(name.len)}); }
-
-int64_t shards_find_object_type_id(SHStringWithLen name) {
-  return shards::findObjectTypeId(std::string_view{name.string, size_t(name.len)});
-}
-
-const SHEnumInfo *shards_get_enum_info(int64_t id) {
-  // we need two uint32_t vendor and type from the single int64_t id
-  int32_t vendorId = (int32_t)((id & 0xFFFFFFFF00000000) >> 32);
-  int32_t enumId = (int32_t)(id & 0x00000000FFFFFFFF);
-  return shards::findEnumInfo(vendorId, enumId);
-}
-
-const SHObjectInfo *shards_get_object_info(int64_t id) {
-  // we need two uint32_t vendor and type from the single int64_t id
-  int32_t vendorId = (int32_t)((id & 0xFFFFFFFF00000000) >> 32);
-  int32_t typeId = (int32_t)(id & 0x00000000FFFFFFFF);
-  return shards::findObjectInfo(vendorId, typeId);
-}
-
-bool shards_collect_required_variables_typed(const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
-                                             const SHTypesInfo *validTypes, const char *debugTag) {
-  try {
-    return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
-  } catch (const shards::ComposeError &e) {
-    SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
-    return false;
-  } catch (const std::exception &e) {
-    SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
-    return false;
-  } catch (...) {
-    SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
-    return false;
-  }
-}
-
-void shards_array_free(SHExposedTypesInfo *arr) {
-  if (arr) {
-    shards::arrayFree(*arr);
-  }
-}
 
 SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   auto &wire = SHWire::sharedFromRef(wireRef);
@@ -2649,15 +2608,6 @@ SHVar *getWireVariable(SHWireRef wireRef, const char *name, uint32_t nameLen) {
   return nullptr;
 }
 
-#ifdef SH_COMPRESSED_STRINGS
-const char *shards_get_compressed_string(uint32_t crc_id) {
-  auto str = getCompiledCompressedString(crc_id);
-  return str.string;
-}
-#else
-const char *shards_get_compressed_string(uint32_t crc_id) { return nullptr; }
-#endif
-
 void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *key, bool isGlobal, const SHVar *var) {
   shards::triggerVarValueChange(ctx, name, key, isGlobal, var);
 }
@@ -2665,6 +2615,30 @@ void triggerVarValueChange(SHContext *ctx, const SHVar *name, const SHVar *key, 
 SHContext *getWireContext(SHWireRef wireRef) {
   auto &wire = SHWire::sharedFromRef(wireRef);
   return wire->context;
+}
+
+SHVar serializeVar(const SHVar *var) {
+  static thread_local shards::Serialization serialization;
+  static thread_local std::vector<uint8_t> buffer;
+
+  serialization.reset();
+  shards::BufferRefWriter writer(buffer); // will clear the buffer
+  serialization.serialize(*var, writer);
+
+  SHVar leaking_tmp{}; // to be destroyed by the caller
+  shards::Var container(buffer);
+  shards::cloneVar(leaking_tmp, container);
+  return leaking_tmp;
+}
+
+SHVar deserializeVar(const SHVar *bytes_buffer_var) {
+  static thread_local shards::Serialization serialization;
+
+  serialization.reset();
+  shards::VarReader reader(*bytes_buffer_var);
+  SHVar leaking_tmp{}; // to be destroyed by the caller
+  serialization.deserialize(reader, leaking_tmp);
+  return leaking_tmp;
 }
 
 SHCore *__cdecl shardsInterface(uint32_t abi_version) {
@@ -3204,7 +3178,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->collectRequiredVariablesTyped = [](const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
                                              const SHTypesInfo *validTypes, const char *debugTag) -> SHBool {
-    return shards_collect_required_variables_typed(data, out, var, validTypes, debugTag);
+    try {
+      return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
+    } catch (const shards::ComposeError &e) {
+      SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
+      return false;
+    } catch (const std::exception &e) {
+      SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
+      return false;
+    } catch (...) {
+      SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
+      return false;
+    }
   };
 
   result->fastStringStore = [](SHStringWithLen str) {
@@ -3254,6 +3239,24 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   setupCoreLoggingAPI(result);
 
+
+#ifdef SH_COMPRESSED_STRINGS
+  result->getCompressedString = [](uint32_t crc_id) {
+    auto str = getCompiledCompressedString(crc_id);
+    return str.string;
+  };
+#else
+  result->getCompressedString = [](uint32_t crc_id) -> const char* { return nullptr; };
+#endif
+
+  result->setWireDebugId = [](SHWireRef wire, uint64_t id) {
+    auto &sc = SHWire::sharedFromRef(wire);
+    sc->debugId = id;
+  };
+
+  result->serializeVar = &serializeVar;
+  result->deserializeVar = &deserializeVar;
+
   return result;
 }
 
@@ -3288,11 +3291,6 @@ SHVar hash_bytes_xx64_legacy(const void *data, size_t len, uint64_t seed) {
   return res;
 }
 
-void shards_set_wire_debug_id(SHWireRef wire, uint64_t id) {
-  auto &sc = SHWire::sharedFromRef(wire);
-  sc->debugId = id;
-}
-
 void shards_decompress_strings() {
 #ifdef SH_COMPRESSED_STRINGS
   shards::decompressStrings();
@@ -3303,31 +3301,6 @@ void shards_log(int level, SHStringWithLen msg, const char *file, const char *fu
   std::string_view sv(msg.string, size_t(msg.len));
   spdlog::default_logger_raw()->log(spdlog::source_loc{file, line, function}, (spdlog::level::level_enum)level, sv);
 };
-
-SHVar shards_serialize_var(const SHVar *var) {
-  static thread_local shards::Serialization serialization;
-  static thread_local std::vector<uint8_t> buffer;
-
-  serialization.reset();
-  shards::BufferRefWriter writer(buffer); // will clear the buffer
-
-  serialization.serialize(*var, writer);
-
-  SHVar leaking_tmp{}; // to be destroyed by the caller
-  shards::Var container(buffer);
-  shards::cloneVar(leaking_tmp, container);
-  return leaking_tmp;
-}
-
-SHVar shards_deserialize_var(const SHVar *bytes_buffer_var) {
-  static thread_local shards::Serialization serialization;
-
-  serialization.reset();
-  shards::VarReader reader(*bytes_buffer_var);
-  SHVar leaking_tmp{}; // to be destroyed by the caller
-  serialization.deserialize(reader, leaking_tmp);
-  return leaking_tmp;
-}
 
 SHBool shards_cancel_abort(SHContext *context) {
   if (context->shouldStop() || context->onLastResume) {
