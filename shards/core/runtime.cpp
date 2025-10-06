@@ -980,8 +980,6 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      // std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      // SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
       throw ComposeError(data.shard, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
@@ -1001,7 +999,6 @@ void validateConnection(InternalCompositionContext &ctx) {
         }
       }
     } else {
-      // SHLOG_ERROR("Shard {} needs to implement the compose method", ctx.bottom->name(ctx.bottom));
       throw ComposeError(ctx.bottom, "Shard has multiple possible output types and is missing the compose method");
     }
   }
@@ -1343,14 +1340,6 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
         }
 
         throw;
-
-        // if (ownedContext) {
-        //   logFormatErrorStack(ownedContext);
-        //   // Format the error stack
-        //   throw std::runtime_error("Failed to compose wire");
-        // } else {
-        //   throw;
-        // }
       }
     }
   }
@@ -1478,8 +1467,6 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
       return internalComposeWire(wire_, data);
     } catch (std::exception &ex) {
       if (data.privateContext) {
-        // CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
-        // context->errorStack.push_back(ex.what());
 
         // also send error event if possible
         auto mesh = wire_->mesh.lock();
