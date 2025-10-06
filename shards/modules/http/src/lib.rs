@@ -372,7 +372,7 @@ impl RequestBase {
       if self.full_response {
         *STREAM_FULL_OUTPUT_TTYPE
       } else {
-        *STREAM_TYPE_VAR
+        *STREAM_TYPE
       }
     } else if self.as_bytes {
       if self.full_response {
@@ -923,7 +923,7 @@ struct HttpStreamShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Stream", "The stream to read from.", [*STREAM_TYPE_VAR])]
+  #[shard_param("Stream", "The stream to read from.", [*STREAM_TYPE, *STREAM_TYPE_VAR])]
   stream: ParamVar,
 
   output: ClonedVar,

@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  ssh-test:
+    build: .
+    container_name: ssh-test-server
+    ports:
+      - "2222:22"
+    restart: unless-stopped

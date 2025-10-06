@@ -12,3 +12,6 @@ build-docker-image:
    -t fragcolor/shards:latest \
    -t fragcolor/shards:$GIT_COMMIT \
    --push .
+
+check-ci:
+  claude -p "Claude, please check the CI for current branch PR, github actions. Somehow grep if there is any error and report pls"

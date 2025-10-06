@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 #include <fcntl.h>
+#include <limits>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -463,6 +464,7 @@ struct Read {
     _buffer.clear();
     fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
     std::string pathStr = p.string();
+
     size_t chunkSize = _chunkSize.payload.intValue < 0 ? 0 : size_t(_chunkSize.payload.intValue);
     size_t maxSize = _maxSize.payload.intValue < 0 ? 0 : size_t(_maxSize.payload.intValue);
 

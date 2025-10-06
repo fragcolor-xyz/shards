@@ -541,7 +541,7 @@ pub(crate) struct TensorDivShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Other", "The tensor to divide by.", [*TENSOR_VAR_TYPE, common_type::float])]
+  #[shard_param("Other", "The tensor to divide by.", [*TENSOR_VAR_TYPE, common_type::float, common_type::float_var])]
   other: ParamVar,
 
   output: ClonedVar,

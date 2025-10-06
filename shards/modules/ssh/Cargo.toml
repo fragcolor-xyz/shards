@@ -1,0 +1,19 @@
+[package]
+name = "shards-ssh"
+description = "SSH module for Shards - remote shell execution over SSH"
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+ssh2 = "0.9"
+strip-ansi-escapes = "0.2"
+regex = "1.10"
+shellexpand = "3.1"

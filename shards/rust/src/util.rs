@@ -1,12 +1,13 @@
 use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
 
 use crate::{
-  core::{deriveType, VarRef},
+  core::{deriveType, Core, VarRef},
   types::{
     Context, DerivedType, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Type,
     Var,
   },
-  SHExposedTypeInfo, SHExposedTypesInfo, SHInstanceData, SHString, SHVar,
+  SHExposedTypeInfo, SHExposedTypesInfo, SHInstanceData, SHString, SHTypesInfo, SHVar,
 };
 
 pub enum TypeOrDerived {
@@ -87,6 +88,110 @@ pub fn collect_required_variables(
     _ => {}
   }
   Ok(())
+}
+
+/// Check if a type can possibly contain context variables
+/// This is used to optimize compose by skipping collection when impossible
+pub fn has_context_variables(type_: &Type) -> bool {
+  use crate::SHType_ContextVar;
+  use crate::SHType_Seq;
+  use crate::SHType_Table;
+
+  match type_.basicType {
+    SHType_ContextVar => true,
+    SHType_Seq => {
+      let seq_types = unsafe { type_.details.seqTypes };
+      if seq_types.len > 0 && !seq_types.elements.is_null() {
+        for i in 0..seq_types.len {
+          let t = unsafe { &*seq_types.elements.offset(i as isize) };
+          if has_context_variables(t) {
+            return true;
+          }
+        }
+      }
+      false
+    }
+    SHType_Table => {
+      let table_types = unsafe { type_.details.table.types };
+      if table_types.len > 0 && !table_types.elements.is_null() {
+        for i in 0..table_types.len {
+          let t = unsafe { &*table_types.elements.offset(i as isize) };
+          if has_context_variables(t) {
+            return true;
+          }
+        }
+      }
+      false
+    }
+    _ => false,
+  }
+}
+
+/// Collects required variables with type validation
+/// This validates that the variable type matches one of the validTypes before collecting
+pub fn collect_required_variables_typed(
+  data: &SHInstanceData,
+  out: &mut ExposedTypes,
+  var: &SHVar,
+  valid_types: &[Type],
+  param_name: &str,
+) -> Result<(), &'static str> {
+  // Handle empty types array - create a properly aligned non-null pointer
+  let types_info = if valid_types.is_empty() {
+    SHTypesInfo {
+      elements: std::ptr::NonNull::dangling().as_ptr(),
+      len: 0,
+      cap: 0,
+    }
+  } else {
+    SHTypesInfo {
+      elements: valid_types.as_ptr() as *mut Type,
+      len: valid_types.len() as u32,
+      cap: 0,
+    }
+  };
+
+  let c_param_name = CString::new(param_name).map_err(|_| "Invalid parameter name")?;
+
+  // Create a temporary C++ allocated array to receive the results
+  // We MUST NOT pass Rust Vec directly because C++ will use shards::arrayPush
+  // which is incompatible with Rust's allocator
+  let mut temp_out = SHExposedTypesInfo {
+    elements: std::ptr::null_mut(),
+    len: 0,
+    cap: 0,
+  };
+
+  let success = unsafe {
+    (*Core).collectRequiredVariablesTyped.unwrap_unchecked()(
+      data as *const SHInstanceData,
+      &mut temp_out as *mut SHExposedTypesInfo,
+      var as *const SHVar,
+      &types_info as *const SHTypesInfo,
+      c_param_name.as_ptr(),
+    )
+  };
+
+  // Copy results from C++ array to Rust Vec, then free C++ array
+  if success {
+    unsafe {
+      if temp_out.len > 0 && !temp_out.elements.is_null() {
+        for i in 0..temp_out.len {
+          let elem = *temp_out.elements.offset(i as isize);
+          out.push(elem);
+        }
+      }
+      // Free the C++ allocated array
+      (*Core).expTypesFree.unwrap_unchecked()(&mut temp_out as *mut SHExposedTypesInfo);
+    }
+    Ok(())
+  } else {
+    unsafe {
+      // Still need to free even on failure
+      (*Core).expTypesFree.unwrap_unchecked()(&mut temp_out as *mut SHExposedTypesInfo);
+    }
+    Err("Type validation failed for parameter")
+  }
 }
 
 /// Adds required variables from inside a ShardsVar

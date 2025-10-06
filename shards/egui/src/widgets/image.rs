@@ -4,7 +4,7 @@
 use super::image_util;
 use crate::util;
 use crate::CONTEXTS_NAME;
-use crate::FLOAT2_VAR_SLICE;
+use crate::{FLOAT2_VAR_OR_NONE_SLICE, FLOAT2_VAR_SLICE};
 use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::PARENTS_UI_NAME;
 use egui::load::SizedTexture;
@@ -31,10 +31,10 @@ struct Image {
   parents: ParamVar,
   #[shard_warmup]
   contexts: ParamVar,
-  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_SLICE)]
+  #[shard_param("Scale", "Scaling to apply to the source image.", FLOAT2_VAR_OR_NONE_SLICE)]
   scale: ParamVar,
   // This will be in UI points (ScalingAware: false) or in pixels (ScalingAware: true)
-  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_SLICE)]
+  #[shard_param("Size", "The size to render the image at.", FLOAT2_VAR_OR_NONE_SLICE)]
   size: ParamVar,
   // Defaults to false
   #[shard_param("ScalingAware", "When set to true, this image's pixels will be rendered 1:1 regardless of UI context point size.", BOOL_VAR_OR_NONE_SLICE)]
