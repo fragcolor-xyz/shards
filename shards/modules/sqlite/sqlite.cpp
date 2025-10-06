@@ -764,6 +764,9 @@ struct Transaction : public Base {
       auto &item = data.shared.elements[idx];
       arrayPush(dataCopy.shared, item);
     }
+
+    dataCopy.onWorkerThread = true;
+
     // add our transaction cookie
     arrayPush(dataCopy.shared, _cookie);
     // the cookie will be used within inner queries to ensure they are part of the transaction
