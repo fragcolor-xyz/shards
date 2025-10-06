@@ -1849,6 +1849,27 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
   throw ComposeError(msg);
 }
 
+// Overload that works directly with SHExposedTypesInfo to avoid extra copies
+inline bool collectRequiredVariables(const SHInstanceData &data, SHExposedTypesInfo &out, const SHVar &var, SHTypesInfo validTypes,
+                                     const char *debugTag) {
+  std::vector<SHExposedTypeInfo> expInfo;
+  TypeInfo ti(var, data, &expInfo, false);
+  for (auto &type : validTypes) {
+    if (TypeMatcher<>{
+            .isParameter = true, .relaxEmptyTableCheck = true, .relaxEmptySeqCheck = expInfo.empty(), .checkVarTypes = true}
+            .match(ti, type)) {
+      for (auto &it : expInfo) {
+        shards::arrayPush(out, it);
+      }
+      return true;
+    }
+  }
+  auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
+                         validTypes);
+  SHLOG_ERROR("{}", msg);
+  throw ComposeError(msg);
+}
+
 template <typename... TArgs>
 inline void collectAllRequiredVariables(const SHInstanceData &data, ExposedInfo &out, TArgs &&...args) {
   (collectRequiredVariables(data, out, std::forward<TArgs>(args)), ...);

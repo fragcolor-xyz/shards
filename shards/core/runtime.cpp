@@ -2614,7 +2614,7 @@ const SHObjectInfo *shards_get_object_info(int64_t id) {
 bool shards_collect_required_variables_typed(const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
                                              const SHTypesInfo *validTypes, const char *debugTag) {
   try {
-    return shards::collectRequiredVariables(*data, *reinterpret_cast<shards::ExposedInfo *>(out), *var, *validTypes, debugTag);
+    return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
   } catch (const shards::ComposeError &e) {
     SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
     return false;
