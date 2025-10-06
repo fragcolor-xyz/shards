@@ -3202,6 +3202,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     (*smesh)->unregisterVariableChangeEvent(userData);
   };
 
+  result->collectRequiredVariablesTyped = [](const SHInstanceData *data, SHExposedTypesInfo *out, const SHVar *var,
+                                             const SHTypesInfo *validTypes, const char *debugTag) -> SHBool {
+    return shards_collect_required_variables_typed(data, out, var, validTypes, debugTag);
+  };
+
   result->fastStringStore = [](SHStringWithLen str) {
     std::string_view sv(str.string, size_t(str.len));
     return shards::fast_string::store(sv);

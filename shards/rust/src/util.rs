@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
 use crate::{
-  core::{deriveType, VarRef},
+  core::{deriveType, Core, VarRef},
   types::{
     Context, DerivedType, ExposedInfo, ExposedTypes, ParamVar, SeqVar, ShardsVar, TableVar, Type,
     Var,
@@ -90,18 +90,6 @@ pub fn collect_required_variables(
   Ok(())
 }
 
-extern "C" {
-  fn shards_collect_required_variables_typed(
-    data: *const SHInstanceData,
-    out: *mut SHExposedTypesInfo,
-    var: *const SHVar,
-    valid_types: *const SHTypesInfo,
-    debug_tag: *const c_char,
-  ) -> bool;
-
-  fn shards_array_free(arr: *mut SHExposedTypesInfo);
-}
-
 /// Check if a type can possibly contain context variables
 /// This is used to optimize compose by skipping collection when impossible
 pub fn has_context_variables(type_: &Type) -> bool {
@@ -175,7 +163,7 @@ pub fn collect_required_variables_typed(
   };
 
   let success = unsafe {
-    shards_collect_required_variables_typed(
+    (*Core).collectRequiredVariablesTyped.unwrap_unchecked()(
       data as *const SHInstanceData,
       &mut temp_out as *mut SHExposedTypesInfo,
       var as *const SHVar,
@@ -194,13 +182,13 @@ pub fn collect_required_variables_typed(
         }
       }
       // Free the C++ allocated array
-      shards_array_free(&mut temp_out);
+      (*Core).expTypesFree.unwrap_unchecked()(&mut temp_out as *mut SHExposedTypesInfo);
     }
     Ok(())
   } else {
     unsafe {
       // Still need to free even on failure
-      shards_array_free(&mut temp_out);
+      (*Core).expTypesFree.unwrap_unchecked()(&mut temp_out as *mut SHExposedTypesInfo);
     }
     Err("Type validation failed for parameter")
   }
