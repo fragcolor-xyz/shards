@@ -270,7 +270,15 @@ struct CaptureLog {
     SHInstanceData dataInner = data;
     dataInner.shared = SHExposedTypesInfo(inner);
     _content.compose(dataInner);
-    PARAM_COMPOSE_MERGE_REQUIRED(_content);
+
+    // Merge required, but without the context variables
+    for (auto &required : _content.composeResult().requiredInfo) {
+      std::string_view varName(required.name);
+      if (varName == LogCaptureContext::VariableName)
+        continue;
+      _requiredVariables.push_back(required);
+    }
+
     return outputTypes().elements[0];
   }
 

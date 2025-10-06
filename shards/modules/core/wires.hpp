@@ -476,7 +476,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       // meaning there was an exception while
       // running the sub wire, stop the parent too
       _outputClone = Var::Empty;
-      context->stopFlow(_outputClone);
+      context->cancelFlow("Wire failed");
       return _outputClone;
     } else {
       if (context->shouldContinue()) {
