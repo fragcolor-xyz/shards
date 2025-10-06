@@ -20,12 +20,9 @@ use shards::types::common_type;
 use shards::types::AutoTableVar;
 use shards::types::ClonedVar;
 use shards::types::Context;
-use shards::types::ExposedInfo;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
-use shards::types::OptionalString;
 use shards::types::ParamVar;
-use shards::types::Parameters;
 use shards::types::Type;
 use shards::types::Types;
 use shards::types::Var;
@@ -161,6 +158,26 @@ fn is_connection_error(err: &std::io::Error) -> bool {
             | ErrorKind::BrokenPipe
             | ErrorKind::UnexpectedEof
     )
+}
+
+// Helper function to truncate output buffer to keep tail
+fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
+    if buffer.len() <= max_bytes {
+        return false;
+    }
+
+    // Keep last ~93% of max_bytes to avoid repeated truncation on every read
+    let keep_bytes = (max_bytes * 93) / 100;
+    let truncate_msg = b"[... output truncated ...]\n";
+
+    // Remove from the front, keep the tail
+    let skip = buffer.len() - keep_bytes + truncate_msg.len();
+    let tail: Vec<u8> = buffer.drain(skip..).collect();
+    buffer.clear();
+    buffer.extend_from_slice(truncate_msg);
+    buffer.extend_from_slice(&tail);
+
+    true
 }
 
 // ============================================================================
@@ -420,6 +437,9 @@ pub struct ExecuteShard {
     #[shard_param("CleanOutput", "Clean ANSI codes and prompts from output (default: true)", [common_type::bool, common_type::bool_var])]
     clean_output: ParamVar,
 
+    #[shard_param("MaxOutputBytes", "Maximum output bytes to retain (keeps tail, 0 = unlimited, default: 65536)", [common_type::int, common_type::int_var])]
+    max_output_bytes: ParamVar,
+
     output: ClonedVar,
 }
 
@@ -430,6 +450,7 @@ impl Default for ExecuteShard {
             session: ParamVar::default(),
             timeout_secs: ParamVar::new(30i64.into()),
             clean_output: ParamVar::new(true.into()),
+            max_output_bytes: ParamVar::new(65536i64.into()),
             output: ClonedVar::default(),
         }
     }
@@ -471,6 +492,8 @@ impl BlockingShard for ExecuteShard {
         let cmd: &str = input.try_into()?;
         let session_var = *self.session.get();
         let should_clean: bool = self.clean_output.get().as_ref().try_into()?;
+        let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
+        let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
         // Extract SSH shell object
         let ssh_shell = unsafe {
@@ -551,6 +574,7 @@ impl BlockingShard for ExecuteShard {
         let mut no_data_count = 0;
         let max_iterations = 50; // 5 seconds total (50 * 100ms)
         let mut prompt_detected = false;
+        let mut was_truncated = false;
 
         shlog_trace!("Starting to read command output");
 
@@ -585,6 +609,13 @@ impl BlockingShard for ExecuteShard {
 
             if bytes_read > 0 {
                 output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+
+                // Truncate if buffer exceeds max size
+                if truncate_to_tail(&mut output_buffer, max_output_bytes) {
+                    was_truncated = true;
+                    shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
+                }
+
                 let output_str = String::from_utf8_lossy(&output_buffer);
 
                 shlog_trace!(
@@ -643,6 +674,9 @@ impl BlockingShard for ExecuteShard {
 
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+            if was_truncated {
+                result_table.0.insert_fast_static("truncated", &true.into());
+            }
         } else {
             // Command is interactive (waiting for input)
             {
@@ -665,6 +699,9 @@ impl BlockingShard for ExecuteShard {
                 "message",
                 &Var::ephemeral_string("Command is waiting for input. Use SSH.SendInput to interact.")
             );
+            if was_truncated {
+                result_table.0.insert_fast_static("truncated", &true.into());
+            }
         }
 
         self.output = result_table.to_cloned();
@@ -691,6 +728,9 @@ pub struct SendInputShard {
     #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
+    #[shard_param("MaxOutputBytes", "Maximum output bytes to retain (keeps tail, 0 = unlimited, default: 65536)", [common_type::int, common_type::int_var])]
+    max_output_bytes: ParamVar,
+
     output: ClonedVar,
 }
 
@@ -700,6 +740,7 @@ impl Default for SendInputShard {
             required: ExposedTypes::new(),
             session: ParamVar::default(),
             timeout_secs: ParamVar::new(10i64.into()),
+            max_output_bytes: ParamVar::new(65536i64.into()),
             output: ClonedVar::default(),
         }
     }
@@ -740,6 +781,8 @@ impl BlockingShard for SendInputShard {
     fn activate_blocking(&mut self, _context: &Context, input: &Var) -> Result<Var, &'static str> {
         let input_str: &str = input.try_into()?;
         let session_var = *self.session.get();
+        let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
+        let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
         // Extract SSH shell object
         let ssh_shell = unsafe {
@@ -787,6 +830,7 @@ impl BlockingShard for SendInputShard {
         // Read output
         let mut output_buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
+        let mut was_truncated = false;
         for _ in 0..10 {
             let read_result = {
                 let mut channel = ssh_shell.channel.lock()
@@ -815,6 +859,12 @@ impl BlockingShard for SendInputShard {
 
             if bytes_read > 0 {
                 output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+
+                // Truncate if buffer exceeds max size
+                if truncate_to_tail(&mut output_buffer, max_output_bytes) {
+                    was_truncated = true;
+                    shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
+                }
             }
             std::thread::sleep(Duration::from_millis(100));
         }
@@ -844,6 +894,9 @@ impl BlockingShard for SendInputShard {
             shlog_trace!("Interactive session completed");
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+            if was_truncated {
+                result_table.0.insert_fast_static("truncated", &true.into());
+            }
         } else {
             // Still waiting for more input/output
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("pending_output"));
@@ -852,6 +905,9 @@ impl BlockingShard for SendInputShard {
                 "message",
                 &Var::ephemeral_string("Command still running. Use SSH.SendInput to continue.")
             );
+            if was_truncated {
+                result_table.0.insert_fast_static("truncated", &true.into());
+            }
         }
 
         self.output = result_table.to_cloned();
