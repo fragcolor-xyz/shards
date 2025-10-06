@@ -5,20 +5,20 @@ GFX.MainWindow(Contents: {
 
   // UI
   UI({
-    UI.DockArea(Contents: {
-      UI.Tab(
-        Title: "Tab 1"
-        Contents: {
+    UI.DockArea(Tabs: [
+      {
+        title: "Tab 1"
+        contents: {
           "Tab 1 contents" | UI.Label
         }
-      )
-      UI.Tab(
-        Title: "Tab 2"
-        Contents: {
+      }
+      {
+        title: "Tab 2"
+        contents: {
           "Tab 2 contents" | UI.Label
         }
-      )
-    })
+      }
+    ])
   })
 
   UI.Render(ui-draw-queue)
