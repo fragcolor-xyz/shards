@@ -116,6 +116,7 @@ jobs:
           cd build
           chmod +x shards
           chmod +x test-runtime
+
           # Run test-runtime
           ./test-runtime
           # Run other tests
@@ -339,5 +340,57 @@ jobs:
         with:
           name: shards-bg3-${{ needs.macOS.outputs.build-type }}
           path: shards-bg3/test/externals/bg3.dylib
+          retention-days: 7
+          if-no-files-found: error
+  macOS-shards-rust:
+    if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
+    needs: macOS
+    name: Build Rust Shards
+    runs-on: macos-latest
+    steps:
+      - name: Download shards artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.macOS.outputs.artifact-name }}
+          path: shards-bin
+      - name: Make shards executable
+        run: |
+          chmod +x shards-bin/shards
+          chmod +x shards-bin/test-runtime
+      - name: Checkout shards for Rust modules
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards
+          path: shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Checkout shards-rust-example
+        uses: actions/checkout@v4
+        with:
+          repository: fragcolor-xyz/shards-rust-example
+          path: shards-rust-example
+          fetch-depth: 1
+      - name: Set up dependencies
+        run: |
+          brew install ninja
+          RUSTUP_TOOLCHAIN=`cat shards/rust.version`
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup default $RUSTUP_TOOLCHAIN
+      - name: Build shards-rust-example
+        run: |
+          cd shards-rust-example
+          # Need to create the externals directory first, since we build to that using custom build.rs parameters
+          mkdir -p test/externals
+          SHARDS_PATH=$GITHUB_WORKSPACE/shards cargo build
+
+      - name: Test shards-rust-example
+        run: |
+          cd shards-rust-example
+          $GITHUB_WORKSPACE/shards-bin/shards test/test_calculator.shs
+      - name: Create artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shards-rust-example-${{ needs.macOS.outputs.build-type }}
+          path: shards-rust-example/test/externals/calculator.dylib
           retention-days: 7
           if-no-files-found: error
