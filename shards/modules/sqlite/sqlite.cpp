@@ -764,6 +764,9 @@ struct Transaction : public Base {
       auto &item = data.shared.elements[idx];
       arrayPush(dataCopy.shared, item);
     }
+
+    dataCopy.onWorkerThread = true;
+
     // add our transaction cookie
     arrayPush(dataCopy.shared, _cookie);
     // the cookie will be used within inner queries to ensure they are part of the transaction
@@ -791,40 +794,39 @@ struct Transaction : public Base {
     await(
         context,
         [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
+          {
+            std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+            std::scoped_lock<std::mutex> l2(_connection->mutex);
 
-          SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
-          auto rc = sqlite3_exec(_connection->get(), _immediate.payload.boolValue ? "BEGIN IMMEDIATE;" : "BEGIN DEFERRED;",
-                                 nullptr, nullptr, nullptr);
-          if (rc != SQLITE_OK) {
-            throw ActivationError(sqlite3_errmsg(_connection->get()));
-          }
-        },
-        []() {});
-
-    SHVar output{};
-    auto state = _queries.activate(context, input, output);
-
-    await(
-        context,
-        [&] {
-          std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
-          std::scoped_lock<std::mutex> l2(_connection->mutex);
-
-          if (state != SHWireState::Continue) {
-            // likely something went wrong! lets rollback.
-            SH_SQLITE_DEBUG_LOG("Transaction rollback, db: {}", (void *)_connection->db);
-            auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+            SH_SQLITE_DEBUG_LOG("Transaction begin, db: {}", (void *)_connection->db);
+            auto rc = sqlite3_exec(_connection->get(), _immediate.payload.boolValue ? "BEGIN IMMEDIATE;" : "BEGIN DEFERRED;",
+                                   nullptr, nullptr, nullptr);
             if (rc != SQLITE_OK) {
               throw ActivationError(sqlite3_errmsg(_connection->get()));
             }
-          } else {
-            // commit
-            SH_SQLITE_DEBUG_LOG("Transaction commit, db: {}", (void *)_connection->db);
-            auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) {
-              throw ActivationError(sqlite3_errmsg(_connection->get()));
+          }
+
+          SHVar output{};
+          auto state = _queries.activate(context, input, output);
+
+          {
+            std::shared_lock<std::shared_mutex> l1(_connection->globalMutex); // READ LOCK this
+            std::scoped_lock<std::mutex> l2(_connection->mutex);
+
+            if (state != SHWireState::Continue) {
+              // likely something went wrong! lets rollback.
+              SH_SQLITE_DEBUG_LOG("Transaction rollback, db: {}", (void *)_connection->db);
+              auto rc = sqlite3_exec(_connection->get(), "ROLLBACK;", nullptr, nullptr, nullptr);
+              if (rc != SQLITE_OK) {
+                throw ActivationError(sqlite3_errmsg(_connection->get()));
+              }
+            } else {
+              // commit
+              SH_SQLITE_DEBUG_LOG("Transaction commit, db: {}", (void *)_connection->db);
+              auto rc = sqlite3_exec(_connection->get(), "COMMIT;", nullptr, nullptr, nullptr);
+              if (rc != SQLITE_OK) {
+                throw ActivationError(sqlite3_errmsg(_connection->get()));
+              }
             }
           }
         },
