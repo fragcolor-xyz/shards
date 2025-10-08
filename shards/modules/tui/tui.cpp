@@ -432,7 +432,7 @@ struct TUIInput {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_value.isNone()) {
-      throw ComposeError("TUI.Input requires a Value variable");
+      throw shards::Error("TUI.Input requires a Value variable");
     }
 
     _onEnter.compose(data);

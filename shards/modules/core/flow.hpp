@@ -186,7 +186,7 @@ struct Cond {
     for (const auto &action : _conditions) {
       auto validation = composeWire(action, data);
       if (validation.outputType.basicType != SHType::Bool) {
-        throw ComposeError("Cond - expected Bool output from predicate shards");
+        throw shards::Error("Cond - expected Bool output from predicate shards");
       }
       mergeIntoExposedInfo(_requiredInfo, validation.requiredInfo);
       shards::arrayFree(validation.exposedInfo);
@@ -432,7 +432,7 @@ struct Maybe : public BaseSubFlow {
         SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}, wire: {}", context->getErrorMessage(), _self->line,
                       _self->column, currentWire ? currentWire->name : "unknown");
         if (likely(!context->onLastResume)) {
-          context->resetErrorStack();
+          context->errorStack.clear();
           context->continueFlow();
           if (_elseBlks) {
             _elseBlks.activate(context, input, _output);
@@ -599,12 +599,12 @@ struct ExposerFlow {
     for (size_t i = 1; i < v.size(); i++) {
       IterableExposedInfo sub(v[i].exposedInfo);
       if (master.size() != sub.size()) {
-        throw ComposeError("Flow is unbalanced, exposing a different amount of variables.");
+        throw shards::Error("Flow is unbalanced, exposing a different amount of variables.");
         _composition = {};
         return;
       }
       if (!std::equal(master.begin(), master.end(), sub.begin())) {
-        throw ComposeError("Flow is unbalanced, type mismatch.");
+        throw shards::Error("Flow is unbalanced, type mismatch.");
         _composition = {};
         return;
       }
@@ -676,7 +676,7 @@ template <bool COND> struct When {
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
-      throw ComposeError("When predicate should output a boolean value!");
+      throw shards::Error("When predicate should output a boolean value!");
     }
 
     auto ares = _action.compose(data);
@@ -687,7 +687,7 @@ template <bool COND> struct When {
       if (ares.outputType != data.inputType) {
         SHLOG_ERROR("When Passthrough is false but action output type ({}) does not match input type ({}).", ares.outputType,
                     data.inputType);
-        throw ComposeError("When Passthrough is false but action output type "
+        throw shards::Error("When Passthrough is false but action output type "
                            "does not match input type.");
       }
     }
@@ -774,7 +774,7 @@ struct IfBlock {
     // both not exposing!
     const auto cres = _cond.compose(data);
     if (cres.outputType.basicType != SHType::Bool) {
-      throw ComposeError("If - predicate should output a boolean value!");
+      throw shards::Error("If - predicate should output a boolean value!");
     }
 
     const auto tres = _then.compose(data);

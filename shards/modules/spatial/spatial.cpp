@@ -85,10 +85,10 @@ struct SpatialUIContextShard {
     _contents.compose(data);
 
     if (_queue->valueType == SHType::None)
-      throw ComposeError("Queue is required");
+      throw shards::Error("Queue is required");
 
     if (_view->valueType == SHType::None)
-      throw ComposeError("View is required");
+      throw shards::Error("View is required");
 
     return data.inputType;
   }

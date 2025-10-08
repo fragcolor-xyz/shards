@@ -129,7 +129,7 @@ template <SHType ToType> struct ToNumber {
   SHTypeInfo compose(const SHInstanceData &data) {
     _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
     if (!_outputVectorType) {
-      throw ComposeError("Conversion not implemented for this type");
+      throw shards::Error("Conversion not implemented for this type");
     }
 
     _outputNumberType = NumberTypeLookup::getInstance().get(_outputVectorType->numberType);
@@ -139,14 +139,14 @@ template <SHType ToType> struct ToNumber {
       _numberConversion =
           NumberTypeLookup::getInstance().getConversion(_inputVectorType->numberType, _outputVectorType->numberType);
       if (!_numberConversion) {
-        throw ComposeError("Conversion not implemented for this type");
+        throw shards::Error("Conversion not implemented for this type");
       }
     } else if (data.inputType.basicType == SHType::Seq) {
       const NumberTypeTraits *fixedNumberType = determineFixedSeqNumberType(data.inputType);
       if (fixedNumberType) {
         _numberConversion = fixedNumberType->conversionTable.get(_outputNumberType->type);
         if (!_numberConversion) {
-          throw ComposeError("Conversion not implemented for this type");
+          throw shards::Error("Conversion not implemented for this type");
         }
 
         OVERRIDE_ACTIVATE(data, activateSeqElementsFixed);
@@ -426,7 +426,7 @@ template <SHType ToType> struct MakeVector {
   SHTypeInfo compose(const SHInstanceData &data) {
     _outputVectorType = VectorTypeLookup::getInstance().get(ToType);
     if (!_outputVectorType) {
-      throw ComposeError("Conversion not implemented for this type");
+      throw shards::Error("Conversion not implemented for this type");
     }
 
     auto &numberTypeLookup = NumberTypeLookup::getInstance();
@@ -457,7 +457,7 @@ template <SHType ToType> struct MakeVector {
     // Check for gaps in parameter list
     for (size_t i = inputSize; i < params.size(); i++) {
       if (params[i]->valueType != SHType::None)
-        throw ComposeError(fmt::format("Vector component {} was not set", inputSize));
+        throw shards::Error(fmt::format("Vector component {} was not set", inputSize));
     }
 
     // Check valid amount of parameters
@@ -466,7 +466,7 @@ template <SHType ToType> struct MakeVector {
       isBroadcast = true;
     else if constexpr (!AllowDefaultComponents) {
       if (inputSize != params.size()) {
-        throw ComposeError(fmt::format("Not enough vector components: {}, expected: {}", inputSize, params.size()));
+        throw shards::Error(fmt::format("Not enough vector components: {}, expected: {}", inputSize, params.size()));
       }
     }
 

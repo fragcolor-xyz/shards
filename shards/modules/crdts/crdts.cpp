@@ -43,7 +43,7 @@ struct CRDTNew {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_id.isNone()) {
-      throw ComposeError("ID is required");
+      throw shards::Error("ID is required");
     }
 
     return CRDTTypes::CRDT;
@@ -128,10 +128,10 @@ struct CRDTSet {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_recordId.isNone()) {
-      throw ComposeError("Record ID is required");
+      throw shards::Error("Record ID is required");
     }
     if (_keys.isNone()) {
-      throw ComposeError("Keys are required");
+      throw shards::Error("Keys are required");
     }
 
     shassert(data.privateContext && "Private context should be valid");
@@ -150,7 +150,7 @@ struct CRDTSet {
 
     if (isMany) {
       if (data.inputType.basicType != SHType::Seq) {
-        throw ComposeError("Input must be a sequence if keys are a sequence");
+        throw shards::Error("Input must be a sequence if keys are a sequence");
       }
       OVERRIDE_ACTIVATE2(data, activateMany);
       return CRDTTypes::ChangesTableSeqType;
@@ -302,7 +302,7 @@ struct CRDTGet {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_keys.isNone()) {
-      throw ComposeError("Keys are required");
+      throw shards::Error("Keys are required");
     }
 
     return CoreInfo::AnyType;

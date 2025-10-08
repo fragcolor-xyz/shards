@@ -20,7 +20,7 @@ struct Schedule {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_mesh->valueType == SHType::None) {
-      throw ComposeError("Schedule: Mesh parameter is required");
+      throw shards::Error("Schedule: Mesh parameter is required");
     }
 
     return data.inputType;
@@ -64,7 +64,7 @@ struct Run {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (_mesh->valueType == SHType::None) {
-      throw ComposeError("Schedule: Mesh parameter is required");
+      throw shards::Error("Schedule: Mesh parameter is required");
     }
 
     if (!_tickTime.isNone() && !_fps.isNone()) {

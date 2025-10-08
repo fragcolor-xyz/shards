@@ -278,9 +278,9 @@ struct IndexOf {
       predicateData.inputType = data.inputType.seqTypes.elements[0];
       const auto pres = _predicate.compose(predicateData);
       if (pres.failed)
-        throw ComposeError(fmt::format("Failed to compose predicate: {}", pres.failureMessage));
+        throw shards::Error(fmt::format("Failed to compose predicate: {}", pres.failureMessage));
       if (pres.outputType.basicType != SHType::Bool) {
-        throw ComposeError("Remove Predicate should output a boolean value");
+        throw shards::Error("Remove Predicate should output a boolean value");
       }
       OVERRIDE_ACTIVATE(data, activatePredicate);
     } else {
@@ -417,19 +417,19 @@ struct Merge {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (!_target.isVariable()) {
-      throw ComposeError("Target must be a variable");
+      throw shards::Error("Target must be a variable");
     }
 
     for (auto &shared : data.shared) {
       if (strcmp(shared.name, _target.variableName()) == 0) {
         if (!shared.isMutable || shared.isProtected) {
-          throw ComposeError("Target must be a mutable variable");
+          throw shards::Error("Target must be a mutable variable");
         }
         return shared.exposedType;
       }
     }
 
-    throw ComposeError("Target variable not found");
+    throw shards::Error("Target variable not found");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -468,7 +468,7 @@ struct Zip {
 
   const SHTypeInfo &seqInnerType(const SHTypeInfo &ti) {
     if (ti.basicType != SHType::Seq) {
-      throw ComposeError("Expected a sequence type");
+      throw shards::Error("Expected a sequence type");
     }
     if (ti.seqTypes.len != 1)
       return CoreInfo::AnyType;
@@ -494,7 +494,7 @@ struct Zip {
         if (v.valueType == SHType::ContextVar) {
           auto et = findContextVarExposedType(data, v);
           if (!et)
-            throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
+            throw shards::Error(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
           auto innerType = seqInnerType(et->exposedType);
           if (!haveElementType(innerType))
             _elementTypes._types.push_back(innerType);
@@ -524,7 +524,7 @@ struct Zip {
         if (v.valueType == SHType::ContextVar) {
           auto et = findContextVarExposedType(data, v);
           if (!et)
-            throw ComposeError(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
+            throw shards::Error(fmt::format("Failed to find exposed type for context variable '{}'", SHSTRVIEW(v)));
           _elementTypes._types.push_back(seqInnerType(et->exposedType));
         } else {
           _typeInfos.emplace_back(v, data);
@@ -659,16 +659,16 @@ struct Extend {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (!_target.isVariable()) {
-      throw ComposeError("Target must be a variable");
+      throw shards::Error("Target must be a variable");
     }
 
     for (auto &shared : data.shared) {
       if (strcmp(shared.name, _target.variableName()) == 0) {
         if (!shared.isMutable || shared.isProtected) {
-          throw ComposeError("Target must be a mutable variable");
+          throw shards::Error("Target must be a mutable variable");
         }
         if (shared.exposedType.basicType != SHType::Seq) {
-          throw ComposeError("Target must be a sequence");
+          throw shards::Error("Target must be a sequence");
         }
         break;
       }

@@ -43,9 +43,9 @@ struct LineShard : public Base {
     baseCompose();
 
     if (_a->valueType == SHType::None)
-      throw ComposeError("A is required");
+      throw shards::Error("A is required");
     if (_b->valueType == SHType::None)
-      throw ComposeError("B is required");
+      throw shards::Error("B is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -90,11 +90,11 @@ struct CircleShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -145,11 +145,11 @@ struct RectShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -197,7 +197,7 @@ struct BoxShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("A is required");
+      throw shards::Error("A is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -244,7 +244,7 @@ struct PointShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -291,11 +291,11 @@ struct SolidRectShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -349,11 +349,11 @@ struct DiscShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -414,11 +414,11 @@ struct GridShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -490,11 +490,11 @@ struct RefSpaceGridOverlayShard : public Base {
     baseCompose();
 
     if (_center->valueType == SHType::None)
-      throw ComposeError("Center is required");
+      throw shards::Error("Center is required");
     if (_xBase->valueType == SHType::None)
-      throw ComposeError("XBase is required");
+      throw shards::Error("XBase is required");
     if (_yBase->valueType == SHType::None)
-      throw ComposeError("YBase is required");
+      throw shards::Error("YBase is required");
 
     return shards::CoreInfo::NoneType;
   }
@@ -625,7 +625,7 @@ struct ScreenScale : public Base {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     baseCompose();
     if (_position.isNone())
-      throw ComposeError("Position is required");
+      throw shards::Error("Position is required");
     return outputTypes().elements[0];
   }
 
@@ -659,9 +659,9 @@ struct TextShard : public Base {
     baseCompose();
 
     if (_text->valueType == SHType::None)
-      throw ComposeError("Text is required");
+      throw shards::Error("Text is required");
     if (_position->valueType == SHType::None)
-      throw ComposeError("Position is required");
+      throw shards::Error("Position is required");
 
     return shards::CoreInfo::NoneType;
   }

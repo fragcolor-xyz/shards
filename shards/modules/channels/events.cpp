@@ -99,7 +99,7 @@ struct Receive : Base {
     auto currentType = (*_dispatcher).get().getType();
     if (currentType.basicType == SHType::None) {
       SHLOG_ERROR("Event type not set for event: {}, use Events.Send first", _eventName);
-      throw ComposeError("Event type not set");
+      throw shards::Error("Event type not set");
     }
 
     // fixup type

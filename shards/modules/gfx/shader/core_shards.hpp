@@ -252,7 +252,7 @@ struct Literal {
 
     if (outputFieldType.has_value()) {
       if (type == ShaderLiteralType::Header) {
-        throw shards::ComposeError("Output type can not be set for Header type shader literals");
+        throw shards::Error("Output type can not be set for Header type shader literals");
       }
       _outputType = fieldTypeToShardsType(outputFieldType.value());
     } else {
@@ -260,7 +260,7 @@ struct Literal {
     }
 
     if (_source.valueType == SHType::None)
-      throw shards::ComposeError("Source is required");
+      throw shards::Error("Source is required");
 
     return _outputType;
   }
@@ -391,7 +391,7 @@ template <> struct BlockTypeResolver<blocks::ReadInput> {
     auto &defs = ctx.generatorContext.getDefinitions().inputs;
     auto it = defs.find(name);
     if (it == defs.end())
-      throw shards::ComposeError(fmt::format("Shader input \"{}\" not found", name));
+      throw shards::Error(fmt::format("Shader input \"{}\" not found", name));
     return IOBase::Type{shards::Types{fieldTypeToShardsType(it->second)}, it->second};
   }
 };
@@ -401,7 +401,7 @@ template <> struct BlockTypeResolver<blocks::ReadGlobal> {
     auto &defs = ctx.generatorContext.getDefinitions().globals;
     auto it = defs.find(name);
     if (it == defs.end())
-      throw shards::ComposeError(fmt::format("Shader global \"{}\" not found", name));
+      throw shards::Error(fmt::format("Shader global \"{}\" not found", name));
     return IOBase::Type{shards::Types{fieldTypeToShardsType(it->second)}, it->second};
   }
 };
@@ -476,7 +476,7 @@ struct ReadBuffer final : public IOBase {
       if (field)
         return b;
     }
-    throw shards::ComposeError(fmt::format("Failed to find shader parameter \"{}\" in any buffer", fieldName));
+    throw shards::Error(fmt::format("Failed to find shader parameter \"{}\" in any buffer", fieldName));
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
@@ -493,7 +493,7 @@ struct ReadBuffer final : public IOBase {
       auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
       auto bufferIt = buffers.find(_bufferName);
       if (bufferIt == buffers.end())
-        throw shards::ComposeError(fmt::format("Shader buffer \"{}\" does not exist", _bufferName));
+        throw shards::Error(fmt::format("Shader buffer \"{}\" does not exist", _bufferName));
       buffer = &bufferIt->second;
       _resolvedBufferName = _bufferName;
     }
@@ -501,7 +501,7 @@ struct ReadBuffer final : public IOBase {
     // Find field in buffer
     const StructField *field = buffer->findField(_resolvedVariableName);
     if (!field)
-      throw shards::ComposeError(
+      throw shards::Error(
           fmt::format("Shader parameter \"{}\" does not exist in buffer \"{}\"", _resolvedVariableName, _bufferName));
 
     _type.shaderType = field->type;
@@ -678,7 +678,7 @@ struct SampleTexture {
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
+      throw shards::Error(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     if (it->second.type.dimension != TextureDimension::D2) {
       throw formatException("SampleTexture does not support texture for type [{}]",
@@ -723,7 +723,7 @@ struct SampleTextureCoord : public SampleTexture {
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
+      throw shards::Error(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
 
     SHTypeInfo expectedInputType = getExpectedCoordinateType(it->second);
@@ -768,7 +768,7 @@ struct RefTexture {
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
+      throw shards::Error(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     _textureType = it->second.type;
 
@@ -808,7 +808,7 @@ struct RefSampler {
     auto &textures = shaderCtx.generatorContext.getDefinitions().textures;
     auto it = textures.find(_resolvedName);
     if (it == textures.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
+      throw shards::Error(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     _samplerType = SamplerType{};
     return ShardsTypes::Sampler;
@@ -846,7 +846,7 @@ struct RefBuffer {
     auto &buffers = shaderCtx.generatorContext.getDefinitions().buffers;
     auto it = buffers.find(_resolvedName);
     if (it == buffers.end()) {
-      throw shards::ComposeError(fmt::format("Shader texture \"{}\" not found", _resolvedName));
+      throw shards::Error(fmt::format("Shader texture \"{}\" not found", _resolvedName));
     }
     return ShardsTypes::Buffer;
   }

@@ -24,7 +24,7 @@ static thread_local ShaderCompositionContext *compositionContext{};
 
 ShaderCompositionContext &ShaderCompositionContext::get() {
   if (!compositionContext)
-    throw ComposeError("Shader shards can not be used outside of a shader");
+    throw shards::Error("Shader shards can not be used outside of a shader");
   return *compositionContext;
 }
 

@@ -130,7 +130,7 @@ struct BaseRunner : public WireBase {
 
     if (data.wire == wire.get()) {
       // Forbid this and suggest to use Restart shard instead
-      throw ComposeError(fmt::format("Detected recursion in wire {}, please use Restart shard instead", wire->name));
+      throw shards::Error(fmt::format("Detected recursion in wire {}, please use Restart shard instead", wire->name));
     }
 
     // Start/Resume need to capture all it needs, so we need deeper informations

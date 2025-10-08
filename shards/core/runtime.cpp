@@ -711,7 +711,7 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 #endif
 
   SHLOG_ERROR(msg);
-  context->pushError(std::move(msg));
+  context->errorStack.emplace_back(std::move(msg));
   auto wire = context->currentWire();
   if (wire) {
     auto mesh = wire->mesh.lock();
@@ -932,7 +932,7 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
     }
 #endif
-    throw ComposeError(ctx.bottom, msg);
+    throw shards::Error(ctx.bottom, msg);
   }
 
   // infer and specialize types if we need to
@@ -953,7 +953,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      throw ComposeError(ctx.bottom, composeResult.error.message.string);
+      throw shards::Error(ctx.bottom, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -979,7 +979,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      throw ComposeError(data.shard, composeResult.error.message.string);
+      throw shards::Error(data.shard, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -998,7 +998,7 @@ void validateConnection(InternalCompositionContext &ctx) {
         }
       }
     } else {
-      throw ComposeError(ctx.bottom, "Shard has multiple possible output types and is missing the compose method");
+      throw shards::Error(ctx.bottom, "Shard has multiple possible output types and is missing the compose method");
     }
   }
 
@@ -1028,7 +1028,7 @@ void validateConnection(InternalCompositionContext &ctx) {
         });
     if (!shardHasValidOutputTypes) {
       auto msg = fmt::format("Shard {} doesn't have a valid output type", ctx.bottom->name(ctx.bottom));
-      throw ComposeError(ctx.bottom, msg);
+      throw shards::Error(ctx.bottom, msg);
     }
   }
 #endif
@@ -1044,8 +1044,8 @@ void validateConnection(InternalCompositionContext &ctx) {
       SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
       // check if we are not declaring a mutable var twice, and match the mutability
       if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
-        throw ComposeError(ctx.bottom,
-                           fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+        throw shards::Error(ctx.bottom,
+                            fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
       }
       // check that we are not declaring a mutable var twice
       if (!inserted.second && inserted.first->second.isMutable) {
@@ -1053,8 +1053,8 @@ void validateConnection(InternalCompositionContext &ctx) {
             exposed_param.exposedType.basicType == SHType::Table) {
           // Allow redeclaration of mutable tables
         } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
-          throw ComposeError(ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name,
-                                                     ctx.wire->name));
+          throw shards::Error(ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name,
+                                                      ctx.wire->name));
         }
       }
       // clear declared flag on exposed param
@@ -1124,12 +1124,12 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
 #endif
       if (found) {
-        throw ComposeError(ctx.bottom,
-                           fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
-                                       required.second.exposedType, found->exposedType, required.first));
+        throw shards::Error(ctx.bottom,
+                            fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+                                        required.second.exposedType, found->exposedType, required.first));
       } else {
-        throw ComposeError(ctx.bottom,
-                           fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+        throw shards::Error(
+            ctx.bottom, fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
       }
     } else {
       // Add required stuff that we do not expose ourself
@@ -1164,21 +1164,21 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
-inline std::string logFormatErrorStack(CompositionContext *context) {
+std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view head) {
   std::string e;
-  if (context->errorStack.size() > 0) {
+  if (errorStack.size() > 0) {
     for (size_t i = 0;;) {
-      auto &err = context->errorStack[i];
+      auto &err = errorStack[i];
       if (i == 0) {
-        e += fmt::format("Composition Error, {}:\n", err.what());
+        e += fmt::format("{}, {}:\n", head, err.message);
       }
       e += fmt::format("[{}] ", i);
       switch (err.type) {
-      case ComposeError::CTX_Shard:
+      case shards::Error::CTX_Shard:
         shassert(err.shard);
         e += fmt::format("{} ({})", err.shard->name(err.shard), formatShardSourceLocation(err.shard));
         break;
-      case ComposeError::CTX_Wire:
+      case shards::Error::CTX_Wire:
         shassert(err.wire);
         e += fmt::format("<wire> {} ({})", err.wire->name, err.wire->id);
         break;
@@ -1186,11 +1186,10 @@ inline std::string logFormatErrorStack(CompositionContext *context) {
         e += fmt::format("<unknown>");
         break;
       }
-      if (++i >= context->errorStack.size())
+      if (++i >= errorStack.size())
         break;
       e += "\n";
     }
-    SHLOG_ERROR("{}", e);
   } else {
     e = "Unknown error";
   }
@@ -1204,8 +1203,9 @@ inline SHComposeResult prettyComposeWithContext(const SHWire *wire, SHInstanceDa
   try {
     return shards::composeWire(wire, data);
   } catch (const std::exception &e) {
-    auto err = logFormatErrorStack(&privateContext);
-    throw ComposeError(err);
+    auto err = formatErrorStack(privateContext.errorStack, "Composition Error");
+    SHLOG_ERROR("{}", err);
+    throw shards::Error(err);
   }
 }
 
@@ -1380,7 +1380,7 @@ void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
     if (!tm(cr.exposedInfo, trait)) {
-      throw ComposeError(wire, fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+      throw shards::Error(wire, fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
     }
   }
 }
@@ -1393,7 +1393,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     bool expected = false;
     if (!wire->composing.compare_exchange_strong(expected, true)) {
       SHLOG_ERROR("Wire {} is already being composed", wire->name);
-      throw ComposeError(wire, "Wire is already being composed");
+      throw shards::Error(wire, "Wire is already being composed");
     }
     // defer reset compose state
     DEFER(wire->composing.store(false));
@@ -1442,7 +1442,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
         if (!matchTypes(type, res.outputType, true, true, true)) {
           std::string err =
               fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
-          throw ComposeError(wire, std::move(err));
+          throw shards::Error(wire, std::move(err));
         }
       }
     }
@@ -1451,7 +1451,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     // swap to avoid deferred free
     std::swap(result, res);
     return result;
-  } catch (ComposeError &ex) {
+  } catch (shards::Error &ex) {
     if (data.privateContext) {
       CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
       context->errorStack.push_back(std::move(ex));
@@ -1837,9 +1837,9 @@ endOfWire:
     }
 
     // print our stack log nicely now
-    auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
-    SHLOG_ERROR(msg);
-    shards::OwnedVar errVar((Var(context.formatErrorStack())));
+    auto err = formatErrorStack(context.errorStack, "Activation Error");
+    SHLOG_ERROR("{}", err);
+    shards::OwnedVar errVar{Var(err)};
     {
       // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
       std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
@@ -3224,11 +3224,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                                              const SHTypesInfo *validTypes, const char *debugTag) -> SHBool {
     try {
       return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
-    } catch (const shards::ComposeError &e) {
-      SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
-      return false;
     } catch (const std::exception &e) {
-      SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
+      std::string err = fmt::format("Type validation failed for parameter {}: {}", debugTag, e.what());
+      if (data->privateContext) {
+        CompositionContext *context = reinterpret_cast<CompositionContext *>(data->privateContext);
+        context->errorStack.emplace_back(err);
+      } else {
+        SHLOG_ERROR("{}", err);
+      }
       return false;
     } catch (...) {
       SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
@@ -3240,6 +3243,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     std::string_view sv(str.string, size_t(str.len));
     return shards::fast_string::store(sv);
   };
+
   result->fastStringLoad = [](uint64_t id) {
     auto sv = shards::fast_string::load(id);
     return SHStringWithLen{sv.data(), sv.size()};
@@ -3350,7 +3354,7 @@ SHBool shards_cancel_abort(SHContext *context) {
     // ok this flow should stop already... so we can just return false
     return false;
   }
-  context->resetErrorStack();
+  context->errorStack.clear();
   context->continueFlow();
   return true;
 }

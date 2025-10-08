@@ -619,7 +619,7 @@ struct ServerShard : public NetworkBase {
 
   void warmup(SHContext *context) {
     if (!_pool) {
-      throw ComposeError("Peer wires pool not valid!");
+      throw shards::Error("Peer wires pool not valid!");
     }
 
     if (_disconnectionHandler)
@@ -1001,7 +1001,7 @@ struct ServerShard : public NetworkBase {
             stop(peer->wire.get());
           }
           // Always adjust the context back to continue, peer wire might have changed it
-          context->resetErrorStack();
+          context->errorStack.clear();
           context->continueFlow();
         }
       }

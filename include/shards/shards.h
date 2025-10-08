@@ -764,6 +764,9 @@ typedef struct SHShardComposeResult(__cdecl *SHComposeV2Proc)(struct Shard *, st
 // The core of the shard processing, avoid syscalls here
 typedef const struct SHVar *(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
+// Store an error message in the context, for use when aborting a wire
+typedef const char* (*__cdecl SHContextStoreError)(struct SHContext *, SHStringWithLen err);
+
 // Generally when stop() is called
 // Note that context may be null in some cases
 typedef struct SHError(__cdecl *SHCleanupProc)(struct Shard *, struct SHContext *);

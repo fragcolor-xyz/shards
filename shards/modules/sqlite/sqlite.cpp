@@ -749,7 +749,7 @@ struct Transaction : public Base {
   SHTypeInfo compose(SHInstanceData &data) {
     Base::compose(data, _dbName);
     if (_withinTransaction) {
-      throw ComposeError("Transaction already exists, cannot nest transactions.");
+      throw shards::Error("Transaction already exists, cannot nest transactions.");
     }
 
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);

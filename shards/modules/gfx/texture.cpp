@@ -121,20 +121,20 @@ struct TextureShard {
 
     if (!_interpretAs->isNone()) {
       if (_format->valueType != SHType::None)
-        throw ComposeError("Can not specify Format and InterpretAs parameters at the same time");
+        throw shards::Error("Can not specify Format and InterpretAs parameters at the same time");
       if (!_dimension->isNone())
-        throw ComposeError("Can not specify Dimension and InterpretAs parameters at the same time");
+        throw shards::Error("Can not specify Dimension and InterpretAs parameters at the same time");
       if (_resolution->valueType != SHType::None)
-        throw ComposeError("Can not specify Resolution and InterpretAs parameters at the same time");
+        throw shards::Error("Can not specify Resolution and InterpretAs parameters at the same time");
       if (_mipLevels->valueType != SHType::None)
-        throw ComposeError("Can not specify MipLevels and InterpretAs parameters at the same time");
+        throw shards::Error("Can not specify MipLevels and InterpretAs parameters at the same time");
     }
 
     if (_format->valueType != SHType::None) {
       _createFromImage = false;
     } else {
       if (data.inputType != CoreInfo::ImageType) {
-        throw ComposeError("Format is required when not creating a texture from an image");
+        throw shards::Error("Format is required when not creating a texture from an image");
       }
       _createFromImage = true;
     }

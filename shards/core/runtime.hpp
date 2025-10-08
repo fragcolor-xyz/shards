@@ -174,6 +174,8 @@ struct SHContext {
   bool isResumed{};
 #endif
 
+  std::vector<shards::Error> errorStack;
+
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
 
@@ -198,18 +200,6 @@ struct SHContext {
     SHLOG_DEBUG("Cancelling flow: {}", message);
     state = SHWireState::Error;
     errorMessage = message;
-  }
-
-  void pushError(std::string &&message) { errorStack.emplace_back(std::move(message)); }
-  void resetErrorStack() { errorStack.clear(); }
-  std::string formatErrorStack() {
-    // reverse order
-    std::string out;
-    for (auto it = errorStack.rbegin(); it != errorStack.rend(); ++it) {
-      out += *it;
-      out += "\n";
-    }
-    return out;
   }
 
   constexpr void rebaseFlow() { state = SHWireState::Rebase; }
@@ -243,7 +233,6 @@ private:
   // to store the previous result
   SHVar flowStorage{};
   std::string errorMessage;
-  std::vector<std::string> errorStack;
 };
 
 namespace shards {
@@ -504,7 +493,7 @@ struct RuntimeCallbacks {
 struct CompositionContext {
   pmr::SharedTempAllocator tempAllocator;
   shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::vector<shards::ComposeError> errorStack;
+  std::vector<shards::Error> errorStack;
 
   shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
 

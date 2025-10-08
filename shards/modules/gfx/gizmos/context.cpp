@@ -84,7 +84,7 @@ struct GizmosContextShard {
     _gfxContext.compose(data, _requiredVariables);
 
     if (!_queue.isVariable())
-      throw ComposeError("Queue not set");
+      throw shards::Error("Queue not set");
 
     if (!_view.isVariable())
       throw std::runtime_error("View must be a variable");

@@ -135,7 +135,7 @@ struct BaseOpsBin {
       if (auto vt = findExposedVariablePtr(data, _operand.variableName())) {
         otherBasicType = vt->exposedType.basicType;
       } else {
-        throw ComposeError(fmt::format("Variable {} not found", _operand.variableName()));
+        throw shards::Error(fmt::format("Variable {} not found", _operand.variableName()));
       }
     } else {
       otherBasicType = _operand->valueType;
@@ -143,7 +143,7 @@ struct BaseOpsBin {
 
     if (inBasicType != SHType::Any && otherBasicType != SHType::Any) {
       if (inBasicType != otherBasicType) {
-        throw ComposeError(
+        throw shards::Error(
             fmt::format("Cannot compare {} with {}", magic_enum::enum_name(inBasicType), magic_enum::enum_name(otherBasicType)));
       }
     }
@@ -773,7 +773,7 @@ struct Restart {
   // Ensures the input type matches the wire root input type.
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.wire->inputType->basicType != SHType::None && !matchTypes(data.inputType, data.wire->inputType, false, true, true)) {
-      throw ComposeError(fmt::format("Restart input and wire input type mismatch, wire: {} receives {}, shard receives: {}",
+      throw shards::Error(fmt::format("Restart input and wire input type mismatch, wire: {} receives {}, shard receives: {}",
                                      data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
     }
     return data.inputType; // Actually, we are a flow stopper.
@@ -1165,18 +1165,18 @@ struct SetBase : public VariableBase {
       auto &reference = *existingExposedType;
       if (_isTable) {
         if (reference.exposedType.basicType != SHType::Table) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
+          throw shards::Error(fmt::format("Set/Ref/Update, variable \"{}\" was not a table", _name));
         }
       } else {
         if (
             // need to check if this was just a any table definition {}
             !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
             !matchTypes(data.inputType, reference.exposedType, true, true, true)) {
-          throw ComposeError(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
+          throw shards::Error(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
                                          reference.exposedType, data.inputType));
         }
         if (failIfExists && !overwrite) {
-          throw ComposeError(fmt::format("Ref, variable \"{}\" already exists", _name));
+          throw shards::Error(fmt::format("Ref, variable \"{}\" already exists", _name));
         } else if (warnIfExists && !overwrite) {
           SHLOG_INFO("Set - Warning: setting an already exposed variable \"{}\", use Update to avoid this warning.", _name);
         }
@@ -1184,11 +1184,11 @@ struct SetBase : public VariableBase {
 
       if (!overwrite && !reference.isMutable) {
         SHLOG_ERROR("Error with variable: {}", _name);
-        throw ComposeError(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
+        throw shards::Error(fmt::format("Set/Ref/Update, attempted to write an immutable variable \"{}\".", _name));
       }
       if (reference.isProtected) {
         SHLOG_ERROR("Error with variable: {}", _name);
-        throw ComposeError(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
+        throw shards::Error(fmt::format("Set/Ref/Update, attempted to write a protected variable \"{}\".", _name));
       }
 
       _trackingMaskInternal = reference.trackingMask;
@@ -1325,7 +1325,7 @@ struct Set : public SetUpdateBase {
     // bake exposed types
     if (_isTable) {
       if (existingExposedType && existingExposedType->exposedType.table.fixedStructTable) {
-        throw ComposeError(fmt::format(
+        throw shards::Error(fmt::format(
             "Set, variable \"{}\" is a fixed struct table, cannot be used with Set, please use Update instead", _name));
       }
 
@@ -1652,16 +1652,16 @@ struct Update : public SetUpdateBase {
       }
 
       if (!originalTableType) {
-        throw ComposeError("Update: error, original table type not found.");
+        throw shards::Error("Update: error, original table type not found.");
       }
 
       if (tableInnerValueTypes.len == 0) {
         if (_key.isVariable()) {
-          throw ComposeError(fmt::format(
+          throw shards::Error(fmt::format(
               "Update: can not update table with variable key \"{}\" because it has no \"none\" type field information ({}).",
               *_key, *originalTableType));
         } else {
-          throw ComposeError(fmt::format(
+          throw shards::Error(fmt::format(
               "Update: can not update table with variable key \"{}\" because it is not present in the table type({}).", *_key,
               *originalTableType));
         }
@@ -1683,7 +1683,7 @@ struct Update : public SetUpdateBase {
           }
           possibleTypes += fmt::format("{}", tableInnerValueTypes.elements[i]);
         }
-        throw ComposeError(fmt::format("Update: error, update is changing table field for key {} from {} => {}", *_key,
+        throw shards::Error(fmt::format("Update: error, update is changing table field for key {} from {} => {}", *_key,
                                        possibleTypes, data.inputType));
       }
 
@@ -1696,12 +1696,12 @@ struct Update : public SetUpdateBase {
       auto type = findExposedVariablePtr(inherited->inherited, _name);
       if (type) {
         if (!matchTypes(data.inputType, type->exposedType, true, true, true)) {
-          throw ComposeError("Update: error, update is changing the variable type.");
+          throw shards::Error("Update: error, update is changing the variable type.");
         }
         _isGlobal = type->global;
         _trackingMaskInternal = type->trackingMask;
       } else {
-        throw ComposeError(fmt::format("Update: error, variable {} is not exposed.", _name));
+        throw shards::Error(fmt::format("Update: error, variable {} is not exposed.", _name));
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateRegular;
@@ -1823,7 +1823,7 @@ struct Get : public VariableBase {
     if (_isTable) {
       if (type) {
         if (type->exposedType.basicType != SHType::Table)
-          throw ComposeError(fmt::format("Get: error, variable {} was not a table", _name));
+          throw shards::Error(fmt::format("Get: error, variable {} was not a table", _name));
 
         auto &tableKeys = type->exposedType.table.keys;
         auto &tableTypes = type->exposedType.table.types;
@@ -1878,7 +1878,7 @@ struct Get : public VariableBase {
         }
 
         if (type->isProtected) {
-          throw ComposeError("Get (" + _name + "): Cannot Get, variable is protected.");
+          throw shards::Error("Get (" + _name + "): Cannot Get, variable is protected.");
         }
       }
 
@@ -1886,14 +1886,14 @@ struct Get : public VariableBase {
         return _defaultType;
       } else {
         if (_key.isVariable()) {
-          throw ComposeError("Get (" + _name + ":" + std::string(_key.variableName()) +
+          throw shards::Error("Get (" + _name + ":" + std::string(_key.variableName()) +
                              "[variable]): Could not infer an output type, key not found "
                              "and no Default value provided.");
         } else {
           // refactored
           auto msg = fmt::format("Get ({}:{}): Could not infer an output type, key not found and no Default value provided.",
                                  _name, *_key);
-          throw ComposeError(msg);
+          throw shards::Error(msg);
         }
       }
     } else {
@@ -1902,7 +1902,7 @@ struct Get : public VariableBase {
 
       if (type) {
         if (type->isProtected) {
-          throw ComposeError("Get (" + _name + "): Cannot Get, variable is protected.");
+          throw shards::Error("Get (" + _name + "): Cannot Get, variable is protected.");
         }
         return type->exposedType;
       }
@@ -1919,7 +1919,7 @@ struct Get : public VariableBase {
     if (_defaultValue.valueType != SHType::None) {
       return _defaultType;
     } else {
-      throw ComposeError("Get (" + _name + "): Could not infer an output type and no Default value provided.");
+      throw shards::Error("Get (" + _name + "): Could not infer an output type and no Default value provided.");
     }
   }
 
@@ -2270,12 +2270,12 @@ struct Push : public SeqBase {
     if (_isTable) {
       if (type) {
         if (type->exposedType.basicType != SHType::Table) {
-          throw ComposeError("Expected a table variable.");
+          throw shards::Error("Expected a table variable.");
         }
 
         if (type->trackingMask != 0) {
           // cannot push into exposed variables
-          throw ComposeError("Cannot push into exposed variables");
+          throw shards::Error("Cannot push into exposed variables");
         }
 
         if (type->exposedType.table.types.elements) {
@@ -2298,17 +2298,17 @@ struct Push : public SeqBase {
     } else {
       if (type) {
         if (type->exposedType.basicType != SHType::Seq)
-          throw ComposeError(fmt::format("Push: error, variable {} is not a sequence.", _name));
+          throw shards::Error(fmt::format("Push: error, variable {} is not a sequence.", _name));
         // found, can we mutate it?
         if (!type->isMutable) {
-          throw ComposeError(fmt::format("Cannot mutate a non-mutable variable: {}", _name));
+          throw shards::Error(fmt::format("Cannot mutate a non-mutable variable: {}", _name));
         } else if (type->isProtected) {
-          throw ComposeError(fmt::format("Cannot mutate a protected variable: {}", _name));
+          throw shards::Error(fmt::format("Cannot mutate a protected variable: {}", _name));
         }
 
         if (type->trackingMask != 0) {
           // cannot push into exposed variables
-          throw ComposeError(fmt::format("Cannot push into exposed variables: {}", _name));
+          throw shards::Error(fmt::format("Cannot push into exposed variables: {}", _name));
         }
 
         // ok now update into
@@ -2423,7 +2423,7 @@ struct Sequence : public SeqBase {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &reference = data.shared.elements[i];
         if (strcmp(reference.name, _name.c_str()) == 0) {
-          throw ComposeError("Sequence - Variable " + _name + " already exists.");
+          throw shards::Error("Sequence - Variable " + _name + " already exists.");
         }
       }
     } else {
@@ -2434,7 +2434,7 @@ struct Sequence : public SeqBase {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
               auto msg = fmt::format("Sequence - Variable {} in table {} already exists.", *_key, _name);
-              throw ComposeError(msg);
+              throw shards::Error(msg);
             }
           }
         }
@@ -2461,7 +2461,7 @@ struct Sequence : public SeqBase {
     }
 
     if (_weakType.basicType != SHType::Seq) {
-      throw ComposeError("Sequence - Type must be a sequence.");
+      throw shards::Error("Sequence - Type must be a sequence.");
     }
 
     // Ensure declared
@@ -2625,7 +2625,7 @@ struct TableDecl : public VariableBase {
       for (uint32_t i = 0; i < data.shared.len; i++) {
         auto &reference = data.shared.elements[i];
         if (strcmp(reference.name, _name.c_str()) == 0) {
-          throw ComposeError("Table - Variable " + _name + " already exists.");
+          throw shards::Error("Table - Variable " + _name + " already exists.");
         }
       }
     } else {
@@ -2637,7 +2637,7 @@ struct TableDecl : public VariableBase {
             // if here, key is not variable
             if (*_key == tableKeys.elements[y]) {
               auto msg = fmt::format("Table - Variable {} in table {} already exists.", *_key, _name);
-              throw ComposeError(msg);
+              throw shards::Error(msg);
             }
           }
         }
@@ -2674,7 +2674,7 @@ struct TableDecl : public VariableBase {
     }
 
     if (_weakType.basicType != SHType::Table) {
-      throw ComposeError("Table - Type must be a table.");
+      throw shards::Error("Table - Type must be a table.");
     }
 
     if (_weakType.table.fixedStructTable) {
@@ -2841,11 +2841,11 @@ struct SeqUser : VariableBase {
     auto info = findExposedVariablePtr(inherited->inherited, _name);
 
     if (!info) {
-      throw ComposeError(fmt::format("Variable {} not found.", _name));
+      throw shards::Error(fmt::format("Variable {} not found.", _name));
     }
 
     if (checkTracking && info->trackingMask != 0) {
-      throw ComposeError(fmt::format("Variable {} is tracked and can only be updated using Update.", _name));
+      throw shards::Error(fmt::format("Variable {} is tracked and can only be updated using Update.", _name));
     }
 
     return data.inputType;
@@ -2956,20 +2956,20 @@ struct Clear : SeqUser {
     // info is valid because we run base compose first
 
     if (!info->isMutable) {
-      throw ComposeError(fmt::format("Variable {} is not mutable.", _name));
+      throw shards::Error(fmt::format("Variable {} is not mutable.", _name));
     }
 
     if (_key.isNone()) {
       if (info->exposedType.basicType == SHType::Table) {
         // cannot clear a fixed struct table
         if (info->exposedType.table.fixedStructTable) {
-          throw ComposeError(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
+          throw shards::Error(fmt::format("Clear: Cannot clear a fixed struct table, variable: {}", _name));
         }
 
         // also cannot clear tables with non dynamic keys
         for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
           if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
-            throw ComposeError(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
+            throw shards::Error(fmt::format("Clear: Cannot clear a table with non dynamic keys, variable: {}", _name));
           }
         }
       }
@@ -2988,7 +2988,7 @@ struct Clear : SeqUser {
         }
       }
       if (fail) {
-        throw ComposeError(fmt::format(
+        throw shards::Error(fmt::format(
             "Clear: Cannot clear a table with a known key that is not a sequence or a variable key, variable: {}", _name));
       }
     }
@@ -3379,7 +3379,7 @@ struct Take {
           valid = true;
           _seqOutput = true;
         } else {
-          throw ComposeError(
+          throw shards::Error(
               fmt::format("Take with input as sequence expected an integer or a sequence of integers, but got: {}", _indices));
         }
       }
@@ -3406,7 +3406,7 @@ struct Take {
               valid = true;
               break;
             } else {
-              throw ComposeError(fmt::format(
+              throw shards::Error(fmt::format(
                   "Take with input as sequence expected an integer or a sequence of integers, but got: {}", info.exposedType));
             }
           }
@@ -3416,7 +3416,7 @@ struct Take {
       valid = true;
       _seqOutput = false;
     } else {
-      throw ComposeError(fmt::format("Take: Expected indices to be either Seq, Int or String, but got: {}, with input: {}",
+      throw shards::Error(fmt::format("Take: Expected indices to be either Seq, Int or String, but got: {}, with input: {}",
                                      _indices, data.inputType));
     }
 
@@ -3454,7 +3454,7 @@ struct Take {
                          << indexTableLength << "elements";
           std::string errorMsg = errorMsgStream.str();
           SHLOG_ERROR(errorMsg.c_str());
-          throw ComposeError(errorMsg);
+          throw shards::Error(errorMsg);
         }
 
         _vectorConversion =
@@ -3465,7 +3465,7 @@ struct Take {
                          << " exists";
           std::string errorMsg = errorMsgStream.str();
           SHLOG_ERROR(errorMsg.c_str());
-          throw ComposeError(errorMsg);
+          throw shards::Error(errorMsg);
         }
 
         _vectorOutput.valueType = _vectorOutputType->shType;
@@ -3496,7 +3496,7 @@ struct Take {
           // we can fully reconstruct a type in this case
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);
-            throw ComposeError("Take: Expected same number of types for numer of "
+            throw shards::Error("Take: Expected same number of types for numer of "
                                "keys in table input.");
           }
 
@@ -3513,7 +3513,7 @@ struct Take {
             // if types is 0 we did not match any
             if (_seqOutputTypes.size() == 0) {
               SHLOG_ERROR("Table input type: {} missing keys: {}", data.inputType, _indices);
-              throw ComposeError("Take: Failed to find a matching keys in the "
+              throw shards::Error("Take: Failed to find a matching keys in the "
                                  "input type table");
             }
             _seqOutputType = Type::SeqOf(SHTypesInfo{_seqOutputTypes.data(), uint32_t(_seqOutputTypes.size()), 0});
@@ -4125,7 +4125,7 @@ struct Split {
       return CoreInfo::StringSeqType;
     }
 
-    throw ComposeError("Split expects a sequence, string, or bytes as input.");
+    throw shards::Error("Split expects a sequence, string, or bytes as input.");
   }
 
   SHVar activateSeq(SHContext *context, const SHVar &input) {
@@ -4295,7 +4295,7 @@ struct RLimit {
   SHTypeInfo compose(const SHInstanceData &data) {
     // Ensure the input is a sequence
     if (data.inputType.basicType != SHType::Seq) {
-      throw ComposeError("RLimit shard expects a sequence as input.");
+      throw shards::Error("RLimit shard expects a sequence as input.");
     }
 
     // Allow any sequence type for output
@@ -4502,7 +4502,7 @@ struct IntRangeShard {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_start.isNone() || _end.isNone()) {
-      throw ComposeError("IntRange requires both Start and End parameters to be set.");
+      throw shards::Error("IntRange requires both Start and End parameters to be set.");
     }
     return outputTypes().elements[0];
   }
@@ -4610,7 +4610,7 @@ struct Repeat {
     _blks.compose(data);
     const auto predres = _pred.compose(data);
     if (_pred && predres.outputType.basicType != SHType::Bool)
-      throw ComposeError("Repeat shard Until predicate should output a boolean!");
+      throw shards::Error("Repeat shard Until predicate should output a boolean!");
 
     if (_pred) {
       OVERRIDE_ACTIVATE(data, activateUntilPred);

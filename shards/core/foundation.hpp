@@ -139,6 +139,8 @@ struct RuntimeObserver {
 inline void cloneVar(SHVar &dst, const SHVar &src);
 inline void destroyVar(SHVar &src);
 
+std::string formatErrorStack(const std::vector<shards::Error>& errorStack, std::string_view head);
+
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
 
@@ -1845,7 +1847,7 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
   }
   auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
                          validTypes);
-  throw ComposeError(msg);
+  throw shards::Error(msg);
 }
 
 // Overload that works directly with SHExposedTypesInfo to avoid extra copies
@@ -1866,7 +1868,7 @@ inline bool collectRequiredVariables(const SHInstanceData &data, SHExposedTypesI
   auto msg = fmt::format("No matching variable found for parameter {}, was: {}, expected any of {}", debugTag, (SHTypeInfo &)ti,
                          validTypes);
   SHLOG_ERROR("{}", msg);
-  throw ComposeError(msg);
+  throw shards::Error(msg);
 }
 
 template <typename... TArgs>

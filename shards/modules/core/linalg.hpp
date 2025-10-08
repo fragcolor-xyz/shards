@@ -331,7 +331,7 @@ struct Transpose : public UnaryBase {
     _opType = validateTypes(data.inputType, resultType);
 
     if (_opType == Invalid) {
-      throw ComposeError("Incompatible type for Transpose");
+      throw shards::Error("Incompatible type for Transpose");
     }
 
     return resultType;
@@ -365,7 +365,7 @@ struct Inverse : public UnaryBase {
     _opType = validateTypes(data.inputType, resultType);
 
     if (_opType == Invalid) {
-      throw ComposeError("Incompatible type for Transpose");
+      throw shards::Error("Incompatible type for Transpose");
     }
 
     return resultType;

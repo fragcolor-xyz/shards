@@ -872,13 +872,13 @@ struct ExpectLike {
 
     bool haveOutputOf = _outputOf.shards().len > 0;
     if (_typeOf.isNotNullConstant() && haveOutputOf) {
-      throw ComposeError("Only one of TypeOf or OutputOf is allowed");
+      throw shards::Error("Only one of TypeOf or OutputOf is allowed");
     }
 
     if (_typeOf.isVariable()) {
       auto type = findExposedVariable(data.shared, _typeOf);
       if (!type.has_value())
-        throw ComposeError(fmt::format("Can not derive type of variable {}, it was not found", SHSTRVIEW((*_typeOf))));
+        throw shards::Error(fmt::format("Can not derive type of variable {}, it was not found", SHSTRVIEW((*_typeOf))));
       _expectedType = type->exposedType;
     } else if (_typeOf.isNotNullConstant()) {
       clearDerived();
@@ -889,7 +889,7 @@ struct ExpectLike {
       _expectedType = res.outputType;
       PARAM_COMPOSE_MERGE_REQUIRED(_outputOf);
     } else {
-      throw ComposeError("One of TypeOf or OutputOf is required");
+      throw shards::Error("One of TypeOf or OutputOf is required");
     }
 
     _expectedTypeHash = deriveTypeHash64(_expectedType);
