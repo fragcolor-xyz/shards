@@ -703,15 +703,11 @@ ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjus
 }
 
 NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
-  auto &err = context->getErrorMessage();
-  auto msg = fmt::format("{} -> Error: {}, {}", blk->name(blk), err, formatShardSourceLocation(blk));
-
 #if SHARDS_DEBUGGER
-  shards::dbg::onError(context, blk, err);
+  shards::dbg::onError(context, blk, context->getErrorMessage());
 #endif
 
-  SHLOG_ERROR(msg);
-  context->errorStack.emplace_back(std::move(msg));
+  context->errorStack.push_back(shards::Error(blk, {}));
   auto wire = context->currentWire();
   if (wire) {
     auto mesh = wire->mesh.lock();
@@ -1164,58 +1160,121 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
-std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view head) {
-  std::string e;
+void appendIndented(std::string &out, std::string_view in, std::string_view indent) {
+  for (size_t i = 0; i < in.size(); i++) {
+    if (in[i] == '\n') {
+      out += '\n';
+      out += indent;
+      continue;
+    } else {
+      out += in[i];
+    }
+  }
+}
+
+std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view indent) {
+  std::string e{};
+  std::string subIndent = "  ";
+  std::string subIndentJ = std::string(indent) + "  ";
   if (errorStack.size() > 0) {
+    e += indent;
+
+    bool haveOutput = false;
     for (size_t i = 0;;) {
       auto &err = errorStack[i];
-      if (i == 0) {
-        e += fmt::format("{}, {}:\n", head, err.message);
+
+      if (!err.message.empty()) {
+        if (haveOutput) {
+          e += "\n";
+          e += indent;
+        }
+        e += subIndent;
+        appendIndented(e, err.message, subIndentJ);
+        haveOutput = true;
       }
-      e += fmt::format("[{}] ", i);
+
+      if (err.type != shards::Error::CTX_Unknown) {
+        if (haveOutput) {
+          e += "\n";
+          e += indent;
+        }
+        e += fmt::format("- ");
+        haveOutput = true;
+      }
+
       switch (err.type) {
       case shards::Error::CTX_Shard:
         shassert(err.shard);
-        e += fmt::format("{} ({})", err.shard->name(err.shard), formatShardSourceLocation(err.shard));
+        e += fmt::format("{} {}", err.shard->name(err.shard), formatShardSourceLocation(err.shard));
         break;
       case shards::Error::CTX_Wire:
         shassert(err.wire);
-        e += fmt::format("<wire> {} ({})", err.wire->name, err.wire->id);
+        if (auto firstBlk = err.wire->shards.front()) {
+          e += fmt::format("<wire> {} uid:{:x} {}", err.wire->name, uint64_t(err.wire->uniqueId),
+                           formatShardSourceLocation(firstBlk));
+        } else {
+          e += fmt::format("<wire> {} uid:{:x}", err.wire->name, uint64_t(err.wire->uniqueId));
+        }
         break;
       default:
-        e += fmt::format("<unknown>");
         break;
       }
       if (++i >= errorStack.size())
         break;
-      e += "\n";
     }
   } else {
     e = "Unknown error";
   }
   return e;
 }
-} // namespace shards
 
-inline SHComposeResult prettyComposeWithContext(const SHWire *wire, SHInstanceData &data) {
+inline SHStringWithLen toOwnedString(std::string_view s) {
+  SHStringWithLen r{};
+  r.len = s.size();
+  r.string = new char[s.size()];
+  std::memcpy(const_cast<char *>(r.string), s.data(), s.size());
+  return r;
+}
+
+SHComposeResult getComposeError(shards::CompositionContext &privateContext) {
+  std::string emsg = "Composition failed";
+  std::string errorStackTrace = formatErrorStack(privateContext.errorStack, {});
+  // throw shards::ExtendedError(emsg, errorStackTrace);
+  return SHComposeResult{
+      .failed = true,
+      .error = toOwnedString(emsg),
+      .errorStackTrace = toOwnedString(errorStackTrace),
+  };
+}
+
+SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept {
   shards::CompositionContext privateContext;
   data.privateContext = &privateContext;
   try {
     return shards::composeWire(wire, data);
   } catch (const std::exception &e) {
-    auto err = formatErrorStack(privateContext.errorStack, "Composition Error");
-    SHLOG_ERROR("{}", err);
-    throw shards::Error(err);
+    return getComposeError(privateContext);
   }
 }
 
-void SHMesh::prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-  auto validation = prettyComposeWithContext(wire.get(), data);
-  shards::arrayFree(validation.exposedInfo);
-  shards::arrayFree(validation.requiredInfo);
+SHComposeResult composeShardsNoExcept(const Shards wire, SHInstanceData &data) noexcept {
+  shards::CompositionContext privateContext;
+  data.privateContext = &privateContext;
+  try {
+    return shards::composeWire(wire, data);
+  } catch (const std::exception &e) {
+    return getComposeError(privateContext);
+  }
 }
 
-namespace shards {
+ExtendedError::ExtendedError(std::string error, std::string errorStackTrace) : error(error), errorStackTrace(errorStackTrace) {
+  if (errorStackTrace.length() > 0) {
+    combined = fmt::format("{}:\n{}", error, errorStackTrace);
+  } else {
+    combined = error;
+  }
+}
+const char *ExtendedError::what() const noexcept { return combined.c_str(); }
 
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
@@ -1376,13 +1435,18 @@ SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData dat
   return internalComposeWire(wire, data);
 }
 
-void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
+bool validateWireTraits(const SHWire *wire, const SHComposeResult &cr, SHInstanceData data) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
     if (!tm(cr.exposedInfo, trait)) {
-      throw shards::Error(wire, fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+      auto pct = reinterpret_cast<CompositionContext *>(data.privateContext);
+      shassert(pct);
+      pct->errorStack.emplace_back(fmt::format("Wire {} does not implement {}", wire->name, trait, tm.error));
+      pct->errorStack.emplace_back(tm.error);
+      return false;
     }
   }
+  return true;
 }
 
 SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
@@ -1424,12 +1488,10 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
     auto res = internalComposeWire(wire->shards, data, true);
-    DEFER({
-      shards::arrayFree(res.exposedInfo);
-      shards::arrayFree(res.requiredInfo);
-    });
+    DEFER({ shards::freeComposeResult(res); });
 
-    validateWireTraits(wire, res);
+    if (!validateWireTraits(wire, res, data))
+      throw std::runtime_error("Wire traits validation failed");
 
     // set output type
     wire->outputType = res.outputType; // this is a shallow copy, because it will come from a shard within the wire
@@ -1454,6 +1516,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   } catch (shards::Error &ex) {
     if (data.privateContext) {
       CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+      shassert(context);
       context->errorStack.push_back(std::move(ex));
     }
     throw;
@@ -1461,22 +1524,18 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
 }
 
 SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
-  if (!data.privateContext) {
-    return prettyComposeWithContext(wire_, data);
-  } else {
-    // We need to catch exceptions here and add them to the context
-    try {
-      return internalComposeWire(wire_, data);
-    } catch (std::exception &ex) {
-      // also send error event if possible
-      auto mesh = wire_->mesh.lock();
-      if (mesh) {
-        std::string_view what{ex.what()};
-        shards::OwnedVar err{Var(what)};
-        mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
-      }
-      throw;
+  // We need to catch exceptions here and add them to the context
+  try {
+    return internalComposeWire(wire_, data);
+  } catch (std::exception &ex) {
+    // also send error event if possible
+    auto mesh = wire_->mesh.lock();
+    if (mesh) {
+      std::string_view what{ex.what()};
+      shards::OwnedVar err{Var(what)};
+      mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
     }
+    throw;
   }
 }
 
@@ -1495,6 +1554,18 @@ SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
   }
   return composeWire(shards, data);
 }
+
+void freeComposeResult(SHComposeResult &result) {
+  shards::arrayFree(result.exposedInfo);
+  shards::arrayFree(result.requiredInfo);
+  if (result.error.string) {
+    delete[] result.error.string;
+  }
+  if (result.errorStackTrace.string) {
+    delete[] result.errorStackTrace.string;
+  }
+}
+void InternalCore::freeComposeResult(struct SHComposeResult *result) { shards::freeComposeResult(*result); }
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   auto params = shard->parameters(shard);
@@ -1837,9 +1908,9 @@ endOfWire:
     }
 
     // print our stack log nicely now
-    auto err = formatErrorStack(context.errorStack, "Activation Error");
-    SHLOG_ERROR("{}", err);
-    shards::OwnedVar errVar{Var(err)};
+    context.errorStack.push_back(shards::Error(wire, {}));
+    SHLOG_ERROR("Activation error\n{}", formatErrorStack(context.errorStack));
+    shards::OwnedVar errVar{Var(context.getErrorMessage())};
     {
       // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
       std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
@@ -2860,48 +2931,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
-    auto &sc = SHWire::sharedFromRef(wire);
-    try {
-      return composeWire(sc.get(), data);
-    } catch (const std::exception &e) {
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var("foreign exception failure during composeWire");
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
+    auto sc = SHWire::sharedFromRef(wire);
+    return shards::composeWireNoExcept(sc.get(), data);
   };
+
+  result->freeComposeResult = [](SHComposeResult *result) noexcept { shards::freeComposeResult(*result); };
 
   result->runWire = [](SHWireRef wire, SHContext *context, const SHVar *input) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     return shards::runSubWire(sc.get(), context, *input);
   };
 
-  result->composeShards = [](Shards shards, SHInstanceData data) noexcept {
-    try {
-      return shards::composeWire(shards, data);
-    } catch (const std::exception &e) {
-      SHLOG_TRACE("composeShards failed: {}", e.what());
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      SHLOG_TRACE("composeShards failed: ...");
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var("foreign exception failure during composeWire");
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
-  };
+  result->composeShards = [](Shards shards, SHInstanceData data) noexcept { return shards::composeShardsNoExcept(shards, data); };
 
   result->validateSetParam = [](Shard *shard, int index, const SHVar *param) noexcept {
     try {
@@ -3299,6 +3340,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->setWireDebugId = [](SHWireRef wire, uint64_t id) {
     auto &sc = SHWire::sharedFromRef(wire);
     sc->debugId = id;
+  };
+
+  result->pushError = [](SHContext *context, SHStringWithLen error) {
+    context->errorStack.emplace_back(std::string_view(error.string, size_t(error.len)));
   };
 
   result->serializeVar = &serializeVar;

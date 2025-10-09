@@ -337,8 +337,6 @@ struct Detached {
     auto &inputWire = _handler->brancher.wires().back();
     if (!inputWire->composeResult)
       throw shards::Error(fmt::format("Failed to compose input wire"));
-    if (inputWire->composeResult->failed)
-      throw shards::Error(fmt::format("Failed to compose input wire: {}", inputWire->composeResult->failureMessage));
 
     _mainDataSeqTypes = Types{inputWire->outputType};
     auto mainDataSeqType = Type::SeqOf(_mainDataSeqTypes);

@@ -39,8 +39,7 @@ void SHWire::destroy() {
   }
 
   if (composeResult) {
-    shards::arrayFree(composeResult->requiredInfo);
-    shards::arrayFree(composeResult->exposedInfo);
+    shards::freeComposeResult(*composeResult);
   }
 
   // finally reset the mesh

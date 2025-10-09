@@ -92,8 +92,7 @@ struct Cond {
   void destroy() {
     cleanup(nullptr);
     destroyVar(_wires);
-    shards::arrayFree(_wireValidation.exposedInfo);
-    shards::arrayFree(_wireValidation.requiredInfo);
+    shards::freeComposeResult(_wireValidation);
   }
 
   void setParam(int index, const SHVar &value) {
@@ -178,8 +177,7 @@ struct Cond {
     _requiredInfo.clear();
 
     // Free any previous result!
-    shards::arrayFree(_wireValidation.exposedInfo);
-    shards::arrayFree(_wireValidation.requiredInfo);
+    shards::freeComposeResult(_wireValidation);
 
     // Validate condition wires, altho they do not influence anything we need
     // to report errors
@@ -189,8 +187,7 @@ struct Cond {
         throw shards::Error("Cond - expected Bool output from predicate shards");
       }
       mergeIntoExposedInfo(_requiredInfo, validation.requiredInfo);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
+      shards::freeComposeResult(validation);
     }
 
     // Evaluate all actions, all must return the same type in order to be safe
@@ -230,13 +227,11 @@ struct Cond {
         }
 
         // free the exposed info part
-        shards::arrayFree(validation.exposedInfo);
-        shards::arrayFree(validation.requiredInfo);
+        shards::freeComposeResult(validation);
 
         if (!exposing) {
           // make sure we expose nothing in this case!
-          shards::arrayFree(_wireValidation.exposedInfo);
-          shards::arrayFree(_wireValidation.requiredInfo);
+          shards::freeComposeResult(_wireValidation);
         }
       }
 
@@ -379,7 +374,6 @@ struct Maybe : public BaseSubFlow {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _self = data.shard;
     // exposed stuff should be balanced
     // and output should the same
     SHComposeResult elseComp{};
@@ -398,7 +392,7 @@ struct Maybe : public BaseSubFlow {
     if (_elseBlks && !nextIsNone && !elseComp.flowStopper && _composition.outputType != elseComp.outputType) {
       outputType = CoreInfo::AnyType;
       SHLOG_WARNING("Maybe: Branches return different types, setting output type to Any!, wire: {}, {}",
-                    data.wire ? data.wire->name : "unknown", formatShardSourceLocation(_self));
+                    data.wire ? data.wire->name : "unknown", formatShardSourceLocation(data.shard));
     }
 
     // Maybe won't expose
@@ -427,10 +421,10 @@ struct Maybe : public BaseSubFlow {
       logging::LogContext ctx{[&](const spdlog::details::log_msg &msg) { return !_silent; }};
       auto state = _shards.activate(context, input, _output);
       if (state == SHWireState::Error) {
+        auto _self = toShard(this);
         shassert(_self);
-        auto currentWire = context->currentWire();
-        SHLOG_WARNING("Maybe shard Ignored an error: {}, line: {}, column: {}, wire: {}", context->getErrorMessage(), _self->line,
-                      _self->column, currentWire ? currentWire->name : "unknown");
+        context->errorStack.push_back(shards::Error(_self, {}));
+        SHLOG_WARNING("Maybe shard Ignored an error\n{}", formatErrorStack(context->errorStack));
         if (likely(!context->onLastResume)) {
           context->errorStack.clear();
           context->continueFlow();
@@ -442,8 +436,9 @@ struct Maybe : public BaseSubFlow {
           }
         } else {
           auto currentWire = context->currentWire();
-          SHLOG_DEBUG("Maybe shard Ignored an error: {}, when on last resume, line: {}, column: {}, wire: {}",
-                      context->getErrorMessage(), _self->line, _self->column, currentWire ? currentWire->name : "unknown");
+          SHLOG_DEBUG("Maybe shard Ignored an error, when on last resume, wire: {}\n{}",
+                      currentWire ? currentWire->name : "unknown", formatShardSourceLocation(_self),
+                      formatErrorStack(context->errorStack));
           // Just continue as the wire is done
           return _output;
         }
@@ -459,7 +454,6 @@ struct Maybe : public BaseSubFlow {
   }
 
 private:
-  Shard *_self;
   ShardsVar _elseBlks{};
   bool _silent{false};
   static inline Parameters _params{BaseSubFlow::_params,
@@ -688,7 +682,7 @@ template <bool COND> struct When {
         SHLOG_ERROR("When Passthrough is false but action output type ({}) does not match input type ({}).", ares.outputType,
                     data.inputType);
         throw shards::Error("When Passthrough is false but action output type "
-                           "does not match input type.");
+                            "does not match input type.");
       }
     }
     return data.inputType;

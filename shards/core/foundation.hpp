@@ -90,6 +90,8 @@ void setString(uint32_t crc, SHString str);
 void stringGrow(SHStringPayload *str, uint32_t newCap);
 void stringFree(SHStringPayload *str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept;
+[[nodiscard]] SHComposeResult composeShardsNoExcept(Shards wire, SHInstanceData &data) noexcept;
 // caller does not handle return
 SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
 // caller handles return
@@ -139,7 +141,7 @@ struct RuntimeObserver {
 inline void cloneVar(SHVar &dst, const SHVar &src);
 inline void destroyVar(SHVar &src);
 
-std::string formatErrorStack(const std::vector<shards::Error>& errorStack, std::string_view head);
+std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view indent = "  ");
 
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
@@ -649,6 +651,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   uint8_t *stackMem{nullptr};
 #endif
 
+  uint64_t uniqueId;
+
   ~SHWire();
 
   void warmup(SHContext *context);
@@ -820,7 +824,6 @@ private:
 
   void destroy();
 
-  uint64_t uniqueId;
   static inline std::atomic_uint64_t idCounter{0};
 
   // this is the eventual coroutine stack memory buffer
@@ -1481,6 +1484,8 @@ struct InternalCore {
   static void freeWire(struct SHLWire *wire);
 
   static void freeAst(struct SHLAst *ast);
+
+  static void freeComposeResult(struct SHComposeResult *result);
 };
 
 inline std::string formatShardSourceLocation(Shard *blk) { return formatShardSourceLocationWithCore<InternalCore>(blk); }

@@ -40,6 +40,22 @@ use std::ffi::CStr;
 use std::ffi::CString;
 use std::os::raw::c_char;
 
+/// A constant error value that can be used when a static error message is not needed,
+/// You should push a dynamic error message using `push_error` instead.
+pub const DynamicErr: Result<(), &'static str> = Err("");
+
+pub fn push_error(context: &Context, error: &str) {
+  unsafe {
+    (*Core).pushError.unwrap_unchecked()(
+      context as *const SHContext as *mut SHContext,
+      SHStringWithLen {
+        string: error.as_ptr() as *const c_char,
+        len: error.len() as u64,
+      },
+    );
+  }
+}
+
 pub trait ParameterSet {
   fn parameters() -> &'static Parameters;
   fn num_params() -> usize;

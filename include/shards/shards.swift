@@ -1187,11 +1187,8 @@ class ShardsVar {
         nativeShards.len = 0
         nativeShards.elements = nil
 
-        withUnsafeMutablePointer(to: &composeResult.exposedInfo) { ptr in
-            G.Core.pointee.expTypesFree(ptr)
-        }
-        withUnsafeMutablePointer(to: &composeResult.requiredInfo) { ptr in
-            G.Core.pointee.expTypesFree(ptr)
+        withUnsafeMutablePointer(to: &composeResult) { ptr in
+            G.Core.pointee.freeComposeResult(ptr)
         }
 
         composeResult = SHComposeResult()

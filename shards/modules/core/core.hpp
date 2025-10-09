@@ -2270,7 +2270,7 @@ struct Push : public SeqBase {
     if (_isTable) {
       if (type) {
         if (type->exposedType.basicType != SHType::Table) {
-          throw shards::Error("Expected a table variable.");
+          throw shards::Error("Expected a table variable");
         }
 
         if (type->trackingMask != 0) {

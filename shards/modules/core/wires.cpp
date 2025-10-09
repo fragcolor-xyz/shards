@@ -1199,8 +1199,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     // We need to validate the sub wire to figure it out!
     auto res = composeWire(wire.get(), data);
 
-    shards::arrayFree(res.exposedInfo);
-    shards::arrayFree(res.requiredInfo);
+    shards::freeComposeResult(res);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1210,23 +1209,29 @@ struct WireRunner : public BaseLoader<WireRunner> {
       return input;
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
-      if (!_onWorkerThread) {
-        // Compose and hash in a thread
-        await(
-            context,
-            [this, context, wireVar]() {
-              deferredCompose(context);
-              wire->composedHash = shards::hash(wireVar);
-            },
-            [] {});
-      } else {
-        deferredCompose(context);
-        wire->composedHash = shards::hash(wireVar);
-      }
+      try {
+        if (!_onWorkerThread) {
+          // Compose and hash in a thread
+          await(
+              context,
+              [this, context, wireVar]() {
+                deferredCompose(context);
+                wire->composedHash = shards::hash(wireVar);
+              },
+              [] {});
+        } else {
+          deferredCompose(context);
+          wire->composedHash = shards::hash(wireVar);
+        }
 
-      _wireHash = wire->composedHash;
-      _wirePtr = wire.get();
-      doWarmup(context);
+        _wireHash = wire->composedHash;
+        _wirePtr = wire.get();
+        doWarmup(context);
+      } catch (ExtendedError &e) {
+        context->cancelFlow(e.error);
+        context->errorStack.emplace_back(e.errorStackTrace);
+        return {};
+      }
     }
 
     return BaseLoader<WireRunner>::activateWire(context, input);
@@ -2361,8 +2366,7 @@ struct WireComposer : public BaseLoader<WireComposer> {
       auto res = composeWire(wire.get(), data);
 
       // Free resources
-      shards::arrayFree(res.exposedInfo);
-      shards::arrayFree(res.requiredInfo);
+      shards::freeComposeResult(res);
 
       return Var("OK");
     } catch (const std::exception &e) {

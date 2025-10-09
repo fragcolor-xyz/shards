@@ -276,10 +276,8 @@ struct IndexOf {
     if (_predicate) {
       SHInstanceData predicateData = data;
       predicateData.inputType = data.inputType.seqTypes.elements[0];
-      const auto pres = _predicate.compose(predicateData);
-      if (pres.failed)
-        throw shards::Error(fmt::format("Failed to compose predicate: {}", pres.failureMessage));
-      if (pres.outputType.basicType != SHType::Bool) {
+      _predicate.compose(predicateData);
+      if (_predicate.composeResult().outputType.basicType != SHType::Bool) {
         throw shards::Error("Remove Predicate should output a boolean value");
       }
       OVERRIDE_ACTIVATE(data, activatePredicate);

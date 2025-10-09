@@ -70,7 +70,7 @@ public:
   explicit WarmupError(std::string_view msg) : SHException(msg) {}
 };
 
-class Error {
+class Error : public std::exception {
 public:
   std::string message;
   enum ContextType {
@@ -90,6 +90,7 @@ public:
   explicit Error(const SHWire *wire, std::string_view msg, bool fatal = true)
       : message(msg), wire(const_cast<SHWire *>(wire)), type(CTX_Wire), fatal(fatal) {}
   explicit Error(std::string_view msg, bool fatal = true) : message(msg), type(CTX_Unknown), fatal(fatal) {}
+  const char* what() const noexcept override { return message.c_str(); }
 };
 
 class InvalidVarTypeError : public SHException {

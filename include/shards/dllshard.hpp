@@ -348,6 +348,8 @@ public:
   static void _loadModule(const char *modulePath) { sCore.loadModule(modulePath); }
   static void _unloadModule() { sCore.unloadModule(); }
 
+  static void freeComposeResult(struct SHComposeResult *result) { sCore._core->freeComposeResult(result); }
+
 private:
   static inline CoreLoader sCore{};
 };

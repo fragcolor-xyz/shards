@@ -329,6 +329,16 @@ template <class T> struct ShardWrapper {
   }
 };
 
+template <typename T> inline auto toShardWrapper(T *self) {
+  using Wrapper = ShardWrapper<T>;
+  auto static const offset = offsetof(Wrapper, shard);
+  return reinterpret_cast<Wrapper *>(reinterpret_cast<uint8_t *>(self) - offset);
+}
+
+template <typename T> inline Shard* toShard(T *self) {
+  return &toShardWrapper(self)->header;
+}
+
 #ifdef SHARDS_THIS_MODULE_ID
 #define SHARD_MODULE_STRINGIFY_HELPER(x) #x
 #define SHARD_MODULE_STRINGIFY(x) SHARD_MODULE_STRINGIFY_HELPER(x)
