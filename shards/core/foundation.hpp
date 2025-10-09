@@ -142,6 +142,7 @@ inline void cloneVar(SHVar &dst, const SHVar &src);
 inline void destroyVar(SHVar &src);
 
 std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view indent = "  ");
+void appendIndented(std::string &out, std::string_view in, std::string_view indent);
 
 struct InternalCore;
 using OwnedVar = TOwnedVar<InternalCore>;
