@@ -11,7 +11,7 @@
   Shader.Literal(Type: ShaderLiteralType::Header Source: [
     """
     fn shaderFn(main: texture_2d<f32>, uv: vec2<f32>, depth: f32) -> vec4<f32> {
-      return vec4<f32>(uv.x, uv.y, depth, 1.0)//
+      return vec4<f32>(uv.x, uv.y, depth, 1.0);
     }
     """
   ])

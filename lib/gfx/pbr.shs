@@ -8,26 +8,26 @@
     Type: ShaderLiteralType::Header
     Source: [
       "fn integrate(args: vec4<f32>, baseDir: vec3<f32>, _texture: texture_cube<f32>, _sampler: sampler) -> vec3<f32> {
-        let tbn = generateFrameFromZDirection(baseDir)//
-        var weight = 0.0//
-        var result = vec3<f32>(0.0)//
-        var sampleIndex = 0//
+        let tbn = generateFrameFromZDirection(baseDir);
+        var weight = 0.0;
+        var result = vec3<f32>(0.0);
+        var sampleIndex = 0;
         loop {
             if(sampleIndex >= " num-samples ") {
-            break//
+            break;
             }
-            var mci: IntegrateInput//
-            mci.baseDirection = baseDir//
-            mci.coord = hammersley2d(sampleIndex, " num-samples ")//
-            let mco = " body "//
-            let lod = getWeightedLod(mco.pdf, " num-samples ", _texture)//
-            let direction = tbn * mco.localDirection//
-            let s = sampleEnvironmentLod(_texture, _sampler, direction, lod)//
-            result = result + s * mco.sampleScale//
-            weight = weight + mco.sampleWeight//
-            sampleIndex = sampleIndex + 1//
+            var mci: IntegrateInput;
+            mci.baseDirection = baseDir;
+            mci.coord = hammersley2d(sampleIndex, " num-samples ");
+            let mco = " body ";
+            let lod = getWeightedLod(mco.pdf, " num-samples ", _texture);
+            let direction = tbn * mco.localDirection;
+            let s = sampleEnvironmentLod(_texture, _sampler, direction, lod);
+            result = result + s * mco.sampleScale;
+            weight = weight + mco.sampleWeight;
+            sampleIndex = sampleIndex + 1;
         }
-        return result / weight//
+        return result / weight;
     }"
     ]
   )
@@ -211,8 +211,8 @@
                     "lgp.viewDirection = " view-direction ";"])
     
     Shader.Literal(["var mi = getDefaultMaterialInfo();
-                    mi.baseColor = (" base-color ").xyz//
-                    materialSetMetallicRoughness(&mi, " metallic ", " roughness ")//
+                    mi.baseColor = (" base-color ").xyz;
+                    materialSetMetallicRoughness(&mi, " metallic ", " roughness ");
                     "])
     
     Shader.ReadBuffer("iblIntensity") = ibl-intensity
