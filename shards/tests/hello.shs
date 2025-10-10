@@ -1,3 +1,7 @@
+/*
+Just testing comments...
+*/
+
 "debug" | SetLogLevel
 
 @include("hello2.shs")
@@ -71,9 +75,9 @@ Type::Int | Log
 
 @type(Type: Type::Int Variable: true) | Log
 @type(Type::Int true) | Log
-@type(Type::Int) | Log ; Not a variable
-@type([Type::Int]) | Log ; a sequence of Ints
-@type({none: Type::Int}) | Log ; a map of Ints with any key value possible
+@type(Type::Int) | Log // Not a variable
+@type([Type::Int]) | Log // a sequence of Ints
+@type({none: Type::Int}) | Log // a map of Ints with any key value possible
 @define(int-var @type(Type::Int true))
 @type({GFX.Mesh}) | Log
 @type(GFX.Mesh) | Log
@@ -206,9 +210,9 @@ WhenNot(@foo-predicate(1) {Msg("Less than 2")})
 When(@foo-predicate(-3) {Msg("Less than -2")})
 WhenNot(@foo-predicate(-1) {Msg("More than -2")})
 
-; test String.Starts(With: ...)
+// test String.Starts(With: ...)
 "Hello World!" | String.Starts(With: "Hello") | Assert.Is(true) | Log
-; also test that doesn't start with
+// also test that doesn't start with
 "Hello World!" | LogType("Type logging test") | String.Starts(With: "World") | Assert.Is(false) | Log
 
 ["1" "2" "3"] >= zs1
@@ -239,7 +243,7 @@ false = is-false | IsFalse | Assert.Is(true) | Log
 none
 1
 
-[] | IsAll(true) | Assert.Is(true) | Log ; vacuously true
+[] | IsAll(true) | Assert.Is(true) | Log // vacuously true
 
 Repeat({
   "../../.github/workflows/main.yml" | FS.Read | Yaml.ToJson | FromJson | Log
@@ -265,7 +269,7 @@ IncCounter("test-counter" 2) | Log | Assert.Is(2)
 GetCounter("test-counter") | Log | Assert.Is(2)
 DecCounter("test-counter" 1) | Log | Assert.Is(1)
 GetCounter("test-counter") | Log | Assert.Is(1)
-10 | SetCounter("test-counter") | Log | Assert.Is(1) ; old value
+10 | SetCounter("test-counter") | Log | Assert.Is(1) // old value
 GetCounter("test-counter") | Log | Assert.Is(10)
 
 UUID | ToJson(Pure: false) | Log | FromJson(Pure: false) | Log
@@ -279,7 +283,7 @@ IntRange(1 10) | Log | Assert.Is([1 2 3 4 5 6 7 8 9 10])
 Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log
 
 @wire(tail-call-restart {
-  Once(Set(value)) ; set it only once!
+  Once(Set(value)) // set it only once!
   Inc(value)
   value | If(IsMore(10) {
       Msg("More than 10")
@@ -306,7 +310,7 @@ Do(trigger-it-1)
 trigger-1-count | Assert.Is(1)
 
 Do(trigger-it-1)
-trigger-1-count | Assert.Is(1) ; should not trigger
+trigger-1-count | Assert.Is(1) // should not trigger
 
 true > trigger-1
 Do(trigger-it-1)
