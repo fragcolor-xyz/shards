@@ -1,6 +1,6 @@
 WHITESPACE    = _{ SEPARATOR | "," | "\t" | NEWLINE | COMMENT }
 COMMENT = _{   
-    ("//" | ";") ~ (!NEWLINE ~ ANY)* ~ NEWLINE |  
+    ("//" | ";") ~ (!NEWLINE ~ ANY)* ~ NEWLINE? |  
     "/*" ~ (!"*/" ~ ANY)* ~ "*/"  
 }
 Program       =  { SOI ~ Sequence ~ WHITESPACE* ~ EOI }
