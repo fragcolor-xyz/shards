@@ -1,9 +1,9 @@
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
   
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       "shards/UI/MarkdownViewer/sample.md" | FS.Read | UI.MarkdownViewer

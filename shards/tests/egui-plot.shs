@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2022 Fragcolor Pte. Ltd.
 
 @define(timestep #(1.0 | Math.Divide(60.0)))
 @define(pi 3.1415926535)
@@ -111,13 +111,13 @@
   )
 } Looped: true)
 
-; @wire(markers-wire {
-;   "Markers" | UI.Label
-; } Looped: true)
+// @wire(markers-wire {
+//   "Markers" | UI.Label
+// } Looped: true)
 
-; @wire(legend-wire {
-;   "Legend" | UI.Label
-; } Looped: true)
+// @wire(legend-wire {
+//   "Legend" | UI.Label
+// } Looped: true)
 
 @wire(charts-histogram-wire {
   UI.Plot(
@@ -143,11 +143,11 @@
   )
 } Looped: true)
 
-; @wire(charts-stacked-bars-wire {
-; } Looped: true)
+// @wire(charts-stacked-bars-wire {
+// } Looped: true)
 
-; @wire(charts-box-plot-wire {
-; } Looped: true)
+// @wire(charts-box-plot-wire {
+// } Looped: true)
 
 @wire(charts-wire {
   UI.Window(
@@ -159,8 +159,8 @@
           0 >= bar-type
         })
         UI.RadioButton("Histogram" bar-type 0)
-        ; UI.RadioButton("Stacked Bars" bar-type 1)
-        ; UI.RadioButton("Box Plot" bar-type 2)
+        // UI.RadioButton("Stacked Bars" bar-type 1)
+        // UI.RadioButton("Box Plot" bar-type 2)
       })
       "Orientation:" | UI.Label
       UI.Horizontal({
@@ -173,28 +173,28 @@
 
       bar-type | Match(
         [0 Step(charts-histogram-wire)
-        ; 1 Step(charts-stacked-bars-wire)
-        ; 2 Step(charts-box-plot-wire)
+        // 1 Step(charts-stacked-bars-wire)
+        // 2 Step(charts-box-plot-wire)
       ])
     }
   )
 } Looped: true)
 
-; @wire(items-wire {
-;   "Items" | UI.Label
-; } Looped: true)
+// @wire(items-wire {
+//   "Items" | UI.Label
+// } Looped: true)
 
-; @wire(interaction-wire {
-;   "Interaction" | UI.Label
-; } Looped: true)
+// @wire(interaction-wire {
+//   "Interaction" | UI.Label
+// } Looped: true)
 
-; @wire(custom-axes-wire {
-;   "Custom Axes" | UI.Label
-; } Looped: true)
+// @wire(custom-axes-wire {
+//   "Custom Axes" | UI.Label
+// } Looped: true)
 
-; @wire(linked-axes-wire {
-;   "Linked Axes" | UI.Label
-; } Looped: true)
+// @wire(linked-axes-wire {
+//   "Linked Axes" | UI.Label
+// } Looped: true)
 
 @wire(ui-wire {
   GFX.MainWindow(
@@ -225,26 +225,26 @@
                 0 >= choice
               })
               UI.RadioButton("Lines" choice 0)
-              ; UI.RadioButton("Markers" choice 1)
-              ; UI.RadioButton("Legend" choice 2)
+              // UI.RadioButton("Markers" choice 1)
+              // UI.RadioButton("Legend" choice 2)
               UI.RadioButton("Charts" choice 3)
-              ; UI.RadioButton("Items" choice 4)
-              ; UI.RadioButton("Interaction" choice 5)
-              ; UI.RadioButton("Custom Axes" choice 6)
-              ; UI.RadioButton("Linked Axes" choice 7)
+              // UI.RadioButton("Items" choice 4)
+              // UI.RadioButton("Interaction" choice 5)
+              // UI.RadioButton("Custom Axes" choice 6)
+              // UI.RadioButton("Linked Axes" choice 7)
             })
             UI.Separator
 
             choice |
             Match(
               [0 Step(lines-wire)
-              ; 1 Step(markers-wire)
-              ; 2 Step(legend-wire)
+              // 1 Step(markers-wire)
+              // 2 Step(legend-wire)
               3 Step(charts-wire)
-              ; 4 Step(items-wire)
-              ; 5 Step(interaction-wire)
-              ; 6 Step(custom-axes-wire)
-              ; 7 Step(linked-axes-wire)
+              // 4 Step(items-wire)
+              // 5 Step(interaction-wire)
+              // 6 Step(custom-axes-wire)
+              // 7 Step(linked-axes-wire)
             ])
           })
         }

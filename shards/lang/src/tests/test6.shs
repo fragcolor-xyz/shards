@@ -3,5 +3,5 @@
   @category-textures
   @category-meshes
   @category-audio
-  ; @category-shaders
+  // @category-shaders
 ])

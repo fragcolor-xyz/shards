@@ -1,56 +1,56 @@
-; SSH Module Test
-; This test file demonstrates SSH.Connect, SSH.Execute, and SSH.SendInput
+// SSH Module Test
+// This test file demonstrates SSH.Connect, SSH.Execute, and SSH.SendInput
 
-; Docker SSH server credentials (see ssh-test-docker/)
+// Docker SSH server credentials (see ssh-test-docker/)
 "localhost" = host
 2222 = port
 "testuser" = user
 "test123" = password
 
-; Connect to SSH server
+// Connect to SSH server
 SSH.Connect(Host: host Port: port User: user Password: password) >= ssh-session
 
-; Execute a simple command
+// Execute a simple command
 "echo 'Hello from SSH!'" | SSH.Execute(Session: ssh-session) >= result
 result | Log("First command result")
 
-; Check command completed
+// Check command completed
 result:status | Assert.Is("completed")
 
-; Test persistent state - directory changes persist
+// Test persistent state - directory changes persist
 "cd /tmp" | SSH.Execute(Session: ssh-session)
 "pwd" | SSH.Execute(Session: ssh-session) >= pwd-result
 pwd-result:output | Log("Current directory")
 pwd-result:output | ExpectString | Assert.Is("/tmp")
 
-; Test environment variable persistence
+// Test environment variable persistence
 "export TEST_VAR=hello" | SSH.Execute(Session: ssh-session)
 "echo $TEST_VAR" | SSH.Execute(Session: ssh-session) >= env-result
 env-result:output | Log("Environment variable")
 env-result:output | ExpectString | Assert.Is("hello")
 
-; Test interactive command detection with sh read
+// Test interactive command detection with sh read
 "Interactive command test" | Log
 "read -p 'Enter name: ' name && echo \"Hello $name\"" | SSH.Execute(Session: ssh-session) >= interactive-result
 interactive-result | Log("Interactive result")
 interactive-result:status | Assert.Is("requires_interaction")
 
-; Send input to interactive command
+// Send input to interactive command
 "Alice" | SSH.SendInput(Session: ssh-session) >= input-result
 input-result | Log("Input result")
 input-result:status | Assert.Is("completed")
 input-result:output | ExpectString | Log("Interactive output")
 
-; Test another interactive command - simple yes/no prompt
+// Test another interactive command - simple yes/no prompt
 "read -p 'Continue? (y/n): ' answer && echo \"Answer: $answer\"" | SSH.Execute(Session: ssh-session) >= prompt-result
 prompt-result:status | Assert.Is("requires_interaction")
 
-; Send yes answer
+// Send yes answer
 "y" | SSH.SendInput(Session: ssh-session) >= answer-result
 answer-result:status | Assert.Is("completed")
 answer-result:output | ExpectString | Log("Answer output")
 
 "Interactive tests completed!" | Log
 
-; Session will automatically disconnect when it goes out of scope
+// Session will automatically disconnect when it goes out of scope
 "SSH tests passed!" | Log

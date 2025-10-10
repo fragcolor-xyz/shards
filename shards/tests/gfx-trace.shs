@@ -8,7 +8,7 @@
 
 @wire(gfx {
   Once({
-    ; The first pass that just renders the spinning cube
+    // The first pass that just renders the spinning cube
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
 

@@ -8,12 +8,12 @@ Repeat({
 """
 
   1 | IsMore(2) | Assert.Is(true)
-  @i3(2 3 4) | Log | {1 | Assert.Is(1)} ; this is a Sub({})
+  @i3(2 3 4) | Log | {1 | Assert.Is(1)} // this is a Sub({})
   | Assert.Is(@i3(2 3 4))
   Do(walk)
   2 | Math.Add(2) | Log | (3 | Math.Add(3) | Log) | #(false | Assert.Is(true)) | Log
   			2.2 | Log | Log >= rare/pose
-  2.2 | Log | Log > number ; hello
+  2.2 | Log | Log > number // hello
   2.2 | Log | Log = number
   2.2 | Log | Log = number
   2.2 | Math.Add(2.0) | Log | Log
@@ -28,14 +28,14 @@ Repeat({
   0x2234 >> seq
   seq:0 | Log
   number | Math.Multiply(2.0) | Math.Multiply(Operand: seq:0 Type::String)
-  ; notice no |, we inject always a `nil` in front of a Pipeline,
-  ; if the next shard input type is not None
+  // notice no |, we inject always a `nil` in front of a Pipeline,
+  // if the next shard input type is not None
   {a: 1 b: 2} | {ToString | Assert.Is("{a: 1 b: 2}") | Log} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)
-  Repeat({ ; shards
+  Repeat({ // shards
     10 | Log
   } Times: 3 Until: #(1))
 
-  10 | If({ ; shards
+  10 | If({ // shards
     10 | Log
   } Else: {
     20 | Log
@@ -45,9 +45,9 @@ Repeat({
 Schedule(root main)
 Run(root)
 
-a | Math.Add((a | Math.Subtract(c))) ; generate temps and such at runtime
+a | Math.Add((a | Math.Subtract(c))) // generate temps and such at runtime
 
-a | Math.Add(#(a | Math.Subtract(c))) ; run at eval time and write result
+a | Math.Add(#(a | Math.Subtract(c))) // run at eval time and write result
 
 @wire(w1 {
   Msg("Hello")
@@ -86,4 +86,4 @@ Do(w2)
 
 @if-1(true none none)
 
-; comment
+// comment

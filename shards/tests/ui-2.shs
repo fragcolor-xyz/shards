@@ -1,16 +1,16 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2022 Fragcolor Pte. Ltd.
 
-; Notes:
-;   This file contains unit tests for the UI shards.
-;   It is not meant to be realistic. For such samples, look at egui-demo.shs.
+// Notes:
+//   This file contains unit tests for the UI shards.
+//   It is not meant to be realistic. For such samples, look at egui-demo.shs.
 
 @mesh(main)
 @define(timestep #(1.0 | Math.Divide(60.0)))
 @define(duration 60)
 @define(input "**input**")
 
-; label
+// label
 @wire(label-test {
   GFX.MainWindow(
     Contents: {
@@ -36,7 +36,7 @@
 @schedule(main label-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; listbox
+// listbox
 @wire(listbox-test {
   GFX.MainWindow(
     Contents: {
@@ -62,7 +62,7 @@
 @schedule(main listbox-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; numeric input
+// numeric input
 @wire(numeric-input-test {
   GFX.MainWindow(
     Contents: {
@@ -94,7 +94,7 @@
 @schedule(main numeric-input-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; numeric slider
+// numeric slider
 @wire(numeric-slider-test {
   GFX.MainWindow(
     Contents: {
@@ -126,7 +126,7 @@
 @schedule(main numeric-slider-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; progress bar
+// progress bar
 @wire(progress-bar-test {
   GFX.MainWindow(
     Contents: {
@@ -157,7 +157,7 @@
 @schedule(main progress-bar-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; radio button
+// radio button
 @wire(radio-button-test {
   GFX.MainWindow(
     Contents: {
@@ -185,7 +185,7 @@
 @schedule(main radio-button-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; spinner
+// spinner
 @wire(spinner-test {
   GFX.MainWindow(
     Contents: {
@@ -199,7 +199,7 @@
           Contents: {
             @input | 
             UI.Spinner | 
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -213,7 +213,7 @@
 @schedule(main spinner-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; text input
+// text input
 @wire(text-input-test {
   GFX.MainWindow(
     Contents: {
@@ -242,7 +242,7 @@
 @schedule(main text-input-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; tooltip
+// tooltip
 @wire(tooltip-test {
   GFX.MainWindow(
     Contents: {
@@ -256,17 +256,17 @@
           Contents: {
             UI.Tooltip(
               Contents: {
-                ; input passthrough
+                // input passthrough
                 Assert.Is(@input Break: true)
                 "Lorem ipsum" | UI.Label
               }
               OnHover: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
                 "Tooltip" | UI.Label
               }
             )
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )

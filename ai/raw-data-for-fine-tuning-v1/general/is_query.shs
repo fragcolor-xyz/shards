@@ -3,13 +3,13 @@ prompt: """How do I check if something equals something else?"""
 
 solution: """variable1
 When(Is(variable2) {
-Pass ;Do Something
+Pass //Do Something
 })
 """
 
 explicit: """Get(Name: variable1)
 When(Predicate: Is(Value: variable2) Action: {
-Pass ;Do Something
+Pass //Do Something
 }
 Passthrough: true)
 """

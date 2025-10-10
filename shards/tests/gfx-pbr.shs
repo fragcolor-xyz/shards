@@ -64,7 +64,7 @@
       base-features >= capture-features
       GFX.Feature(Shaders: [
         @fbl/init-lighting-shader
-        @fbl/apply-lighting-shader ;
+        @fbl/apply-lighting-shader //
       ]) >> base-features
     })
     
@@ -99,7 +99,7 @@
     
     GFX.View(view-transform) = view
     
-    ; PBR Step
+    // PBR Step
     base-features >= features
     skybox-step >> capture-steps
     
@@ -108,7 +108,7 @@
     GFX.DrawablePass(Queue: queue Features: features) >> steps
     skybox-step >> steps
     
-    ; Render UI
+    // Render UI
     Do(ui)
     
     GFX.Render(steps view)
@@ -118,4 +118,4 @@
 @mesh(root)
 @schedule(root test-wire)
 @run(root FPS: 60 Iterations: 100) | Assert.Is(true)
-; @run(root FPS: 120) | Assert.Is(true)
+// @run(root FPS: 120) | Assert.Is(true)

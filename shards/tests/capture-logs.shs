@@ -31,7 +31,7 @@
 @wire(a {
   Pause(0.0)
   CaptureLog({
-    ; Step sub-wires
+    // Step sub-wires
     Once({
       0 >= fc
     })
@@ -76,12 +76,12 @@
     })
   } Silent: true) | ForEach(Log("alog"))
   {= i | Count(i) | Assert.Is(4)}
-  ; Assert.Is([
-  ;   "[info] [a1] Starting a1 wire: none"
-  ;   "[info] [inline-shards-2] Attempting operation in TryMany: 3"
-  ;   "[info] [inline-shards-1] Attempting operation in TryMany: 2"
-  ;   "[info] [inline-shards-0] Attempting operation in TryMany: 1"
-  ; ])
+  // Assert.Is([
+  //   "[info] [a1] Starting a1 wire: none"
+  //   "[info] [inline-shards-2] Attempting operation in TryMany: 3"
+  //   "[info] [inline-shards-1] Attempting operation in TryMany: 2"
+  //   "[info] [inline-shards-0] Attempting operation in TryMany: 1"
+  // ])
 })
 
 @wire(c1 {
@@ -111,12 +111,12 @@
     Pause(0.0)
   } Silent: true) | ForEach(Log("blog"))
   {= i | Count(i) | Assert.Is(4)}
-  ; Assert.Is([
-  ;   "[info] [b1] Starting b1 wire: none"
-  ;   "[info] [b1] Processing in Await block: none"
-  ;   "[info] [c1] Executing c1 wire (Do): none"
-  ;   "[info] [d1] Executing d1 wire (Step): none"
-  ; ])
+  // Assert.Is([
+  //   "[info] [b1] Starting b1 wire: none"
+  //   "[info] [b1] Processing in Await block: none"
+  //   "[info] [c1] Executing c1 wire (Do): none"
+  //   "[info] [d1] Executing d1 wire (Step): none"
+  // ])
 })
 
 

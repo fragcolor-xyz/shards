@@ -8,7 +8,7 @@ CREATE TABLE ShardsTable (
     help TEXT,
     inputHelp TEXT,
     outputHelp TEXT
-);
+)//
 
 -- InputTypesTable
 CREATE TABLE InputTypesTable (
@@ -17,7 +17,7 @@ CREATE TABLE InputTypesTable (
     name TEXT,
     type INTEGER,
     FOREIGN KEY(help_id) REFERENCES HelpTable(id)
-);
+)//
 
 -- OutputTypesTable
 CREATE TABLE OutputTypesTable (
@@ -26,7 +26,7 @@ CREATE TABLE OutputTypesTable (
     name TEXT,
     type INTEGER,
     FOREIGN KEY(help_id) REFERENCES HelpTable(id)
-);
+)//
 
 -- ParametersTable with added 'parameter_index' column for sorting
 CREATE TABLE ParametersTable (
@@ -37,7 +37,7 @@ CREATE TABLE ParametersTable (
     help TEXT,
     name TEXT,
     FOREIGN KEY(help_id) REFERENCES HelpTable(id)
-);
+)//
 
 -- ParamTypesTable
 CREATE TABLE ParamTypesTable (
@@ -46,7 +46,7 @@ CREATE TABLE ParamTypesTable (
     name TEXT,
     type INTEGER,
     FOREIGN KEY(parameter_id) REFERENCES ParametersTable(id)
-);
+)//
 """ | DB.RawQuery
 
 Shards.Enumerate | ForEach({

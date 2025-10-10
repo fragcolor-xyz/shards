@@ -1,40 +1,40 @@
-; Script to demonstrate control flow in Shards
+// Script to demonstrate control flow in Shards
 
-; If condition with then/else
+// If condition with then/else
 10 | If(IsMore(5)
   {"Value is greater than 5" | Log("If Result")}
   {"Value is less than or equal to 5" | Log("If Result")}
 )
 
-; When condition (simpler if without else)
+// When condition (simpler if without else)
 20 | When(IsMore(15) {
   "Value is greater than 15" | Log("When Result")
 })
 
-; Repeat with set number of times
+// Repeat with set number of times
 Repeat({
   "This message repeats" | Log("Repeat")
 } Times: 3)
 
-; ForEach loop with a sequence
+// ForEach loop with a sequence
 [10 20 30] | ForEach({
   Mul(2) | Log("ForEach Result")
 })
 
-; Match for pattern matching
+// Match for pattern matching
 "B" | Match([
   "A" {"Matched A" | Log("Match")}
   "B" {"Matched B" | Log("Match")}
   none {"No match found" | Log("Match")}
 ])
 
-; Once for one-time initialization
+// Once for one-time initialization
 Once({
   0 >= init-counter
   "Initialized" | Log("Once")
 })
 
-; Return a summary of the control flow examples
+// Return a summary of the control flow examples
 {examples: {
   if_example: "10 | If(IsMore(5) {then-block} {else-block})",
   when_example: "20 | When(IsMore(15) {action-block})",

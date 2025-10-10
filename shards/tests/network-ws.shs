@@ -1,4 +1,4 @@
-; Run the same network test except use Network.WS client & server
+// Run the same network test except use Network.WS client & server
 @mesh(root)
 
 @include("defs.shs")
@@ -47,17 +47,17 @@
   } Looped: true)
 })
 
-; Seems flaky on emscripten, sometimes fails with
-;  "Error: Peer is disconnected" after connecting and trying to send data
+// Seems flaky on emscripten, sometimes fails with
+//  "Error: Peer is disconnected" after connecting and trying to send data
 @if(#(@platform | IsNot("emscripten")) {
-  ; @base(ws-test "ws://echo.websocket.org")
+  // @base(ws-test "ws://echo.websocket.org")
   @base(wss-test "wss://echo.websocket.org")
   
-  ; @schedule(root ws-test)
-  ; @run(root) | Assert.Is(true)
+  // @schedule(root ws-test)
+  // @run(root) | Assert.Is(true)
   
-  ; @schedule(root ws-test)
-  ; @run(root) | Assert.Is(true)
+  // @schedule(root ws-test)
+  // @run(root) | Assert.Is(true)
   
   @schedule(root wss-test)
   @run(root) | Assert.Is(true)

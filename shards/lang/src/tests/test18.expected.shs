@@ -4,66 +4,66 @@
 @schedule(root-mesh b)
 @run(root-mesh Iterations: 3) | Assert.Is(true)
 
-; @wire(maybe-curr-log {
-;   CaptureLog({
-;     Maybe({
-;         Msg("Hi")
-;         "Unknown Error" | Fail
-;       } {
-;         CurrentCaptureLog
-;         {= l | Count(l) | Assert.Is(3)}
-;         {Take(0) | Assert.Is("[maybe-curr-log] Hi")}
-;         {Take(1) | String.Starts("Fail -> Error") | Assert.Is(true)}
-;         {Take(2) | String.Starts("Maybe shard Ignored an error") | Assert.Is(true)}
-;         ForEach(Log("The log"))
-;       }
-;     )
-;   } MinLevel: LogLevel::Info Format: "%v")
-; })
-; @schedule(root-mesh maybe-curr-log)
-; @run(root-mesh) | Assert.Is(true)
+// @wire(maybe-curr-log {
+//   CaptureLog({
+//     Maybe({
+//         Msg("Hi")
+//         "Unknown Error" | Fail
+//       } {
+//         CurrentCaptureLog
+//         {= l | Count(l) | Assert.Is(3)}
+//         {Take(0) | Assert.Is("[maybe-curr-log] Hi")}
+//         {Take(1) | String.Starts("Fail -> Error") | Assert.Is(true)}
+//         {Take(2) | String.Starts("Maybe shard Ignored an error") | Assert.Is(true)}
+//         ForEach(Log("The log"))
+//       }
+//     )
+//   } MinLevel: LogLevel::Info Format: "%v")
+// })
+// @schedule(root-mesh maybe-curr-log)
+// @run(root-mesh) | Assert.Is(true)
 
-; @wire(a1 {
-;   CaptureLog({
-;     Log("Starting a1 wire")
-;     [1 2 3] | TryMany({
-;       Log("Attempting operation in TryMany")
-;     })
-;   } Silent: true) | ForEach(Log("alog"))
-; })
+// @wire(a1 {
+//   CaptureLog({
+//     Log("Starting a1 wire")
+//     [1 2 3] | TryMany({
+//       Log("Attempting operation in TryMany")
+//     })
+//   } Silent: true) | ForEach(Log("alog"))
+// })
 
-; @wire(c1 {
-;   Log("Executing c1 wire (Do)")
-; })
+// @wire(c1 {
+//   Log("Executing c1 wire (Do)")
+// })
 
-; @wire(d1 {
-;   Log("Executing d1 wire (Step)")
-; })
+// @wire(d1 {
+//   Log("Executing d1 wire (Step)")
+// })
 
-; @wire(e1 {
-;   Log("e1 wire execution (SwitchTo)")
-; })
+// @wire(e1 {
+//   Log("e1 wire execution (SwitchTo)")
+// })
 
-; @wire(b1 {
-;   CaptureLog({
-;     Log("Starting b1 wire")
-;     Pause(0.0)
-;     Await({
-;       Log("Processing in Await block")
-;     })
+// @wire(b1 {
+//   CaptureLog({
+//     Log("Starting b1 wire")
+//     Pause(0.0)
+//     Await({
+//       Log("Processing in Await block")
+//     })
 
-;     Do(c1)
-;     Step(d1)
-;     Pause(0.0)
-;     SwitchTo(e1)
-;     Pause(0.0)
-;   } Silent: true) | ForEach(Log("blog"))
-;   ; Assert.Is([
-;   ;   ""
-;   ; ])
-; })
+//     Do(c1)
+//     Step(d1)
+//     Pause(0.0)
+//     SwitchTo(e1)
+//     Pause(0.0)
+//   } Silent: true) | ForEach(Log("blog"))
+//   ; Assert.Is([
+//   ;   ""
+//   ; ])
+// })
 
 
-; @schedule(root-mesh a1)
-; @schedule(root-mesh b1)
-; @run(root-mesh) | Assert.Is(true)
+// @schedule(root-mesh a1)
+// @schedule(root-mesh b1)
+// @run(root-mesh) | Assert.Is(true)

@@ -1,10 +1,10 @@
 @define(gfx-internal/cube-rotations [
-  {idx: 0 rot: @f3(0 -90.0 0)} ; X+
-  {idx: 1 rot: @f3(0 90.0 0)} ; X-
-  {idx: 2 rot: @f3(90.0 180 0)} ; Y+
-  {idx: 3 rot: @f3(-90.0 180 0)} ; Y-
-  {idx: 4 rot: @f3(0 180 0)} ; Z-
-  {idx: 5 rot: @f3(0 0 0)} ; Z+
+  {idx: 0 rot: @f3(0 -90.0 0)} // X+
+  {idx: 1 rot: @f3(0 90.0 0)} // X-
+  {idx: 2 rot: @f3(90.0 180 0)} // Y+
+  {idx: 3 rot: @f3(-90.0 180 0)} // Y-
+  {idx: 4 rot: @f3(0 180 0)} // Z-
+  {idx: 5 rot: @f3(0 0 0)} // Z+
 ])
 
 @template(gfx-internal/xyz-rot-to-mat [] {
@@ -50,12 +50,12 @@
 })
 
 @template(gfx/sky-sphere-fs [] {
-  ; Just sample the cubemap
+  // Just sample the cubemap
   Shader.ReadInput("texCoord0") >= uv
   uv | Shader.SampleTextureCoord("sky") >= color
   color | Shader.WriteOutput("color")
   
-  ; NOTE: Write depth to compare to (>=) and render sky where it passes
+  // NOTE: Write depth to compare to (>=) and render sky where it passes
   1.0 | Shader.WriteOutput("depth")
 })
 

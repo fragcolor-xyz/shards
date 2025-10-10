@@ -18,13 +18,13 @@
       Shaders:
       [{Stage: ProgrammableGraphicsStage::Fragment
         EntryPoint: {
-            ; Write to index output
+            // Write to index output
             Shader.ReadBuffer("index")
             Shader.WriteOutput("index")
           }}]
     ) >> features-1
     
-    ; Second pass to render to index texture
+    // Second pass to render to index texture
     GFX.DrawablePass(Features: features-1
       Outputs: [
         {Name: "index" Texture: u8-tex}
@@ -68,7 +68,7 @@
       @i2(px0 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel 0")
       @i2(px1 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p1 | Log("Pixel 1")
       
-      ; With two frames delay, check that the values match the expected ones
+      // With two frames delay, check that the values match the expected ones
       Once({
         0 >= fi-max
       })
@@ -81,7 +81,7 @@
         p1-x | Assert.Is(0xffff)
       })
       
-      ; Check that at least the frame index is increasing, with some leniency
+      // Check that at least the frame index is increasing, with some leniency
       frame-index | When(Is(31) {
         fi-max | Log("Check max frame index") | IsMore(26) | Assert.Is(true)
       })
@@ -93,7 +93,7 @@
 
 @wire(test-copy-sync {
   @base
-  ; Sync test
+  // Sync test
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     UseDisplayScaling: false
@@ -103,9 +103,9 @@
       
       GFX.Render(Steps: render-steps View: view)
       
-      ; This end frame is required when using `Wait: true` with the ReadTexture shard,
-      ; since rendering command buffers are queued in EndFrame
-      ; and texture copy needs to happen afterwards
+      // This end frame is required when using `Wait: true` with the ReadTexture shard,
+      // since rendering command buffers are queued in EndFrame
+      // and texture copy needs to happen afterwards
       GFX.EndFrame
       
       u8-tex | GFX.ReadTexture(Wait: true) = image
@@ -123,7 +123,7 @@
 @schedule(root test-copy-async)
 @run(root FPS: 40 Iterations: 32) | Assert.Is(true)
 
-; GFX.EndFrame will not flush the texture read and therefore try to map/unmap in the same frame
+// GFX.EndFrame will not flush the texture read and therefore try to map/unmap in the same frame
 @platform | If(IsNot("emscripten") {
   @schedule(root test-copy-sync)
   @run(root FPS: 40 Iterations: 32) | Assert.Is(true)

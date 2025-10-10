@@ -1,4 +1,4 @@
-; Single PopupWrapper with Button widget and contents
+// Single PopupWrapper with Button widget and contents
 GFX.MainWindow(
   Contents: {
     Once({

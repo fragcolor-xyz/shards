@@ -1,17 +1,17 @@
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
 
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
-      ; Setup
+      // Setup
       LoadImage("data/ShardsLogo.png") >= image
       GFX.Texture >= texture
-      ; Draw UI image by loading the image into graphics memory when needed
+      // Draw UI image by loading the image into graphics memory when needed
       image | UI.ImageButton(Scale: @f2(0.1 0.1))
-      ; Draw UI image directly from a texture
+      // Draw UI image directly from a texture
       texture | UI.ImageButton(Scale: @f2(0.1 0.1))
     })
   })

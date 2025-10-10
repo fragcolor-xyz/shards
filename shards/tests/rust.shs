@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2021 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2021 Fragcolor Pte. Ltd.
 
 @mesh(root)
 
@@ -43,8 +43,8 @@
 
   "hello worlds\n" | ToHex | HexToBytes = payload
   Count(payload) = len
-  "0x1220" | HexToBytes >= a ; sha256 multihash
-  "0x0a" | HexToBytes >> b ; prefix 1
+  "0x1220" | HexToBytes >= a // sha256 multihash
+  "0x0a" | HexToBytes >> b // prefix 1
   len | ToLEB128(Signed: false) = leblen
   Count(leblen) | Math.Multiply(2) = lenX2
   len | Math.Add(4) | Math.Add(lenX2) | ToLEB128(Signed: false) >> b
@@ -75,7 +75,7 @@
   CSV.Write
   Assert.Is("Boston,United States,4628910\nConcord,United States,42695\n" true)
 
-  "\"Free trip to A,B\",\"5.89\",\"Special rate \"\"1.79\"\"\"\n" ; TODO: fix this
+  "\"Free trip to A,B\",\"5.89\",\"Special rate \"\"1.79\"\"\"\n" // TODO: fix this
   CSV.Read(NoHeader: true) | Log
   CSV.Write(NoHeader: true) | Log
   Assert.Is("\"Free trip to A,B\",5.89,\"Special rate \"\"1.79\"\"\"\n" true)

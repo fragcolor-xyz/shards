@@ -1,4 +1,4 @@
-@include("defs.shs") ; to use the macro `if`
+@include("defs.shs") // to use the macro `if`
 
 @mesh(root)
 
@@ -10,7 +10,7 @@
     @db-file-2 | FS.Remove
   })
   
-  ; Default: "shards.db"
+  // Default: "shards.db"
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")
   [] | DB.Query("SELECT * FROM integers") | Log
@@ -18,7 +18,7 @@
   [] | DB.Query("SELECT * FROM integers" @db-file-1) | Log
   Assert.Is({x: [88 100 102] y: [99 101 none]})
 
-  ; Use value from sqlite/database
+  // Use value from sqlite/database
   @db-file-2 >= sqlite/database
   "CREATE TABLE IF NOT EXISTS integers (x INTEGER, y INTEGER)" | DB.RawQuery
   [88 99 100 101 102] | DB.Query("INSERT INTO integers VALUES (?, ?), (?, ?), (?, NULL)")

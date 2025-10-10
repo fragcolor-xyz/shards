@@ -12,7 +12,7 @@ GFX.MainWindow(
       UI.CentralPanel({
         UI.Layout(
           Class: left-to-right-layout-class
-          MaxSize: @f2(0 0) ; use as small area as possible, this vertical separator needs this to act like egui vertical separator
+          MaxSize: @f2(0 0) // use as small area as possible, this vertical separator needs this to act like egui vertical separator
           Contents: {
             "Hello" | UI.Label
             UI.Separator

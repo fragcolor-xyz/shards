@@ -3,13 +3,13 @@ prompt: """How do I create a conditional to do soomething when the condition is 
 
 solution: """variable1
 WhenNot(Is(true) {
-Pass ;Do Something
+Pass //Do Something
 })
 """
 
 explicit: """Get(Name: variable1)
 WhenNot(Predicate: Is(Value: true) Action: {
-Pass ;Do Something
+Pass //Do Something
 } Passthrough: true)
 """
 

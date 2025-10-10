@@ -14,7 +14,7 @@
   Tensor(Shape: [2 2 2] Type: TensorType::F32) | Tensor.ToString | Log("GPU")
   
   [2 2 2] = shape
-  Maybe({; this one will fail
+  Maybe({// this one will fail
     [1.0 2.0 3.0 4.0 5.0 6.0]
     Tensor(Shape: shape Type: TensorType::F32) | Tensor.ToString | Log
   })
@@ -22,24 +22,24 @@
   Tensor(Shape: shape Type: TensorType::F32) = tensor1-test | Tensor.ToString | Log
   
   tensor1-test | Tensor.Split(0 2) = tensors-split | ForEach({Tensor.ToString | Log("Split")})
-  ; and stack them back together
+  // and stack them back together
   tensors-split | Tensor.Stack(0) | Tensor.ToString | Log
   
   When({@has-models | Is("true")} {
     "data/gte-tiny-tokenizer.json"
-    ; "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
+    // "data/GIST-all-MiniLM-L6-v2-tokenizer.json"
     FS.Read | ML.Tokenizer = tokenizer
     "This is a test." | ML.Tokens(Tokenizer: tokenizer) | ML.Detokenize(Tokenizer: tokenizer) | Log("Detokenized")
     "This is a test." | ML.Tokens(Tokenizer: tokenizer AsTensor: true) {ML.Detokenize(Tokenizer: tokenizer) | Log("Detokenized 2")} | Tensor.ToString | Log
     
     "data/gte-tiny-config.json"
-    ; "data/GIST-all-MiniLM-L6-v2-config.json"
+    // "data/GIST-all-MiniLM-L6-v2-config.json"
     FS.Read | FromJson | ExpectTable = config | Log
     "data/gte-tiny.safetensors"
-    ; "data/GIST-all-MiniLM-L6-v2.safetensors"
+    // "data/GIST-all-MiniLM-L6-v2.safetensors"
     ML.Model(Model: MLModels::Bert Format: MLFormats::SafeTensor Configuration: config) = bert-model
     
-    ; questions
+    // questions
     [
       "What is the capital of France?"
       "What is the capital of Germany?"
@@ -51,7 +51,7 @@
       "What is the capital of Bulgaria?"
     ] = questions
     
-    ; answers
+    // answers
     [
       "Paris"
       "Berlin"
@@ -77,7 +77,7 @@
         [answer-tokens answer-zeros] | ML.Forward(Model: bert-model) | Take(0)
         Tensor.Sum([1]) | Tensor.Div(num-tokens) = answer-emb
         
-        ; cosine similarity
+        // cosine similarity
         question-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-ij
         question-emb | Tensor.Mul(question-emb) | Tensor.Sum | Tensor.ToFloat = sum-i2
         answer-emb | Tensor.Mul(answer-emb) | Tensor.Sum | Tensor.ToFloat = sum-j2
@@ -102,7 +102,7 @@
   
   Clear(umap-input)
   
-  ; More separated clusters
+  // More separated clusters
   [0.1 0.2 0.3] | Tensor(Shape: [3] Type: TensorType::F32) >> umap-input
   [0.2 0.1 0.4] | Tensor(Shape: [3] Type: TensorType::F32) >> umap-input
   [0.3 0.2 0.1] | Tensor(Shape: [3] Type: TensorType::F32) >> umap-input
@@ -117,7 +117,7 @@
   
   umap-input | Tensor.Stack | Tensor.UMAP(3 Neighbors: 5 MinDist: 0.3 Epochs: 500) | Tensor.ToString | Log("UMAP Output")
   
-  ; Synthetic 2D grid projected to 2D
+  // Synthetic 2D grid projected to 2D
   [0.0 0.0] | Tensor(Shape: [2] Type: TensorType::F32) >> grid-input
   [0.0 1.0] | Tensor(Shape: [2] Type: TensorType::F32) >> grid-input
   [1.0 0.0] | Tensor(Shape: [2] Type: TensorType::F32) >> grid-input
@@ -128,15 +128,15 @@
   {Tensor.ToString | Log("2D Grid UMAP")}
   Tensor.ToFloat2s | Log("2D Grid UMAP Float2s")
   
-  ; Test Tensor.ToFloat2s
+  // Test Tensor.ToFloat2s
   [1.0 2.0 3.0 4.0] | Tensor(Shape: [4] Type: TensorType::F32) | Tensor.ToFloat2s | Log("Float2s")
   Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat2s | Log("Float2s Error")})
   
-  ; Test Tensor.ToFloat3s
+  // Test Tensor.ToFloat3s
   [1.0 2.0 3.0 4.0 5.0 6.0] | Tensor(Shape: [6] Type: TensorType::F32) | Tensor.ToFloat3s | Log("Float3s")
   Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat3s | Log("Float3s Error")})
   
-  ; Test Tensor.ToFloat4s
+  // Test Tensor.ToFloat4s
   [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0] | Tensor(Shape: [8] Type: TensorType::F32) | Tensor.ToFloat4s | Log("Float4s")
   Maybe({[1.0 2.0 3.0 4.0 5.0] | Tensor(Shape: [5] Type: TensorType::F32) | Tensor.ToFloat4s | Log("Float4s Error")})
 })

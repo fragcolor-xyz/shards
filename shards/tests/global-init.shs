@@ -1,4 +1,4 @@
-; global cache script
+// global cache script
 
 @define(cache/setup {
   GlobalOnce({
@@ -7,7 +7,7 @@
   })
 })
 
-; another script that references the cache
+// another script that references the cache
 
 @wire(whatever-behavior {
   @cache/setup

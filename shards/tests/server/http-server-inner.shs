@@ -150,7 +150,7 @@ Cond([
                           @srv-log("Adding preloaded file")
                           Set(preloaded-files-set rel-path)
                         })
-                      } ;
+                      } //
                       {true} {["Path does not exist:" real-path] | String.Format | Log}])
                   }
                 )
@@ -161,7 +161,7 @@ Cond([
         
         handler/preload-files-version | Add(1) > handler/preload-files-version
         
-        ; Insert update preloaded into action queue
+        // Insert update preloaded into action queue
         {action: "update-preloaded" data: preload-files-version} >> action-queue
         "" | Http.Response(Status: 200)
       }
@@ -197,7 +197,7 @@ Cond([
       }])
     "" | Http.Response(Status: 200)
   }
-  {String.Starts("/tfs/")} {; Index test filesystem
+  {String.Starts("/tfs/")} {// Index test filesystem
     target | Slice(4) = rel-path
     [@root-path rel-path] | FS.Join | @srv-log("Serving test file") | Http.SendFile(@headers)
   }

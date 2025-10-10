@@ -1,4 +1,4 @@
-; This sample test file tests the usage of closable windows
+// This sample test file tests the usage of closable windows
 GFX.MainWindow(
   Contents: {
     Once({

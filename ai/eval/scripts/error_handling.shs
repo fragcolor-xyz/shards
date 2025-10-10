@@ -1,7 +1,7 @@
-; Script to demonstrate error handling in Shards
+// Script to demonstrate error handling in Shards
 
-; Maybe for handling potential errors
-; First example - successful case
+// Maybe for handling potential errors
+// First example - successful case
 Maybe({
   "42" | FromJson | Log("Successfully parsed number")
   "Reached after successful parsing" | Log
@@ -9,7 +9,7 @@ Maybe({
   "Error in first example" | Log("Error handler")
 })
 
-; Second example - error case
+// Second example - error case
 Maybe({
   "not a number" | FromJson | Log("This won't be reached")
   "This won't be reached either" | Log
@@ -17,9 +17,9 @@ Maybe({
   "Error occurred in second example" | Log("Error handler")
 })
 
-; Another common use case - HTTP requests
+// Another common use case - HTTP requests
 Maybe({
-  ; This is a simulation since we can't make real HTTP requests here
+  // This is a simulation since we can't make real HTTP requests here
   "Simulating successful HTTP response" | Log("HTTP Request")
   "{\"status\": \"success\", \"data\": [1, 2, 3]}" | FromJson = response
   response | Take("data") | Log("Response data")
@@ -27,33 +27,33 @@ Maybe({
   "Failed to complete HTTP request or parse response" | Log("HTTP Error")
 })
 
-; Nested Maybe blocks
+// Nested Maybe blocks
 Maybe({
-  ; Outer try block
+  // Outer try block
   "Outer try block" | Log
   Maybe({
-    ; Inner try block
+    // Inner try block
     "Inner try block" | Log
     "[1, 2, 3]" | FromJson | Log("Inner success")
   } {
-    ; Inner catch block
+    // Inner catch block
     "Inner error handler" | Log
   })
   "After inner Maybe" | Log
 } {
-  ; Outer catch block
+  // Outer catch block
   "Outer error handler" | Log
 })
 
-; Maybe with invalid operations
+// Maybe with invalid operations
 Maybe({
-  ; This will cause an error - accessing out of bounds index
+  // This will cause an error - accessing out of bounds index
   "not valid json" | FromJson | Log("Won't reach this")
 } {
   "Caught index out of bounds error" | Log("Error handling")
 })
 
-; Return examples
+// Return examples
 {examples: {
   basic_maybe: "Maybe({try-block} {catch-block})",
   usage_scenarios: ["Parsing JSON", "HTTP requests", "File operations", "Index out of bounds"]

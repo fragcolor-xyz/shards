@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pte. Ltd.
 
 @mesh(root)
 
@@ -76,7 +76,7 @@
 
   "4e2" | HexToBytes | BigInt | BigInt.ToString | Assert.Is("1250" true) | Log("Returned")
 
-  ;; Comparisons
+  // Comparisons
   t500x1e18 | BigInt.Is(t500x1e18) | Assert.Is(true)
   t1000x1e18 | BigInt.Is(t500x1e18) | Assert.Is(false)
 

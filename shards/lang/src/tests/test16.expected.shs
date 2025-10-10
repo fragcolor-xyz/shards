@@ -1,9 +1,9 @@
 (Log
   a | Set("h")
 )
-; Blank
+// Blank
 
 #(Log
   a | Set("h")
-) ; At end
-; JJ
+) // At end
+// JJ

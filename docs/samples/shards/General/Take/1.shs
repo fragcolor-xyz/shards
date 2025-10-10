@@ -1,11 +1,11 @@
-; Take on sequences
+// Take on sequences
 [10 20 30 40] | Take(1) | Log
 Assert.Is(20 Break: true)
 
 [10 20 30 40] | Take([1 2]) | Log
 Assert.Is([20 30] Break: true)
 
-; Take on tables
+// Take on tables
 {Hello: 10 World: 20} | Take("Hello") | Log
 Assert.Is(10 Break: true)
 
@@ -18,7 +18,7 @@ Assert.Is(none Break: true)
 {abc: 10 def: 20} | Take("def") | Log
 Assert.Is(20 Break: true)
 
-; Take using a variable as index
+// Take using a variable as index
 1 = index
 [1 2 3 4] | Take(index) | Log
 Assert.Is(2 Break: true)

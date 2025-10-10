@@ -1,5 +1,5 @@
 @wire(jinja/template-1 {
-  ; keep template in a stateful wire for faster re-use
+  // keep template in a stateful wire for faster re-use
   Jinja.Apply("""Name: {{ name }}
 Values: {% for value in values %}{{ value }}{% if not loop.last %}, {% endif %}{% endfor %}
 """)

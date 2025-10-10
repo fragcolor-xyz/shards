@@ -1,9 +1,9 @@
-; NOTE: This shader is converted from https://www.shadertoy.com/view/tlVGDt
-; With slight modifications
+// NOTE: This shader is converted from https://www.shadertoy.com/view/tlVGDt
+// With slight modifications
 
 @define(timestep #(1.0 | Math.Divide(120.0)))
 
-; Special modulo since % is negative for negatives
+// Special modulo since % is negative for negatives
 @template(mod-positive [div] {
   {Math.Divide(div) | Math.Floor | Math.Multiply(div) >= mod-wholes} |
   Math.Subtract(mod-wholes)
@@ -66,7 +66,7 @@
   Shader.ReadInput("texCoord0") >= uv
   Shader.ReadBuffer(Name: "time" BufferName: "view") >= time
 
-  ; Convert uv to screen position & aspect correct normalize
+  // Convert uv to screen position & aspect correct normalize
   viewport | Take([2 3]) >= screen-size |
   Math.Multiply(uv) >= screen-pos
   screen-size | Take(0) >= screen-w
@@ -74,7 +74,7 @@
   screen-w | Min(screen-h) >= screen-min-dim
   screen-pos | Math.Multiply(2.0) | Math.Subtract(screen-size) | Math.Divide(screen-min-dim) | Math.Multiply(@f2(1.0 -1.0)) >= uv1
 
-  ; Compute ray
+  // Compute ray
   time | Math.Multiply(4.0) >= z
   @f3(0.0 -0.2 z) >= ro
   uv1 | {Take(0) >= x} | {Take(1) >= y}
@@ -82,7 +82,7 @@
 
   ray | {Take(0) > x} | {Take(1) > y} | {Take(2) > z}
 
-  ; Rotate ray
+  // Rotate ray
   @f2(x y) >= tmp-2
   time | Math.Multiply(0.03) | Math.Sin | Math.Multiply(5.0) | Do(rot) | Math.MatMul(tmp-2) >= tmp-2
   tmp-2 | Take(0) > x
@@ -126,7 +126,7 @@
 
   col | {Take(0) > x} | {Take(1) > y} | {Take(2) > z}
   @f4(x y z 1.0) | Shader.WriteOutput("color")
-  ; End shader
+  // End shader
 })
 
 @wire(gfx {

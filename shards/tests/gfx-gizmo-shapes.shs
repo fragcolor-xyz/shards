@@ -21,7 +21,7 @@
     GFX.DrawQueue >= editor-queue
     GFX.DrawQueue >= editor-queue-np-depth
 
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
 
@@ -31,11 +31,11 @@
                      Outputs: [{Name: "color"}
                                {Name: "depth" Clear: true}]) >> render-steps
 
-    ; Create view
+    // Create view
     {Position: @f3(3 3 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
-  ; End setup
+  // End setup
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
@@ -44,15 +44,15 @@
       transform-0 | GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 0 1)}) >= drawable-0
       GFX.Draw(queue)
 
-      ; Draw helpers (using scene depth)
-      ; Provides a context for rendering gizmos
+      // Draw helpers (using scene depth)
+      // Provides a context for rendering gizmos
       Gizmos.Context(Queue: editor-queue View: view
                      Contents: {
-                        ; Highlights the object (drawable) attached to gizmo, show wireframe
+                        // Highlights the object (drawable) attached to gizmo, show wireframe
                         drawable-0 | Gizmos.Highlight
                         @f3(0 0 0) >= a
                         @f3(0 0 2) >= z-2
-                        ; Draws the 3 axes
+                        // Draws the 3 axes
                         Gizmos.Line(A: @f3(0 0 0) B: @f3(2 0 0) Color: @f4(1 0 0 1) Thickness: 8)
                         Gizmos.Line(A: a B: @f3(0 2 0) Color: @f4(0 1 0 1))
                         Gizmos.Line(A: a B: z-2 Color: @f4(0 0 1 1) Thickness: 4)

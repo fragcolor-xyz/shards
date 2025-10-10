@@ -12,7 +12,7 @@
 @define(axis-forward @f3(0.0 0.0 1.0))
 @define(axis-backward @f3(0.0 0.0 -1.0))
 
-; https://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
+// https://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 @template(fbl/srgb-to-linear3 [in] {
   in = c
   c | Math.Multiply(c) = c-sqr
@@ -23,7 +23,7 @@
   Math.Add((c-cube | Math.Multiply(0.305306011)))
 })
 
-; Convert sRGB color to linear Float4
+// Convert sRGB color to linear Float4
 @template(fbl/color-to-float4 [color] {
   color | ToFloat4 | Math.Divide(255.0)
   {Take(3) = a

@@ -9,7 +9,7 @@
 } Looped: true)
 
 @wire(test-3 {
-  Await(Py("PyShard2")) ; via GIL(ol) and such we support even this... well limited by the GIL
+  Await(Py("PyShard2")) // via GIL(ol) and such we support even this... well limited by the GIL
   Assert.Is(["Hello" "World"]) | Log
 } Looped: true)
 

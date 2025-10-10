@@ -1,11 +1,11 @@
-@include("hello2.shs") ; to use the macro `if`
+@include("hello2.shs") // to use the macro `if`
 
 @mesh(root)
 
 @wire(main {
   "caution juice atom organ advance problem want pledge someone senior holiday very" | Mnemonic.ToSeed | Slice(To: 32) | ToHex | Log = seed1-2
 
-  ; test from hex string
+  // test from hex string
   "0x9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60" | HexToBytes = sr25519-key-1
   Sr25519.PublicKey = sr25519-key-1-public
   ToHex | Log | Assert.Is("0x44a996beb1eef7bdcab976ab6d2ca26104834164ecf28fb375600576fcc6eb0f" true)

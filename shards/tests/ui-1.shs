@@ -1,16 +1,16 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2022 Fragcolor Pte. Ltd.
 
-; Notes:
-;   This file contains unit tests for the UI shards.
-;   It is not meant to be realistic. For such samples, look at egui-demo.shs.
+// Notes:
+//   This file contains unit tests for the UI shards.
+//   It is not meant to be realistic. For such samples, look at egui-demo.shs.
 
 @mesh(main)
 @define(timestep #(1.0 | Math.Divide(60.0)))
 @define(duration 60)
 @define(input "**input**")
 
-; menu bar
+// menu bar
 @wire(menubar-test {
   GFX.MainWindow(
     Contents: {
@@ -35,7 +35,7 @@
 @schedule(main menubar-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; menu
+// menu
 @wire(menu-test {
   GFX.MainWindow(
     Contents: {
@@ -62,7 +62,7 @@
 @schedule(main menu-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; button
+// button
 @wire(button-test {
   GFX.MainWindow(
     Contents: {
@@ -94,7 +94,7 @@
 @schedule(main button-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; checkbox
+// checkbox
 @wire(checkbox-test {
   GFX.MainWindow(
     Contents: {
@@ -121,7 +121,7 @@
 @schedule(main checkbox-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; color-input
+// color-input
 @wire(color-input-test {
   GFX.MainWindow(
     Contents: {
@@ -147,7 +147,7 @@
 @schedule(main color-input-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; combo
+// combo
 @wire(combo-test {
   GFX.MainWindow(
     Contents: {
@@ -173,7 +173,7 @@
 @schedule(main combo-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; hyperlink
+// hyperlink
 @wire(hyperlink-test {
   GFX.MainWindow(
     Contents: {
@@ -199,7 +199,7 @@
 @schedule(main hyperlink-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; image
+// image
 @wire(image-test {
   GFX.MainWindow(
     Width: 640 Height: 640
@@ -229,7 +229,7 @@
 @schedule(main image-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; image button
+// image button
 @wire(image-button-test {
   GFX.MainWindow(
     Width: 640 Height: 640

@@ -3,13 +3,13 @@ prompt: """How do I check if something is less than or equals to something else?
 
 solution: """variable1
 When(IsLessEqual(variable2) {
-Pass ;Do Something
+Pass //Do Something
 })
 """
 
 explicit: """Get(Name: variable1)
 When(Predicate: IsLessEqual(Value: variable2) Action: {
-Pass ;Do Something
+Pass //Do Something
 } Passthrough: true)
 """
 

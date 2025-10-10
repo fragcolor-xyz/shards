@@ -24,7 +24,7 @@
     GFX.DrawablePass(Features: features1 Queue: queue) >> render-steps1
     GFX.UIPass(Queue: ui-queue) >> render-steps1
 
-    ; Create view
+    // Create view
     {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
@@ -42,7 +42,7 @@
 
   Inputs.Detached(window-ctx {
     UI({
-      ; UI Content
+      // UI Content
       UI.Window(Contents: {
         "This is UI inside a render target" | UI.Label
         UI.TextField(Variable: text1 Multiline: true)
@@ -50,7 +50,7 @@
     })
   } Then: { UI.Render(ui-queue) } Name: "Child UI" Priority: 2)
 
-  ; This renders to the render target that was pushed in the outer wire
+  // This renders to the render target that was pushed in the outer wire
   GFX.Render(Steps: render-steps1 View: view)
 } Looped: true)
 
@@ -69,7 +69,7 @@
     GFX.DrawablePass(Features: features1 Queue: queue) >> render-steps1
     GFX.UIPass(Queue: ui-queue) >> render-steps1
 
-    ; Create view
+    // Create view
     {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
@@ -87,7 +87,7 @@
 
   Inputs.Detached(window-ctx {
     UI({
-      ; UI Content
+      // UI Content
       UI.Window(Contents: {
         "This is UI inside a render target" | UI.Label
         UI.TextField(Variable: text1 Multiline: true)
@@ -95,7 +95,7 @@
     })
   } Then: { UI.Render(ui-queue) } Name: "Child UI" Priority: 2)
 
-  ; This renders to the render target that was pushed in the outer wire
+  // This renders to the render target that was pushed in the outer wire
   GFX.Render(Steps: render-steps1 View: view)
 } Looped: true)
 
@@ -112,7 +112,7 @@
 })
 
 @wire(test-wire {
-  ; UI Setup
+  // UI Setup
   GFX.DrawQueue >= ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
 
@@ -124,18 +124,18 @@
     GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-0
     GFX.Texture(Format: TextureFormat::RGBA8UnormSrgb) >= rt-1
 
-    ; {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
-    ; GFX.View(view-transform) = view
+    // {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
+    // GFX.View(view-transform) = view
 
     Inputs.Detached(window-ctx {
       UI({
-        ; UI Content
+        // UI Content
         UI.Window(Contents: {
           UI.Property(UIProperty::RemainingSpace) >= rt-region
           @compute-rt-region-16-9() > rt-region
 
-          ; GFX.RenderInto(Textures: {color: rt-0} WindowRegion: rt-region Contents: {Step(inner-0)})
-          ; rt-0 | UI.RenderTarget
+          // GFX.RenderInto(Textures: {color: rt-0} WindowRegion: rt-region Contents: {Step(inner-0)})
+          // rt-0 | UI.RenderTarget
           "Hello" | UI.Label
 
           UI.Separator
@@ -152,8 +152,8 @@
           "Hello" | UI.Label
           "Hello" | UI.Label
 
-          ; GFX.RenderInto(Textures: {color: rt-1} WindowRegion: rt-region Contents: {Step(inner-1)})
-          ; rt-1 | UI.RenderTarget
+          // GFX.RenderInto(Textures: {color: rt-1} WindowRegion: rt-region Contents: {Step(inner-1)})
+          // rt-1 | UI.RenderTarget
 
           UI.Separator | "Footer" | UI.Label
         })

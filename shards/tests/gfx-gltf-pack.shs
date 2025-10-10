@@ -8,13 +8,13 @@
 @define(default-setup {
   0.0 >= time
   
-  ; Render steps
+  // Render steps
   GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
   GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
   GFX.DrawQueue >= queue
   GFX.DrawablePass(Features: features Queue: queue) >> render-steps
   
-  ; Create view
+  // Create view
   0.0 | Do(get-view-transform) >= view-transform
   GFX.View(View: view-transform) >= view
 })
@@ -23,7 +23,7 @@
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
-      ; Rotate camera
+      // Rotate camera
       Animation.Timer | Do(get-view-transform) > view-transform
       
       drawables | GFX.Draw(queue)

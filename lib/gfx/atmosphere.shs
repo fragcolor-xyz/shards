@@ -12,10 +12,10 @@
   gfx-internal/lightColor >= light-color
   
   Shader.Literal(["
-  let _DrawPlanet = 0;
+  let _DrawPlanet = 0//
   if (_DrawPlanet == 1) {
-    let planetIntersection = PlanetIntersection(" ray-start ", " ray-dir ");
-    if (planetIntersection.x > 0.0) { " ray-length " = min(" ray-length ", planetIntersection.x); }
+    let planetIntersection = PlanetIntersection(" ray-start ", " ray-dir ")//
+    if (planetIntersection.x > 0.0) { " ray-length " = min(" ray-length ", planetIntersection.x)// }
   }"])
   
   Shader.Literal("var transmittance : vec3<f32> = vec3<f32>(0.0);")

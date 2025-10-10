@@ -5,7 +5,7 @@ x | Log
 y | Log
 
 x > y
-; y > x
+// y > x
 
 x | Log
 y | Log

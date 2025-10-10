@@ -2,7 +2,7 @@
 
 Assert.ComposeFailure({
   Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))
-  10 | Set(my-struct "another-field") ; this is forbidden
+  10 | Set(my-struct "another-field") // this is forbidden
 })
 
 Table(my-struct Type: @type({first: Type::Int second: {third: @my-type}}))

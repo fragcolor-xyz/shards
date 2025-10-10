@@ -3,7 +3,7 @@ CRDT.New(@i16(77) Preallocate: 1000000) = crdt
 
 Sequence(records Type: @type([Type::Int16]))
 
-; insert 1000000 records
+// insert 1000000 records
 Msg("Inserting 1000000 records")
 Profile(Repeat({
   UUID = record >> records 
@@ -26,7 +26,7 @@ Profile({
 
 Clear(records)
 
-; insert again 1000000 records
+// insert again 1000000 records
 Msg("Inserting 1000000 records again")
 Profile(Repeat({
   UUID >> records = record

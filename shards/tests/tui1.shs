@@ -18,7 +18,7 @@
       "south-east" | TUI.Text
     })
   }) | TUI.RunOnce
-  ; TUI.Render | Process.StdOut
+  // TUI.Render | Process.StdOut
 } Looped: true)
 
 @mesh(root)

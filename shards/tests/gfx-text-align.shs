@@ -3,7 +3,7 @@
 
 @wire(test-wire {
   Once({
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::AlphaBlend) >> features
@@ -22,7 +22,7 @@
     -0.5 >= valign
     0.5 >= halign
     
-    ; List fonts in the data/fonts directory
+    // List fonts in the data/fonts directory
     "data/fonts" | FS.Iterate(Recursive: true) >= raw-fonts
     Remove(From: raw-fonts Predicate: {
       FS.IsFile | Not | Or
@@ -64,7 +64,7 @@
     
     GFX.View(View: (@gfx/align-pixel-viewport(@f2(0.0))) OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
     
-    ; UI for font selection and size
+    // UI for font selection and size
     UI({
       UI.Window(Contents: {
         "Font:" | UI.Label
@@ -83,7 +83,7 @@
     64.0 | Add(300.0) >= base-x-2
     64.0 | Add((space-size-y | ToFloat)) >= base-y-2
     
-    ; Draw avocado for reference on orhographic output
+    // Draw avocado for reference on orhographic output
     Gizmos.Context(Queue: queue View: view
       Contents: {
         Gizmos.Line(@f3(base-x base-y 0.0) @f3(width base-y 1.0) Color: @f4(1.0 1.0 1.0 0.5))
@@ -95,7 +95,7 @@
     "Hello world!" | GFX.DynDrawText(Output: dmesh Font: font FontSize: font-size Offset: @f3(base-x base-y 0.0) VAlign: valign)
     "Hello world! (w. HAlign)" | GFX.DynDrawText(Output: dmesh Font: font FontSize: font-size Offset: @f3(base-x-2 base-y-2 0.0) VAlign: valign HAlign: halign)
     
-    ; Draw the generated mesh
+    // Draw the generated mesh
     dmesh | GFX.DynToMesh | DoMany({
       {Take("mesh") = mesh}
       {Take("texture") = texture}

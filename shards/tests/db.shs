@@ -1,4 +1,4 @@
-@include("defs.shs") ; to use the macro `if`
+@include("defs.shs") // to use the macro `if`
 
 @mesh(root)
 
@@ -24,7 +24,7 @@
         Math.Inc(y)
         [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
       } Times: 10)
-      "Something" | Fail ; fail on purpose, we test rerolling here
+      "Something" | Fail // fail on purpose, we test rerolling here
     } @db-file)
   })
   Msg("Failing transaction done")
@@ -75,7 +75,7 @@
   
   DB.Backup(@db-file-3 @db-file)
   
-  ; test CRDT capabilities
+  // test CRDT capabilities
   DB.LoadExtension("crsqlite" @db-file)
   [] | Profile(DB.Query("create table foo (a primary key not null, b)" @db-file) "Create foo")
   [] | Profile(DB.Query("create table bar (a primary key not null, b, c, d)" @db-file) "Create bar")
@@ -88,20 +88,20 @@
   [] | Profile(DB.Query("select * from baz" @db-file) "Select baz") | Log
   [] | Profile(DB.Query("select * from crsql_changes" @db-file) "Select crsql_changes") | Log
   
-  ; Test AsRows
+  // Test AsRows
   Repeat({
     [] | DB.Query("SELECT * FROM integers" @db-file AsRows: true) | Log
     Assert.Is([{x: 88 y: 99} {x: 100 y: 101} {x: 102 y: none} {x: 12 y: 23} {x: 13 y: 24} {x: 14 y: 25} {x: 15 y: 26} {x: 16 y: 27} {x: 17 y: 28} {x: 18 y: 29} {x: 19 y: 30} {x: 20 y: 31} {x: 21 y: 32}])
   } Times: 10)
   Msg("Test 5 passed")
   
-  ; Test sqlite-vec - BEHIND cmake flag WITH_SQLITE_VEC
+  // Test sqlite-vec - BEHIND cmake flag WITH_SQLITE_VEC
   @if(#(@with-sqlite-vec | Is("true")) {
     DB.LoadExtension("sqlite-vec" @db-file)
     """
   create virtual table vec_examples using vec0(
     sample_embedding float[8]
-  );
+  )//
 
   -- vectors can be provided as JSON or in a compact binary format
   insert into vec_examples(rowid, sample_embedding)
@@ -109,7 +109,7 @@
       (1, '[-0.200, 0.250, 0.341, -0.211, 0.645, 0.935, -0.316, -0.924]'),
       (2, '[0.443, -0.501, 0.355, -0.771, 0.707, -0.708, -0.185, 0.362]'),
       (3, '[0.716, -0.927, 0.134, 0.052, -0.669, 0.793, -0.634, -0.162]'),
-      (4, '[-0.710, 0.330, 0.656, 0.041, -0.990, 0.726, 0.385, -0.958]');
+      (4, '[-0.710, 0.330, 0.656, 0.041, -0.990, 0.726, 0.385, -0.958]')//
     """ | DB.RawQuery(@db-file)
     
     [] | DB.Query("""-- KNN style query
@@ -123,6 +123,6 @@
   } none)
 })
 
-; @schedule(root cleanup)
+// @schedule(root cleanup)
 @schedule(root db-test-1)
 @run(root) | Assert.Is(true)

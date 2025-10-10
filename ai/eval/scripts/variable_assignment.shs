@@ -1,16 +1,16 @@
-; Script to demonstrate variable assignment in Shards
+// Script to demonstrate variable assignment in Shards
 
-; Immutable assignment
+// Immutable assignment
 5 = x
 "Hello" = greeting
 @f3(1.0 2.0 3.0) = position
 
-; Mutable assignment
+// Mutable assignment
 10 >= counter
 [1 2 3] >= numbers
 {name: "Alice" age: 30} >= person
 
-; Output values to verify
+// Output values to verify
 x | Log("Immutable x")
 greeting | Log("Immutable greeting")
 position | Log("Immutable position")
@@ -19,17 +19,17 @@ counter | Log("Mutable counter")
 numbers | Log("Mutable numbers")
 person | Log("Mutable person")
 
-; Update mutable variables
+// Update mutable variables
 counter | Add(5) > counter
 4 >> numbers
 "Bob" | Update(person "name")
 
-; Show updated values
+// Show updated values
 counter | Log("Updated counter")
 numbers | Log("Updated numbers")
 person | Log("Updated person")
 
-; Return the various assignment examples
+// Return the various assignment examples
 {examples: {
   immutable: {num: x, str: greeting, vec: position},
   mutable: {num: counter, seq: numbers, tab: person}

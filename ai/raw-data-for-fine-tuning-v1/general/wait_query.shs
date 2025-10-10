@@ -3,11 +3,11 @@ prompt: """How do I wait for another wire to finish executing before resuming th
 
 solution: """Detach(myWire)
 Wait(
-;Wire:
+//Wire:
 "myWire"
-;Passthrough:
+//Passthrough:
 false
-;Timeout: none
+//Timeout: none
 )
 """
 
@@ -15,7 +15,7 @@ explicit: """Detach(Wire: myWire Restart: false)
 Wait(
 Wire: "myWire"
 Passthrough: false
-;Timeout: none
+//Timeout: none
 )
 """
 

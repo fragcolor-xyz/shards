@@ -10,7 +10,7 @@
   Tincidunt cubilia leo blah pharetra facilisis, auctor taciti ut parturient. Varius sodales 
   tempus duis ultrices dolor. Dictum ad cursus potenti malesuada blandit egestas fames 
   montes. Vel hac efficitur et leo eleifend class congue. Elementum aptent netus cubilia 
-  elit; eu lacinia netus blah. Faucibus vestibulum curae tempor hendrerit leo natoque curae. 
+  elit// eu lacinia netus blah. Faucibus vestibulum curae tempor hendrerit leo natoque curae. 
   Anullam blahblahblah accumsan vitae ut eget ac feugiat netus. Nisi nec odio magnis blahblah elit class quam 
   duis mattis cursus." = dummy-text
   
@@ -65,7 +65,7 @@ Something else"""
     """And Again!"""
   ])
   
-  ; ; test keeping separator with preceding string
+  // ; test keeping separator with preceding string
   "hello,world,foo,bar" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["hello," "world," "foo," "bar"])
   "a,,b,c" | String.Split(Separator: "," KeepSeparator: true) | Assert.Is(["a," "," "b," "c"])
   
@@ -78,22 +78,22 @@ Something else"""
   "_@abc.cc" | Regex.Match("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is(["_@abc.cc"])
   "_@abc.c" | Regex.Match("""^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$""") | Assert.Is([])
   
-  ; UTF16 bytes, don't fix this...
+  // UTF16 bytes, don't fix this...
   @read("utf16str.dat" Bytes: true) = utf16bytes
   utf16bytes | String.FromUTF16 | Assert.Is("Advanced Early Bird’s Grace")
   String.ToUTF16 | Assert.Is(utf16bytes)
   
   """Hello this is just a test string, with a "quoted sentence" in the middle""" = search-text
   
-  ; Extract quoted phrases first
+  // Extract quoted phrases first
   search-text | Regex.Search("\"([^\"]+)\"") | Map({
-    Take(1) ; Capture group 1 (content inside quotes)
+    Take(1) // Capture group 1 (content inside quotes)
   }) = quoted-phrases
   
-  ; Remove quotes and their content, then split remaining terms
+  // Remove quotes and their content, then split remaining terms
   search-text | Regex.Replace("\"[^\"]+\"" "")
   String.Split(" ")
-  Filter(IsAllNot(["" "a"])) ; Remove empty strings
+  Filter(IsAllNot(["" "a"])) // Remove empty strings
   Map({
     ["%" $0 "%"] | String.Join
   }) = individual-terms

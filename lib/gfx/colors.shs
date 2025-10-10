@@ -1,18 +1,18 @@
-; H/S/L are all [0,1]
+// H/S/L are all [0,1]
 @template(gfx/hsl-to-rgb [hue saturation lightness] {
-  ; Chroma = (1 - |2L-1|) * S
+  // Chroma = (1 - |2L-1|) * S
   1.0 | Sub((lightness | Mul(2.0) | Sub(1.0) | Math.Abs)) | Mul(saturation) = chroma
   
-  ; Hue' = Hue * 6
+  // Hue' = Hue * 6
   hue | Mul(6.0) = h-prime
   
-  ; X = C * (1 - |H' mod 2 - 1|)
+  // X = C * (1 - |H' mod 2 - 1|)
   1.0 | Sub((h-prime | Math.Mod(2.0) | Sub(1.0) | Math.Abs)) | Mul(chroma) = x
   
-  ; m = L - C/2
+  // m = L - C/2
   lightness | Sub((chroma | Div(2.0))) = m
   
-  ; RGB' based on H'
+  // RGB' based on H'
   h-prime | ToInt | Match([
     0 {@f3(chroma x 0.0)}
     1 {@f3(x chroma 0.0)}
@@ -22,11 +22,11 @@
     5 {@f3(chroma 0.0 x)}
     6 {@f3(chroma x 0.0)}
   ] Passthrough: false) | Math.Add(m) | Mul(255.0) | Math.Round
-  ; Output is bytes/int [0,255]
+  // Output is bytes/int [0,255]
   ToColor
 })
 
-; https://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
+// https://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
 @template(gfx/srgb-to-linear3 [in] {
   in = c
   c | Mul(c) = c-sqr
@@ -42,7 +42,7 @@
   ToFloat3 | ToFloat4 | Math.Add(f4-a)
 })
 
-; Convert sRGB color to linear Float4
+// Convert sRGB color to linear Float4
 @template(gfx/color-to-float4 [color] {
   color | ToFloat4 | Div(255.0)
   {Take(3) = a

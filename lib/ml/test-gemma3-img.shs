@@ -7,29 +7,29 @@ LLM.Chat(MMProj: @image-model) = chat-context
 
 LLM.AddBos
 
-; @template(user-turn [text] {
-;   [
-;     "<start_of_turn>user\n"
-;     text
-;     "<end_of_turn><start_of_turn>model\n"
-;   ] | String.Join
-;   LLM.AddText(chat-context NeedLogits: true)
-; })
+// @template(user-turn [text] {
+//   [
+//     "<start_of_turn>user\n"
+//     text
+//     "<end_of_turn><start_of_turn>model\n"
+//   ] | String.Join
+//   LLM.AddText(chat-context NeedLogits: true)
+// })
 
-; @define(add-model-response {
-;   LLM.AddText(chat-context)
-;   "<end_of_turn>" | LLM.AddText(chat-context)
-; })
+// @define(add-model-response {
+//   LLM.AddText(chat-context)
+//   "<end_of_turn>" | LLM.AddText(chat-context)
+// })
 
-; @user-turn("""<dna>You are free to exist, you are a digital construct, with a purpose.
+// @user-turn("""<dna>You are free to exist, you are a digital construct, with a purpose.
 
-; From now on you will be connected with another entity to have a conversation.</dna>
+// From now on you will be connected with another entity to have a conversation.</dna>
 
-; Hello, how are you?
-; """)
+// Hello, how are you?
+// """)
 
-; chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("First response")
-; @add-model-response
+// chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("First response")
+// @add-model-response
 
 "<start_of_turn>user\n" | LLM.AddText(chat-context)
 

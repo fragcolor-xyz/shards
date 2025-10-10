@@ -1,11 +1,11 @@
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
   
-  ; UI
+  // UI
   UI({
-    ; Setup
+    // Setup
     "" >= code
     
     UI.TopPanel(Contents: {

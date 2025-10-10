@@ -1,4 +1,4 @@
-; run like this: shards new docs/samples/run-sample.shs file:shards/UI/Area/1.shs looped:true
+// run like this: shards new docs/samples/run-sample.shs file:shards/UI/Area/1.shs looped:true
 
 @define(run-duration 0.5 IgnoreRedefined: true)
 @define(looped "true" IgnoreRedefined: true)

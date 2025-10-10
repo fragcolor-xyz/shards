@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2019 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2019 Fragcolor Pte. Ltd.
 
 @define(identity [@f4(1 0 0 0)
                   @f4(0 1 0 0)
@@ -55,7 +55,7 @@
   @f3(1 1 2) |
   Math.Length | ExpectFloat |
   Log |
-  ToString | ; truncate hack
+  ToString | // truncate hack
   Assert.Is("2.44949" true)
 
   @f3(1 0 1) |
@@ -63,7 +63,7 @@
   Log
 
   @f3(4270.56 4602.19 188) | Ref(playerPos)
-  ; @f3(4277.35 4596.54 188) | Set(targetPos)
+  // @f3(4277.35 4596.54 188) | Set(targetPos)
   @f3(4283.18 4604.73 188) | Ref(targetPos)
   Get(targetPos) | Math.Subtract(playerPos) |
   Math.Normalize |
@@ -123,8 +123,8 @@
   (3.141592653589793238463 | Math.Divide(2.0)) |
   Math.AxisAngleY | Log |
   Math.Rotation | Log
-  ; TODO float precision-less asserts
-  ; {ToString | Assert.Is("[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)}
+  // TODO float precision-less asserts
+  // {ToString | Assert.Is("[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)}
 
   @f3(-1.0 1.0 2.0) | Math.Normalize(Positive: false) | Log
   [-1.0 1.0 2.0] | Math.Normalize(Positive: false) | Log
@@ -155,18 +155,18 @@
   -1 | Clamp(0 10) | Assert.Is(0 true) | Log("Clamped value")
   22 | Clamp(0 10) | Assert.Is(10 true) | Log("Clamped value")
 
-  ; test euler to quat - identity rotation
+  // test euler to quat - identity rotation
   @f3(0.0 0.0 0.0) | Math.EulerToQuat | Assert.Is(@f4(0.0 0.0 0.0 1.0) true) | Log("Euler identity to quat")
   
-  ; test 90 degree rotations around each axis
+  // test 90 degree rotations around each axis
   @f3(1.5707963267948966 0.0 0.0) | Math.EulerToQuat | Log("90deg yaw to quat")
   @f3(0.0 1.5707963267948966 0.0) | Math.EulerToQuat | Log("90deg pitch to quat") 
   @f3(0.0 0.0 1.5707963267948966) | Math.EulerToQuat | Log("90deg roll to quat")
   
-  ; test 180 degree rotation around Y axis (pitch)
+  // test 180 degree rotation around Y axis (pitch)
   @f3(0.0 3.141592653589793 0.0) | Math.EulerToQuat | Log("180deg pitch to quat")
   
-  ; test combined rotations
+  // test combined rotations
   @f3(0.7853981633974483 0.7853981633974483 0.0) | Math.EulerToQuat | Log("45deg yaw+pitch to quat")
 
   Msg("Done!")

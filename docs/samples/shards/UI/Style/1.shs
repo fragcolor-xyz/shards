@@ -4,7 +4,7 @@ GFX.MainWindow(Contents: {
     GFX.UIPass(ui-draw-queue) >> render-steps
   })
   
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       UI.Style(
@@ -40,7 +40,7 @@ GFX.MainWindow(Contents: {
     })
   })
   
-  ; Render
+  // Render
   UI.Render(ui-draw-queue)
   GFX.Render(Steps: render-steps)
 })

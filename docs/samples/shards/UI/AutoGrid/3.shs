@@ -15,8 +15,8 @@ GFX.MainWindow(
           | UI.AutoGrid(
             ItemWidth: 300.0
             MaxGridWidth: 700.0
-            ColumnSpacing: 50.0 ; Spacing between columns, not included in MaxGridWidth
-            RowSpacing: 30.0 ; Spacing between rows
+            ColumnSpacing: 50.0 // Spacing between columns, not included in MaxGridWidth
+            RowSpacing: 30.0 // Spacing between rows
             Contents: {
               UI.Button(Label: "Test" Action: {
                 | Log
@@ -25,7 +25,8 @@ GFX.MainWindow(
           ) 
         }
       )
-    ) | UI.Render(ui-draw-queue)
+    ) | UI.Render(ui-draw-queue
+)
 
     GFX.Render(Steps: render-steps)
   }

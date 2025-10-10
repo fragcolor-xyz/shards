@@ -3,7 +3,7 @@ prompt: """How to create a sequence and access it?"""
 
 solution: """1 >> sequence ; create a sequence with first element
 2 >> sequence  
-s | Take(0) ; access element at index 0 in a sequence
+s | Take(0) // access element at index 0 in a sequence
 Assert.Is(1)
 Log("result")
 """
@@ -11,7 +11,7 @@ Log("result")
 explicit: """Sequence(Name: sequence) ; ; create empty sequence
 1 | Push(Name: sequence Clear: false)          
 2 | Push(Name: sequence Clear: false) 
-sequence | Take(0) ; access element at index 0 in the sequence
+sequence | Take(0) // access element at index 0 in the sequence
 Assert.Is(Value: 1)
 Log(Prefix: "result" Level: LogLevel::Info)
 """

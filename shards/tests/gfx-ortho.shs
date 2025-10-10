@@ -2,7 +2,7 @@
 
 @wire(test-wire {
   Once({
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.DrawQueue = queue
@@ -11,25 +11,25 @@
     GFX.Feature(State: {FlipFrontFace: true}) >> features
     features >= features-flipped
     
-    ; Load avocado model
-    ; "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
-    ; "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
+    // Load avocado model
+    // "../../external/glTF-Sample-Assets/Models/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
+    // "../../external/glTF-Sample-Models/2.0/Avocado/glTF-Binary/Avocado.glb" >= avocado-path
     "data/unit-avocado.glb" >= avocado-path
     avocado-path | FS.Read(Bytes: true) = avocado-bytes
   })
   
   GFX.MainWindow(Title: "Orthographic Demo" Width: 1280 Height: 720 Contents: {
-    ;   GFX.Viewport = vp
-    ;   [vp] | Memoize({
-    ;     vp:2 | Sub((vp:0)) | ToFloat = width
-    ;     vp:3 | Sub((vp:1)) | ToFloat = height
+    //   GFX.Viewport = vp
+    //   [vp] | Memoize({
+    //     vp:2 | Sub((vp:0)) | ToFloat = width
+    //     vp:3 | Sub((vp:1)) | ToFloat = height
     
-    ;     ; Center the view so top-left is 0,0, bottom-right is (width, height)
-    ;     @f2(width height) | Mul(-0.5) >= view-offset
-    ;     view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
-    ;   })
+    //     ; Center the view so top-left is 0,0, bottom-right is (width, height)
+    //     @f2(width height) | Mul(-0.5) >= view-offset
+    //     view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation = view-transform
+    //   })
     
-    ; GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
+    // GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
     Once({0 >= idx})
     Animation.Timer(Duration: 1.0 Action: {
       Inc(idx)
@@ -72,9 +72,9 @@
       Passthrough: false
     ) >> render-steps
     
-    ; Draw avocado in orthographic view
+    // Draw avocado in orthographic view
     @f3(200.0) | Math.Scaling = s
-    ; @f3(16.0 16.0 0.0)
+    // @f3(16.0 16.0 0.0)
     @f3(0.0)
     Math.Translation = t
     t | Math.MatMul(s) | GFX.glTF(Bytes: avocado-bytes)

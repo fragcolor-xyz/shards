@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pte. Ltd.
 
 @include("defs.shs")
 
@@ -46,7 +46,7 @@
 @schedule(root test)
 @run(root FPS: 10 Iterations: 5) | Assert.Is(true)
 
-; test reusing sockets/streams
+// test reusing sockets/streams
 @schedule(root test)
 @run(root FPS: 10 Iterations: 5) | Assert.Is(true)
 
@@ -56,7 +56,7 @@
   Log
   "shards.png" | FS.Write(shards Overwrite: true)
   
-  ; Emscripten doesn't have streaming support yet
+  // Emscripten doesn't have streaming support yet
   @if(#(@platform | IsNot("emscripten")) {
     none
     Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Streaming: true Timeout: 60) = picture-stream
@@ -76,30 +76,30 @@
 @schedule(root download)
 @run(root FPS: 10) | Assert.Is(true)
 
-; ; wire, to keep same state
-; @wire(send-chunk {Http.Chunk})
+// ; wire, to keep same state
+// @wire(send-chunk {Http.Chunk})
 
-; @wire(server-handler {
-;   Msg("handled")
-;   Http.Read | Take("target")
-;   When(Is("/") {
-;     Log
-;     "Message\n" | Log("Responding")
-;     Do(send-chunk) | Log("Responded")
-;     "Message\n" | Log("Responding")
-;     Do(send-chunk) | Log("Responded")
-;     "Message\n" | Log("Responding")
-;     Do(send-chunk) | Log("Responded")
-;     "" | Log("Responding")
-;     Do(send-chunk) | Log("Responded")
-;   })
-; } Looped: true)
+// @wire(server-handler {
+//   Msg("handled")
+//   Http.Read | Take("target")
+//   When(Is("/") {
+//     Log
+//     "Message\n" | Log("Responding")
+//     Do(send-chunk) | Log("Responded")
+//     "Message\n" | Log("Responding")
+//     Do(send-chunk) | Log("Responded")
+//     "Message\n" | Log("Responding")
+//     Do(send-chunk) | Log("Responded")
+//     "" | Log("Responding")
+//     Do(send-chunk) | Log("Responded")
+//   })
+// } Looped: true)
 
-; @wire(test-server {
-;   Http.Server(Handler: server-handler)
-; } Looped: true)
+// @wire(test-server {
+//   Http.Server(Handler: server-handler)
+// } Looped: true)
 
-; @schedule(root test-server)
-; @run(root FPS: 10) | Assert.Is(true)
+// @schedule(root test-server)
+// @run(root FPS: 10) | Assert.Is(true)
 
 Comment("formatter will delete above if we don't do this, oops")
