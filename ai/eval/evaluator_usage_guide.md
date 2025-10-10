@@ -80,7 +80,7 @@ To integrate runtime evaluation:
 4. Compare with expected output patterns
 
 ```shards
-; Example runtime evaluation addition
+// Example runtime evaluation addition
 @template(run-and-verify [code expected-output] {
   code | WriteFile("temp_solution.shs")
   "shards temp_solution.shs" | Shell.Execute = actual-output

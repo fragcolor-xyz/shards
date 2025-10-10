@@ -12,9 +12,9 @@ Here we list rules of thumb to decide what an element should do with its input o
 The UI context object passes its input to the inner UI.
 
 ```clj
-;; any input here
+//// any input here
 (UI
- (-> ;; same input here
+ (-> //// same input here
      (UI.Window)))
 ```
 
@@ -26,11 +26,11 @@ They return their initial input as output.
 E.g. `(UI.Window)`, `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `(UI.RightPanel)`, `(UI.TopPanel)`
 
 ```clj
-;; any input here
+//// any input here
 (UI
- (-> ;; same input here
+ (-> //// same input here
      (UI.Window
-      (-> ;; same input here
+      (-> //// same input here
           (Log "input")))))
 ```
 
@@ -45,16 +45,16 @@ Remarks: `(UI.BottomPanel)`, `(UI.CentralPanel)`, `(UI.LeftPanel)`, `(UI.RightPa
 ```clj
 1 (Math.Add 2)
 (UI.Horizontal
- (-> ;; input here is the result of 1 + 2 (i.e. 3)
+ (-> //// input here is the result of 1 + 2 (i.e. 3)
      (| "Result" (UI.Label))
-     ;; label displays the input but doesn't consume it
+     //// label displays the input but doesn't consume it
      (UI.Label)
-     ;; still the same input here
+     //// still the same input here
      (Math.Multiply 2)
-     (Log) ;; 6
+     (Log) //// 6
  ))
-;; horizontal passed through its input
-(Log) ;; 3
+//// horizontal passed through its input
+(Log) //// 3
 ```
 
 ### Actionable widgets
@@ -65,8 +65,8 @@ E.g. `(UI.Button)`, `(UI.Checkbox)`, `(UI.RadioButton)`
 
 ```clj
 (UI.Window
- (-> (When (-> ;; input ignored here
+ (-> (When (-> //// input ignored here
                (UI.Button "Click me!")
-               ;; button returns true when clicked
+               //// button returns true when clicked
                (Log "click status")))))
 ```

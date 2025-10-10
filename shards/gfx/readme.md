@@ -17,13 +17,13 @@ the basic structure looks like:
 
 ```cpp
 struct Material {
-	MaterialStaticFlags::Type flags = MaterialStaticFlags::None;
-	std::unordered_map<std::string, float4> vectorParameters;
-	std::unordered_map<std::string, MaterialTextureSlot> textureSlots;
-	std::vector<uint32_t> mrtOutputs;
-	std::string vertexCode;
-	std::string pixelCode;
-};
+	MaterialStaticFlags::Type flags = MaterialStaticFlags::None//
+	std::unordered_map<std::string, float4> vectorParameters//
+	std::unordered_map<std::string, MaterialTextureSlot> textureSlots//
+	std::vector<uint32_t> mrtOutputs//
+	std::string vertexCode//
+	std::string pixelCode//
+}//
 ```
 
 ## Material usage

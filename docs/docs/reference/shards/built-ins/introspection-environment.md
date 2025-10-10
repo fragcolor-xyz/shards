@@ -17,7 +17,7 @@ returns a string for the current system ("android", "ios", "visionos", "emscript
 
 === "Outputs"
     ```
-      [wire1] windows ;; dependent on what platform you are on
+      [wire1] windows //// dependent on what platform you are on
     ```
 
 ## @namespace

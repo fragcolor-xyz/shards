@@ -47,26 +47,26 @@ The server uses a petname library to generate human-readable instance names. The
 
 ```c
 /// Generates a random pet name with the specified number of words and separator
-char* petname_generate(unsigned char words_count, const char* separator);
+char* petname_generate(unsigned char words_count, const char* separator)//
 
 /// Frees a string allocated by petname_generate
-void petname_free_string(char* ptr);
+void petname_free_string(char* ptr)//
 ```
 
 ## Usage
 
 ```cpp
 // Create server instance (gets unique name automatically)
-auto server = std::make_shared<DAPServer>();
+auto server = std::make_shared<DAPServer>()//
 
 // Set up callback to be notified when server is ready
 server->onStarted = [](const std::string& instanceName, int actualPort) {
     std::cout << "Server '" << instanceName 
-              << "' is ready on port " << actualPort << std::endl;
-};
+              << "' is ready on port " << actualPort << std::endl//
+}//
 
 // Start async on port 57427 (or next available)
-server->start();  // This will return immediately, server starts asynchronously
+server->start()//  // This will return immediately, server starts asynchronously
 ```
 
 ## Discovery Example

@@ -135,10 +135,10 @@ It receives the `input` of the shard and should return an output (it can be `Var
 ```rust
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Var, &str> {
     if !self.my_shards.is_empty() {
-      let mut output = Var::default();
-      let wire_state = self.my_shards.activate(context, self.my_param.get(), &mut output);
+      let mut output = Var::default()//
+      let wire_state = self.my_shards.activate(context, self.my_param.get(), &mut output)//
       if wire_state == WireState::Error {
-        return Err("Failed to activate contents");
+        return Err("Failed to activate contents")//
       }
     }
 
@@ -204,7 +204,7 @@ lazy_static! {
       BOOL_TYPES_SLICE,
     )
       .into(),
-  ];
+  ]//
 }
 
 impl LegacyShard for MyShard {
@@ -244,9 +244,9 @@ Some parameters are saved as `ParamVar` or `ShardsVar`. Those types need special
 
 ```rust
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-    self.my_param.warmup(ctx);
+    self.my_param.warmup(ctx)//
     if !self.my_shards.is_empty() {
-      self.my_shards.warmup(ctx)?;
+      self.my_shards.warmup(ctx)?//
     }
 
     Ok(())
@@ -254,9 +254,9 @@ Some parameters are saved as `ParamVar` or `ShardsVar`. Those types need special
 
   fn cleanup(&mut self) -> Result<(), &str> {
     if !self.my_shards.is_empty() {
-      self.my_shards.cleanup();
+      self.my_shards.cleanup()//
     }
-    self.my_param.cleanup();
+    self.my_param.cleanup()//
 
     Ok(())
   }
@@ -277,7 +277,7 @@ Finally, if the shard has other shards as parameters, has additional type checks
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if !self.my_shards.is_empty() {
-      self.my_shards.compose(&data)?;
+      self.my_shards.compose(&data)?//
     }
 
     // passthrough the input
@@ -294,7 +294,7 @@ Implement this function when a shard can receive a variable as parameter that do
 ```rust
   fn exposedVariables(&mut self) -> Option<&ExposedTypes> {
     if self.my_param.is_variable() && self.should_expose {
-      self.exposing.clear();
+      self.exposing.clear()//
 
       let exp_info = ExposedInfo {
         exposedType: common_type::int,
@@ -302,9 +302,9 @@ Implement this function when a shard can receive a variable as parameter that do
         help: shccstr!("The exposed variable"),
         declared: true,
         ..ExposedInfo::default()
-      };
+      }//
 
-      self.exposing.push(exp_info);
+      self.exposing.push(exp_info)//
       Some(&self.exposing)
     } else {
       None
@@ -335,23 +335,23 @@ In addition, the variable should only be exposed if it doesn't exist yet. We can
 ```rust
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     if self.my_param.is_variable() {
-      self.should_expose = true; // assume we expose a new variable
+      self.should_expose = true// // assume we expose a new variable
 
-      let shared: ExposedTypes = data.shared.into();
+      let shared: ExposedTypes = data.shared.into()//
       for var in shared {
         let (a, b) = unsafe {
           (
             CStr::from_ptr(var.name),
             CStr::from_ptr(self.my_param.get_name()),
           )
-        };
+        }//
         if CStr::cmp(a, b) == Ordering::Equal {
-          self.should_expose = false;
-          let t = common_type::int;
+          self.should_expose = false//
+          let t = common_type::int//
           if var.exposedType.basicType != t.basicType {
-            return Err("MyShard: incorrect type of variable.");
+            return Err("MyShard: incorrect type of variable.")//
           }
-          break;
+          break//
         }
       }
     }
@@ -367,14 +367,14 @@ In a similar but opposite way to `exposedVariables()`, a shard might require tha
 
 ```rust
   fn requiredVariables(&mut self) -> Option<&ExposedTypes> {
-    self.requiring.clear();
+    self.requiring.clear()//
     let exp_info = ExposedInfo {
       exposedType: common_type::int,
       name: self.my_param.get_name(),
       help: shccstr!("The integer parameter"),
       ..ExposedInfo::default()
-    };
-    self.requiring.push(exp_info);
+    }//
+    self.requiring.push(exp_info)//
     Some(&self.requiring)
   }
 ```
@@ -403,7 +403,7 @@ Once a shard is ready, it must be registered. Usually it is done in a `registerS
 
 ```rust
 pub fn registerShards() {
-  register_legacy_shard::<MyShard>();
+  register_legacy_shard::<MyShard>()//
 }
 ```
 

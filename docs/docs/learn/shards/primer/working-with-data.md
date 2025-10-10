@@ -47,7 +47,7 @@ For the following example, `get-x` fails to retrieve the value of `x` defined in
     } Looped: false)
 
     @wire( define-x {
-      1 >= x ;; (1)
+      1 >= x //// (1)
     } Looped: false) 
 
     @schedule(main define-x)
@@ -75,7 +75,7 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
     @mesh(main)
 
     @wire( wire-y {
-      12 > x | Log ;; (1)
+      12 > x | Log //// (1)
     } Looped: false)
 
     @wire( wire-x {
@@ -106,7 +106,7 @@ If a method such as [`Step`](../../../../reference/shards/shards/General/Step) i
 
     @wire( wire-y {
       12 > x | Log
-    } Looped: false) ;; (1)
+    } Looped: false) //// (1)
 
     @wire(wire-x {
       Once({0 >= x})
@@ -139,7 +139,7 @@ To create a Pure Wire, we use `@wire` with the `Pure` parameter set to true.
 === "Syntax"
     ```shards
     @wire( wire-name {
-      ;; your shards here
+      //// your shards here
     })
     ```
 

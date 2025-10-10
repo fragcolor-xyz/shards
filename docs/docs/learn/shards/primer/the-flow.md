@@ -19,8 +19,8 @@ In the example below, John and Lucy are taking apples in turn. The Looped Wires 
 
     @wire(take-an-apple {
       = name 
-      Log("Actor") ;; (1)
-      Once({10 >= apples}) ;; (2)
+      Log("Actor") //// (1)
+      Once({10 >= apples}) //// (2)
       Math.Dec(apples)
       apples
       Log("Apples Remaining")
@@ -101,8 +101,8 @@ Back to our previous example with apples, if John now requires some time to juic
 
     @wire(take-an-apple {
       = name 
-      Log("Actor") ;; (1)
-      Once({10 >= apples}) ;; (2)
+      Log("Actor") //// (1)
+      Once({10 >= apples}) //// (2)
       Math.Dec(apples)
       apples
       Log("Apples Remaining")
@@ -111,7 +111,7 @@ Back to our previous example with apples, if John now requires some time to juic
     @wire(juice-apple {
       = name 
       Log("Actor")
-      Msg("Juicing Apple...") | Pause(1) ;; (1)
+      Msg("Juicing Apple...") | Pause(1) //// (1)
       Msg("Made some Apple Juice!")
     } Looped: false)
 
@@ -167,8 +167,8 @@ Now say we have a large oven that bakes multiple apples concurrently. We can use
 
     @wire(take-an-apple {
       = name 
-      Log("Actor") ;; (1)
-      Once({10 >= apples}) ;; (2)
+      Log("Actor") //// (1)
+      Once({10 >= apples}) //// (2)
       Math.Dec(apples)
       apples
       Log("Apples Remaining")
@@ -289,13 +289,13 @@ In the example below, we use `Start` and `Resume` to toggle between John's and L
        Predicate: {apple-count | IsMore(2)}
        Action:{
         Msg ("I have enough, you can have the rest.")
-        SwitchTo(john)}) ;; (1)
+        SwitchTo(john)}) //// (1)
     } Looped: true) 
 
     @wire(john{
       Once({
         Msg("Lucy, you can take as much as you want first.")
-        SwitchTo(lucy) ;; (2)
+        SwitchTo(lucy) //// (2)
         Msg("It's my turn now!")
       })
       Msg("Taking an apple!")
@@ -419,13 +419,13 @@ The example also showcases how variables defined in `john` are affected by chang
     ```shards
     @mesh(main)
 
-    @wire(take-an-apple { ;; (1)
+    @wire(take-an-apple { //// (1)
       Math.Inc(fresh-apples)
       Msg("Taking an apple...")
       fresh-apples | Log("Fresh Apple (+1)")
     } Looped: false)
 
-    @wire(bake-apple { ;; (2)
+    @wire(bake-apple { //// (2)
       Math.Dec(fresh-apples)
       Msg("Baking apple...")
       fresh-apples | Log("Fresh Apple (-1)")
@@ -522,7 +522,7 @@ The example also showcases how variables defined in `john` are affected by chang
 
 === "Syntax"
     ```shards
-    Branch([wire-x wire-y wire-z]) ;; (1)
+    Branch([wire-x wire-y wire-z]) //// (1)
     ```
 
     1. You can schedule as many Wires as you wish within the square brackets here. In this example, three Wires are scheduled on the Submesh.
@@ -547,16 +547,16 @@ In our example below, we will be using `Expand` to teach John about multiplicati
     @mesh(main)
 
     @wire(zero-multiplication{
-      RandomInt(Max: 100) | Math.Multiply(0) ;; (2)
+      RandomInt(Max: 100) | Math.Multiply(0) //// (2)
     } Looped: false)
 
     @wire(learn-zero-multiplication {
       Expand(
-        Size: 100 ;; (1)
+        Size: 100 //// (1)
         Wire: zero-multiplication
       )
       ForEach({Is(0) | Log})
-    } Looped: false) ;; (3)
+    } Looped: false) //// (3)
 
     @wire(john {
       Do(learn-zero-multiplication)
@@ -606,7 +606,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
 
     @wire(check-for-hit {
       >= distance-shot
-      Math.Mod(2) ;; (2)
+      Math.Mod(2) //// (2)
       Assert.Is(Value: 1 Break: false)
       distance-shot
     } Looped: false)
@@ -615,7 +615,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
       [1 2 3]
       TryMany(
         Wire: check-for-hit
-        Policy: WaitUntil::FirstSuccess) ;; (1)
+        Policy: WaitUntil::FirstSuccess) //// (1)
         Log("Hits the mark")
     } Looped: false)
 
@@ -650,7 +650,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
       [1 2 3]
       TryMany(
         Wire: check-for-hit
-        Policy: WaitUntil::AllSuccess) ;; (1)
+        Policy: WaitUntil::AllSuccess) //// (1)
       Log("Hits the mark")
     } Looped: false)
 
@@ -666,8 +666,8 @@ In the following examples, John attempts to hit a moving target by firing arrows
 
 === "Output"
     ```
-    ;; No result is obtained as the condition for WaitUntil.AllSuccess was not achieved.
-    ;; The Wire with a .distance-shot of 2 would fail the Assert checks.
+    //// No result is obtained as the condition for WaitUntil.AllSuccess was not achieved.
+    //// The Wire with a .distance-shot of 2 would fail the Assert checks.
     ```
 
 === "SomeSuccess"
@@ -685,7 +685,7 @@ In the following examples, John attempts to hit a moving target by firing arrows
       [1 2 3]
       TryMany(
         Wire: check-for-hit
-        Policy: WaitUntil::SomeSuccess) ;; (1)
+        Policy: WaitUntil::SomeSuccess) //// (1)
       Log("Hits the mark")
     } Looped: false)
 

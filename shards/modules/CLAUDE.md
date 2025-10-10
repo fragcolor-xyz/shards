@@ -9,9 +9,9 @@ Every shard is a C++ struct with specific static methods and member functions. H
 ```cpp
 struct MyShardName {
   // Required static methods
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
-  static SHOptionalString help() { return SHCCSTR("Description of what this shard does"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType// }
+  static SHOptionalString help() { return SHCCSTR("Description of what this shard does")// }
 
   // Lifecycle methods
   void warmup(SHContext *context) { /* Initialize resources */ }
@@ -21,9 +21,9 @@ struct MyShardName {
   // Main execution
   SHVar activate(SHContext *context, const SHVar &input) {
     // Process input and return output
-    return Var("result");
+    return Var("result")//
   }
-};
+}//
 ```
 
 ## Core Components
@@ -40,13 +40,13 @@ Use the `PARAM` macro system for shard parameters:
 
 ```cpp
 // Basic parameter
-PARAM(ShardsVar, _action, "Action", "Description", {CoreInfo::ShardsOrNone});
+PARAM(ShardsVar, _action, "Action", "Description", {CoreInfo::ShardsOrNone})//
 
 // Variable parameter (can reference context variables)
-PARAM_PARAMVAR(_color, "Color", "Description", {CoreInfo::ColorType, CoreInfo::ColorVarType});
+PARAM_PARAMVAR(_color, "Color", "Description", {CoreInfo::ColorType, CoreInfo::ColorVarType})//
 
 // Required parameters implementation
-PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_color));
+PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_color))//
 ```
 
 ### 3. Lifecycle Methods
@@ -78,78 +78,78 @@ PARAM_IMPL(PARAM_IMPL_FOR(_action), PARAM_IMPL_FOR(_color));
 ### 1. Simple Transform Shard
 ```cpp
 struct ToUpper {
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString help() { return SHCCSTR("Converts string to uppercase"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType// }
+  static SHOptionalString help() { return SHCCSTR("Converts string to uppercase")// }
 
-  std::string _buffer;
+  std::string _buffer//
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto text = SHSTRVIEW(input);
-    _buffer.assign(text.begin(), text.end());
-    std::transform(_buffer.begin(), _buffer.end(), _buffer.begin(), ::toupper);
-    return Var(_buffer);
+    auto text = SHSTRVIEW(input)//
+    _buffer.assign(text.begin(), text.end())//
+    std::transform(_buffer.begin(), _buffer.end(), _buffer.begin(), ::toupper)//
+    return Var(_buffer)//
   }
-};
+}//
 ```
 
 ### 2. Shard with Parameters
 ```cpp
 struct Multiply {
-  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
-  static SHOptionalString help() { return SHCCSTR("Multiplies input by factor"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType// }
+  static SHOptionalString help() { return SHCCSTR("Multiplies input by factor")// }
 
-  PARAM_VAR(_factor, "Factor", "Number to multiply by", {CoreInfo::IntType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_factor));
+  PARAM_VAR(_factor, "Factor", "Number to multiply by", {CoreInfo::IntType})//
+  PARAM_IMPL(PARAM_IMPL_FOR(_factor))//
 
-  void warmup(SHContext *context) { PARAM_WARMUP(context); }
-  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+  void warmup(SHContext *context) { PARAM_WARMUP(context)// }
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context)// }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    return Var(input.payload.intValue * _factor.payload.intValue);
+    return Var(input.payload.intValue * _factor.payload.intValue)//
   }
-};
+}//
 ```
 
 ### 3. Shard with Sub-Actions
 ```cpp
 struct Conditional {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("Executes action if condition is true"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType// }
+  static SHOptionalString help() { return SHCCSTR("Executes action if condition is true")// }
 
-  PARAM_PARAMVAR(_condition, "Condition", "Boolean condition", {CoreInfo::BoolType, CoreInfo::BoolVarType});
-  PARAM(ShardsVar, _action, "Action", "Action to execute", {CoreInfo::ShardsOrNone});
-  PARAM_IMPL(PARAM_IMPL_FOR(_condition), PARAM_IMPL_FOR(_action));
+  PARAM_PARAMVAR(_condition, "Condition", "Boolean condition", {CoreInfo::BoolType, CoreInfo::BoolVarType})//
+  PARAM(ShardsVar, _action, "Action", "Action to execute", {CoreInfo::ShardsOrNone})//
+  PARAM_IMPL(PARAM_IMPL_FOR(_condition), PARAM_IMPL_FOR(_action))//
 
-  PARAM_REQUIRED_VARIABLES();
+  PARAM_REQUIRED_VARIABLES()//
   SHTypeInfo compose(SHInstanceData &data) {
-    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
-    _action.compose(data);
-    PARAM_COMPOSE_MERGE_REQUIRED(_action);
-    return data.inputType; // Pass through input type
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data)//
+    _action.compose(data)//
+    PARAM_COMPOSE_MERGE_REQUIRED(_action)//
+    return data.inputType// // Pass through input type
   }
 
   void warmup(SHContext *context) {
-    PARAM_WARMUP(context);
-    _action.warmup(context);
+    PARAM_WARMUP(context)//
+    _action.warmup(context)//
   }
 
   void cleanup(SHContext *context) {
-    _action.cleanup(context);
-    PARAM_CLEANUP(context);
+    _action.cleanup(context)//
+    PARAM_CLEANUP(context)//
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (_condition.get().payload.boolValue) {
-      SHVar output{};
-      _action.activate(context, input, output);
-      return output;
+      SHVar output{}//
+      _action.activate(context, input, output)//
+      return output//
     }
-    return input;
+    return input//
   }
-};
+}//
 ```
 
 ## Registration
@@ -158,9 +158,9 @@ All shards must be registered in a registration function:
 
 ```cpp
 SHARDS_REGISTER_FN(mymodule) {
-  REGISTER_SHARD("MyModule.ToUpper", ToUpper);
-  REGISTER_SHARD("MyModule.Multiply", Multiply);
-  REGISTER_SHARD("MyModule.Conditional", Conditional);
+  REGISTER_SHARD("MyModule.ToUpper", ToUpper)//
+  REGISTER_SHARD("MyModule.Multiply", Multiply)//
+  REGISTER_SHARD("MyModule.Conditional", Conditional)//
 }
 ```
 
@@ -220,24 +220,24 @@ namespace shards {
 namespace text {
 
 struct Reverse {
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-  static SHOptionalString help() { return SHCCSTR("Reverses a string"); }
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::StringType// }
+  static SHOptionalString help() { return SHCCSTR("Reverses a string")// }
 
-  std::string _buffer;
+  std::string _buffer//
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto text = SHSTRVIEW(input);
-    _buffer.assign(text.rbegin(), text.rend());
-    return Var(_buffer);
+    auto text = SHSTRVIEW(input)//
+    _buffer.assign(text.rbegin(), text.rend())//
+    return Var(_buffer)//
   }
-};
+}//
 
 } // namespace text
 
 SHARDS_REGISTER_FN(text) {
-  using namespace text;
-  REGISTER_SHARD("Text.Reverse", Reverse);
+  using namespace text//
+  REGISTER_SHARD("Text.Reverse", Reverse)//
 }
 } // namespace shards
 ```
@@ -255,8 +255,8 @@ This guide explains how to create new shards in Rust within the Shards module sy
 Every Rust shard is a struct that implements the `Shard` trait, using derive macros for code generation:
 
 ```rust
-use shards::shard::Shard;
-use shards::types::{ClonedVar, Context, Type, Types, Var, ExposedTypes, InstanceData};
+use shards::shard::Shard//
+use shards::types::{ClonedVar, Context, Type, Types, Var, ExposedTypes, InstanceData}//
 
 #[derive(shards::shard)]
 #[shard_info("MyModule.Transform", "Transforms input data")]
@@ -293,26 +293,26 @@ impl Shard for MyTransformShard {
     }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
+        self.warmup_helper(ctx)?//
         Ok(())
     }
 
     fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        self.output = ClonedVar::default();
+        self.cleanup_helper(ctx)?//
+        self.output = ClonedVar::default()//
         Ok(())
     }
 
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
+        self.compose_helper(data)?//
         Ok(self.output_types()[0])
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let value: i64 = input.try_into()?;
-        let factor: i64 = self.factor.0.as_ref().try_into()?;
-        let result = value * factor;
-        self.output = result.into();
+        let value: i64 = input.try_into()?//
+        let factor: i64 = self.factor.0.as_ref().try_into()?//
+        let result = value * factor//
+        self.output = result.into()//
         Ok(Some(self.output.0))
     }
 }
@@ -400,25 +400,25 @@ impl Shard for UpperShard {
     fn output_types(&mut self) -> &Types { &STRING_TYPES }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
+        self.warmup_helper(ctx)?//
         Ok(())
     }
 
     fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        self.output = ClonedVar::default();
+        self.cleanup_helper(ctx)?//
+        self.output = ClonedVar::default()//
         Ok(())
     }
 
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
+        self.compose_helper(data)?//
         Ok(self.output_types()[0])
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let text: &str = input.try_into()?;
-        let upper_text = text.to_uppercase();
-        self.output = Var::ephemeral_string(&upper_text).into();
+        let text: &str = input.try_into()?//
+        let upper_text = text.to_uppercase()//
+        self.output = Var::ephemeral_string(&upper_text).into()//
         Ok(Some(self.output.0))
     }
 }
@@ -455,26 +455,26 @@ impl Shard for ScaleShard {
     fn output_types(&mut self) -> &Types { &FLOAT_TYPES }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
+        self.warmup_helper(ctx)?//
         Ok(())
     }
 
     fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        self.output = ClonedVar::default();
+        self.cleanup_helper(ctx)?//
+        self.output = ClonedVar::default()//
         Ok(())
     }
 
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
+        self.compose_helper(data)?//
         Ok(self.output_types()[0])
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let value: f64 = input.try_into()?;
-        let factor: f64 = self.factor.0.as_ref().try_into()?;
-        let result = value * factor;
-        self.output = result.into();
+        let value: f64 = input.try_into()?//
+        let factor: f64 = self.factor.0.as_ref().try_into()?//
+        let result = value * factor//
+        self.output = result.into()//
         Ok(Some(self.output.0))
     }
 }
@@ -507,31 +507,31 @@ impl Shard for SumShard {
     fn output_types(&mut self) -> &Types { &FLOAT_TYPES }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
+        self.warmup_helper(ctx)?//
         Ok(())
     }
 
     fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        self.output = ClonedVar::default();
+        self.cleanup_helper(ctx)?//
+        self.output = ClonedVar::default()//
         Ok(())
     }
 
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
+        self.compose_helper(data)?//
         Ok(self.output_types()[0])
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let seq: SeqVar = input.try_into()?;
-        let mut sum = 0.0f64;
+        let seq: SeqVar = input.try_into()?//
+        let mut sum = 0.0f64//
 
         for item in seq.iter() {
-            let value: f64 = item.try_into()?;
-            sum += value;
+            let value: f64 = item.try_into()?//
+            sum += value//
         }
 
-        self.output = sum.into();
+        self.output = sum.into()//
         Ok(Some(self.output.0))
     }
 }
@@ -542,16 +542,16 @@ impl Shard for SumShard {
 For complex data types, define custom objects:
 
 ```rust
-use shards::{fourCharacterCode, ref_counted_object_type_impl};
+use shards::{fourCharacterCode, ref_counted_object_type_impl}//
 
 // Define the object wrapper
-struct MyObject(SomeRustStruct);
-ref_counted_object_type_impl!(MyObject);
+struct MyObject(SomeRustStruct)//
+ref_counted_object_type_impl!(MyObject)//
 
 // Create type constants
 lazy_static! {
-    pub static ref MYOBJECT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"mOBJ"));
-    pub static ref MYOBJECT_TYPE_VEC: Vec<Type> = vec![*MYOBJECT_TYPE];
+    pub static ref MYOBJECT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"mOBJ"))//
+    pub static ref MYOBJECT_TYPE_VEC: Vec<Type> = vec![*MYOBJECT_TYPE]//
 }
 
 // Use in shard
@@ -570,12 +570,12 @@ impl Shard for ProcessShard {
     fn output_types(&mut self) -> &Types { &MYOBJECT_TYPE_VEC }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let obj = unsafe { &mut *Var::from_ref_counted_object::<MyObject>(&input, &*MYOBJECT_TYPE)? };
+        let obj = unsafe { &mut *Var::from_ref_counted_object::<MyObject>(&input, &*MYOBJECT_TYPE)? }//
 
         // Process obj.0 (the wrapped SomeRustStruct)
         // ...
 
-        self.output = Var::new_ref_counted(MyObject(processed), &*MYOBJECT_TYPE).into();
+        self.output = Var::new_ref_counted(MyObject(processed), &*MYOBJECT_TYPE).into()//
         Ok(Some(self.output.0))
     }
 }
@@ -589,20 +589,20 @@ Register shards in the module registration function:
 #[no_mangle]
 pub extern "C" fn shardsRegister_mymodule(core: *mut shards::shardsc::SHCore) {
     unsafe {
-        shards::core::Core = core;
+        shards::core::Core = core//
     }
 
     // Register enums
-    register_enum::<MyEnum>();
+    register_enum::<MyEnum>()//
 
     // Register object types
-    register_object_type::<MyObject>(FRAG_CC, fourCharacterCode(*b"mOBJ"));
+    register_object_type::<MyObject>(FRAG_CC, fourCharacterCode(*b"mOBJ"))//
 
     // Register shards
-    register_shard::<UpperShard>();
-    register_shard::<ScaleShard>();
-    register_shard::<SumShard>();
-    register_shard::<ProcessShard>();
+    register_shard::<UpperShard>()//
+    register_shard::<ScaleShard>()//
+    register_shard::<SumShard>()//
+    register_shard::<ProcessShard>()//
 }
 ```
 
@@ -623,18 +623,18 @@ pub extern "C" fn shardsRegister_mymodule(core: *mut shards::shardsc::SHCore) {
 
 ### Type Conversion
 ```rust
-let string_val: &str = var.try_into()?;
-let int_val: i64 = var.try_into()?;
-let float_val: f64 = var.try_into()?;
-let seq: SeqVar = var.try_into()?;
+let string_val: &str = var.try_into()?//
+let int_val: i64 = var.try_into()?//
+let float_val: f64 = var.try_into()?//
+let seq: SeqVar = var.try_into()?//
 ```
 
 ### Creating Variables
 ```rust
-let var = Var::ephemeral_string("text");
-let var = 42i64.into();
-let var = 3.14f64.into();
-let var = Var::new_ref_counted(obj, &TYPE);
+let var = Var::ephemeral_string("text")//
+let var = 42i64.into()//
+let var = 3.14f64.into()//
+let var = Var::new_ref_counted(obj, &TYPE)//
 ```
 
 ## Module Structure
@@ -648,9 +648,9 @@ let var = Var::new_ref_counted(obj, &TYPE);
    ```
 3. Include required imports:
    ```rust
-   use shards::shard::Shard;
-   use shards::types::*;
-   use shards::core::{register_shard, register_enum, register_object_type};
+   use shards::shard::Shard//
+   use shards::types::*//
+   use shards::core::{register_shard, register_enum, register_object_type}//
    ```
 4. Define shards with derive macros
 5. Add registration function
@@ -682,9 +682,9 @@ pub enum ProcessMode {
 ## Complete Example Module
 
 ```rust
-use shards::shard::Shard;
-use shards::types::*;
-use shards::core::{register_shard};
+use shards::shard::Shard//
+use shards::types::*//
+use shards::core::{register_shard}//
 
 #[derive(shards::shard)]
 #[shard_info("Text.Reverse", "Reverses input string")]
@@ -710,25 +710,25 @@ impl Shard for ReverseShard {
     fn output_types(&mut self) -> &Types { &STRING_TYPES }
 
     fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
-        self.warmup_helper(ctx)?;
+        self.warmup_helper(ctx)?//
         Ok(())
     }
 
     fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
-        self.cleanup_helper(ctx)?;
-        self.output = ClonedVar::default();
+        self.cleanup_helper(ctx)?//
+        self.output = ClonedVar::default()//
         Ok(())
     }
 
     fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-        self.compose_helper(data)?;
+        self.compose_helper(data)?//
         Ok(self.output_types()[0])
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        let text: &str = input.try_into()?;
-        let reversed: String = text.chars().rev().collect();
-        self.output = Var::ephemeral_string(&reversed).into();
+        let text: &str = input.try_into()?//
+        let reversed: String = text.chars().rev().collect()//
+        self.output = Var::ephemeral_string(&reversed).into()//
         Ok(Some(self.output.0))
     }
 }
@@ -736,10 +736,10 @@ impl Shard for ReverseShard {
 #[no_mangle]
 pub extern "C" fn shardsRegister_text_utils(core: *mut shards::shardsc::SHCore) {
     unsafe {
-        shards::core::Core = core;
+        shards::core::Core = core//
     }
 
-    register_shard::<ReverseShard>();
+    register_shard::<ReverseShard>()//
 }
 ```
 

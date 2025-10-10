@@ -18,10 +18,10 @@ Shards is a revolutionary programming language that mirrors how data naturally m
 Imagine programming as directing streams of data, like a master netrunner orchestrating information flows. That's Shards:
 
 ```shards
-; Simple, intuitive data flow
+// Simple, intuitive data flow
 ["Hello" name "!"] | String.Join | Log
 
-; Powerful concurrent processing
+// Powerful concurrent processing
 @wire(background {
     input | Transform | Process > result
     result | Network.Send
@@ -53,13 +53,13 @@ Imagine programming as directing streams of data, like a master netrunner orches
 ## Quick Start
 
 ```shards
-; Create a mutable flow channel
+// Create a mutable flow channel
 5 >= counter
 
-; Transform the flow
+// Transform the flow
 counter | Math.Add(1) > counter
 
-; Chain multiple transformations
+// Chain multiple transformations
 input | Transform | Process | Network.Send
 ```
 

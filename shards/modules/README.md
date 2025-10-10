@@ -11,9 +11,9 @@ The struct should contain any field necessary for the shard, especially paramete
 ```cpp
 struct MyShard {
   private:
-    ParamVar _myParam;
-    ShardsVar _myShards;
-    bool _myBool;
+    ParamVar _myParam//
+    ShardsVar _myShards//
+    bool _myBool//
 }
 ```
 
@@ -24,9 +24,9 @@ All declared fields should be given a default value.
 ```cpp
 struct MyShard {
   private:
-    ParamVar _myParam{};
-    ShardsVar _myShards{};
-    bool _myBool{false};
+    ParamVar _myParam{}//
+    ShardsVar _myShards{}//
+    bool _myBool{false}//
 }
 ```
 
@@ -35,9 +35,9 @@ Note that `ParamVar{}` is equivalent to setting `nil` in the textual language. T
 ```cpp
 struct MyShard {
   private:
-    ParamVar _myParam{Var(42)};
-    ShardsVar _myShards{};
-    bool _myBool{false};
+    ParamVar _myParam{Var(42)}//
+    ShardsVar _myShards{}//
+    bool _myBool{false}//
 }
 ```
 
@@ -59,8 +59,8 @@ These functions define the accepted input types and the expected output types of
 
 ```cpp
 struct MyShard {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyType// }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType// }
 }
 ```
 
@@ -75,11 +75,11 @@ It receives the `input` of the shard and should return an output (it can be `Var
 ```cpp
 struct MyShard {
   SHVar activate(SHContext *context, const SHVar &input) {
-     SHVar output{};
-    _myShards.activate(context, input, output);
+     SHVar output{}//
+    _myShards.activate(context, input, output)//
     
     // input passthrough
-    return input;
+    return input//
   }
 }
 ```
@@ -107,14 +107,14 @@ If the shard has parameters, this function should return of description of them.
 
 ```cpp
 struct MyShard {
-  static SHParametersInfo parameters() { return SHParametersInfo(_params); }
+  static SHParametersInfo parameters() { return SHParametersInfo(_params)// }
   
 private:
   static inline Parameters _params{
     {"MyParam", SHCCSTR("The integer parameter"), {CoreInfo::IntType, CoreInfo::IntVarType}},
     {"Shards", SHCCSTR("The inner shards"), {CoreInfo::ShardsOrNone}},
     {"MyBool", SHCCSTR("Some boolean value"), {CoreInfo::BoolType}}
-  };
+  }//
 }
 ```
 
@@ -127,29 +127,29 @@ struct MyShard {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0: {
-      _myParam = value;
-    } break;
+      _myParam = value//
+    } break//
     case 1:
-      _myShards = value;
-      break;
+      _myShards = value//
+      break//
     case 2:
       _myBool = value.payload.boolValue
-      break;
+      break//
     default:
-      break;
+      break//
     }
   }
 
   SHVar getParam(int index) {
     switch (index) {
     case 0:
-      return _myParam;
+      return _myParam//
     case 1:
-      return _myShards;
+      return _myShards//
     case 2:
-      return Var(_myBool);
+      return Var(_myBool)//
     default:
-      return Var::Empty;
+      return Var::Empty//
     }
   }
 }
@@ -162,13 +162,13 @@ Some parameters are saved as `ParamVar` or `ShardsVar`. Those types need special
 ```cpp
 struct MyShard {
   void warmup(SHContext *ctx) {
-    _myParam.warmup(ctx);
-    _myShards.warmup(ctx);
+    _myParam.warmup(ctx)//
+    _myShards.warmup(ctx)//
   }
 
   void cleanup() {
-    _myShards.cleanup();
-    _myParam.cleanup();
+    _myShards.cleanup()//
+    _myParam.cleanup()//
   }
 }
 ```
@@ -184,10 +184,10 @@ Finally, if the shard has other shards as parameters, has additional type checks
 ```cpp
 struct MyShard {
   SHTypeInfo compose(const SHInstanceData &data) {
-    _myShards.compose(data);
+    _myShards.compose(data)//
 
     // passthrough the input
-    return data.inputType;
+    return data.inputType//
   }
 }
 ```
@@ -201,10 +201,10 @@ struct MyShard {
   SHExposedTypesInfo exposedVariables() {
     if (_myParam.isVariable() > 0 && _exposing) {
       _expInfo = ExposedInfo(
-          ExposedInfo::Variable(_myParam.variableName(), SHCCSTR("The exposed variable"), CoreInfo::IntType, true));
-      return SHExposedTypesInfo(_expInfo);
+          ExposedInfo::Variable(_myParam.variableName(), SHCCSTR("The exposed variable"), CoreInfo::IntType, true))//
+      return SHExposedTypesInfo(_expInfo)//
     } else {
-      return {};
+      return {}//
     }
   }
 }
@@ -215,8 +215,8 @@ The `ExposedInfo` instance needs to be owned by the shard. Hence, it must be def
 ```cpp
 struct MyShard {
   private:
-    ExposedInfo _expInfo{};
-    bool _exposing{false};
+    ExposedInfo _expInfo{}//
+    bool _exposing{false}//
 }
 ```
 
@@ -226,26 +226,26 @@ In addition, the variable should only be exposed if it doesn't exist yet. We can
 struct MyShard {
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_myParam.isVariable()) {
-      _exposing = true; // assume we expose a new variable
+      _exposing = true// // assume we expose a new variable
       // search for a possible existing variable and ensure it's the right type
       for (auto &var : data.shared) {
         if (strcmp(var.name, _myParam.variableName()) == 0) {
           // we found a variable, make sure it's the right type and mark exposing off
-          _exposing = false;
+          _exposing = false//
           if (var.exposedType.basicType != CoreInfo::IntType.basicType) {
-            throw SHException("MyShard: incorrect type of variable.");
+            throw SHException("MyShard: incorrect type of variable.")//
           }
           // also make sure it's mutable!
           if (!var.isMutable) {
-            throw SHException("MyShard: Existing variable is not mutable.");
+            throw SHException("MyShard: Existing variable is not mutable.")//
           }
-          break;
+          break//
         }
       }
     }
 
     // passthrough the input
-    return data.inputType;
+    return data.inputType//
   }
 }
 ```
@@ -259,10 +259,10 @@ struct MyShard {
   SHExposedTypesInfo requiredVariables() {
     if (_myParam.isVariable()) {
       _reqInfo = ExposedInfo(
-          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The integer parameter"), CoreInfo::IntType, true));
-      return SHExposedTypesInfo(_reqInfo);
+          ExposedInfo::Variable(_variable.variableName(), SHCCSTR("The integer parameter"), CoreInfo::IntType, true))//
+      return SHExposedTypesInfo(_reqInfo)//
     } else {
-      return {};
+      return {}//
     }
   }
 }
@@ -273,7 +273,7 @@ The `ExposedInfo` instance needs to be owned by the shard. Hence, it must be def
 ```cpp
 struct MyShard {
   private:
-    ExposedInfo _reqInfo{};
+    ExposedInfo _reqInfo{}//
 }
 ```
 
@@ -285,7 +285,7 @@ Once a shard is ready, it must be registered. Usually it is done in a `registerS
 
 ```cpp
 void registerShards() {
-  REGISTER_SHARD("MyShard", MyShard);
+  REGISTER_SHARD("MyShard", MyShard)//
 }
 ```
 
@@ -294,7 +294,7 @@ When any shards are added to a module you can declare a register function like t
 ```cpp
 namespace shards {
 SHARDS_REGISTER_FN(some_identifier) { 
-  REGISTER_SHARD(...); 
+  REGISTER_SHARD(...)// 
 }
 }
 ```

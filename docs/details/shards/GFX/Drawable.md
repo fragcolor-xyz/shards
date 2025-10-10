@@ -36,13 +36,13 @@ Dynamic parameters are passed as parameters to the shard. You can set the same f
 To avoid re-creating Drawables for objects with minor or no changes, you should set up Drawables from within a [Setup](../../General/Once) block and pass their dynamic parameters to the shard.
 
 ```shards
-; Only done once
+// Only done once
 Once({
   ... = const-transform
   Float4(1.0) >= dynamic-color
   {:Mesh .mesh :Transform .const-transform} (Drawable :Params {:baseColor .dynamic-color}) >= .my-drawable
 })
 
-; Update color every time this wire runs
+// Update color every time this wire runs
 ... > dynamic-color
 ```
