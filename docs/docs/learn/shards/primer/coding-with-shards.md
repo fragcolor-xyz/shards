@@ -37,7 +37,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
     ```shards
     Repeat({
         Msg("Hello World")
-    }) //// (1)(2)
+    }) // (1)(2)
     ```
 
     1. When no parameters are specified, parameters are treated as *implicit* and are resolved in order. In this case, `Action` is the implicit parameter for `Repeat` and we set `Msg("Hello World")` to it.
@@ -47,9 +47,9 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 
     ```shards
     Repeat(
-        Action: {Msg("Hello World!")} //// (1)
+        Action: {Msg("Hello World!")} // (1)
         Times: 2
-    ) //// (2)
+    ) // (2)
     ```
 
     1. The parameters are explicitly declared for clarity.
@@ -58,7 +58,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 === "2 Parameters (Implicit)"
 
     ```shards
-    Repeat( //// (1)
+    Repeat( // (1)
         {Msg("Hello World!")}
         2
     )
@@ -70,7 +70,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
 
     ```shards
     Repeat(
-        {Msg("Hello World!")} //// (1)
+        {Msg("Hello World!")} // (1)
         Times: 2
     )
     ```
@@ -83,7 +83,7 @@ We can utilize the `Repeat` shard with its different parameters as shown:
     Repeat(
         Action: {Msg("Hello World!")} 
         2
-    ) //// (1)
+    ) // (1)
     ```
 
     1. This will not work as you cannot implicitly declare the second parameter if the first has been fully declared.
@@ -93,9 +93,9 @@ We can utilize the `Repeat` shard with its different parameters as shown:
     ```shards
     Repeat(
        Action: Msg("Hello World!")
-       Forever: true //// (1)
-       Until: { //// some condition }
-       ) //// (2)
+       Forever: true // (1)
+       Until: { // some condition }
+       ) // (2)
     ```
 
     1. The `Times` parameter is skipped and `Forever` is declared instead. Since we are skipping a parameter, we must fully declare the parameters that come after it.
@@ -164,7 +164,7 @@ Imagine a scenario where you have a float `3.141592653589793` that you need to r
 === "With Variables"
 
     ```shards
-    3.141592653589793 = pi-value //// (1)
+    3.141592653589793 = pi-value // (1)
     pi-value | Math.Add(pi-value) | Math.Multiply(pi-value) | Math.Subtract(pi-value)
     ```
 
@@ -220,7 +220,7 @@ When defining variables in your program, you can use `Once` to ensure that varia
     Once({
      10 >= timer
      100 >= max-points
-    }) //// (1)
+    }) // (1)
     ```
 
     1. Code within a `Once` will only be run once. As such, you can prevent variables defined in a loop from being reset each time.
@@ -287,7 +287,7 @@ Let us now take a look at how we can utilize `@define`. Let's say we have a play
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -317,7 +317,7 @@ We can replace code that is repeated in the `Action` parameter above with a `@de
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -342,7 +342,7 @@ Currently the `@damage-player`definition we created can only do 10 damage to the
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -367,7 +367,7 @@ By default, Shards evaluates pipelines from left to right. Parentheses let you g
 === "Parenthesis equivalent"
 
 ```shards
-1 | Math.Add((3 | Math.Subtract(1))) //// Is the same as ...
+1 | Math.Add((3 | Math.Subtract(1))) // Is the same as ...
 
 3 | Math.Subtract(1) = x
 1 | Math.Add(x)
@@ -380,7 +380,7 @@ When you prefix a parenthesized expression with `#`, eg. `#(3 | Math.Add(2))`, i
 === "Const Evaluation"
 
 ```shards
-#(3 | Math.Add(2)) //// this will be evaluated at construct time.
+#(3 | Math.Add(2)) // this will be evaluated at construct time.
 ```
 
 !!! note "Pipeline `|`"
@@ -388,7 +388,7 @@ When you prefix a parenthesized expression with `#`, eg. `#(3 | Math.Add(2))`, i
 
 		=== " `|` sugar"
 		```shards
-		3 Math.Add(1) //// is the same as
+		3 Math.Add(1) // is the same as
 		3 | Math.Add(1)
 		```
 
@@ -404,7 +404,7 @@ To create a Wire, we use [`@wire`](../../../../reference/shards/lisp/macros/#def
     
 ```shards
 @wire( wire-name 
-	//// shards here
+	// shards here
 )
 ```
 
@@ -429,7 +429,7 @@ To create a Looped Wire, we use @wire with its `Looped` parameter set to true.
     
 ```shards
 @wire(loop-name {
- //// shards here
+ // shards here
 }Looped: true)
 ```
 
@@ -497,7 +497,7 @@ Do you remember the example where our player gets damaged when learning about `@
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -526,7 +526,7 @@ For this example, we have made our `main-game` `Looped: true`. Now, let's make o
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -567,7 +567,7 @@ For this example, using `When` would suffice as we only need `@heal-player` to r
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -622,7 +622,7 @@ Before our program can run, do not forget to:
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -719,7 +719,7 @@ Now let's create another conditional to check when player's health is 0 or less.
 
 @wire(main-game {
 	Once({
-		40 >= current-player-health //// initializing our player health variable
+		40 >= current-player-health // initializing our player health variable
 	})
 
 	Msg("Player gets damaged by monster!")
@@ -738,7 +738,7 @@ Now let's create another conditional to check when player's health is 0 or less.
 
 	current-player-health
 	When(Predicate: IsLessEqual(0) Action: {
-		SwitchTo(player-death) //// Switching execution to player-death wire
+		SwitchTo(player-death) // Switching execution to player-death wire
 	})
 } Looped: true)
 

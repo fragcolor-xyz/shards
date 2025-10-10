@@ -9,7 +9,7 @@ Map(
     $0 | Math.Add(1)
   }
 )
-Log("Result") //// Results in [2 3 4]
+Log("Result") // Results in [2 3 4]
 ```
 `$0` will take the value of 1 and then 2 and then 3 accordingly.
 
@@ -29,7 +29,7 @@ Map(
     $1 | ExpectInt | Math.Add(1)
   }
 )
-Log("Result") //// Results in [2 3 4]
+Log("Result") // Results in [2 3 4]
 ```
 `$0` will take the value of "a" and then "b" and then "c" while `$1` will take the value of 1 and then 2 and then 3 accordingly.
 

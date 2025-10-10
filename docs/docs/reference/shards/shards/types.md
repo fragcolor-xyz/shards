@@ -33,22 +33,22 @@ Is(Value: 1)
 
     ```shards
     [4 5 6] | Is(Value: [4 5 6])
-    Log   //// value and type match => true
+    Log   // value and type match => true
 
     "I'm a string" >= var1
     "I'm a string" >= var2
     var1 | Is(Value: var2)
-    Log   //// value and type match => true
+    Log   // value and type match => true
 
     "I'm a string" >= var3
     "I'm a different string" >= var4
     var3 | Is(Value: var4)
-    Log   //// value mismatch => false
+    Log   // value mismatch => false
 
     Float(4.0) >= var5
     Int(4) >= var6
     var5 | Is(Value: var6)
-    Log   //// type mismatch => false
+    Log   // type mismatch => false
     ```
 
 === "Output"
@@ -86,10 +86,10 @@ Consider the shard [`(Is)`](../General/Is/). This shard compares its input and t
 
     ```shards
     100 | Is(Value: (10 | Math.Multiply(10)))
-    Log   //// Is equal => true
+    Log   // Is equal => true
 
     [20] | Is(Value: 20)
-    Log   //// Is not equal => false
+    Log   // Is not equal => false
     ```
 
 === "Output"
@@ -122,13 +122,13 @@ The shard [`ToColor`](../General/ToColor/) converts its input into a **Color** t
 
     ```shards
     @i4(255 10 10 257) | ToColor
-    Log    //// if input > 255, 256 is subtracted from it => 255, 10, 10, 1
+    Log    // if input > 255, 256 is subtracted from it => 255, 10, 10, 1
 
     [23 45 56 78] | ToColor
-    Log   //// input in range 0-255 so => 23, 45, 56, 78
+    Log   // input in range 0-255 so => 23, 45, 56, 78
 
     "Hello" ToColor
-    Log   //// non-numeric input so => 0, 0, 0, 0
+    Log   // non-numeric input so => 0, 0, 0, 0
     ```
 
 === "Output"
@@ -148,13 +148,13 @@ The shard [`Math.Inc`](../Math/Inc/) accepts only **ContextVar** type numeric da
 === "Code"
 
     ```shards
-    11 >= intvar                   //// intvar is of type `ContextVar`
+    11 >= intvar                   // intvar is of type `ContextVar`
     Math.Inc(intvar)
-    intvar | Log                   //// => 12
+    intvar | Log                   // => 12
 
-    @f24.5 5.7) >= floatvar   //// floatvar is of type `ContextVar`
+    @f24.5 5.7) >= floatvar   // floatvar is of type `ContextVar`
     Math.Inc(floatvar)
-    floatvar | Log                 //// => (5.5, 6.7)
+    floatvar | Log                 // => (5.5, 6.7)
     ```
 
 === "Output"
@@ -192,15 +192,15 @@ In simple terms it just means that you pass in one of the allowed named constant
     ```shards
     [2.0 10.0]
     Math.Mean(Kind: Mean::Arithmetic)
-    Log   //// AM => 6
+    Log   // AM => 6
 
     [2.0 10.0]
     Math.Mean(Kind: Mean::Geometric)
-    Log   //// GM => 4.47214
+    Log   // GM => 4.47214
 
     [2.0 10.0]
     Math.Mean(Kind: Mean::Harmonic)
-    Log   //// HM => 3.33333
+    Log   // HM => 3.33333
     ```
 
 === "Output"
@@ -228,7 +228,7 @@ It may also be represented without the keyword `float`, with just the floating-p
 
     ```shards
     2.4 | Math.Add(1.43)
-    Log   //// float output => 3.83
+    Log   // float output => 3.83
     ```
 
 === "Output"
@@ -251,7 +251,7 @@ A **Float2** type value looks like this: `@f23.4 -5.0)`.
 
     ```shards
     @f2(4.1 5.0) | Math.Add(@f2(6.3 9.2))
-    Log   //// float2 output => (10.4, 14.2)
+    Log   // float2 output => (10.4, 14.2)
     ```
 
 === "Output"
@@ -276,7 +276,7 @@ A **Float3** type value looks like this: `@f3(2.9 -4.23 7.83)`.
 
     ```shards
     @f3(1.2 3.4 5.6) | Math.Add(@f3(6.5 4.3 2.1))
-    Log   //// float3 output => (7.7, 7.7, 7.7)
+    Log   // float3 output => (7.7, 7.7, 7.7)
     ```
 
 === "Output"
@@ -298,7 +298,7 @@ A **Float4** type value looks like this: `@f4(-8.84 38.2 4.7 0.4)`.
     ```shards
     @f4(3.1 6.4 9.2 4.6)
     Math.Add(@f4(6.8 3.5 0.9 5.3))
-    Log   //// Int4 output => (9.9, 9.9, 9.9, 9.9)
+    Log   // Int4 output => (9.9, 9.9, 9.9, 9.9)
     ```
 
 === "Output"
@@ -330,7 +330,7 @@ An **Int** value looks like this: `2`.
 
     ```shards
     3 | Math.Add(2)
-    Log   //// int output => 5
+    Log   // int output => 5
     ```
 
 === "Output"
@@ -353,7 +353,7 @@ An **Int2** type value looks like this: `@i2(3 -5)`.
 
     ```shards
     @i2(4 5) | Math.Add(@i2(6 9))
-    Log   //// int2 output => (10, 14)
+    Log   // int2 output => (10, 14)
     ```
 
 === "Output"
@@ -376,7 +376,7 @@ An **Int3** type value looks like this: `@i3(2 4 -4)`.
 
     ```shards
     @i3(1 10 99) | Math.Add(@i3(99 90 1))
-    Log   //// int3 output => (100, 100, 100)
+    Log   // int3 output => (100, 100, 100)
     ```
 
 === "Output"
@@ -398,7 +398,7 @@ An **Int4** type value looks like this: `@i4(1 -4 0 3)`.
     ```shards
     @i4(3 6 9 4)
     Math.Add(@i4(6 3 0 5))
-    Log   //// int4 output => (9, 9, 9, 9)
+    Log   // int4 output => (9, 9, 9, 9)
     ```
 
 === "Output"
@@ -439,10 +439,10 @@ RandomInt(Max: [(None) (Int) (ContextVar [(Int)])])
 
     ```shards
     RandomInt(Max: 8)
-    Log   //// max int that can be generated is 7
+    Log   // max int that can be generated is 7
 
     RandomInt
-    Log   //// now upper limit subject to max capacity of a 64-bit signed integer
+    Log   // now upper limit subject to max capacity of a 64-bit signed integer
     ```
 
 === "Output"
@@ -494,7 +494,7 @@ The shard [`Take`](../General/Take/) works on this type. This shard can access *
 
     ```shards
     [7 2 54 42] | Take(2)
-    Log   //// print the 2nd element => 54
+    Log   // print the 2nd element => 54
     ```
 
 === "Output"
@@ -539,7 +539,7 @@ An example of a shard that processes **String** type data is [`String.ToUpper`](
 
     ```shards
     "Bye Universe!" | String.ToUpper
-    Log   //// upper case version => BYE UNIVERSE!
+    Log   // upper case version => BYE UNIVERSE!
     ```
 
 === "Output"
@@ -557,9 +557,9 @@ Its also known as map, data dictionary, or associative array. An example of a **
 === "Code"
 
     ```shards
-    {k1: 123} >= tabvar    //// tabvar is type `Table` now
+    {k1: 123} >= tabvar    // tabvar is type `Table` now
     tabvar | ExpectTable
-    Log                   //// `ExpectTable` outputs `Table` type  =>   {k1: 123}
+    Log                   // `ExpectTable` outputs `Table` type  =>   {k1: 123}
     ```
 
 === "Output"

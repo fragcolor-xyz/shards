@@ -40,7 +40,7 @@ It only has the `Name` parameter
 
 === "@mesh example"
     ```shards
-    @mesh(Name: main-mesh) ////  creates a mesh object called main mesh
+    @mesh(Name: main-mesh) //  creates a mesh object called main mesh
     ```
 
 ## @schedule
@@ -63,7 +63,7 @@ It has the following parameters.
 
       @mesh(main-mesh)
 
-      @schedule(main-mesh wire-y) //// wire-y is now scheduled onto main-mesh
+      @schedule(main-mesh wire-y) // wire-y is now scheduled onto main-mesh
     ```
 
 ## @run
@@ -83,9 +83,9 @@ It has the following parameters.
 
       @mesh(main-mesh)
 
-      @schedule(main-mesh wire-y) //// wire-y is now scheduled onto main-mesh
+      @schedule(main-mesh wire-y) // wire-y is now scheduled onto main-mesh
 
-      @run(main-mesh 1.0 3) //// runs main mesh 3 times with a 1.0 second interval in between
+      @run(main-mesh 1.0 3) // runs main mesh 3 times with a 1.0 second interval in between
       
     ```
 
