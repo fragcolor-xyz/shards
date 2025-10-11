@@ -14,17 +14,18 @@ GFX.MainWindow(
           ]
           | UI.AutoGrid(
             ItemWidth: 300.0
-            MaxGridWidth: 700.0 ; Since item size is 300, max grid width is 700, only two items allowed per row
+            MaxGridWidth: 700.0 // Since item size is 300, max grid width is 700, only two items allowed per row
             Contents: {
               UI.Button(Label: "Test" Action: {
-                | Log ; Logs the given sequence element
+                | Log // Logs the given sequence element
               })
             }
           ) 
-          ; | Log ; Passthrough
+          // | Log ; Passthrough
         }
       )
-    ) | UI.Render(ui-draw-queue)
+    ) | UI.Render(ui-draw-queue
+)
 
     GFX.Render(Steps: render-steps)
   }

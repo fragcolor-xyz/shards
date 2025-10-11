@@ -16,7 +16,7 @@
     GFX.DrawQueue >= queue
     GFX.DrawQueue >= editor-queue-np-depth
 
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
 
@@ -36,7 +36,7 @@
      #(@make-trs-from-t(@f3(0 0 -1.5))) >= transform-1
   })
 
-  ; End setup
+  // End setup
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
@@ -49,7 +49,7 @@
         Math.Compose | GFX.Drawable(Mesh: mesh Params: {baseColor: @f4(1 0 0 1)}) | GFX.Draw(queue)
       })
 
-      ; Draw on top of everthing (ignore depth)
+      // Draw on top of everthing (ignore depth)
       Gizmos.Context(Queue: editor-queue-np-depth View: view
         Contents: {
           transforms | Gizmos.Translation(200.0) > transforms
@@ -63,4 +63,4 @@
 
 @schedule(root test-wire)
 @run(root FPS: 120 Iterations: 100) | Assert.Is(true)
-; @run(root FPS: 120) | Assert.Is(true)
+// @run(root FPS: 120) | Assert.Is(true)

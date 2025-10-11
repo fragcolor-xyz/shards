@@ -1,7 +1,7 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2021 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2021 Fragcolor Pte. Ltd.
 
-@include("defs.shs") ; if macro
+@include("defs.shs") // if macro
 
 @define(test-device "true" IgnoreRedefined: true)
 
@@ -16,15 +16,15 @@
   {
     AudioToBytes | Log
     BytesToAudio(SampleRate: 16000 Channels: 2) | Log
-  } ; FOR COVERAGE
+  } // FOR COVERAGE
   {
     Audio.Compress(Bitrate: 128000) | Log("Audio packet")
     ForEach({
       Audio.Decompress(SampleRate: 16000) | Log("Decompressed audio packet")
       Audio.WriteFile(@tmp-path("example-decompressed.wav") SampleRate: 16000)
     })
-  } ; FOR COVERAGE
-  ; Audio.Decompress(SampleRate: 16000) | Log
+  } // FOR COVERAGE
+  // Audio.Decompress(SampleRate: 16000) | Log
   Audio.WriteFile(@tmp-path("example-resampled.wav") SampleRate: 16000)
 } Looped: true)
 
@@ -38,25 +38,25 @@
   DSP.FFT = freq-domain
   DSP.IFFT(Audio: true)
   Audio.WriteFile(@tmp-path("example-fft.wav") Channels: 1)
-  freq-domain | DSP.IFFT(Complex: true) | DSP.FFT ; FOR COVERAGE
+  freq-domain | DSP.IFFT(Complex: true) | DSP.FFT // FOR COVERAGE
   freq-domain | DSP.IFFT(Complex: false)
   Math.Normalize(Positive: true)
-  FloatsToImage(32 32 1) | WritePNG(@tmp-path("example.wav.png")) ; again, just for coverage
+  FloatsToImage(32 32 1) | WritePNG(@tmp-path("example.wav.png")) // again, just for coverage
   Log
 } Looped: true)
 
 @schedule(main play-file-fft)
 @run(main) | Assert.Is(true)
 
-; @wire(play-file-dwt {
-;   Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
-;   DSP.Wavelet |
-;   DSP.InverseWavelet |
-;   Audio.WriteFile("example-dwt.wav" Channels: 1)
-; } Looped: true)
+// @wire(play-file-dwt {
+//   Audio.ReadFile("./data/Ode_to_Joy.ogg" Channels: 1 From: 5.0 To: 6.0) |
+//   DSP.Wavelet |
+//   DSP.InverseWavelet |
+//   Audio.WriteFile("example-dwt.wav" Channels: 1)
+// } Looped: true)
 
-; @schedule(main play-file-dwt)
-; @run(main) | Assert.Is(true)
+// @schedule(main play-file-dwt)
+// @run(main) | Assert.Is(true)
 
 @if(#(@test-device | Is("true")) {
   @wire(device-test-1 {

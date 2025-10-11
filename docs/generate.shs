@@ -45,32 +45,32 @@
     
     p-type-type
     Match([
-      2 ; Enum
+      2 // Enum
       {
         "../../../enums/" >> buffer
         p-type-name >> buffer
       }
-      15 ; ShardRef
+      15 // ShardRef
       {
         "../../types/#shard" >> buffer
       }
-      54 ; ContextVar
+      54 // ContextVar
       {
         "../../types/#contextvar" >> buffer
       }
-      56 ; Seq
+      56 // Seq
       {
         "../../types/#seq" >> buffer
       }
-      57 ; Table
+      57 // Table
       {
         "../../types/#table" >> buffer
       }
-      59 ; Object
+      59 // Object
       {
         "../../types/#object" >> buffer
       }
-      61 ; Set
+      61 // Set
       {
         "../../types/#set" >> buffer
       }
@@ -149,19 +149,19 @@
     {String.Contains("General/") = is-general-shard}
     [""] >= o
     
-    ; metadata (front matter)
+    // metadata (front matter)
     "---\n" >> o
     "authors: Formabble & contributors\n" >> o
     "license: CC-BY-SA-4.0\n" >> o
     "---\n" >> o
     "\n\n" >> o
     
-    ; title
+    // title
     "# " >> o
     shard-doc:name >> o
     "\n\n" >> o
     
-    ; ; Combined table showing the input/outpus and parameters
+    // ; Combined table showing the input/outpus and parameters
     "<div class=\"sh-parameters\" markdown=\"1\">\n" >> o
     "| Name | Mandatory | Description | Default | Type |\n" >> o
     "|------|---------------------|-------------|---------|------|\n" >> o
@@ -221,7 +221,7 @@
       }
     })
     
-    ; Help text
+    // Help text
     shard-doc:help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
     "\n\n" >> o
     
@@ -279,7 +279,7 @@
     {
       "" >= usage-example
       
-      ; for AI purposes
+      // for AI purposes
       shard-doc:input-help | @input-help-shards | Set(shard-doc "input-help")
       shard-doc:output-help | @output-help-shards | Set(shard-doc "output-help")
       
@@ -337,7 +337,7 @@
             {Take("real-default") = p-real-default}
             {Take("optional") | ExpectBool = p-optional}
             
-            ; update usage example
+            // update usage example
             ["  " p-name ": " (
              p-real-default
              Cond([
@@ -387,13 +387,13 @@
       })
       
       "\n----\n\n" | AppendTo(shard-doc-string)
-      ; "shards_docs_merged.md" | FS.Write(shard-doc-string Append: true)
+      // "shards_docs_merged.md" | FS.Write(shard-doc-string Append: true)
     }
     
     {
       @notion-api-key | When(IsNot("") {
         false >= invalid-defaults
-        ; prep params
+        // prep params
         {
           "type": "table_row"
           "table_row": {
@@ -511,7 +511,7 @@
           })
         })
         
-        ; create a new page in the Notion database
+        // create a new page in the Notion database
         {
           "parent": {
             "database_id": @notion-db-id
@@ -525,13 +525,13 @@
                   }
                 }]
             }
-            "No Defaults": {; checkbox
+            "No Defaults": {// checkbox
               "checkbox": invalid-defaults}
-            "No Help": {; checkbox
+            "No Help": {// checkbox
               "checkbox": missing-help}
-            "General": {; checkbox
+            "General": {// checkbox
               "checkbox": is-general-shard}
-            "Done": {; checkbox
+            "Done": {// checkbox
               "checkbox": is-it-done}
           }
           "children": [
@@ -608,7 +608,7 @@
     "| Value  | Description |\n" >> o
     "|------|---------------------|\n" >> o
     
-    ; Sequence(enum-doc "values")
+    // Sequence(enum-doc "values")
     
     0 >= idx
     Repeat({
@@ -650,31 +650,31 @@
     })
     
     "\n----\n" | AppendTo(enum-doc-string)
-    ; "enums_docs_merged.md" | FS.Write(enum-doc-string Append: true)
+    // "enums_docs_merged.md" | FS.Write(enum-doc-string Append: true)
     
     none
   })
   
-  ; @wire(document-object {
-  ;   = object-id
-  ;   object-id | Shards.ObjectTypeHelp = object-help | Log
-  ; })
+  // @wire(document-object {
+  //   = object-id
+  //   object-id | Shards.ObjectTypeHelp = object-help | Log
+  // })
   
-  ; ;;Deleta pages first
-  ; Http.Post("https://api.notion.com/v1/databases/@notion-db-id/query" Headers: @headers) | Take("results") | ForEach({
-  ;   Take("id") | Http.Delete("https://api.notion.com/v1/pages/" Headers: @headers)
-  ; })
+  // ;;Deleta pages first
+  // Http.Post("https://api.notion.com/v1/databases/@notion-db-id/query" Headers: @headers) | Take("results") | ForEach({
+  //   Take("id") | Http.Delete("https://api.notion.com/v1/pages/" Headers: @headers)
+  // })
   
   "shards_docs_merged.md" | FS.Remove
   "enums_docs_merged.md" | FS.Remove
   
-  ; process documentation in parallel
-  ; Empty results indicate success, returning the shard name adds it to the skipped list
+  // process documentation in parallel
+  // Empty results indicate success, returning the shard name adds it to the skipped list
   Shards.Enumerate | TryMany(document-shard Threads: 4)
   
   Shards.EnumTypes | TryMany(document-enum Threads: 4)
   
-  ; Shards.ObjectTypes | TryMany(document-object Threads: 4)
+  // Shards.ObjectTypes | TryMany(document-object Threads: 4)
 })
 
 @mesh(root)

@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pte. Ltd.
 
 @mesh(root)
 
@@ -12,15 +12,15 @@
   ["10"] = args
   Maybe({"" | Process.Run("sleep" args Timeout: 1) | Log})
   
-  ; New test for stdin
+  // New test for stdin
   "Hello from stdin" | Process.Run("cat" []) | Log
   Assert.Is("Hello from stdin\n" true)
   
-  ; Test with multiple lines of input
+  // Test with multiple lines of input
   "Line 1\nLine 2\nLine 3" | Process.Run("cat" []) | Log
   Assert.Is("Line 1\nLine 2\nLine 3\n" true)
   
-  ; Test with a command that processes input
+  // Test with a command that processes input
   "hello world" | Process.Run("tr" ["a-z" "A-Z"]) | Log
   Assert.Is("HELLO WORLD\n" true)
 })

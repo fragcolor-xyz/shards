@@ -1,4 +1,4 @@
-; Font from: https://int10h.org/blog/2015/12/bigblue-terminal-oldschool-fixed-width-font/
+// Font from: https://int10h.org/blog/2015/12/bigblue-terminal-oldschool-fixed-width-font/
 
 @define(font-name "Px437_IBM_EGA_8x8.ttf" IgnoreRedefined: true)
 

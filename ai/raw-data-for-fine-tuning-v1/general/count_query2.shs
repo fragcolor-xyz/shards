@@ -7,7 +7,7 @@ solution: """Count(table-to-count)
 explicit: """Count
 (
 Name: table-to-count
-;Key: key-to-count
+//Key: key-to-count
 )
 """
 

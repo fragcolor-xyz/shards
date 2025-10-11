@@ -1,5 +1,5 @@
-; Aligns a viewport to the either top-left or bottom-right based on alignment
-; use with GFX.View(View: <output from this> OrthographicSizeType: OrthographicSizeType::PixelScale)
+// Aligns a viewport to the either top-left or bottom-right based on alignment
+// use with GFX.View(View: <output from this> OrthographicSizeType: OrthographicSizeType::PixelScale)
 @template(gfx/align-pixel-viewport [alignment] {
   GFX.Viewport | Memoize({
     = vp
@@ -8,7 +8,7 @@
     
     alignment | Sub(0.5) = v
     
-    ; Align viewport based on alignment parameter [0,1]
+    // Align viewport based on alignment parameter [0,1]
     @f2(width height) | Mul(v) >= view-offset
     view-offset | ToFloat3 | Add(@f3(0 0 0.0)) | Math.Translation
   })

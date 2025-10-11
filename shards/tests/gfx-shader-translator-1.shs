@@ -53,7 +53,7 @@
             When({i | Is(2)} {1.0 > f-0 | 1.0 > f-2 | 0.0 > f-1})
             
             @f4(f-0 f-1 f-2 1.0)
-            Shader.WriteOutput("color") ; End shader
+            Shader.WriteOutput("color") // End shader
           }
         )
       }

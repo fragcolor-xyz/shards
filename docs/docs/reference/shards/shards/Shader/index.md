@@ -7,9 +7,9 @@ Shaders are written using a subset of the regular shards language, in addition t
 ### Variables
 
 ```shards
-0.0 >= float-var ; Set
-3.14 > float-var ; Update
-1.0 = const-var ; Constant
+0.0 >= float-var // Set
+3.14 > float-var // Update
+1.0 = const-var // Constant
 ```
 
 ### Vector types
@@ -45,7 +45,7 @@ Push works for building matrix types out of vectors, but with the constraint tha
 @f4(0.0 1.0 0.0 0.0) >> mat
 @f4(0.0 0.0 1.0 0.0) >> mat
 @f4(0.0 0.0 0.0 1.0) >> mat
-mat ; this evaluates to a float4x4 when used in expressions
+mat // this evaluates to a float4x4 when used in expressions
 ```
 
 ### Scalar an vector maths
@@ -70,20 +70,20 @@ v3 | Math.Cross(v3) >= v3-cross
 ### Number conversions
 
 ```shards
-3.3 | ToInt >= int-var ; (3)
-3.3 | ToFloat4 >= v4-var ; @f4(3.3 0.0 0.0 0.0)
+3.3 | ToInt >= int-var // (3)
+3.3 | ToFloat4 >= v4-var // @f4(3.3 0.0 0.0 0.0)
 
-@f3(1.0 2.0 3.0) | ToFloat >= float-var ; (1.0)
+@f3(1.0 2.0 3.0) | ToFloat >= float-var // (1.0)
 
-@f3(0.0 float-var float-var) >= v3 ; (0.0 1.0 1.0)
+@f3(0.0 float-var float-var) >= v3 // (0.0 1.0 1.0)
 ```
 
 ### Vector contructors
 
 ```shards
 1.0 = float-var
-@f3(0.0 float-var float-var) >= v3 ; (0.0 1.0 1.0)
-@f4(float-var 0.0 4.0 float-var) >= v4 ; (1.0 0.0 4.0 1.0)
+@f3(0.0 float-var float-var) >= v3 // (0.0 1.0 1.0)
+@f4(float-var 0.0 4.0 float-var) >= v4 // (1.0 0.0 4.0 1.0)
 ```
 
 ### Matrix multiplication
@@ -97,18 +97,18 @@ v3 | Math.Cross(v3) >= v3-cross
 ...
 @f3(...) >= v3
 
-; Matrix * Matrix = Matrix
+// Matrix * Matrix = Matrix
 mat-0 | (MathmatMulmat-1) >= mat-2
 
-; Matrix * Vector = Vector
+// Matrix * Vector = Vector
 mat-2 | (MathmatMulv3) >= v3-transformed
 ```
 
 ### Comparisons
 
 ```shards
-3.4 | IsMoreEqual(3.0) >= bool ; (true)
-3.4 | IsLess(3.0) > bool ; (false)
+3.4 | IsMoreEqual(3.0) >= bool // (true)
+3.4 | IsLess(3.0) > bool // (false)
 ```
 
 ### Branches
@@ -165,10 +165,10 @@ Pure Wires are supported. They can be run using `Do` and passing an input as a s
   {Math.Negate >= neg-s}
   @f2(c s) >> result
   @f2(neg-s c) >> result
-  result ; Output a 2x2 matrix
+  result // Output a 2x2 matrix
 } Looped: false Pure: true)
 
-0.45 | Do(rotation-matrix) >= mat2-2 ; This will contain the result from the wire
+0.45 | Do(rotation-matrix) >= mat2-2 // This will contain the result from the wire
 
 ```
 

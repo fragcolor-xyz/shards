@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pt
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pt
 
 @mesh(root)
 
@@ -9,14 +9,14 @@
   })
   
   @wire(name2 {
-    ; wrapper to catch the failure of wire composition
+    // wrapper to catch the failure of wire composition
     Const(name1) | ToBytes | FromBytes | ExpectWire = wire
     WireRunner(wire)
     Wait(wire)
   })
 })
 
-; fail during await, uses awaitne(...)
+// fail during await, uses awaitne(...)
 @wire(test-1 {
   Await({false | Assert.Is(true)})
 })
@@ -24,7 +24,7 @@
 @schedule(root test-1)
 @run(root FPS: 10) | Assert.Is(false)
 
-; fail during http resolver, uses await(...)
+// fail during http resolver, uses await(...)
 @wire(test-2 {
   Http.Get("abc.abcdefg")
 })
@@ -32,7 +32,7 @@
 @schedule(root test-2)
 @run(root FPS: 10) | Assert.Is(false)
 
-; out of range
+// out of range
 @wire(test-4 {
   [10 20 1000 40 50]
   IntsToBytes
@@ -42,7 +42,7 @@
 @schedule(root test-4)
 @run(root FPS: 10) | Assert.Is(false)
 
-; mod by zero
+// mod by zero
 @wire(test-mod-by-zero {
   10
   Math.Mod(0)
@@ -51,7 +51,7 @@
 @schedule(root test-mod-by-zero)
 @run(root FPS: 10) | Assert.Is(false)
 
-; divide by zero
+// divide by zero
 @wire(test-divide-by-zero {
   10
   Math.Divide(0)
@@ -60,7 +60,7 @@
 @schedule(root test-divide-by-zero)
 @run(root FPS: 10) | Assert.Is(false)
 
-; wrong type
+// wrong type
 @wire(test-5 {
   [10 20 2.0 40 50]
   ExpectIntSeq
@@ -71,7 +71,7 @@
 @schedule(root test-5)
 @run(root FPS: 10) | Assert.Is(false)
 
-; wrong type
+// wrong type
 @wire(test-6 {
   [10 20 20 40 50]
   ExpectIntSeq
@@ -83,7 +83,7 @@
 @schedule(root test-6)
 @run(root FPS: 10) | Assert.Is(false)
 
-; fail the root wire propagated from Wait
+// fail the root wire propagated from Wait
 @wire(test-7 {
   Detach(test-1)
   Wait(test-1)
@@ -94,7 +94,7 @@
 @run(root FPS: 10) | Assert.Is(false)
 
 
-; fail the root wire propagated from Wait
+// fail the root wire propagated from Wait
 @wire(test-8 {
   """4qjwieouqjweiouqweoi\") exit"""
   ParseFloat
@@ -153,7 +153,7 @@
 @schedule(root short-wire)
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
-; Failure from Do should propagate to main wire
+// Failure from Do should propagate to main wire
 @wire(do-inner {
   "Intentional fail" | Fail
 })
@@ -191,7 +191,7 @@
 @run(root FPS: 5 Iterations: 25) | Assert.Is(false)
 
 @compose-failure(clear-non-mutable clear-non-mutable-wrapper {
-  [1 2 3] = a ; immutable
+  [1 2 3] = a // immutable
   Clear(a)
 })
 

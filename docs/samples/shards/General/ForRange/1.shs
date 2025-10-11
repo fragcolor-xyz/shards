@@ -1,4 +1,4 @@
-; Sum all positive integers below 1000
+// Sum all positive integers below 1000
 0 >= sum
 ForRange(1 999 {
   Math.Add(sum) > sum

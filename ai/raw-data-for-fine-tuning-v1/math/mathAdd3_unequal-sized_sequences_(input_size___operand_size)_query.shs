@@ -14,5 +14,5 @@ Assert.Is(Value: [10 6 7 9 14])
 """
 
 explanation: """Applies addition operation. When applying addition operation on an input sequence with more elements than the operand sequence,
-Input seq elements compute with corresponding operand seq elements; for (input size > operand size): remaining input seq elements continually loop over operand seq elements. Output is of same size as input size."""
+Input seq elements compute with corresponding operand seq elements// for (input size > operand size): remaining input seq elements continually loop over operand seq elements. Output is of same size as input size."""
 }

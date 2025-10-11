@@ -1,4 +1,4 @@
-; === BEGIN SHARDS COMMON ===
+// === BEGIN SHARDS COMMON ===
 
 @template(fbl/clamp [min max] {
   If(IsLess(min) {min} {
@@ -76,13 +76,13 @@
       Math.Divide((tmp:3)) | ToFloat3 = shadow-pos
       shadow-pos | ToFloat2 | Math.Multiply(@f2(0.5 -0.5)) | Math.Add(0.5) = shadow-uv
       
-      ; Sample shadow depth
+      // Sample shadow depth
       shadow-uv | Shader.SampleTextureCoord("shadowTexture") | Take(0) = sampled-shadow-depth
       
-      ; Compute expected-shadow-depth
+      // Compute expected-shadow-depth
       shadow-pos:2 = expected-shadow-depth
       
-      ; Scale out shadowing when sampling out of texture bounds
+      // Scale out shadowing when sampling out of texture bounds
       1.0 >= shadow-factor
       When({shadow-uv:0 | IsLess(0.0) | Or shadow-uv:0 | IsMore(1.0)}
       {0.0 > shadow-factor})
@@ -161,7 +161,7 @@
     Params: {
       shadowTexture: {Type: TextureDimension::D2 SampleType: TextureSampleType::UnfilterableFloat}
     }
-    ; New magic feature that automatically gives this feature unique variables in the generated shader
+    // New magic feature that automatically gives this feature unique variables in the generated shader
     UniqueVariables: ["shadowViewProj" "shadowTexture" "shadowSampleThreshold" "lightDirection" "lightColor"]
     ViewGenerators: {
       {
@@ -190,8 +190,8 @@
       "emissiveTexture": zero-placeholder-texture
     }
     Shaders: [
-      @fbl/init-lighting-shader ;
-      @fbl/apply-lighting-shader ;
+      @fbl/init-lighting-shader //
+      @fbl/apply-lighting-shader //
     ]
   )
 })

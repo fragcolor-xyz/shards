@@ -1,4 +1,4 @@
-; Double PopupWrapper with mix of Button and ImageButton widget and contents
+// Double PopupWrapper with mix of Button and ImageButton widget and contents
 GFX.MainWindow(
   Contents: {
     Once({
@@ -30,7 +30,7 @@ GFX.MainWindow(
           }
         )
         UI.PopupWrapper(
-          MinWidth: 300.0 ; Changes the minimum width of the popup to be 200.0 instead of the width of the button
+          MinWidth: 300.0 // Changes the minimum width of the popup to be 200.0 instead of the width of the button
           AboveOrBelow: PopupLocation::Above
           Widget: {
             UI.Button(

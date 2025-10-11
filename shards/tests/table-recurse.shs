@@ -1,4 +1,4 @@
-; if we break this we get a crash, so fine to run as is
+// if we break this we get a crash, so fine to run as is
 
 @wire(fail {
   Maybe({

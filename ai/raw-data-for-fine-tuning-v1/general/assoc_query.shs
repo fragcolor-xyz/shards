@@ -18,7 +18,7 @@ explicit: """[9 8 7 6] >= sequence
 [index0 variable1 index1 variable2] 
 | Assoc(
 Name: sequence
-;Key: key
+//Key: key
 )
 sequence | Log("result")
 """
@@ -28,7 +28,7 @@ The input sequence for Assoc must always contain an even number of elements.
 The elements of the input sequence are parsed in pairs. 
 The 1st element of each pair gives the index of the target element to update, and the 2nd element of that pair gives the new value for the target element.
 Assoc can also be used to update a specific key in a table.
-In the example, the index index0 of sequence will be updated to have the value of value of variable1; the index index1 of sequence will be updated to have value of variable2.
+In the example, the index index0 of sequence will be updated to have the value of value of variable1// the index index1 of sequence will be updated to have value of variable2.
 """
 
 tag: "  #General"

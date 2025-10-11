@@ -94,7 +94,8 @@ pub struct FormatterVisitor<'a> {
 
 enum UserLine {
   Newline,
-  Comment(String),
+  LineComment(String),
+  BlockComment(String),
 }
 
 #[derive(Default)]
@@ -168,29 +169,78 @@ impl<'a> FormatterVisitor<'a> {
     }
 
     let mut us: UserStyling = UserStyling::default();
-    let mut comment_start: Option<usize> = None;
+    let mut line_comment_start: Option<usize> = None;
+    let mut block_comment_start: Option<usize> = None;
     let interpolated = &self.input[from..until];
-    for (i, c) in interpolated.char_indices() {
-      if c == ';' && comment_start.is_none() {
-        comment_start = Some(i + from + 1);
-      } else if c == '\n' {
-        if let Some(start) = comment_start {
-          let mut comment = &self.input[start..i + from];
+    let chars: Vec<char> = interpolated.chars().collect();
+
+    let mut i = 0;
+    while i < chars.len() {
+      let c = chars[i];
+      let pos = i + from;
+
+      // Check if we're in a block comment
+      if block_comment_start.is_some() {
+        // Look for */
+        if c == '*' && i + 1 < chars.len() && chars[i + 1] == '/' {
+          let start = block_comment_start.unwrap();
+          let comment = &self.input[start..pos];
+          us.lines.push(UserLine::BlockComment(comment.to_string()));
+          block_comment_start = None;
+          i += 2; // Skip */
+          continue;
+        }
+        i += 1;
+        continue;
+      }
+
+      // Check for line comment start (// or ;)
+      if line_comment_start.is_none() {
+        if c == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
+          line_comment_start = Some(pos + 2);
+          i += 2;
+          continue;
+        } else if c == ';' {
+          line_comment_start = Some(pos + 1);
+          i += 1;
+          continue;
+        } else if c == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+          block_comment_start = Some(pos + 2);
+          i += 2;
+          continue;
+        }
+      }
+
+      // Handle newline
+      if c == '\n' {
+        if let Some(start) = line_comment_start {
+          let mut comment = &self.input[start..pos];
           if comment.ends_with('\r') {
             comment = &comment[..comment.len() - 1];
           }
           let comment_str = comment.to_string();
-          us.lines.push(UserLine::Comment(comment_str));
-          comment_start = None;
+          us.lines.push(UserLine::LineComment(comment_str));
+          line_comment_start = None;
         } else {
           us.lines.push(UserLine::Newline);
         }
       }
+
+      i += 1;
     }
-    if let Some(start) = comment_start {
+
+    // Handle trailing line comment (no newline at end)
+    if let Some(start) = line_comment_start {
       let comment = &self.input[start..until];
-      us.lines.push(UserLine::Comment(comment.into()));
+      us.lines.push(UserLine::LineComment(comment.into()));
     }
+
+    // Handle unclosed block comment
+    if let Some(start) = block_comment_start {
+      let comment = &self.input[start..until];
+      us.lines.push(UserLine::BlockComment(comment.into()));
+    }
+
     if !us.lines.is_empty() {
       return Some(us);
     }
@@ -217,8 +267,14 @@ impl<'a> FormatterVisitor<'a> {
             }
             self.newline();
           }
-          UserLine::Comment(line) => {
-            self.write(&format!(";{}", line), FormatterTop::Comment);
+          UserLine::LineComment(line) => {
+            self.write(&format!("//{}", line), FormatterTop::Comment);
+            if i < us.lines.len() - 1 {
+              self.newline();
+            }
+          }
+          UserLine::BlockComment(line) => {
+            self.write(&format!("/*{}*/", line), FormatterTop::Comment);
             if i < us.lines.len() - 1 {
               self.newline();
             }
@@ -324,11 +380,18 @@ impl<'a> FormatterVisitor<'a> {
 
   fn filter<'b>(&mut self, v: &'b str) -> String {
     let mut result = String::new();
-    let mut comment = false;
+    let mut line_comment = false;
+    let mut block_comment = false;
     let mut quote_open: Option<QuoteState> = None;
     let mut quote_close: Option<QuoteState> = None;
-    for (i, c) in v.chars().enumerate() {
-      if !comment && c == '"' {
+    let chars: Vec<char> = v.chars().collect();
+
+    let mut i = 0;
+    while i < chars.len() {
+      let c = chars[i];
+
+      // Handle strings
+      if !line_comment && !block_comment && c == '"' {
         match &mut quote_open {
           None => {
             quote_open = Some(QuoteState {
@@ -337,7 +400,7 @@ impl<'a> FormatterVisitor<'a> {
             });
           }
           Some(qo) => {
-            if qo.num_quotes < 3 && (i - 1) == qo.start {
+            if qo.num_quotes < 3 && i > 0 && (i - 1) == qo.start {
               qo.num_quotes += 1;
               qo.start = i;
             } else {
@@ -362,23 +425,60 @@ impl<'a> FormatterVisitor<'a> {
       } else {
         quote_close = None;
       }
+
       if quote_open.is_some() {
         result.push(c);
+        i += 1;
         continue;
       }
-      if c == ';' {
-        comment = true;
+
+      // Check for block comment end
+      if block_comment {
+        if c == '*' && i + 1 < chars.len() && chars[i + 1] == '/' {
+          block_comment = false;
+          i += 2;
+          continue;
+        }
+        i += 1;
+        continue;
       }
+
+      // Check for comment starts
+      if !line_comment && !block_comment {
+        if c == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
+          line_comment = true;
+          i += 2;
+          continue;
+        } else if c == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
+          block_comment = true;
+          i += 2;
+          continue;
+        } else if c == ';' {
+          line_comment = true;
+          i += 1;
+          continue;
+        }
+      }
+
+      // Handle newlines
       if c == '\n' || c == '\r' {
-        comment = false;
+        line_comment = false;
+        i += 1;
         continue;
       }
+
+      // Ignore whitespace
       if c == ' ' || c == '\t' {
-        continue; // Ignore whitespace
+        i += 1;
+        continue;
       }
-      if !comment {
+
+      // Add character if not in comment
+      if !line_comment && !block_comment {
         result.push(c);
       }
+
+      i += 1;
     }
     result
   }
@@ -705,8 +805,17 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
             self.newline();
             has_final_newline = true;
           }
-          UserLine::Comment(line) => {
-            self.write(&format!(";{}", line), FormatterTop::Comment);
+          UserLine::LineComment(line) => {
+            self.write(&format!("//{}", line), FormatterTop::Comment);
+            if i < us.lines.len() - 1 {
+              self.newline();
+              has_final_newline = true;
+            } else {
+              has_final_newline = false;
+            }
+          }
+          UserLine::BlockComment(line) => {
+            self.write(&format!("/*{}*/", line), FormatterTop::Comment);
             if i < us.lines.len() - 1 {
               self.newline();
               has_final_newline = true;

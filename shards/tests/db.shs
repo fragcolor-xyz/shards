@@ -1,4 +1,4 @@
-@include("defs.shs") ; to use the macro `if`
+@include("defs.shs") // to use the macro `if`
 
 @mesh(root)
 
@@ -24,7 +24,7 @@
         Math.Inc(y)
         [x y] | DB.Query("INSERT INTO integers VALUES (?, ?)" @db-file)
       } Times: 10)
-      "Something" | Fail ; fail on purpose, we test rerolling here
+      "Something" | Fail // fail on purpose, we test rerolling here
     } @db-file)
   })
   Msg("Failing transaction done")
@@ -75,7 +75,7 @@
   
   DB.Backup(@db-file-3 @db-file)
   
-  ; test CRDT capabilities
+  // test CRDT capabilities
   DB.LoadExtension("crsqlite" @db-file)
   [] | Profile(DB.Query("create table foo (a primary key not null, b)" @db-file) "Create foo")
   [] | Profile(DB.Query("create table bar (a primary key not null, b, c, d)" @db-file) "Create bar")
@@ -88,14 +88,14 @@
   [] | Profile(DB.Query("select * from baz" @db-file) "Select baz") | Log
   [] | Profile(DB.Query("select * from crsql_changes" @db-file) "Select crsql_changes") | Log
   
-  ; Test AsRows
+  // Test AsRows
   Repeat({
     [] | DB.Query("SELECT * FROM integers" @db-file AsRows: true) | Log
     Assert.Is([{x: 88 y: 99} {x: 100 y: 101} {x: 102 y: none} {x: 12 y: 23} {x: 13 y: 24} {x: 14 y: 25} {x: 15 y: 26} {x: 16 y: 27} {x: 17 y: 28} {x: 18 y: 29} {x: 19 y: 30} {x: 20 y: 31} {x: 21 y: 32}])
   } Times: 10)
   Msg("Test 5 passed")
   
-  ; Test sqlite-vec - BEHIND cmake flag WITH_SQLITE_VEC
+  // Test sqlite-vec - BEHIND cmake flag WITH_SQLITE_VEC
   @if(#(@with-sqlite-vec | Is("true")) {
     DB.LoadExtension("sqlite-vec" @db-file)
     """
@@ -123,6 +123,6 @@
   } none)
 })
 
-; @schedule(root cleanup)
+// @schedule(root cleanup)
 @schedule(root db-test-1)
 @run(root) | Assert.Is(true)

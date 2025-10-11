@@ -1,9 +1,9 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2021 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2021 Fragcolor Pte. Ltd.
 
 @mesh(root)
 
-@include("defs.shs") ; "if" macro
+@include("defs.shs") // "if" macro
 
 @wire(inner {
   Assert.Is("My input" true)
@@ -90,7 +90,7 @@
 @wire(test-wire {
   Msg("Running tests!")
   
-  Get(var-with-default Default: 10) ; will either be var-with-default value if existed or 10
+  Get(var-with-default Default: 10) // will either be var-with-default value if existed or 10
   Assert.Is(10 true)
   
   Const("""\sHello""") | Log
@@ -223,13 +223,13 @@
   Assert.Is(#(11 | Math.Subtract(10)) true)
   Log
   
-  ; double precision
+  // double precision
   3.141592653589793238
-  Is(3.141592653589793) ; 16 digits
+  Is(3.141592653589793) // 16 digits
   Assert.Is(true true)
   Log
   3.141592653589793238
-  Is(3.14159265358979) ; 15 digits
+  Is(3.14159265358979) // 15 digits
   Assert.Is(false true)
   Log
   
@@ -266,7 +266,7 @@
     v-3 | Log("OnStop Copy")
   } Priority: -1000)
   
-  WhenDone(when-done-wire) ; high on purpose to test lifetime issues
+  WhenDone(when-done-wire) // high on purpose to test lifetime issues
   
   @f2(10.3 2.1)
   Math.Multiply(2.0)
@@ -378,10 +378,10 @@
   Assert.Is("My input 2" true)
   Log
   
-  ; test some casting
+  // test some casting
   ToBytes
   BytesToInts
-  ; need to strip serialization prefix
+  // need to strip serialization prefix
   Slice(5)
   IntsToBytes
   BytesToString
@@ -394,29 +394,29 @@
   table-a | Is(table-b) | Assert.Is(true true)
   table-a | Is(table-c) | Assert.IsNot(true true)
   
-  ; b0r
+  // b0r
   0
   Math.And(0xFF)
   Math.LShift(8)
   Set(x)
-  ; b1r
+  // b1r
   0
   Math.And(0xFF)
   Math.Or(x)
   Math.LShift(8)
   Update(x)
-  ; b2r
+  // b2r
   59
   Math.And(0xFF)
   Math.Or(x)
   Math.LShift(8)
   Update(x)
-  ; b3r
+  // b3r
   156
   Math.And(0xFF)
   Math.Or(x)
   Update(x)
-  ; result
+  // result
   Get(x)
   Log
   
@@ -448,12 +448,12 @@
   5 | ToFloat | Math.Divide(10.0)
   Assert.Is(0.5 true)
   
-  {"key1": 10 "key2": 20} >= htable ; tests varify
+  {"key1": 10 "key2": 20} >= htable // tests varify
   Take("key1") | Assert.Is(10 true)
   htable | Take("key2") | Assert.Is(20 true)
   
-  Const({"key1": 10 "key2": 20.0}) >= htable2 ; tests varify
-  ; also test correct take deducting table type
+  Const({"key1": 10 "key2": 20.0}) >= htable2 // tests varify
+  // also test correct take deducting table type
   Take("key1") | Math.Multiply(2) | Assert.Is(20 true)
   htable2 | Take("key2") | Math.Multiply(2.0) | Assert.Is(40.0 true)
   htable2 | Take(["key1" "key2"]) | Math.Multiply([2 2.0])
@@ -545,8 +545,8 @@
    "b": 22
    "d": 50}
   Flatten
-  ; the following can be out of order, todo
-  ; Assert.Is(["a" 10 "b" 22 "d" 50] true)
+  // the following can be out of order, todo
+  // Assert.Is(["a" 10 "b" 22 "d" 50] true)
   
   2 | Push(unsortedList)
   4 | Push(unsortedList)
@@ -758,9 +758,9 @@
   ExpectString
   Assert.Is("Hello Pandas" true)
   
-  ; show induced mutability with Ref
-  "Hello reference" ; Const
-  Ref(ref1) ; no copy will happen!
+  // show induced mutability with Ref
+  "Hello reference" // Const
+  Ref(ref1) // no copy will happen!
   Get(ref1)
   Assert.Is("Hello reference" true)
   
@@ -866,7 +866,7 @@
   "test-lwt.txt"
   {FS.Write(text2 Overwrite: true)}
   {FS.LastWriteTime | Log("Last write time 0") = test-lwt0}
-  {Pause(1.5)} ; At least second precision
+  {Pause(1.5)} // At least second precision
   {FS.Write(text2 Overwrite: true)}
   {FS.LastWriteTime | Log("Last write time 1") = test-lwt1}
   test-lwt1 | IsMore(test-lwt0) | Assert.Is(true true)
@@ -1006,7 +1006,7 @@
   Math.Dec(five)
   five | Assert.Is(4 true)
   
-  ; test stack ops
+  // test stack ops
   Push
   Pop
   Assert.Is(4 true)
@@ -1115,7 +1115,7 @@
   Log
   Assert.Is(634 true)
   
-  ; utf8 testing
+  // utf8 testing
   "在庫なし"
   Assert.Is("在庫なし" true)
   Log
@@ -1167,21 +1167,21 @@
   Assert.Is([112 114 97 99] true)
   
   {a: 1 b: 2 c: 3}
-  ExpectTable ; to make it a dynamic table
+  ExpectTable // to make it a dynamic table
   >= table-abc
   Erase(["a" "c"] table-abc)
   table-abc | Assert.Is({b: 2} true)
   
   [10 20 30 40 50] >= seq-check2
-  Erase([1 2 3] seq-check2) ; indices sorted in ascending order => error
+  Erase([1 2 3] seq-check2) // indices sorted in ascending order => error
   seq-check2 | Assert.Is([10 50] true)
   
   [10 20 30 40 50] >= seq-check3
-  Erase([3 1 2] seq-check3) ; indices sequence randomly sorted
+  Erase([3 1 2] seq-check3) // indices sequence randomly sorted
   seq-check3 | Assert.Is([10 50] true)
   
   DropFront(seq-a)
-  ; this also tests that we fixup input as well
+  // this also tests that we fixup input as well
   Get(seq-a)
   seq-a | Assert.Is([114 97 99] true)
   
@@ -1254,7 +1254,7 @@
   Assert.Is(10 true)
   
   10 | Math.LShift(2) | Math.RShift(2) | Assert.Is(10 true)
-  ToBytes >= b10 ; adds bytes serialization coverage (Not working)
+  ToBytes >= b10 // adds bytes serialization coverage (Not working)
   
   "x is a letter."
   Replace(["x" "is" "letter"] ["y" "was" "x"])
@@ -1318,7 +1318,7 @@
   
   Msg("All looking good!")
   
-  ; test fro a possible issue with thread pool on ending
+  // test fro a possible issue with thread pool on ending
   Await({
     Maybe({
         ExpectString
@@ -1329,7 +1329,7 @@
   })
 })
 
-; (prn "Doing saveBinary")
+// (prn "Doing saveBinary")
 
 @wire(saveBinary {
   Const(test-wire)
@@ -1341,11 +1341,11 @@
 @schedule(root saveBinary)
 @run(root 0.1) | Assert.Is(true)
 
-; for now Mesh holds ref...
-; (def Root (Mesh))
-; (def saveBinary nil)
+// for now Mesh holds ref...
+// (def Root (Mesh))
+// (def saveBinary nil)
 
-; (prn "Doing loadBinary")
+// (prn "Doing loadBinary")
 
 @wire(loadBinary {
   ReadFile("testWire.bin")
@@ -1382,21 +1382,21 @@
 @schedule(root loadBinary)
 @run(root 0.1) | Assert.Is(true)
 
-; for now Mesh holds ref...
-; (def Root (Mesh))
-; (def loadBinary nil)
+// for now Mesh holds ref...
+// (def Root (Mesh))
+// (def loadBinary nil)
 
-; (prn "Doing normal run")
+// (prn "Doing normal run")
 
-; (pre-compose Root testWire)
-; (schedule-fast Root testWire)
-; (if (run Root 0.1) nil (throw "Root tick failed"))
-; for now Mesh holds ref...
-; (def Root (Mesh))
-; (def testWire nil)
-; (def inner1 nil)
+// (pre-compose Root testWire)
+// (schedule-fast Root testWire)
+// (if (run Root 0.1) nil (throw "Root tick failed"))
+// for now Mesh holds ref...
+// (def Root (Mesh))
+// (def testWire nil)
+// (def inner1 nil)
 
-; (prn "Doing loopedWire")
+// (prn "Doing loopedWire")
 
 @wire(loopedWire {
   10 | Push(loopVar1)
@@ -1413,19 +1413,19 @@
   Count(loopVar2)
 } Looped: true)
 
-; (prepare loopedWire)
-; (start loopedWire)
-; (tick loopedWire)
-; (tick loopedWire)
-; (tick loopedWire)
+// (prepare loopedWire)
+// (start loopedWire)
+// (tick loopedWire)
+// (tick loopedWire)
+// (tick loopedWire)
 
-; (prepare loopedWire2)
-; (start loopedWire2)
-; (tick loopedWire2)
-; (tick loopedWire2)
-; (tick loopedWire2)
+// (prepare loopedWire2)
+// (start loopedWire2)
+// (tick loopedWire2)
+// (tick loopedWire2)
+// (tick loopedWire2)
 
-; (if (not (= (stop loopedWire2) (Int 9))) (throw "Seq :Clear test failed"))
+// (if (not (= (stop loopedWire2) (Int 9))) (throw "Seq :Clear test failed"))
 
 @wire(readFile {
   Repeat({

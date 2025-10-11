@@ -4,15 +4,15 @@
   normalizedColor | Take(1) | Math.Divide(255.0) = g
   normalizedColor | Take(2) | Math.Divide(255.0) = b
 
-  ; Calculate gray value
+  // Calculate gray value
   0.2126 | Mul(r) | Add((0.7152 | Mul(g))) | Add((0.0722 | Mul(b))) = gray
 
-  ; Desaturate and lighten each channel
+  // Desaturate and lighten each channel
   r | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newR
   g | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newG
   b | Sub(gray) | Mul(0.3) | Add(gray) | Mul(0.8) | Add(0.2) = newB
 
-  ; Convert back to RGB format
+  // Convert back to RGB format
   @f3(newR newG newB) | Math.Multiply(255.0) | ToColor = newColor
 })
 
@@ -31,14 +31,14 @@
   [name help-2 enum-id]
 })
 
-; process documentation in parallel
+// process documentation in parallel
 
 Shards.Enumerate | TryMany(document-shard Threads: 4) >= shards-docs
 Remove(shards-docs Predicate: IsNone)
 
-; add extra built-ins
+// add extra built-ins
 
-; @wire
+// @wire
 "Creates a wire, a stateful and composable unit of execution in Shards that can be scheduled on meshes or run inline, maintaining its internal state between invocations."
 Set(wire-doc "help")
 
@@ -101,8 +101,8 @@ enums-docs | ForEach({
   {Take(1) | Update(enums-from-ids enum-id)}
 })
 
-; Shards.ObjectTypes | TryMany(document-object Threads: 4) = object-docs
-; Remove(object-docs Predicate: IsNone)
+// Shards.ObjectTypes | TryMany(document-object Threads: 4) = object-docs
+// Remove(object-docs Predicate: IsNone)
 
 {
   shards: shards

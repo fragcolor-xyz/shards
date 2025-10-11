@@ -23,7 +23,7 @@
             WeakBGFill: @color(0 0 20)
             BGStroke: @stroke-2
             Rounding: @f4(1.0)
-            ; Stroke: @no-stroke
+            // Stroke: @no-stroke
           }
           NonInteractive: {
             BGFill: @color(127 127 127 255)

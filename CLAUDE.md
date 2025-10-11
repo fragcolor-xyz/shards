@@ -21,10 +21,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Shards is a flow-based programming language with a unique data flow paradigm. Code is written in `.shs` files using pipe operators (`|`) to chain transformations:
 
 ```shards
-; Simple data flow
+// Simple data flow
 ["Hello" name "!"] | String.Join | Log
 
-; Wire system for concurrency
+// Wire system for concurrency
 @wire(main-loop {
     input | Transform | Process | Output
 } Looped: true)

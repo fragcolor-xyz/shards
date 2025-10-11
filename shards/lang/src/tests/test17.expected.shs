@@ -23,7 +23,7 @@
   ShardParams(A: 1
     B: {
       Something({
-        ; Comment
+        // Comment
         Log("Another callback")
       })
     }

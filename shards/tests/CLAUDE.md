@@ -17,18 +17,18 @@ Shards uses data flow. There are no traditional functions. Wires are pipelines o
 Examples:
 
 ```shards
-; Basic operations use pipes and parameters
-5 | Add(3)                    ; 5 + 3
-value | Mul(2.0)         ; value * 2.0
+// Basic operations use pipes and parameters
+5 | Add(3)                    // 5 + 3
+value | Mul(2.0)         // value * 2.0
 
-; All named parameters - OK
+// All named parameters - OK
 Http.Get(
   URL: "https://api.example.com"
   Headers: headers
   Timeout: 30
 )
 
-; Common with API calls
+// Common with API calls
 Http.Post(
   URL: "https://api.example.com/data"
   Headers: {
@@ -38,9 +38,9 @@ Http.Post(
   Body: payload
 )
 
-; Error examples - wrong parameter order:
-Http.Get(URL: "https://api.example.com" headers)             ; Error! Named then unnamed
-Process(Input: data other-param)                            ; Error! Must put unnamed first
+// Error examples - wrong parameter order:
+Http.Get(URL: "https://api.example.com" headers)             // Error! Named then unnamed
+Process(Input: data other-param)                            // Error! Must put unnamed first
 ```
 
 ## Syntax & Structure
@@ -49,7 +49,7 @@ Process(Input: data other-param)                            ; Error! Must put un
 - Data flows through `|`
 - No braces for code blocks other than wire and template definitions, no semicolons needed
 - Whitespace flexible
-- Comments start with `;`
+- Comments start with `//`
 - No imperative assignments: data flows into variables
 
 ## Identifiers & Names
@@ -68,22 +68,22 @@ Process(Input: data other-param)                            ; Error! Must put un
 Examples:
 
 ```shards
-; String.Join for string sequences
-["Hello" "World"] | String.Join = joined          ; "HelloWorld"
-["a" "b" "c"] | String.Join = abc                ; "abc"
+// String.Join for string sequences
+["Hello" "World"] | String.Join = joined          // "HelloWorld"
+["a" "b" "c"] | String.Join = abc                // "abc"
 
-; String.Format for mixing types
-["Score: " 42 " points"] | String.Format = score  ; "Score: 42 points"
-["Position: " @f3(1 2 3)] | String.Format = pos   ; "Position: @f3(1 2 3)"
+// String.Format for mixing types
+["Score: " 42 " points"] | String.Format = score  // "Score: 42 points"
+["Position: " @f3(1 2 3)] | String.Format = pos   // "Position: @f3(1 2 3)"
 
-; Common patterns
-["Bearer " token] | String.Join = auth-header     ; Joining strings
-["User " name " is " age " years old"] | String.Format = info  ; Mixing strings and numbers
+// Common patterns
+["Bearer " token] | String.Join = auth-header     // Joining strings
+["User " name " is " age " years old"] | String.Format = info  // Mixing strings and numbers
 
-; With variables
+// With variables
 "Alice" = name
 30 = age
-["Hello " name "! Age: " age] | String.Format = greeting  ; "Hello Alice! Age: 30"
+["Hello " name "! Age: " age] | String.Format = greeting  // "Hello Alice! Age: 30"
 ```
 
 ## Data Types & Literals
@@ -104,17 +104,17 @@ Example:
 
 ```shards
 [1 2 3 4 5] >= numbers
-numbers | Take(2) | Log("Third element")          ; Outputs: 3
-numbers | Take([0 2 4]) | Log("Selected")         ; Outputs: [1 3 5]
-numbers | Slice(1 3) | Log("Slice")               ; Outputs: [2 3]
-numbers | Take(0) | Log("First element")          ; Outputs: 1
-numbers | RTake(0) | Log("Last element")          ; Outputs: 5
-6 >> numbers                                      ; Append 6
+numbers | Take(2) | Log("Third element")          // Outputs: 3
+numbers | Take([0 2 4]) | Log("Selected")         // Outputs: [1 3 5]
+numbers | Slice(1 3) | Log("Slice")               // Outputs: [2 3]
+numbers | Take(0) | Log("First element")          // Outputs: 1
+numbers | RTake(0) | Log("Last element")          // Outputs: 5
+6 >> numbers                                      // Append 6
 {data: [1 2 3]} >= table-with-seq
-4 | Push(table-with-seq "data")                   ; Push 4 into table's data seq
-Erase(2 numbers)                                  ; Remove element at index 2
+4 | Push(table-with-seq "data")                   // Push 4 into table's data seq
+Erase(2 numbers)                                  // Remove element at index 2
 numbers | Log("After removal")
-Erase([0 2] numbers)                              ; Remove multiple indices
+Erase([0 2] numbers)                              // Remove multiple indices
 numbers | Log("After multiple removals")
 ```
 
@@ -127,12 +127,12 @@ Example:
 
 ```shards
 {name: "Alice" age: 30 city: "NY"} >= person-data
-person-data:name | Log(Label: "Name")             ; "Alice"
-"Bob" | Update(person-data "name")                ; update name
-31 | Update(person-data "age")                    ; update age
-Erase("city" person-data)                         ; remove city
+person-data:name | Log(Label: "Name")             // "Alice"
+"Bob" | Update(person-data "name")                // update name
+31 | Update(person-data "age")                    // update age
+Erase("city" person-data)                         // remove city
 person-data | Log(Label: "After removing city")
-Erase(["name" "age"] person-data)                 ; remove multiple keys
+Erase(["name" "age"] person-data)                 // remove multiple keys
 person-data | Log(Label: "After removing keys")
 ```
 
@@ -191,37 +191,37 @@ It's a direction marker showing how data flows through your system.
 Examples:
 
 ```shards
-; Parent wire with child access
+// Parent wire with child access
 @wire(parent {
   0 >= counter
   "data" = value
 
-  ; Regular child - shares parent's variables
+  // Regular child - shares parent's variables
   Do(child)
-  counter | Log(Label: "After child")  ; Shows child's changes
+  counter | Log(Label: "After child")  // Shows child's changes
 
-  ; Detached child - gets copies of variables
+  // Detached child - gets copies of variables
   Detach(detached-child)
-  counter | Log(Label: "After detached")  ; Unchanged
+  counter | Log(Label: "After detached")  // Unchanged
 })
 
 @wire(child {
-  ; Can modify parent's variables directly
+  // Can modify parent's variables directly
   counter | Add(1) > counter
 })
 
 @wire(detached-child {
-  ; Works with copies of parent's variables
-  counter | Add(1) > counter  ; Only affects local copy
+  // Works with copies of parent's variables
+  counter | Add(1) > counter  // Only affects local copy
 })
 
-; Global variables for shared state between any wires
+// Global variables for shared state between any wires
 @wire(init {
-  ; Create global variables that any wire can access
+  // Create global variables that any wire can access
   0 | Set(shared-counter Global: true)
   "initial" | Set(shared-value Global: true)
 
-  ; Global tables
+  // Global tables
   Table(shared-state Type: @type({
     status: Type::String
     count: Type::Int
@@ -231,7 +231,7 @@ Examples:
 })
 
 @wire(any-wire {
-  ; Can access and modify globals from anywhere
+  // Can access and modify globals from anywhere
   shared-counter | Add(1) > shared-counter
   shared-value | Log(Label: "Value")
   shared-state:status | Log(Label: "Status")
@@ -254,8 +254,8 @@ Best practices:
 
   ```shards
   [1 2 3] | ForEach({
-    {Mul(2) | Log}  ; each operation gets original input
-    {Add(5) | Log}       ; processes same input independently
+    {Mul(2) | Log}  // each operation gets original input
+    {Add(5) | Log}       // processes same input independently
   })
   ```
 
@@ -263,7 +263,7 @@ Best practices:
 
   ```shards
   ForRange(1 10 {
-    Add(sum) > sum  ; single flow, no sub block needed
+    Add(sum) > sum  // single flow, no sub block needed
   })
   ```
 
@@ -321,14 +321,14 @@ Once({
 Example:
 
 ```shards
-; Define a custom type
+// Define a custom type
 @type({
   name: Type::String
   age: Type::Int
   scores: Type::Sequence
 }) = person-type
 
-; Use the type
+// Use the type
 {name: "Alice" age: 30 scores: [85 92 78]} | Expect(person-type) = person-data
 person-data:age | Assert.Is(30)
 ```
@@ -408,7 +408,7 @@ Example:
   input | Transform | Calculate > output
 })
 
-; and used like this:
+// and used like this:
 @process-data(in-var out-var)
 ```
 
@@ -432,10 +432,10 @@ greeting | Log(Label: "Greeting")
 Example:
 
 ```shards
-; Need parentheses for nested pipe operations:
+// Need parentheses for nested pipe operations:
 ToFloat | Div((32 | Div(3.1415926535))) >= x
 
-; Equivalent to:
+// Equivalent to:
 32 | Div(3.1415926535) = tmp
 ToFloat | Div(tmp) >= x
 ```
@@ -512,8 +512,8 @@ Grouping operations:
 
 ```shards
 @wire(grouping-demo {
-  10 | Add((5 | Mul(2))) | Log("Result")   ; 10+(5*2)=20
-  10 | Add(5) | Mul(2) | Log("Result")     ; (10+5)*2=30
+  10 | Add((5 | Mul(2))) | Log("Result")   // 10+(5*2)=20
+  10 | Add(5) | Mul(2) | Log("Result")     // (10+5)*2=30
 
   1.0 | Set(base)
   2.0 | Set(exponent)

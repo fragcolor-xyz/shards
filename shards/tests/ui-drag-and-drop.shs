@@ -80,7 +80,7 @@
         })
       } Position: @f2(200 300) Order: Order::Middle)
 
-      ; The list of items to pick from
+      // The list of items to pick from
       UI.Area(Contents: {
         items | DoMany({
           ExpectTable = item

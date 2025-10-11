@@ -13,7 +13,7 @@ If the output of the shard is a table, it will have the following format:
 {
   status: @type(Type::Int)
   headers: {header: @type(Type::String)}
-  body: @type(Type::String) ;; or @type(Type::Bytes)
+  body: @type(Type::String) // or @type(Type::Bytes)
 }
 ```
 - **status**: An integer representing the HTTP status code.

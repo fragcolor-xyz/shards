@@ -7,7 +7,7 @@
     @f4(c-r c-g c-b 1.0) = color
     tsl | Math.Translation = tsl-mat
 
-    ; Setup pipeline
+    // Setup pipeline
     GFX.DrawQueue = queue
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
@@ -28,8 +28,8 @@
   GFX.Render(Steps: render-steps View: view)
 } Looped: true)
 
-; This tests correct rendering of several separate Render calls that might write to the same output
-; the render graph builder will figure out that only the first render has to clear
+// This tests correct rendering of several separate Render calls that might write to the same output
+// the render graph builder will figure out that only the first render has to clear
 @wire(branch-init {
   @f3(-1.2 0.0 0.0) | Spawn(pass)
   @f3(0.0 0.0 0.0) | Spawn(pass)
@@ -38,19 +38,19 @@
 
 @wire(test-wire {
   Once({
-    ; Create view
+    // Create view
     {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
 
-  ; Special clear pass
+  // Special clear pass
   GFX.EffectPass(EntryPoint: {
     Shader.ReadInput("texCoord0") | ToFloat4 | Math.Add(@f4(0 0 0 1))
-    Shader.WriteOutput("color") ; End shader
+    Shader.WriteOutput("color") // End shader
   }) >> render-steps
   GFX.Render(Steps: render-steps)
 
-  ; Spawned passes
+  // Spawned passes
   Branch([branch-init])
 } Looped: true)
 

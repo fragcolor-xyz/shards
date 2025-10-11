@@ -3,17 +3,17 @@ prompt: """How do I create a conditional statement that will do something when t
 
 solution: """variable1
 If(Is(true) {
-Pass ;Do Something
+Pass //Do Something
 } {
-Pass ; Else do something else
+Pass // Else do something else
 })
 """
 
 explicit: """Get(Name: variable1)
 If(Predicate: Is(Value: true) Then: {
-Pass ;Do Something
+Pass //Do Something
 } Else: {
-Pass ;Do Something else
+Pass //Do Something else
 } Passthrough: false
 )
 """

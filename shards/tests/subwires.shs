@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2019 Fragcolor Pte. Ltd
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2019 Fragcolor Pte. Ltd
 
 @mesh(root)
 
@@ -42,7 +42,7 @@
 })
 
 @wire(ticked {
-  ; check that we can read root variables
+  // check that we can read root variables
   var-from-root
   Assert.Is("Ok!" true)
 
@@ -51,7 +51,7 @@
   Pause
   Msg("message 2")
 
-  ; test jumping to another coro
+  // test jumping to another coro
   SwitchTo(jumphere)
   Msg("ticked resumed")
   2 > step-test
@@ -64,9 +64,9 @@
   4 > step-test
   Pause
 
-  ; make sure main is not stopped in this case
+  // make sure main is not stopped in this case
   SwitchTo(stopping)
-  ; the flow stopped via Stop, the input of Stop was 4 from previous SwitchTo
+  // the flow stopped via Stop, the input of Stop was 4 from previous SwitchTo
   Assert.Is(4 true)
 })
 
@@ -76,7 +76,7 @@
   Pause
   Msg("message 2")
 
-  ; test jumping to another coro
+  // test jumping to another coro
   SwitchTo(jumphere2 true)
   Msg("ticked resumed")
   2 > step-test
@@ -93,7 +93,7 @@
 @wire(started {
   Msg("From top!")
   SwitchTo(root-wire)
-  ; root-wire should complete, and so output "done"
+  // root-wire should complete, and so output "done"
   Assert.Is("done" true)
 })
 
@@ -120,63 +120,63 @@
   Wait(otherLooped)
 
   "Ok!" = var-from-root
-  ; test a stepped wire that Stops
+  // test a stepped wire that Stops
   0 >= step-test
   Step(ticked)
   Msg("had message 1")
-  step-test | Assert.Is(1 true) ; pause after 1
+  step-test | Assert.Is(1 true) // pause after 1
 
   Step(ticked)
   Msg("had message 2")
-  step-test | Assert.Is(1 true) ; resume pauses jumped
+  step-test | Assert.Is(1 true) // resume pauses jumped
 
   Step(ticked)
   Msg("before ticked resume")
-  step-test | Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+  step-test | Assert.Is(1 true) // resumed ticked and resumed ticked again so paused
 
-  Step(ticked) ; pause after 2
+  Step(ticked) // pause after 2
   step-test | Assert.Is(2 true)
 
-  Step(ticked) ; resume pauses when going stopping
+  Step(ticked) // resume pauses when going stopping
   Msg("had message 3")
-  step-test | Assert.Is(3 true) ; pause after 3
+  step-test | Assert.Is(3 true) // pause after 3
 
   Step(ticked)
   Msg("had message 4")
-  step-test | Assert.Is(4 true) ; pause after 4
+  step-test | Assert.Is(4 true) // pause after 4
 
-  Step(ticked) ; will stop the wire
+  Step(ticked) // will stop the wire
   step-test | Assert.Is(4 true)
-  Step(ticked) ; last result wire is done
+  Step(ticked) // last result wire is done
   step-test | Assert.Is(4 true)
-  Step(ticked) ; last result wire is done
+  Step(ticked) // last result wire is done
   step-test | Assert.Is(4 true)
 
-  ; test a stepped wire that never stops and rotates
+  // test a stepped wire that never stops and rotates
   Repeat({
     Msg("repeating!")
     Step(ticked2)
     Msg("had message 1")
-    step-test | Assert.Is(1 true) ; pause after 1
+    step-test | Assert.Is(1 true) // pause after 1
 
     Step(ticked2)
     Msg("had message 2")
-    step-test | Assert.Is(1 true) ; resume pauses jumped
+    step-test | Assert.Is(1 true) // resume pauses jumped
 
     Step(ticked2)
     Msg("before ticked resume")
-    step-test | Assert.Is(1 true) ; resumed ticked and resumed ticked again so paused
+    step-test | Assert.Is(1 true) // resumed ticked and resumed ticked again so paused
 
-    Step(ticked2) ; pause after 2
+    Step(ticked2) // pause after 2
     step-test | Assert.Is(2 true)
 
-    Step(ticked2) ; resume pauses when going stopping
+    Step(ticked2) // resume pauses when going stopping
     Msg("had message 3")
-    step-test | Assert.Is(3 true) ; pause after 3
+    step-test | Assert.Is(3 true) // pause after 3
 
     Step(ticked2)
     Msg("had message 4")
-    step-test | Assert.Is(4 true) ; pause after 4
+    step-test | Assert.Is(4 true) // pause after 4
   } Times: 3)
 
   SwitchTo(started true)
@@ -204,7 +204,7 @@
   ReadFile("subwires.wire")
   ExpectWire >= wire
   Log("loaded")
-  ; we must do this here! cos wire will try to resume self
+  // we must do this here! cos wire will try to resume self
   WireRunner(wire Mode: RunWireMode::Async)
   Wait(wire)
 })

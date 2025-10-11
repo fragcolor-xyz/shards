@@ -8,18 +8,18 @@
     
     GFX.DrawablePass(Features: features Queue: editor-queue) >> render-steps
     
-    ; Create view
+    // Create view
     {Position: @f3(3 8 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })
-  ; End setup
+  // End setup
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     Contents: {
       Animation.Timer = time
       
-      ; Draw helpers (using scene depth)
-      ; Provides a context for rendering gizmos
+      // Draw helpers (using scene depth)
+      // Provides a context for rendering gizmos
       Gizmos.Context(Queue: editor-queue View: view
         Contents: {
           Gizmos.Grid(@f3(0.0) XBase: @f3(1 0 0) YBase: @f3(0 0 1) Thickness: 1.5)
@@ -41,4 +41,4 @@
 
 @schedule(root test-wire)
 @run(root FPS: 120 Iterations: 100) | Assert.Is(true)
-; @run(root FPS: 120) | Assert.Is(true)
+// @run(root FPS: 120) | Assert.Is(true)

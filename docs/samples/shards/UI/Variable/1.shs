@@ -1,10 +1,10 @@
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
   @f4(-1 0 0 1) >= my-var
 
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       UI.Variable(my-var)

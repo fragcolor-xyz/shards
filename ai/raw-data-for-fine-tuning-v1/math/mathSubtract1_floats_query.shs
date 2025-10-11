@@ -2,12 +2,12 @@
 prompt: """How to use Math.Subtract for floats?"""
 
 solution: """5.3
-Math.Subtract(2.6) ;
+Math.Subtract(2.6) //
 Log
 """
 
 explicit: """5.3
-Math.Subtract(Operand: 2.6) ;
+Math.Subtract(Operand: 2.6) //
 Log(Prefix: "" Level: LogLevel::Info)
 
 """

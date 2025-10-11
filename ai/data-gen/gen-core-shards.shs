@@ -1,26 +1,26 @@
 @template(resolve-type-id [type-id] {
   type-id | Match([
-    2 ; Enum
+    2 // Enum
     {
       "Enum"
     }
-    59 ; ShardRef
+    59 // ShardRef
     {
       "Shard"
     }
-    54 ; ContextVar
+    54 // ContextVar
     {
       "Variable"
     }
-    56 ; Seq
+    56 // Seq
     {
       "Sequence"
     }
-    57 ; Table
+    57 // Table
     {
       "Table"
     }
-    60 ; Object
+    60 // Object
     {
       "Object"
     }
@@ -42,7 +42,7 @@
   )
 })
 
-; Initialize markdown document
+// Initialize markdown document
 "# Shards Reference\n\n" >= markdown-doc
 
 Shards.Enumerate("core") >> shards
@@ -52,20 +52,20 @@ shards | Flatten = all-shards
 {Count(all-shards) | Log("Total Shards")}
 ForEach({
   If({
-      String.Starts(With: "_") | Or ; private shards
-      String.Ends(With: "!") | Or ; those are unsafe shards
-      Is("Comment") | Or ; might just create confusion
-      Is("Reduce") | Or ; this is an alias of Fold
-      Is("WriteFile") | Or ; avoid fs ops files for now
-      Is("ReadFile") | Or ; avoid fs ops for now
-      Is("Input") ; avoid input shard, it's confusing
+      String.Starts(With: "_") | Or // private shards
+      String.Ends(With: "!") | Or // those are unsafe shards
+      Is("Comment") | Or // might just create confusion
+      Is("Reduce") | Or // this is an alias of Fold
+      Is("WriteFile") | Or // avoid fs ops files for now
+      Is("ReadFile") | Or // avoid fs ops for now
+      Is("Input") // avoid input shard, it's confusing
     } {
       Log("Skipping shard")
     } {
       Log("Parsing shard")
       
       "" >= shard-doc-md
-      ; Add shard name as a header
+      // Add shard name as a header
       ["# " $0] | String.Format | AppendTo(shard-doc-md)
       
       $0
@@ -87,7 +87,7 @@ ForEach({
         }
       )
       
-      ; Add general help 
+      // Add general help 
       docs:help | If(IsNot("") {
           = i
           [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
@@ -103,7 +103,7 @@ ForEach({
         " " | AppendTo(shard-doc-md)
       })
       
-      ; Get input types
+      // Get input types
       docs:inputTypes | ExpectSeq = input-types
       
       input-types | When(IsNot([]) {
@@ -115,11 +115,11 @@ ForEach({
             [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
-        shard-doc-md | Slice(To: -1) > shard-doc-md ; remove trailing slash
+        shard-doc-md | Slice(To: -1) > shard-doc-md // remove trailing slash
         ")" | AppendTo(shard-doc-md)
       })
       
-      ; Add arrow
+      // Add arrow
       "\nOut: " | AppendTo(shard-doc-md)
       
       docs:outputHelp | When(IsNot("") {
@@ -127,7 +127,7 @@ ForEach({
         " " | AppendTo(shard-doc-md)
       })
       
-      ; Get output types
+      // Get output types
       docs:outputTypes | ExpectSeq = output-types
       
       output-types | When(IsNot([]) {
@@ -139,14 +139,14 @@ ForEach({
             [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
-        shard-doc-md | Slice(To: -1) > shard-doc-md ; remove trailing slash
+        shard-doc-md | Slice(To: -1) > shard-doc-md // remove trailing slash
         ")" | AppendTo(shard-doc-md)
       })
       
-      ; Add the I/O Types section to the documentation
+      // Add the I/O Types section to the documentation
       "\n\n" | AppendTo(shard-doc-md)
       
-      ; Add parameters if available
+      // Add parameters if available
       docs:parameters | ExpectSeq = parameters
       parameters | When(IsNot([]) {
         {"Params\n" | AppendTo(shard-doc-md)}
@@ -154,17 +154,17 @@ ForEach({
           ExpectTable
           {Take("name") = param-name}
           {Take("help") = param-help}
-          ; {Take("default") | If(IsString {
-          ;     ExpectString = string-value
-          ;     ["\"" string-value "\""] | String.Join
-          ;   } ToString) = param-default
-          ; }
+          // {Take("default") | If(IsString {
+          //     ExpectString = string-value
+          //     ["\"" string-value "\""] | String.Join
+          //   } ToString) = param-default
+          // }
           {Take("types") = param-types}
           
-          ; Start with parameter name
+          // Start with parameter name
           [param-name ": "] | String.Format | AppendTo(shard-doc-md)
           
-          ; Format parameter types in a compact way
+          // Format parameter types in a compact way
           param-types | When(IsNotNone {
             ExpectSeq | When(IsNot([]) {
               ForEach({
@@ -181,24 +181,24 @@ ForEach({
             shard-doc-md | Slice(To: -1) > shard-doc-md
           })
           
-          ; ; Add default value if available
-          ; param-default | When(IsNotNone {
-          ;   = i
-          ;   [" (default: " i ")"] | String.Format | AppendTo(shard-doc-md)
-          ; })
+          // ; Add default value if available
+          // param-default | When(IsNotNone {
+          //   = i
+          //   [" (default: " i ")"] | String.Format | AppendTo(shard-doc-md)
+          // })
           
           "\n" | AppendTo(shard-doc-md)
         })
         "\n" | AppendTo(shard-doc-md)
       })
       
-      ; Append this shard's documentation to the main markdown
+      // Append this shard's documentation to the main markdown
       shard-doc-md | AppendTo(markdown-doc)
     }
   )
 })
 
-; Write enums too
+// Write enums too
 "# Enums reference\n\n" | AppendTo(markdown-doc)
 
 Shards.EnumTypes | ForEach({
@@ -242,7 +242,7 @@ Shards.EnumTypes | ForEach({
   )
 })
 
-; Write objects too
+// Write objects too
 "# Object types reference\n\n" | AppendTo(markdown-doc)
 
 Shards.ObjectTypes | ForEach({
@@ -266,27 +266,27 @@ Shards.ObjectTypes | ForEach({
   )
 })
 
-; Write to shards-reference.md
+// Write to shards-reference.md
 "shards-reference.md" | FS.Write(markdown-doc Overwrite: true)
 "" > markdown-doc
 
-; ; Write example code
-; @env("SHARDS_EXAMPLES_ROOT") | If(Is("") {
-;     Get(ext/shards-examples-root Default: "../../../shards/shards/tests/")
-;   } {
-;     Pass
-;   }
-; ) >= examples-root
+// ; Write example code
+// @env("SHARDS_EXAMPLES_ROOT") | If(Is("") {
+//     Get(ext/shards-examples-root Default: "../../../shards/shards/tests/")
+//   } {
+//     Pass
+//   }
+// ) >= examples-root
 
-; "# Shards Example Code\n\n" | AppendTo(markdown-doc)
-; examples-root | FS.Iterate(false) | ForEach({
-;   FS.Extension | When(Is(".shs") {
-;     ["## " ($0 | FS.Filename) "\n\n"] | String.Format | AppendTo(markdown-doc)
-;     "```shards\n" | AppendTo(markdown-doc)
-;     $0 | FS.Read | AppendTo(markdown-doc)
-;     "\n```\n" | AppendTo(markdown-doc)
-;   })
-; })
+// "# Shards Example Code\n\n" | AppendTo(markdown-doc)
+// examples-root | FS.Iterate(false) | ForEach({
+//   FS.Extension | When(Is(".shs") {
+//     ["## " ($0 | FS.Filename) "\n\n"] | String.Format | AppendTo(markdown-doc)
+//     "```shards\n" | AppendTo(markdown-doc)
+//     $0 | FS.Read | AppendTo(markdown-doc)
+//     "\n```\n" | AppendTo(markdown-doc)
+//   })
+// })
 
-; ; Write markdown to file
-; "shards-examples.md" | FS.Write(markdown-doc Overwrite: true)
+// ; Write markdown to file
+// "shards-examples.md" | FS.Write(markdown-doc Overwrite: true)

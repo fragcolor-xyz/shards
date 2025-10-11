@@ -30,7 +30,7 @@
         } Position: @f2(0 0) Order: Order::Background)
       })
       
-      ; The list of items to pick from
+      // The list of items to pick from
       UI.Area(Contents: {
         items | DoMany({
           ExpectTable = item
@@ -44,12 +44,12 @@
             }
             IsSelected: {false}
             Contents: {
-              ; UI.DragAndDrop({
+              // UI.DragAndDrop({
               "Hi" | UI.Label
               "Select " >= label
               item:name | ExpectString | AppendTo(label)
               UI.Button(label {"Hi" | Log})
-              ; })
+              // })
             }
           )
         })

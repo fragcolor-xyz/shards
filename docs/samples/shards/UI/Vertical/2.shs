@@ -1,10 +1,10 @@
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
   ui-draw-queue | GFX.ClearQueue
 
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       UI.Vertical(Centered: true Contents: {

@@ -1,6 +1,6 @@
-; This tests installing of scheme handlers using IPC
-; try opening the following link
-; shards-test://oL6V5L9EgaqHW5t2zOaR
+// This tests installing of scheme handlers using IPC
+// try opening the following link
+// shards-test://oL6V5L9EgaqHW5t2zOaR
 
 @template(scheme-cmd [] {
   Process.Exe >> scheme-args

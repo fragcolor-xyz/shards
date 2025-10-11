@@ -33,7 +33,7 @@
       }
     )
   })
-  ; Returned parameters from rendered texture above
+  // Returned parameters from rendered texture above
   {someTexture: out-texture}
 } Looped: true)
 
@@ -108,7 +108,7 @@
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
   })
 
-  ; Update view transform
+  // Update view transform
   view-transform | FreeCamera(FlySpeed: 10.0) > view-transform
 
   drawables | GFX.Draw(queue)

@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pte. Ltd
 
 @mesh(root-1)
 
@@ -63,7 +63,7 @@
 
 @wire(evolveme-2 {
   Once({
-    ; 0 >== niters ; global on purpose for testing
+    // 0 >== niters ; global on purpose for testing
     0 | Set(niters Global: true)
   })
   Math.Inc(niters)

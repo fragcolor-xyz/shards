@@ -1,7 +1,7 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2021 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2021 Fragcolor Pte. Ltd.
 
-@include("defs.shs") ; if macro
+@include("defs.shs") // if macro
 
 @define(test-device "true" IgnoreRedefined: true)
 

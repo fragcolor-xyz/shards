@@ -5,7 +5,7 @@
         GFX.DrawQueue >= ui-draw-queue
         GFX.UIPass(ui-draw-queue) >> render-steps
         
-        ; Add storage for dropped items
+        // Add storage for dropped items
         null | Expect(@type(Type::Any)) >= dropped-item
       })
       
@@ -33,16 +33,16 @@
             @template(toggle-sort-by [key] {
               Cond([
                 {sorted-by-key | Is(key) | And | reversed | Not} {
-                  ; Switch to reversed
+                  // Switch to reversed
                   true > reversed
                 }
                 {sorted-by-key | Is(key) | And | reversed} {
-                  ; Reset to default
+                  // Reset to default
                   "id" > sorted-by-key
                   false > reversed
                 }
                 {true} {
-                  ; Sort by this key
+                  // Sort by this key
                   key > sorted-by-key
                   false > reversed
                 }])
@@ -70,7 +70,7 @@
               Get(ss id Default: false)
             })
             
-            ; Count(int-range) ; Number of entries
+            // Count(int-range) ; Number of entries
             UI.ScrollArea(MaxHeight: 300.0 Contents: {
               int-range
               UI.Table(
@@ -140,7 +140,7 @@
             
             
             
-            ; Test table with all column settings
+            // Test table with all column settings
             UI.Space(20.0)
             4 | UI.Table(
               Resizable: true
@@ -190,7 +190,7 @@
                 }]
             )
             
-            ; Add drop box at bottom
+            // Add drop box at bottom
             UI.Space(20.0)
             UI.DragAndDrop({
                 UI.Frame(

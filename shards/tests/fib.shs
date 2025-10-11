@@ -1,8 +1,8 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2020 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2020 Fragcolor Pte. Ltd.
 
-; Not the best subject for shards at all
-; but still if competitive in this would be nice
+// Not the best subject for shards at all
+// but still if competitive in this would be nice
 
 @mesh(root)
 
@@ -18,7 +18,7 @@
   b
 })
 
-; we use this to test stack overflow protection
+// we use this to test stack overflow protection
 @wire(run {
   Profile({90 | Do(fib4)})
   Log("result")

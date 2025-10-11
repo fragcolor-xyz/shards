@@ -25,7 +25,7 @@
   Animation.Timer = time
   
   GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
-  ; Create render steps
+  // Create render steps
   GFX.Feature(
     Shaders: [{Name: "lighting"
                Stage: ProgrammableGraphicsStage::Fragment
@@ -62,7 +62,7 @@
   GFX.DrawQueue >= queue
   GFX.DrawablePass(Features: features Queue: queue) >> render-steps
   
-  ; Create view
+  // Create view
   {Position: @f3(0 0 5) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
   GFX.View(View: view-transform) >= view
   GFX.MainWindow(

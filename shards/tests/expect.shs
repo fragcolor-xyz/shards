@@ -1,6 +1,6 @@
 @mesh(root)
 
-; Using ExpectLike
+// Using ExpectLike
 @wire(test-expect-like {
   """ "Test" """ | FromJson | 
   ExpectLike("") |
@@ -22,7 +22,7 @@
     Math.MatIdentity | GFX.Drawable(Mesh: mesh) >> seq
   })
 
-  ; Use expect-like to pass the dynamic sequence to GFX.Draw
+  // Use expect-like to pass the dynamic sequence to GFX.Draw
   GFX.DrawQueue >= queue
   seq | ExpectLike(OutputOf: {Math.MatIdentity | GFX.Drawable(Mesh: mesh) >> seq-1 seq-1}) |
   GFX.Draw(queue)
@@ -31,7 +31,7 @@
 @schedule(root test-expect-like)
 @run(root) | Assert.Is(true)
 
-; Variation using Expect(@type(...))
+// Variation using Expect(@type(...))
 @wire(test-expect {
   """ "Test" """ | FromJson |
   Expect(@type(Type::String)) |
@@ -53,7 +53,7 @@
     Math.MatIdentity | GFX.Drawable(Mesh: mesh) >> seq
   })
 
-  ; Use expect-like to pass the dynamic sequence to GFX.Draw
+  // Use expect-like to pass the dynamic sequence to GFX.Draw
   GFX.DrawQueue >= queue
   seq | Expect(@type([GFX.Drawable])) |
   GFX.Draw(queue)

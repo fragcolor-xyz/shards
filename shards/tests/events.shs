@@ -28,7 +28,7 @@
 @run(main FPS: 20 Iterations: 100) | Assert.Is(true)
 
 @wire(quit {
-  Pause(0.0) | ; allow signal-receive to run first
+  Pause(0.0) | // allow signal-receive to run first
   Events.Emit("quit")
 })
 

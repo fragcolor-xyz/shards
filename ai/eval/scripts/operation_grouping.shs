@@ -1,39 +1,39 @@
-; Script to demonstrate operation grouping and evaluation order in Shards
+// Script to demonstrate operation grouping and evaluation order in Shards
 
-; Basic operations
+// Basic operations
 5 | Add(3) | Log("Simple addition")
 
-; Operations with grouping
+// Operations with grouping
 5 | Add((3 | Mul(2))) | Log("5 + (3*2)")
 5 | Mul(2) | Add(3) | Log("(5*2) + 3")
 
-; More complex grouping examples
+// More complex grouping examples
 10 | Div((2 | Add(3))) | Log("10 / (2+3)")
 (10 | Div(2)) | Add(3) | Log("(10/2) + 3")
 
-; With variables
+// With variables
 2 = base
 3 = exponent
 
-; Different groupings change the result
+// Different groupings change the result
 base | Math.Pow(exponent) | Mul(2) | Log("(base^exponent) * 2")
 base | Math.Pow((exponent | Mul(2))) | Log("base^(exponent*2)")
 
-; Nested grouping
+// Nested grouping
 10 | Add((5 | Mul((2 | Add(1))))) | Log("10 + (5 * (2 + 1))")
 
-; Evaluation order in mathematical expressions
+// Evaluation order in mathematical expressions
 5 | Add(3) | Mul(2) | Log("(5 + 3) * 2")
 5 | Add((3 | Mul(2))) | Log("5 + (3 * 2)")
 
-; Using grouping with string operations
+// Using grouping with string operations
 "Hello" = greeting
 " " = space
 "World" = name
 
 [greeting space name] | String.Join | Log("Simple string join")
 
-; Return examples
+// Return examples
 {examples: {
   no_grouping: "5 | Add(3) | Mul(2) = (5+3)*2 = 16",
   with_grouping: "5 | Add((3 | Mul(2))) = 5+(3*2) = 11",

@@ -1,16 +1,16 @@
-  ; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
+  // SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2022 Fragcolor Pte. Ltd.
 
-; Notes:
-;   This file contains unit tests for the UI shards.
-;   It is not meant to be realistic. For such samples, look at egui-demo.shs.
+// Notes:
+//   This file contains unit tests for the UI shards.
+//   It is not meant to be realistic. For such samples, look at egui-demo.shs.
 
 @mesh(main)
 @define(timestep #(1.0 | Math.Divide(60.0)))
 @define(duration 60)
 @define(input "**input**")
 
-; context
+// context
 @wire(context-test {
   GFX.MainWindow(
     Contents: {
@@ -21,7 +21,7 @@
 
       @input |
       UI({"hello" = hello}) | UI.Render(ui-draw-queue) |
-      ; exposed variable
+      // exposed variable
       hello | ExpectString
 
       GFX.Render(Steps: render-steps)
@@ -32,7 +32,7 @@
 @schedule(main context-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; window
+// window
 @wire(window-test {
   GFX.MainWindow(
     Contents: {
@@ -45,11 +45,11 @@
         @input |
         UI.Window(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
-        ; input passthrough
+        // input passthrough
         Assert.Is(@input Break: true)
       }) | UI.Render(ui-draw-queue)
 
@@ -61,7 +61,7 @@
 @schedule(main window-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; scope
+// scope
 @wire(scope-test {
   GFX.MainWindow(
     Contents: {
@@ -76,11 +76,11 @@
             @input |
             UI.Scope(
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -94,7 +94,7 @@
 @schedule(main scope-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; area
+// area
 @wire(area-test {
   GFX.MainWindow(
     Contents: {
@@ -108,7 +108,7 @@
         UI.Area(
           Anchor: Anchor::TopLeft
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "TopLeft" | UI.Label
           }
@@ -117,7 +117,7 @@
         UI.Area(
           Anchor: Anchor::Top
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "Top" | UI.Label
           }
@@ -126,7 +126,7 @@
         UI.Area(
           Anchor: Anchor::TopRight
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "TopRight" | UI.Label(Wrap: TextWrap::Extend)
           }
@@ -135,7 +135,7 @@
         UI.Area(
           Anchor: Anchor::Left
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "Left" | UI.Label
           }
@@ -144,7 +144,7 @@
         UI.Area(
           Anchor: Anchor::Center
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "Center" | UI.Label
           }
@@ -153,7 +153,7 @@
         UI.Area(
           Anchor: Anchor::Right
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "Right" | UI.Label
           }
@@ -162,7 +162,7 @@
         UI.Area(
           Anchor: Anchor::BottomLeft
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "BottomLeft" | UI.Label
           }
@@ -171,7 +171,7 @@
         UI.Area(
           Anchor: Anchor::Bottom
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "Bottom" | UI.Label
           }
@@ -180,12 +180,12 @@
         UI.Area(
           Anchor: Anchor::BottomRight
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
             "BottomRight" | UI.Label(Wrap: TextWrap::Extend)
           }
         ) |
-        ; content passthrough
+        // content passthrough
         Assert.Is("BottomRight" Break: true)
       }) | UI.Render(ui-draw-queue)
 
@@ -197,7 +197,7 @@
 @schedule(main area-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; panels
+// panels
 @wire(panels-test {
   GFX.MainWindow(
     Contents: {
@@ -210,35 +210,35 @@
         @input |
         UI.TopPanel(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
         UI.LeftPanel(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
         UI.RightPanel(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
         UI.BottomPanel(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
         UI.CentralPanel(
           Contents: {
-            ; input pass into
+            // input pass into
             Assert.Is(@input Break: true)
           }
         ) |
-        ; input passthrough
+        // input passthrough
         Assert.Is(@input Break: true)
       }) | UI.Render(ui-draw-queue)
 
@@ -250,7 +250,7 @@
 @schedule(main panels-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; collapsing header
+// collapsing header
 @wire(collapsing-header-test {
   GFX.MainWindow(
     Contents: {
@@ -267,11 +267,11 @@
               Heading: UI.Button("Heading")
               DefaultOpen: true
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -285,7 +285,7 @@
 @schedule(main collapsing-header-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; columns
+// columns
 @wire(columns-header-test {
   GFX.MainWindow(
     Contents: {
@@ -299,14 +299,14 @@
           Contents: {
             @input |
             UI.Columns(
-              [{ ; input pass into
+              [{ // input pass into
                  Assert.Is(@input Break: true)
                  "Left" | UI.Label}
-               { ; input pass into
+               { // input pass into
                  Assert.Is(@input Break: true)
                  "Right" | UI.Label}]
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -320,7 +320,7 @@
 @schedule(main columns-header-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; disable
+// disable
 @wire(disable-test {
   GFX.MainWindow(
     Contents: {
@@ -336,11 +336,11 @@
             UI.Disable(
               Disable: true
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -354,7 +354,7 @@
 @schedule(main disable-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; frame
+// frame
 @wire(frame-test {
   GFX.MainWindow(
     Contents: {
@@ -372,11 +372,11 @@
               FillColor: @color(32 32 128 255)
               StrokeColor: @color(255 64 255 255) StrokeWidth: 8.0
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -390,7 +390,7 @@
 @schedule(main frame-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; group
+// group
 @wire(group-test {
   GFX.MainWindow(
     Contents: {
@@ -405,11 +405,11 @@
             @input |
             UI.Group(
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -423,7 +423,7 @@
 @schedule(main group-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; indent
+// indent
 @wire(indent-test {
   GFX.MainWindow(
     Contents: {
@@ -438,11 +438,11 @@
             @input |
             UI.Indent(
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -456,7 +456,7 @@
 @schedule(main indent-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; horizontal layout
+// horizontal layout
 @wire(horizontal-test {
   GFX.MainWindow(
     Contents: {
@@ -471,11 +471,11 @@
             @input |
             UI.Horizontal(
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -489,7 +489,7 @@
 @schedule(main horizontal-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; scroll area
+// scroll area
 @wire(scroll-area-test {
   GFX.MainWindow(
     Contents: {
@@ -506,11 +506,11 @@
             UI.ScrollArea(
               Horizontal: true Vertical: true AlwaysShow: true
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -524,7 +524,7 @@
 @schedule(main scroll-area-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; vertical layout
+// vertical layout
 @wire(vertical-test {
   GFX.MainWindow(
     Contents: {
@@ -539,11 +539,11 @@
             @input |
             UI.Vertical(
               Contents: {
-                ; input pass into
+                // input pass into
                 Assert.Is(@input Break: true)
               }
             ) |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )
@@ -557,7 +557,7 @@
 @schedule(main vertical-test)
 @run(main FPS: 60 Iterations: 60) | Assert.Is(true)
 
-; separator
+// separator
 @wire(separator-test {
   GFX.MainWindow(
     Contents: {
@@ -571,7 +571,7 @@
           Contents: {
             @input |
             UI.Separator |
-            ; input passthrough
+            // input passthrough
             Assert.Is(@input Break: true)
           }
         )

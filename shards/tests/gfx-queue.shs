@@ -19,16 +19,16 @@
     GFX.DrawQueue >= queue-0
     GFX.DrawQueue >= queue-1
 
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.Feature(State: {DepthWrite: false Blend: {Color: @blendAlphaPremul Alpha: @blendOne}}) >> features
 
-    ; Red cube should be draw on top of cyan cube
+    // Red cube should be draw on top of cyan cube
     GFX.DrawablePass(Features: features Queue: queue-1) >> render-steps
     GFX.DrawablePass(Features: features Queue: queue-0) >> render-steps
 
-    ; Create view
+    // Create view
     {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })

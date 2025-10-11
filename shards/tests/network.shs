@@ -1,5 +1,5 @@
-; ; SPDX-License-Identifier: BSD-3-Clause
-; ; Copyright © 2023 Fragcolor
+// ; SPDX-License-Identifier: BSD-3-Clause
+// ; Copyright © 2023 Fragcolor
 
 @define(random1 #(RandomBytes(0xFFFF)))
 @define(random2 #(RandomBytes(0xFFFFF)))

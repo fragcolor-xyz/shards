@@ -3,13 +3,13 @@ prompt: """How do I check if something is none?"""
 
 solution: """variable1
 When(IsNone {
-Pass ;Do Something
+Pass //Do Something
 })
 """
 
 explicit: """Get(Name: variable1)
 When(Predicate: IsNone Action: {
-Pass ;Do Something
+Pass //Do Something
 } Passthrough: true)
 """
 

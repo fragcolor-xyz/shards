@@ -84,17 +84,17 @@ produces a Type descriptor object in Shards — basically a value that describes
 
 === "@type example"
     ```shards
-      Sequence(Name: int-seq Type: @type([Type::Int])) ;; Creates a sequence with the specified type
+      Sequence(Name: int-seq Type: @type([Type::Int])) // Creates a sequence with the specified type
 
       {name: "hello" id: @i16(0)} >= temp-table
 
       temp-table
-      Expect(Type: @type({name: Type::String id: Type::Int16})) ;; Verifies the type of the table
+      Expect(Type: @type({name: Type::String id: Type::Int16})) // Verifies the type of the table
 
       @mesh(foo)
-      Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log ;; Verifies the type of the Object
+      Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log // Verifies the type of the Object
 
-      @type(GFX.BuiltinMesh InputType: true) ;; Generates the type of the input of GFX.BuiltinMesh
+      @type(GFX.BuiltinMesh InputType: true) // Generates the type of the input of GFX.BuiltinMesh
     ```
 
 --8<-- "includes/license.md"

@@ -1,10 +1,10 @@
-; Simple button
+// Simple button
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
   
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       UI.Button(Label: "Click me!" Action: {

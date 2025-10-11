@@ -60,15 +60,15 @@
 
     GFX.DrawQueue >= queue
 
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
-    ; Static material
+    // Static material
     GFX.Material(Params: {baseColor: @f4(1 0 1 1)}) >= magenta-material
 
-    ; Create view
+    // Create view
     {Position: @f3(0 15 10) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
     GFX.View(View: view-transform) >= view
   })

@@ -86,13 +86,13 @@
 
     Math.MatIdentity | GFX.glTF(Path: "data/mascot.glb") = gltf-template
 
-    ; Render steps
+    // Render steps
     GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) >> features
     @lighting-feature() >> features
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
-    ; Create view
+    // Create view
     0.0 | Do(get-view-transform) >= view-transform
     GFX.View(View: view-transform) >= view
   })

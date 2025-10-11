@@ -29,7 +29,7 @@
 
 @define(to-j-from-j {ToJson | ToHex})
 
-@include("defs.shs") ; if macro
+@include("defs.shs") // if macro
 
 @macro(for [from to code] {
   Sequence(pipelines)

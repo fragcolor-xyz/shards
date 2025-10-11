@@ -5,8 +5,8 @@
   Take(1) |
   Assert.Is(2.0 true) |
   Log("Y Component")
-  ; This should fail
-  ; vec | Take(4)
+  // This should fail
+  // vec | Take(4)
   vec | Take([2 1 0]) |
   Assert.Is(@f3(3 2 1) true) |
   Log("YXZ Swizzle")

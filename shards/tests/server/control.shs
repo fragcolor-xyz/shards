@@ -7,7 +7,7 @@
 [@host "/control"] | String.Join = control-url
 {"Content-Type": "application/json"} = hdrs
 @action | Match([
-  ; Command to run a given shards script
+  // Command to run a given shards script
   "run" {
     {action: @action data: @data}
     ToJson | Http.Put(URL: control-url Headers: hdrs)
@@ -16,7 +16,7 @@
     {action: @action data: ""}
     ToJson | Http.Put(URL: control-url Headers: hdrs)
   }
-  ; Command to preload a given folder, which is required for it to be available in the file system
+  // Command to preload a given folder, which is required for it to be available in the file system
   "preload-files" {
     @data ExpectString | String.Split(",") ExpectSeq = paths
     {paths: paths exclude: @exclude}

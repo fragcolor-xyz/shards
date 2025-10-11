@@ -1,6 +1,6 @@
 @define(with-explantion true prompt-type @type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
 @define(with-explantion false prompt-type @type({"instruction": Type::String "code": Type::String}))
-; @define(prompt-type @<type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
+// @define(prompt-type @<type({"instruction": Type::String "code": Type::String "explanation": Type::String}))
 
 @wire(prepare-csv {
   [] >= rows
@@ -23,7 +23,7 @@
     Shards.Read(Json: true)
     FromJson (Pure: true)
 
-    ;; Parsing the output table and slowly taking the items that I need
+    // Parsing the output table and slowly taking the items that I need
     ExpectTable
     Take("sequence")
     ExpectTable
@@ -47,70 +47,70 @@
       ExpectTable
       Take("Table")
       ExpectSeq
-      ;; It is at this point we take  different things. Take(0) for prompt: , Take(1) for solution:, Take(2) for explicit:, Take(3) for explanation:, Take(4) for tag:
-      {Take(0) ;; Taking and Setting User Prompt
+      // It is at this point we take  different things. Take(0) for prompt: , Take(1) for solution:, Take(2) for explicit:, Take(3) for explanation:, Take(4) for tag:
+      {Take(0) // Taking and Setting User Prompt
       ExpectSeq
       Take(1)
       ExpectTable
       Take("String")
       ExpectString
       Update(temp-chat "instruction") 
-      ;temp-chat
-      ;Log("result")
+      //temp-chat
+      //Log("result")
       }
 
-      {Take(1) ;; Taking solution: and appending it to ai-assistant-answer
+      {Take(1) // Taking solution: and appending it to ai-assistant-answer
       ExpectSeq
       Take(1)
       ExpectTable
       Take("String")
       ExpectString >= solution
       Update(temp-chat "code") 
-      ; AppendTo(ai-assistant-answer)
+      // AppendTo(ai-assistant-answer)
 
-      ;ai-assistant-answer
-      ;Log("answer")
+      //ai-assistant-answer
+      //Log("answer")
       }
-      ; {Take(2) ;; Taking explicit: and appending it to ai-assistant-answer
-      ; ExpectSeq
-      ; Take(1)
-      ; ExpectTable
-      ; Take("String")
-      ; ToString
-      ; ExpectString >= explicit 
-      ; ; If(IsNot(solution){
-      ; ;   AppendTo(ai-assistant-answer)
-      ; ; }Pass)
-      ; AppendTo(ai-assistant-answer)
-      ; ; ai-assistant-answer
-      ; ; Log("answer")
-      ; }
-      When(with-explantion | IsTrue{Take(3) ;; Taking explanation: and appending it to ai-assistant-answer
+      // {Take(2) ;; Taking explicit: and appending it to ai-assistant-answer
+      // ExpectSeq
+      // Take(1)
+      // ExpectTable
+      // Take("String")
+      // ToString
+      // ExpectString >= explicit 
+      // ; If(IsNot(solution){
+      // ;   AppendTo(ai-assistant-answer)
+      // ; }Pass)
+      // AppendTo(ai-assistant-answer)
+      // ; ai-assistant-answer
+      // ; Log("answer")
+      // }
+      When(with-explantion | IsTrue{Take(3) // Taking explanation: and appending it to ai-assistant-answer
         ExpectSeq
         Take(1)
         ExpectTable
         Take("String")
         ExpectString
         Update(temp-chat "explanation") 
-        ; AppendTo(ai-assistant-answer)
-        ; ai-assistant-answer
-        ; Log("answer")
+        // AppendTo(ai-assistant-answer)
+        // ai-assistant-answer
+        // Log("answer")
       })
       
 
-      ; {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
-      ; ExpectSeq
-      ; Take(1)
-      ; ExpectTable
-      ; Take("String")
-      ; ExpectString
-      ; AppendTo(ai-assistant-answer)
-      ; ; ai-assistant-answer
-      ; ; Log("answer")
-      ; }
+      // {Take(4) ;; Taking tag: and appending it to ai-assistant-answer
+      // ExpectSeq
+      // Take(1)
+      // ExpectTable
+      // Take("String")
+      // ExpectString
+      // AppendTo(ai-assistant-answer)
+      // ; ai-assistant-answer
+      // ; Log("answer")
+      // }
 
-      ; ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
-      ; Update(temp-chat "output")
+      // ai-assistant-answer ;; updating temp-chat table's assistant: key with ai-assistant-answer
+      // Update(temp-chat "output")
       temp-chat >> temp-prompt-seq
 
       temp-prompt-seq

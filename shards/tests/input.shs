@@ -28,15 +28,15 @@
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.DrawablePass(Features: features Queue: queue) >> render-steps
 
-    ; UI Setup
+    // UI Setup
     GFX.DrawQueue >= ui-draw-queue
     GFX.UIPass(ui-draw-queue) >> render-steps
 
-    ; Initial view
+    // Initial view
     {Position: @f3(0 0 20) Target: @f3(0 0 0)} | Math.LookAt >= view-transform
   })
 
-  ; Poll inputs
+  // Poll inputs
   GFX.MainWindow(
     Title: "Shards Window" Width: 1280 Height: 720
     DetachRenderer: true
@@ -68,7 +68,7 @@
     } Name: "Gizmos" Priority: 1
   )
 
-  ; Input test code
+  // Input test code
   Inputs.Detached(window-ctx {
       false >= down
       Inputs.KeyDown("W" Action: {
@@ -111,11 +111,11 @@
       } Scale: ui-scale-factor)
     } Name: "UI" Priority: 10)
 
-    ; Output of this is the output of UI but as a sequence of all input frames that happened until now
-    ; Log("UI data this frame")
+    // Output of this is the output of UI but as a sequence of all input frames that happened until now
+    // Log("UI data this frame")
     UI.Render(ui-draw-queue)
 
-    ; Debug UI & Graphics
+    // Debug UI & Graphics
     GFX.Renderer(
       Window: window-ctx
       Contents: {

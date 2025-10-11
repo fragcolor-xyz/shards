@@ -59,7 +59,7 @@
 
 @wire(test-wire {
   Once({
-    ; Create render steps
+    // Create render steps
     GFX.BuiltinFeature(BuiltinFeatureId::Transform) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::BaseColor) >> features
     GFX.BuiltinFeature(BuiltinFeatureId::AlphaBlend) >> features
@@ -76,7 +76,7 @@
     0 >= refresh-trigger
     128 >= num-wires
     
-    ; List fonts in the data/fonts directory
+    // List fonts in the data/fonts directory
     "data/fonts/pixel" = base-path
     base-path | FS.Iterate(Recursive: true) >= raw-fonts
     Remove(From: raw-fonts Predicate: {
@@ -123,7 +123,7 @@
       
       @f2(width height) | Mul(-0.5) >= view-offset
       
-      ; Center the view so there's no gap between the at the bottom-right
+      // Center the view so there's no gap between the at the bottom-right
       width | Math.Mod((space-size-x | ToFloat)) | Mul(0.5) = offset-x
       height | Math.Mod((space-size-y | ToFloat)) | Mul(0.5) = offset-y
       @f2(offset-x offset-y) | Add(view-offset) > view-offset
@@ -136,7 +136,7 @@
     
     GFX.View(View: view-transform OrthographicSize: @f2(1.0 -1.0) OrthographicSizeType: OrthographicSizeType::PixelScale) = view
     
-    ; UI for font selection and size
+    // UI for font selection and size
     UI({
       UI.Window(Contents: {
         "Font:" | UI.Label
@@ -150,7 +150,7 @@
       } Position: @f2(100 300))
     }) | UI.Render(ui-draw-queue)
     
-    ; Render the text into a mesh buffer
+    // Render the text into a mesh buffer
     GFX.DynMesh = dmesh
     num-wires | Memoize({
       Sequence(test-seq)
@@ -175,7 +175,7 @@
       )
     })
     
-    ; Draw the generated mesh
+    // Draw the generated mesh
     dmesh | GFX.DynToMesh | DoMany({
       {Take("mesh") = mesh}
       {Take("texture") = texture}
@@ -188,4 +188,4 @@
 @mesh(root)
 @schedule(root test-wire)
 @run(root FPS: 60 Iterations: 100) | Assert.Is(true)
-; @run(root FPS: 60) | Assert.Is(true)
+// @run(root FPS: 60) | Assert.Is(true)

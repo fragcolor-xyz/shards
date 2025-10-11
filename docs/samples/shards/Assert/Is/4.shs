@@ -1,5 +1,5 @@
-; :Break = `false`, assertion false
-; => log assertion error but dont abort program
+// :Break = `false`, assertion false
+// => log assertion error but dont abort program
 7 | Maybe({
   Assert.Is(8 Break: false)
 })

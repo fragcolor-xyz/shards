@@ -1,5 +1,5 @@
-; SPDX-License-Identifier: BSD-3-Clause
-; Copyright © 2022 Fragcolor Pte. Ltd.
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2022 Fragcolor Pte. Ltd.
 
 @define(lorem_ipsum 
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
@@ -11,7 +11,7 @@
     Contents: {
       UI.TopPanel(
         Contents: {
-          ; input was passed down the UI hierarchy
+          // input was passed down the UI hierarchy
           Assert.Is(@input_value Break: true)
           "Top Window Panel" | UI.Label
         }
@@ -43,7 +43,7 @@
 })
 
 @wire(ui-wire {
-  @input_value ; some input
+  @input_value // some input
   GFX.MainWindow(
     Title: "egui Shards Example" Width: 1280 Height: 768
     Contents: {

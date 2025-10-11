@@ -1,10 +1,10 @@
-; Simple combo
+// Simple combo
 GFX.MainWindow(Contents: {
-  ; Setup
+  // Setup
   GFX.DrawQueue = ui-draw-queue
   GFX.UIPass(ui-draw-queue) >> render-steps
 
-  ; UI
+  // UI
   UI({
     UI.CentralPanel({
       ["α Α" "ω Ω"] | UI.Combo(

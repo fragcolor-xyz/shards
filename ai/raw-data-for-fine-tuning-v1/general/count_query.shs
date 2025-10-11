@@ -6,7 +6,7 @@ solution: """Count(sequence-to-count)
 
 explicit: """Count(
 Name: sequence-to-count
-; Key: key
+// Key: key
 )
 """
 
