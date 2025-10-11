@@ -665,13 +665,21 @@ struct MarkdownFromHTMLShard {
   #[shard_required]
   required: ExposedTypes,
 
+  #[shard_param("SkipTags", "HTML tags to skip during conversion", [common_type::strings, common_type::strings_var])]
+  skip_tags: ParamVar,
+
   output: ClonedVar,
 }
 
 impl Default for MarkdownFromHTMLShard {
   fn default() -> Self {
+    let mut default_tags = AutoSeqVar::new();
+    default_tags.0.push(&Var::ephemeral_string("script"));
+    default_tags.0.push(&Var::ephemeral_string("style"));
+
     Self {
       required: ExposedTypes::new(),
+      skip_tags: ParamVar::new(default_tags.0 .0),
       output: ClonedVar::default(),
     }
   }
@@ -705,8 +713,18 @@ impl Shard for MarkdownFromHTMLShard {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let html: &str = input.try_into()?;
 
+    // Extract skip_tags parameter
+    use shards::types::SeqVar;
+    let tags_var = self.skip_tags.get();
+    let tags_seq: SeqVar = tags_var.as_ref().try_into()?;
+    let mut skip_tags_vec = Vec::new();
+    for tag_var in tags_seq.iter() {
+      let tag: &str = tag_var.as_ref().try_into()?;
+      skip_tags_vec.push(tag);
+    }
+
     let converter = HtmlToMarkdown::builder()
-      .skip_tags(vec!["script", "style"])
+      .skip_tags(skip_tags_vec)
       .build();
 
     match converter.convert(html) {

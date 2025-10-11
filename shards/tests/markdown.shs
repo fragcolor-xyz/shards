@@ -7,7 +7,8 @@ Repeat({
   When(Is([]) Return)
 })
 
-none | Http.Get("https://github.com/fragcolor-xyz/shards") | Markdown.FromHTML = md
+none | Http.Get("https://github.com/fragcolor-xyz/shards") | 
+Markdown.FromHTML(SkipTags: ["script" "style" "nav" "header" "fooder" "aside" "noscript" "iframe"]) = md
 
 "md.md" | FS.Write(md Overwrite: true)
 
