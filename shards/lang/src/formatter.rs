@@ -172,23 +172,26 @@ impl<'a> FormatterVisitor<'a> {
     let mut line_comment_start: Option<usize> = None;
     let mut block_comment_start: Option<usize> = None;
     let interpolated = &self.input[from..until];
-    let chars: Vec<char> = interpolated.chars().collect();
+    let chars: Vec<(usize, char)> = interpolated.char_indices().collect();
 
     let mut i = 0;
     while i < chars.len() {
-      let c = chars[i];
-      let pos = i + from;
+      let (byte_idx, c) = chars[i];
+      let pos = byte_idx + from;
 
       // Check if we're in a block comment
       if block_comment_start.is_some() {
         // Look for */
-        if c == '*' && i + 1 < chars.len() && chars[i + 1] == '/' {
-          let start = block_comment_start.unwrap();
-          let comment = &self.input[start..pos];
-          us.lines.push(UserLine::BlockComment(comment.to_string()));
-          block_comment_start = None;
-          i += 2; // Skip */
-          continue;
+        if c == '*' && i + 1 < chars.len() {
+          let (_, next_char) = chars[i + 1];
+          if next_char == '/' {
+            let start = block_comment_start.unwrap();
+            let comment = &self.input[start..pos];
+            us.lines.push(UserLine::BlockComment(comment.to_string()));
+            block_comment_start = None;
+            i += 2; // Skip */
+            continue;
+          }
         }
         i += 1;
         continue;
@@ -196,17 +199,20 @@ impl<'a> FormatterVisitor<'a> {
 
       // Check for line comment start (// or ;)
       if line_comment_start.is_none() {
-        if c == '/' && i + 1 < chars.len() && chars[i + 1] == '/' {
-          line_comment_start = Some(pos + 2);
-          i += 2;
-          continue;
+        if c == '/' && i + 1 < chars.len() {
+          let (next_byte_idx, next_char) = chars[i + 1];
+          if next_char == '/' {
+            line_comment_start = Some(next_byte_idx + from + 1);
+            i += 2;
+            continue;
+          } else if next_char == '*' {
+            block_comment_start = Some(next_byte_idx + from + 1);
+            i += 2;
+            continue;
+          }
         } else if c == ';' {
-          line_comment_start = Some(pos + 1);
+          line_comment_start = Some(pos + c.len_utf8());
           i += 1;
-          continue;
-        } else if c == '/' && i + 1 < chars.len() && chars[i + 1] == '*' {
-          block_comment_start = Some(pos + 2);
-          i += 2;
           continue;
         }
       }
