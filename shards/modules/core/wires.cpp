@@ -1376,14 +1376,14 @@ struct ParallelBase : public CapturingSpawners {
 
   struct Composer {
     ParallelBase &server;
-    bool onWorkerThread = true;
+    // bool onWorkerThread = true;
 
     void compose(SHWire *wire, SHMesh *mesh, bool recycling) {
       if (recycling)
         return;
 
       SHInstanceData data{};
-      data.onWorkerThread = onWorkerThread;
+      // data.onWorkerThread = onWorkerThread;
       data.inputType = server._inputType;
       if (!wire->pure) {
         data.shared = server._sharedCopy;
@@ -1546,7 +1546,7 @@ struct ParallelBase : public CapturingSpawners {
 
       bool success = true;
       cref->mesh->schedule(cref->wire, getInput(input, idx), false); // don't compose
-      cref->wire->context->onWorkerThread = true;
+      // cref->wire->context->onWorkerThread = true;
       while (!cref->mesh->empty()) {
         if (!cref->mesh->tick() || (_policy == WaitUntil::FirstSuccess && anySuccess)) {
           success = false;
