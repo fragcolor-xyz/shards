@@ -1249,21 +1249,23 @@ SHComposeResult getComposeError(shards::CompositionContext &privateContext) {
 
 SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept {
   shards::CompositionContext privateContext;
-  data.privateContext = &privateContext;
+  if (!data.privateContext)
+    data.privateContext = &privateContext;
   try {
     return shards::composeWire(wire, data);
   } catch (const std::exception &e) {
-    return getComposeError(privateContext);
+    return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
   }
 }
 
 SHComposeResult composeShardsNoExcept(const Shards wire, SHInstanceData &data) noexcept {
   shards::CompositionContext privateContext;
-  data.privateContext = &privateContext;
+  if (!data.privateContext)
+    data.privateContext = &privateContext;
   try {
     return shards::composeWire(wire, data);
   } catch (const std::exception &e) {
-    return getComposeError(privateContext);
+    return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
   }
 }
 
@@ -1299,18 +1301,18 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
     data.privateContext = &ownedContext.value();
   }
 
-  try {
-    CompositionContext *context{reinterpret_cast<CompositionContext *>(data.privateContext)};
-    context->inherited.pushLayer(fromWire && data.wire->pure); // if pure, prevent inherited vars from being visible
-    DEFER(context->inherited.popLayer());
-    InternalCompositionContext ctx{context->tempAllocator};
-    ctx.sharedContext = context;
-    ctx.originalInputType = data.inputType;
-    ctx.previousOutputType = data.inputType;
-    ctx.wire = data.wire;
-    ctx.onWorkerThread = data.onWorkerThread;
-    ctx.fullRequired = reinterpret_cast<decltype(InternalCompositionContext::fullRequired)>(data.requiredVariables);
+  CompositionContext *context{reinterpret_cast<CompositionContext *>(data.privateContext)};
+  context->inherited.pushLayer(fromWire && data.wire->pure); // if pure, prevent inherited vars from being visible
+  DEFER(context->inherited.popLayer());
+  InternalCompositionContext ctx{context->tempAllocator};
+  ctx.sharedContext = context;
+  ctx.originalInputType = data.inputType;
+  ctx.previousOutputType = data.inputType;
+  ctx.wire = data.wire;
+  ctx.onWorkerThread = data.onWorkerThread;
+  ctx.fullRequired = reinterpret_cast<decltype(InternalCompositionContext::fullRequired)>(data.requiredVariables);
 
+  try {
     try {
       // add externally added variables
       if (ctx.wire) {
@@ -2619,8 +2621,7 @@ void stringGrow(SHStringPayload *str, uint32_t newCap) {
   }
 }
 void stringFree(SHStringPayload *str) { arrayFree(*str); }
-}
-; // namespace shards
+}; // namespace shards
 
 extern "C" void shards_install_signal_handlers() { installSignalHandlers(); }
 
