@@ -215,7 +215,7 @@ struct SHContext {
   constexpr bool failed() const { return state == SHWireState::Error; }
 
   static inline std::string NoError{};
-  constexpr const std::string& getErrorMessage() { 
+  const std::string& getErrorMessage() { 
     // Top from stack
     if(errorStack.size() > 0) {
       return errorStack.front().message;
