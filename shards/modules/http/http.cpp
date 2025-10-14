@@ -829,6 +829,8 @@ struct Server {
     }
   }
 
+  // Threading: All _pendingAcceptPeers access is safe because activate() runs the IO poll
+  // on the same thread, ensuring all async callbacks execute on the same thread as cleanup.
   std::unordered_set<Peer *> _pendingAcceptPeers;
 
   // "Loop" forever accepting new connections.
@@ -944,6 +946,16 @@ struct Server {
     if (_pool)
       _pool->stopAll();
 
+    // Close acceptor first to stop accepting new connections
+    // This cancels any pending accept operations before we clean up the peers
+    if (_acceptor) {
+      beast::error_code ec;
+      if (_acceptor->close(ec)) {
+        SHLOG_ERROR("Error closing acceptor: {}", ec.message());
+      }
+      _acceptor.reset();
+    }
+
     // Clean up pending accept peers
     for (auto peer : _pendingAcceptPeers) {
       // Clean up injected variables
@@ -954,16 +966,6 @@ struct Server {
       _pool->release(peer);
     }
     _pendingAcceptPeers.clear();
-
-    // Close acceptor first to stop accepting new connections
-    // Do this here, as it should cancel any pending accept operations
-    if (_acceptor) {
-      beast::error_code ec;
-      if (_acceptor->close(ec)) {
-        SHLOG_ERROR("Error closing acceptor: {}", ec.message());
-      }
-      _acceptor.reset();
-    }
 
     // Cleanup captured variables
     for (auto &v : _vars) {
