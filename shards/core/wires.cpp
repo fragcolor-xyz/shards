@@ -34,7 +34,7 @@ void SHWire::destroy() {
   // find dangling variables, notice but do not destroy
   for (auto var : variables) {
     if (var.second.refcount > 0) {
-      SHLOG_ERROR("Found a dangling variable: {}, wire: {}", var.first, name);
+      SHLOG_ERROR("Found a dangling variable: {}, wire: {} (on destroy)", var.first, name);
     }
   }
 
@@ -133,7 +133,7 @@ void SHWire::cleanup(bool force) {
     // Also clear all variables reporting dangling ones
     for (auto var : variables) {
       if (var.second.refcount > 0) {
-        SHLOG_ERROR("Found a dangling variable: {} in wire: {}", var.first, name);
+        SHLOG_ERROR("Found a dangling variable: {} in wire: {} (on cleanup)", var.first, name);
       }
     }
     variables.clear();

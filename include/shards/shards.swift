@@ -2262,7 +2262,13 @@ func registerObjectType<T>(_: T.Type, vendor: Int32, type: Int32, info: SHObject
     return ObjectInfo(info: info, vendor: vendor, type: type)
 }
 
-class Shards {
+enum Shards {
+    static func setRootPath(_ path: String) {
+        path.withCString { cString in
+            G.Core.pointee.setRootPath(cString)
+        }
+    }
+    
     static func log(_ message: String) {
         message.withCString { cString in
             var shString = SHStringWithLen()
