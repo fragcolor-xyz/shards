@@ -364,7 +364,7 @@ void registerObjectType(int32_t vendorId, int32_t typeId, SHObjectInfo info) {
     GetGlobals().ObjectTypesRegisterByName.emplace(info.name, id);
   } else {
     GetGlobals().ObjectTypesRegisterByName[info.name] = id;
-    SHLOG_WARNING("Overriding enum type by name: {}", typeName);
+    SHLOG_WARNING("Overriding object type by name: {}", typeName);
   }
 
   for (auto &pobs : GetGlobals().Observers) {
