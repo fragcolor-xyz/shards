@@ -1267,7 +1267,7 @@ class ShardsVar {
         // Compose the shards
         composeResult = G.Core.pointee.composeShards(nativeShards, data)
         if composeResult.failed {
-            return .failure(ShardError(message: composeResult.failureMessage.string))
+            return .failure(ShardError(message: composeResult.error.string, errorStackTrace: composeResult.error.stackTrace.string))
         }
 
         requiredVariables = .init()
@@ -1335,9 +1335,11 @@ public typealias ShardPtr = UnsafeMutablePointer<Shard>?
 
 public final class ShardError: Error {
     public var message: String
+    public var errorStackTrace: String
 
-    init(message: String) {
+    init(message: String, errorStackTrace: String = "") {
         self.message = message
+        self.errorStackTrace = errorStackTrace
     }
 }
 
