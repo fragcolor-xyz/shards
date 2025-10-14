@@ -2050,7 +2050,7 @@ struct DoMany : public TryMany {
   }
 
   SHTypeInfo compose(const SHInstanceData &data) {
-    _composer.onWorkerThread = false;
+    // _composer.onWorkerThread = false;
 
     WireBase::resolveWire();
 
