@@ -608,7 +608,6 @@ fn execute_seq(
       )
     })
     .unwrap();
-    shlog!("Failed: {}", msg);
     Err("Failed to execute file")
   } else {
     Ok(())

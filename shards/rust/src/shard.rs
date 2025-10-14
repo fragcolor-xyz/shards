@@ -42,7 +42,7 @@ use std::os::raw::c_char;
 
 /// A constant error value that can be used when a static error message is not needed,
 /// You should push a dynamic error message using `push_error` instead.
-pub const DynamicErr: Result<(), &'static str> = Err("");
+pub const DynamicErrStr: &'static str = "";
 
 pub fn push_error(context: &Context, error: &str) {
   unsafe {

@@ -23,7 +23,7 @@ use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::common_type;
-use shards::shard::{DynamicErr, push_error};
+use shards::shard::{DynamicErrStr, push_error};
 
 use shards::types::AutoTableVar;
 use shards::types::ClonedVar;
@@ -415,7 +415,7 @@ impl RequestBase {
             // Use tokio::select! to race between the request and cancellation
             let response = tokio::select! {
               resp = request.send() => resp.map_err(|e| {
-                e.to_string()
+                format!("Request failed {:?}", e)
               })?,
               _ = cancel_rx => return Err("Request cancelled".to_string())
             };
@@ -526,9 +526,7 @@ impl RequestBase {
     );
 
     if let Err(e) = result {
-      push_error(context, "HTTP request failed");
-      push_error(context, &format!("{}", e));
-      return DynamicErr;
+      return Err(DynamicErrStr);
     }
     let result = result.unwrap();
 
@@ -1006,7 +1004,7 @@ impl Shard for HttpStreamShard {
             // Use tokio::select! to race between the request and cancellation
             let bytes_result = tokio::select! {
               chunk = response.chunk() => chunk.map_err(|e| {
-                FastError::Dynamic(e.to_string())
+                FastError::Dynamic(format!("{:?}", e))
               }),
               _ = cancel_rx => return Err(FastError::Static("Stream read cancelled"))
             };
@@ -1036,8 +1034,7 @@ impl Shard for HttpStreamShard {
     );
 
     if let Err(e) = result {
-      // shlog_error!("HTTP request failed: {}", e);
-      return Err("HTTP request failed");
+      return Err(DynamicErrStr);
     }
     let result = result.unwrap();
 
