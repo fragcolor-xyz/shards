@@ -31,6 +31,10 @@ use std::ffi::CStr;
 
 lazy_static! {
   static ref TEXTINPUT_OUTPUT_TYPES: Types = vec![common_type::any];
+
+  static ref STRING_VAR_OR_NONE_TYPES: Types = vec![common_type::string, common_type::string_var, common_type::none];
+  
+
 }
 
 #[derive(shards::shard)]
@@ -120,7 +124,11 @@ impl Shard for TextField {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    self.compose_helper(data)?;
+    // Manually compose since we specially handle the variable
+    self.requiring.clear();
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.desired_width).into(), &FLOAT_VAR_OR_NONE_SLICE, "DesiredWidth")?;
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.hint).into(), &STRING_VAR_OR_NONE_TYPES, "Hint")?;
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.desired_rows).into(), &INT_VAR_OR_NONE_SLICE, "DesiredRows")?;
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
