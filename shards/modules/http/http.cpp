@@ -42,7 +42,7 @@ using namespace std;
 static auto logger = shards::logging::getOrCreate("http");
 
 // Embedded self-signed certificate for localhost (development use only)
-static const char* embedded_cert_pem = R"(-----BEGIN CERTIFICATE-----
+static const char *embedded_cert_pem = R"(-----BEGIN CERTIFICATE-----
 MIIDgTCCAmmgAwIBAgIUf3JVEFY5h4g5NQ6zfiEgjgtFcd8wDQYJKoZIhvcNAQEL
 BQAwUDELMAkGA1UEBhMCVVMxDDAKBgNVBAgMA0RldjEOMAwGA1UEBwwFTG9jYWwx
 DzANBgNVBAoMBlNoYXJkczESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI1MDkxODAx
@@ -64,7 +64,7 @@ EsDaNvVfoWQ5SWMhIakYlOJq59vzUvwIkF8UrBRjrCqc9MOY9GFpr/fGJ9Q2hwpb
 0v37eXs3GF1JHPlGNuHg/J3NSwZeOy7+sUUN9xMQMdeKav5PwQ==
 -----END CERTIFICATE-----)";
 
-static const char* embedded_key_pem = R"(-----BEGIN PRIVATE KEY-----
+static const char *embedded_key_pem = R"(-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCfrBuoV9tRxS7e
 vGCZ9DhmiNpUbQMbl3K1emLTgg64ph/XaegWAHolNTrPC4JDMOKsjzS5nw1ktaSB
 Dn2kQRZjmUIWPXNoVAort5pPko2vwL5NlKoKyXg1Qpk4NuV+82x77TgtMS7YckxX
@@ -616,8 +616,8 @@ struct Peer : public std::enable_shared_from_this<Peer> {
   }
 
   // Helper template to get the correct stream type
-  template<typename Handler>
-  void async_read_header(beast::flat_buffer& buffer, http::request_parser<http::string_body>& parser, Handler&& handler) {
+  template <typename Handler>
+  void async_read_header(beast::flat_buffer &buffer, http::request_parser<http::string_body> &parser, Handler &&handler) {
     if (use_ssl) {
       http::async_read_header(*ssl_socket, buffer, parser, std::forward<Handler>(handler));
     } else {
@@ -625,8 +625,8 @@ struct Peer : public std::enable_shared_from_this<Peer> {
     }
   }
 
-  template<typename Handler>
-  void async_read(beast::flat_buffer& buffer, http::request_parser<http::string_body>& parser, Handler&& handler) {
+  template <typename Handler>
+  void async_read(beast::flat_buffer &buffer, http::request_parser<http::string_body> &parser, Handler &&handler) {
     if (use_ssl) {
       http::async_read(*ssl_socket, buffer, parser, std::forward<Handler>(handler));
     } else {
@@ -634,8 +634,7 @@ struct Peer : public std::enable_shared_from_this<Peer> {
     }
   }
 
-  template<typename Response, typename Handler>
-  void async_write(Response& response, Handler&& handler) {
+  template <typename Response, typename Handler> void async_write(Response &response, Handler &&handler) {
     if (use_ssl) {
       http::async_write(*ssl_socket, response, std::forward<Handler>(handler));
     } else {
@@ -643,8 +642,7 @@ struct Peer : public std::enable_shared_from_this<Peer> {
     }
   }
 
-  template<typename Buffer, typename Handler>
-  void async_write_raw(const Buffer& buffer, Handler&& handler) {
+  template <typename Buffer, typename Handler> void async_write_raw(const Buffer &buffer, Handler &&handler) {
     if (use_ssl) {
       net::async_write(*ssl_socket, buffer, std::forward<Handler>(handler));
     } else {
@@ -652,8 +650,7 @@ struct Peer : public std::enable_shared_from_this<Peer> {
     }
   }
 
-  template<typename Serializer, typename Handler>
-  void async_write_header(Serializer& serializer, Handler&& handler) {
+  template <typename Serializer, typename Handler> void async_write_header(Serializer &serializer, Handler &&handler) {
     if (use_ssl) {
       http::async_write_header(*ssl_socket, serializer, std::forward<Handler>(handler));
     } else {
@@ -675,9 +672,15 @@ struct Server {
       {"Handler", SHCCSTR("The wire that will be spawned and handle a remote request."), {CoreInfo::WireOrNone}},
       {"Endpoint", SHCCSTR("The URL from where your service can be accessed by a client."), {CoreInfo::StringType}},
       {"Port", SHCCSTR("The port this service will use."), {CoreInfo::IntType, CoreInfo::IntVarType}},
-      {"SSL", SHCCSTR("Enable HTTPS with SSL/TLS. Uses embedded self-signed certificate if no cert files specified."), {CoreInfo::BoolType, CoreInfo::BoolVarType}},
-      {"CertFile", SHCCSTR("Path to SSL certificate file (PEM format). Optional - uses embedded cert if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}},
-      {"KeyFile", SHCCSTR("Path to SSL private key file (PEM format). Optional - uses embedded key if not provided."), {CoreInfo::StringType, CoreInfo::NoneType}}};
+      {"SSL",
+       SHCCSTR("Enable HTTPS with SSL/TLS. Uses embedded self-signed certificate if no cert files specified."),
+       {CoreInfo::BoolType, CoreInfo::BoolVarType}},
+      {"CertFile",
+       SHCCSTR("Path to SSL certificate file (PEM format). Optional - uses embedded cert if not provided."),
+       {CoreInfo::StringType, CoreInfo::NoneType}},
+      {"KeyFile",
+       SHCCSTR("Path to SSL private key file (PEM format). Optional - uses embedded key if not provided."),
+       {CoreInfo::StringType, CoreInfo::NoneType}}};
 
   static SHParametersInfo parameters() { return params; }
 
@@ -826,6 +829,8 @@ struct Server {
     }
   }
 
+  std::unordered_set<Peer *> _pendingAcceptPeers;
+
   // "Loop" forever accepting new connections.
   void accept_once(SHContext *context) {
     auto peer = _pool->acquire(_composer, context);
@@ -856,8 +861,11 @@ struct Server {
       peer->socket.reset(new tcp::socket(*_ioc));
     }
 
-    auto& socket_to_accept = _ssl_enabled.get().payload.boolValue ? peer->ssl_socket->next_layer() : *peer->socket;
+    _pendingAcceptPeers.insert(peer); // add to pending set
+
+    auto &socket_to_accept = _ssl_enabled.get().payload.boolValue ? peer->ssl_socket->next_layer() : *peer->socket;
     _acceptor->async_accept(socket_to_accept, [context, peer, this](beast::error_code ec) {
+      _pendingAcceptPeers.erase(peer); // remove from pending set
       if (!ec) {
         if (_ssl_enabled.get().payload.boolValue) {
           // Perform SSL handshake
@@ -936,14 +944,19 @@ struct Server {
     if (_pool)
       _pool->stopAll();
 
-    // Cleanup captured variables
-    for (auto &v : _vars) {
-      v.cleanup();
+    // Clean up pending accept peers
+    for (auto peer : _pendingAcceptPeers) {
+      // Clean up injected variables
+      for (auto var : peer->injectedVariables) {
+        releaseVariable(var);
+      }
+      peer->injectedVariables.clear();
+      _pool->release(peer);
     }
-
-    _cache = {}; // ensure it's really all freed, not just cleared
+    _pendingAcceptPeers.clear();
 
     // Close acceptor first to stop accepting new connections
+    // Do this here, as it should cancel any pending accept operations
     if (_acceptor) {
       beast::error_code ec;
       if (_acceptor->close(ec)) {
@@ -951,6 +964,13 @@ struct Server {
       }
       _acceptor.reset();
     }
+
+    // Cleanup captured variables
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+
+    _cache = {}; // ensure it's really all freed, not just cleared
 
     // Stop and reset io_context and SSL context
     if (_ioc) {
@@ -999,7 +1019,7 @@ struct Server {
             _ssl_context->use_private_key(net::buffer(embedded_key_pem, strlen(embedded_key_pem)), ssl::context::pem);
             SHLOG_DEBUG("Using embedded SSL certificate for localhost");
           }
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
           throw ActivationError(fmt::format("Failed to configure SSL context: {}", e.what()));
         }
       }
