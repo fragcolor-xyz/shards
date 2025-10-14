@@ -442,6 +442,7 @@ struct DAPServer {
   std::function<void(std::vector<Thread> &)> requestThreads;
   std::function<void(uint64_t threadId, std::vector<StackFrame> &)> requestCallStack;
   std::function<void(const Source &, std::vector<BreakpointRequest> &)> setBreakpoints;
+  std::function<void()> configurationDone;
   std::function<void(const Command &)> handleCommand;
   std::function<void(const VariablesArguments &, std::vector<Variable> &)> requestVariables;
   std::function<void(const ScopesArguments &, std::vector<Scope> &)> requestScopes;

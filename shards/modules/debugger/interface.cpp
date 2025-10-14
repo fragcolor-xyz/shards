@@ -222,6 +222,17 @@ struct State {
         SPDLOG_LOGGER_ERROR(logger, "Could not find thread: {}", threadId);
       }
     };
+    server->configurationDone = [this]() {
+      if (!initialClientConnected) {
+        if (debuggerWaitMode == 2) {
+          shardHook = &State::hookPause;
+          pauseQueue++;
+        } else {
+          shardHook = nullptr;
+        }
+        initialClientConnected = true;
+      }
+    };
     server->setBreakpoints = [this](const Source &source, std::vector<BreakpointRequest> &breakpoints) {
       if (!source.path) {
         SPDLOG_LOGGER_ERROR(logger, "Ignoring breakpoints, no path for source");
@@ -245,15 +256,6 @@ struct State {
         }
         breakpoints.insert(breakpoints.end(), breakpoints.begin(), breakpoints.end());
       });
-      if (!initialClientConnected) {
-        if (debuggerWaitMode == 2) {
-          shardHook = &State::hookPause;
-          pauseQueue++;
-        } else {
-          shardHook = nullptr;
-        }
-        initialClientConnected = true;
-      }
     };
     server->requestScopes = [this](const ScopesArguments &args, std::vector<Scope> &scopes) {
       auto frameId = args.frameId;
@@ -610,6 +612,12 @@ struct State {
         } else if (cmd == CommandType::StepOver) {
           debugCtx->stack.back().breakOnStep = true;
           debugCtx->breakOnStepAny = true;
+          continue_ = true;
+          command.reset();
+        } else if (cmd == CommandType::Pause) {
+          server->sendStoppedEvent("pause", threadId, "Execution paused by user");
+          command.reset();
+        } else if(cmd == CommandType::Stop) {
           continue_ = true;
           command.reset();
         }
