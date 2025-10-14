@@ -1267,7 +1267,7 @@ class ShardsVar {
         // Compose the shards
         composeResult = G.Core.pointee.composeShards(nativeShards, data)
         if composeResult.failed {
-            return .failure(ShardError(message: composeResult.error.string, errorStackTrace: composeResult.error.stackTrace.string))
+            return .failure(ShardError(message: composeResult.error.toString() ?? "", errorStackTrace: composeResult.errorStackTrace.toString() ?? ""))
         }
 
         requiredVariables = .init()
