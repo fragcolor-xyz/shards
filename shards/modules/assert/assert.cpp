@@ -295,12 +295,14 @@ template <bool Mode> struct Compose {
     DEFER(freeComposeResult(result));
 
     _didCompose = false;
+    auto privateCtx = reinterpret_cast<shards::CompositionContext *>(data.privateContext);
     result = composeShardsNoExcept(_contents.shards(), data);
     PARAM_COMPOSE_MERGE_REQUIRED(_contents);
     _didCompose = !result.failed;
 
     if (Mode == false) {
-      if(!_didCompose)
+      privateCtx->errorStack.clear(); // Need to clear the error stack again so it's clean
+      if (!_didCompose)
         SHLOG_INFO("Successfully caught compose failure {}\n{}", _tag, result.errorStackTrace);
     }
     return data.inputType;
