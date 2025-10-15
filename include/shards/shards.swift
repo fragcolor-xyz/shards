@@ -859,6 +859,15 @@ class TableVar: OwnedVar, Sequence {
             return nil
         }
     }
+    
+    func maybeGet(key: SHVar) -> SHVar? {
+        let result = get(key: key)
+        if result.valueType != VarType.NoValue.asSHType() {
+            return result
+        } else {
+            return nil
+        }
+    }
 
     func clear() {
         v.payload.tableValue.api.pointee.tableClear(v.payload.tableValue)

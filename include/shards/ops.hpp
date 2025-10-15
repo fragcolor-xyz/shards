@@ -148,7 +148,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s32((const int32_t*)&a.payload.int4Value);
     auto vb = vld1q_s32((const int32_t*)&b.payload.int4Value);
     auto cmp = vceqq_s32(va, vb);
-    return vminvq_u32(vreinterpretq_u32_s32(cmp)) == 0xFFFFFFFF;
+    return vminvq_u32(cmp) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int4Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int4Value);
@@ -165,7 +165,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s16((const int16_t*)&a.payload.int8Value);
     auto vb = vld1q_s16((const int16_t*)&b.payload.int8Value);
     auto cmp = vceqq_s16(va, vb);
-    return vminvq_u16(vreinterpretq_u16_s16(cmp)) == 0xFFFF;
+    return vminvq_u16(cmp) == 0xFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int8Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int8Value);
@@ -183,7 +183,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto va = vld1q_s8((const int8_t*)&a.payload.int16Value);
     auto vb = vld1q_s8((const int8_t*)&b.payload.int16Value);
     auto cmp = vceqq_s8(va, vb);
-    return vminvq_u8(vreinterpretq_u8_s8(cmp)) == 0xFF;
+    return vminvq_u8(cmp) == 0xFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_si128((const __m128i*)&a.payload.int16Value);
     auto vb = _mm_load_si128((const __m128i*)&b.payload.int16Value);
@@ -209,7 +209,7 @@ ALWAYS_INLINE inline bool operator==(const SHVar &a, const SHVar &b) {
     auto diff = vabsq_f32(vsubq_f32(va, vb));
     auto cmp = vcleq_f32(diff, veps);
     // Set 4th lane to "pass" value, then use horizontal min
-    cmp = vsetq_lane_u32(0xFFFFFFFF, vreinterpretq_u32_s32(cmp), 3);
+    cmp = vsetq_lane_u32(0xFFFFFFFF, cmp, 3);
     return vminvq_u32(cmp) == 0xFFFFFFFF;
 #elif defined(__SSE2__)
     auto va = _mm_load_ps((const float*)&a.payload.float3Value);
