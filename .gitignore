@@ -99,3 +99,4 @@ ai/data-gen/shards-reference.md
 .flatpak-builder
 test-logs-*
 shards/tests/md.md
+shards/tests/.edits_backup
