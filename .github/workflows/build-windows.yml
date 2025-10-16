@@ -243,6 +243,8 @@ jobs:
           ./shards new ../shards/tests/struct.shs
           echo "Running fs-security"
           ./shards new ../shards/tests/fs-security.shs
+          echo "Running fileops"
+          ./shards new ../shards/tests/fileops.shs
           echo "Running flows"
           ./shards new ../shards/tests/flows.shs
           echo "Running channels"
