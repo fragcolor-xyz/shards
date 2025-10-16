@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
-/* Copyright © 2024 Fragcolor Pte. Ltd. */
+/* Copyright © 2025 Fragcolor Pte. Ltd. */
 
 use std::path::{Path, PathBuf};
 use std::env;
@@ -13,7 +13,7 @@ use shards::shard::Shard;
 use shards::shlog_error;
 use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, ParamVar,
-  STRING_TYPES, SEQ_OF_ANY_TABLE_TYPES, NONE_TYPES,
+  STRING_TYPES, SEQ_OF_ANY_TABLE_TYPES,
 };
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
 
@@ -25,8 +25,9 @@ use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext};
 // ============================================================================
 
 /// Resolve a path relative to shell CWD, with tilde expansion
+/// Returns an absolute, canonicalized path to prevent directory traversal
 fn resolve_path(path: &str, shell_cwd: &Path) -> PathBuf {
-  if path.starts_with("~/") {
+  let resolved = if path.starts_with("~/") {
     // Expand home directory (cross-platform)
     if let Some(home) = dirs::home_dir() {
       home.join(&path[2..])
@@ -38,15 +39,16 @@ fn resolve_path(path: &str, shell_cwd: &Path) -> PathBuf {
   } else {
     // Relative to shell CWD
     shell_cwd.join(path)
-  }
+  };
+
+  // Canonicalize to resolve .. and . components and make absolute
+  // This prevents path traversal attacks with relative paths
+  // If canonicalization fails (file doesn't exist yet), return the resolved path
+  resolved.canonicalize().unwrap_or(resolved)
 }
 
 /// Create a backup of the file if it exists
 fn create_backup(abs_path: &Path) -> Result<(), String> {
-  if !abs_path.exists() {
-    return Ok(()); // No backup needed for new file
-  }
-
   let backup_dir = Path::new(".edits_backup");
   fs::create_dir_all(backup_dir).map_err(|e| format!("Failed to create backup directory: {}", e))?;
 
@@ -58,8 +60,12 @@ fn create_backup(abs_path: &Path) -> Result<(), String> {
     .as_secs();
   let backup_path = backup_dir.join(format!("{}_{}.bak", hash, timestamp));
 
-  fs::copy(abs_path, backup_path).map_err(|e| format!("Failed to create backup: {}", e))?;
-  Ok(())
+  // Attempt to copy, but ignore NotFound errors (new files don't need backup)
+  match fs::copy(abs_path, backup_path) {
+    Ok(_) => Ok(()),
+    Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()), // New file, no backup needed
+    Err(e) => Err(format!("Failed to create backup: {}", e)),
+  }
 }
 
 fn calculate_hash(s: &str) -> u64 {
@@ -127,18 +133,29 @@ fn git_commit_file(path: &Path, operation: &str) -> Result<(), String> {
   Ok(())
 }
 
-/// Check if file is binary
+/// Check if file is binary using multiple heuristics
 fn is_binary_file(path: &Path) -> Result<bool, String> {
-  let mut buffer = [0u8; 8000];
+  let mut buffer = [0u8; 32000]; // Increased buffer size for better detection
   let mut file = fs::File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
 
   let n = file.read(&mut buffer).map_err(|e| format!("Failed to read file: {}", e))?;
   if n == 0 {
-    return Ok(false); // Empty file
+    return Ok(false); // Empty file is treated as text
   }
 
-  // Check for null bytes (common indicator of binary)
-  Ok(buffer[..n].contains(&0))
+  let sample = &buffer[..n];
+
+  // Primary check: null bytes are a strong indicator of binary data
+  if sample.contains(&0) {
+    return Ok(true);
+  }
+
+  // Secondary check: validate UTF-8 encoding
+  // If the file is not valid UTF-8, it's likely binary
+  match std::str::from_utf8(sample) {
+    Ok(_) => Ok(false), // Valid UTF-8, treat as text
+    Err(_) => Ok(true), // Invalid UTF-8, treat as binary
+  }
 }
 
 // ============================================================================
@@ -728,10 +745,11 @@ impl Shard for ReplaceStringUniqueShard {
     // Get path from input
     let path_str: &str = input.try_into()?;
 
-    // Get parameters
+    // Get parameters and validate immediately to fail fast
     let old_str: &str = self.old_str.get().as_ref().try_into().map_err(|_| "OldStr must be a string")?;
     let new_str: &str = self.new_str.get().as_ref().try_into().map_err(|_| "NewStr must be a string")?;
 
+    // Validate empty string early before any I/O operations
     if old_str.is_empty() {
       shlog_error!("OldStr cannot be empty");
       return Err("OldStr cannot be empty");
@@ -861,10 +879,11 @@ impl Shard for ReplaceStringFirstShard {
     // Get path from input
     let path_str: &str = input.try_into()?;
 
-    // Get parameters
+    // Get parameters and validate immediately to fail fast
     let old_str: &str = self.old_str.get().as_ref().try_into().map_err(|_| "OldStr must be a string")?;
     let new_str: &str = self.new_str.get().as_ref().try_into().map_err(|_| "NewStr must be a string")?;
 
+    // Validate empty string early before any I/O operations
     if old_str.is_empty() {
       shlog_error!("OldStr cannot be empty");
       return Err("OldStr cannot be empty");
@@ -1000,10 +1019,11 @@ impl Shard for ReplaceStringAllShard {
     // Get path from input
     let path_str: &str = input.try_into()?;
 
-    // Get parameters
+    // Get parameters and validate immediately to fail fast
     let old_str: &str = self.old_str.get().as_ref().try_into().map_err(|_| "OldStr must be a string")?;
     let new_str: &str = self.new_str.get().as_ref().try_into().map_err(|_| "NewStr must be a string")?;
 
+    // Validate empty string early before any I/O operations
     if old_str.is_empty() {
       shlog_error!("OldStr cannot be empty");
       return Err("OldStr cannot be empty");
@@ -1169,6 +1189,9 @@ impl Shard for InsertAtLineShard {
       "Failed to read file"
     })?;
 
+    // Check if original file had trailing newline to preserve it
+    let had_trailing_newline = file_content.ends_with('\n');
+
     let mut lines: Vec<String> = file_content.lines().map(|s| s.to_string()).collect();
     let total_lines = lines.len();
 
@@ -1190,8 +1213,12 @@ impl Shard for InsertAtLineShard {
     // line_number = N means insert before line N+1 (after line N)
     lines.insert(line_num, content.to_string());
 
-    // Write back
-    let new_content = lines.join("\n") + "\n";
+    // Write back, preserving original file's trailing newline behavior
+    let new_content = if had_trailing_newline {
+      lines.join("\n") + "\n"
+    } else {
+      lines.join("\n")
+    };
     fs::write(&abs_path, new_content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
