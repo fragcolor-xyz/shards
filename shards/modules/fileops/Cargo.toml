@@ -1,0 +1,19 @@
+[package]
+name = "shards-fileops"
+description = "File operations and text editor tools for Shards"
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.5"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+grep-regex = "0.1"
+walkdir = "2.4"
