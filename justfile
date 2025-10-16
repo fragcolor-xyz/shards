@@ -15,3 +15,11 @@ build-docker-image:
 
 check-ci:
   claude -p "Claude, please check the CI for current branch PR, github actions. Somehow grep if there is any error and report pls"
+
+# configure cmake in build/Debug
+configure:
+  cmake -B build/Debug -DCMAKE_BUILD_TYPE=Debug
+
+# build shards (configures first if needed)
+build: configure
+  cmake --build build/Debug --target shards
