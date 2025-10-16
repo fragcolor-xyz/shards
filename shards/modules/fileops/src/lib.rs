@@ -24,6 +24,10 @@ use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext};
 // Common Utilities
 // ============================================================================
 
+/// Maximum number of backup files to keep per original file
+/// Older backups are automatically deleted when this limit is exceeded
+const MAX_BACKUPS_PER_FILE: usize = 10;
+
 /// Resolve a path relative to shell CWD, with tilde expansion
 /// Returns an absolute, canonicalized path to prevent directory traversal
 fn resolve_path(path: &str, shell_cwd: &Path) -> PathBuf {
@@ -43,11 +47,26 @@ fn resolve_path(path: &str, shell_cwd: &Path) -> PathBuf {
 
   // Canonicalize to resolve .. and . components and make absolute
   // This prevents path traversal attacks with relative paths
-  // If canonicalization fails (file doesn't exist yet), return the resolved path
-  resolved.canonicalize().unwrap_or(resolved)
+  match resolved.canonicalize() {
+    Ok(canonical) => canonical,
+    Err(_) => {
+      // File doesn't exist yet - canonicalize parent directory at minimum
+      // to ensure no .. components can escape the intended directory
+      if let Some(parent) = resolved.parent() {
+        if let Ok(canonical_parent) = parent.canonicalize() {
+          if let Some(filename) = resolved.file_name() {
+            return canonical_parent.join(filename);
+          }
+        }
+      }
+      // Fallback: return resolved path (parent canonicalization failed)
+      resolved
+    }
+  }
 }
 
 /// Create a backup of the file if it exists
+/// Automatically rotates backups, keeping only MAX_BACKUPS_PER_FILE most recent backups
 fn create_backup(abs_path: &Path) -> Result<(), String> {
   let backup_dir = Path::new(".edits_backup");
   fs::create_dir_all(backup_dir).map_err(|e| format!("Failed to create backup directory: {}", e))?;
@@ -61,11 +80,59 @@ fn create_backup(abs_path: &Path) -> Result<(), String> {
   let backup_path = backup_dir.join(format!("{}_{}.bak", hash, timestamp));
 
   // Attempt to copy, but ignore NotFound errors (new files don't need backup)
-  match fs::copy(abs_path, backup_path) {
-    Ok(_) => Ok(()),
+  match fs::copy(abs_path, &backup_path) {
+    Ok(bytes) => {
+      shlog_error!("Created backup: {} ({} bytes)", backup_path.display(), bytes);
+      // Cleanup old backups for this file
+      cleanup_old_backups(backup_dir, hash)?;
+      Ok(())
+    },
     Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()), // New file, no backup needed
-    Err(e) => Err(format!("Failed to create backup: {}", e)),
+    Err(e) => {
+      shlog_error!("Failed to create backup: {}", e);
+      Err(format!("Failed to create backup: {}", e))
+    },
   }
+}
+
+/// Remove old backups for a file, keeping only the MAX_BACKUPS_PER_FILE most recent
+fn cleanup_old_backups(backup_dir: &Path, file_hash: u64) -> Result<(), String> {
+  let pattern = format!("{}_", file_hash);
+
+  // Collect all backup files for this hash with their metadata
+  let mut backups: Vec<(PathBuf, std::time::SystemTime)> = Vec::new();
+
+  if let Ok(entries) = fs::read_dir(backup_dir) {
+    for entry in entries.flatten() {
+      if let Ok(filename) = entry.file_name().into_string() {
+        if filename.starts_with(&pattern) && filename.ends_with(".bak") {
+          if let Ok(metadata) = entry.metadata() {
+            if let Ok(modified) = metadata.modified() {
+              backups.push((entry.path(), modified));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // If we have more than MAX_BACKUPS_PER_FILE, remove oldest ones
+  if backups.len() > MAX_BACKUPS_PER_FILE {
+    // Sort by modification time (oldest first)
+    backups.sort_by_key(|(_, time)| *time);
+
+    // Remove oldest backups
+    let to_remove = backups.len() - MAX_BACKUPS_PER_FILE;
+    for (path, _) in backups.iter().take(to_remove) {
+      if let Err(e) = fs::remove_file(path) {
+        shlog_error!("Warning: Failed to remove old backup {}: {}", path.display(), e);
+      } else {
+        shlog_error!("Removed old backup: {}", path.display());
+      }
+    }
+  }
+
+  Ok(())
 }
 
 fn calculate_hash(s: &str) -> u64 {
@@ -93,7 +160,8 @@ fn is_git_repo(path: &Path) -> bool {
 }
 
 /// Auto-commit a file to git
-fn git_commit_file(path: &Path, operation: &str) -> Result<(), String> {
+/// Returns a status message indicating success or failure
+fn git_commit_file(path: &Path, operation: &str) -> Result<String, String> {
   use std::process::Command;
 
   let dir = path.parent().unwrap_or(path);
@@ -115,26 +183,111 @@ fn git_commit_file(path: &Path, operation: &str) -> Result<(), String> {
     .map_err(|e| format!("Git add failed: {}", e))?;
 
   if !add_result.status.success() {
-    shlog_error!("Warning: git add failed");
+    let stderr = String::from_utf8_lossy(&add_result.stderr);
+    let msg = format!("Git add failed: {}", stderr.trim());
+    shlog_error!("{}", msg);
+    return Err(msg);
   }
 
   // git commit
-  let msg = format!("{} file {}", operation, filename);
+  let commit_msg = format!("{} file {}", operation, filename);
   let commit_result = Command::new("git")
-    .args(&["commit", "-m", &msg])
+    .args(&["commit", "-m", &commit_msg])
     .current_dir(dir)
     .output()
     .map_err(|e| format!("Git commit failed: {}", e))?;
 
   if !commit_result.status.success() {
-    shlog_error!("Warning: git commit failed");
+    let stderr = String::from_utf8_lossy(&commit_result.stderr);
+    // Check if it's "nothing to commit" (not an error)
+    if stderr.contains("nothing to commit") || stderr.contains("no changes added") {
+      return Ok(" (no git changes)".to_string());
+    }
+    let msg = format!("Git commit failed: {}", stderr.trim());
+    shlog_error!("{}", msg);
+    return Err(msg);
   }
+
+  Ok(" (committed to git)".to_string())
+}
+
+/// Check if path is a symlink and return error if so
+/// We refuse to edit symlinks to avoid confusion about which file is being modified
+fn check_not_symlink(path: &Path) -> Result<(), String> {
+  if path.is_symlink() {
+    return Err(format!("Refusing to edit symlink: {}. Please edit the target file directly.", path.display()));
+  }
+  Ok(())
+}
+
+/// Atomically write content to a file using temp-file-and-rename pattern
+/// This prevents file corruption if the process crashes during write
+fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
+  use std::io::Write;
+
+  // Create temp file in same directory as target (required for atomic rename)
+  let temp_path = if let Some(parent) = path.parent() {
+    let filename = path.file_name()
+      .and_then(|n| n.to_str())
+      .unwrap_or("file");
+    parent.join(format!(".{}.tmp.{}", filename, std::process::id()))
+  } else {
+    return Err("Cannot determine parent directory for atomic write".to_string());
+  };
+
+  // Write to temp file
+  let mut temp_file = fs::File::create(&temp_path)
+    .map_err(|e| format!("Failed to create temp file: {}", e))?;
+
+  temp_file.write_all(content.as_bytes())
+    .map_err(|e| format!("Failed to write to temp file: {}", e))?;
+
+  // Sync to disk before rename
+  temp_file.sync_all()
+    .map_err(|e| format!("Failed to sync temp file: {}", e))?;
+
+  // Close file before rename
+  drop(temp_file);
+
+  // Atomic rename
+  fs::rename(&temp_path, path)
+    .map_err(|e| {
+      // Clean up temp file on failure
+      let _ = fs::remove_file(&temp_path);
+      format!("Failed to rename temp file: {}", e)
+    })?;
 
   Ok(())
 }
 
+/// Check if file extension suggests it's a text file (fast path)
+fn is_known_text_extension(path: &Path) -> bool {
+  if let Some(ext) = path.extension() {
+    if let Some(ext_str) = ext.to_str() {
+      let ext_lower = ext_str.to_lowercase();
+      matches!(ext_lower.as_str(),
+        "txt" | "md" | "rs" | "toml" | "json" | "yaml" | "yml" |
+        "xml" | "html" | "css" | "js" | "ts" | "py" | "c" | "cpp" |
+        "h" | "hpp" | "sh" | "bash" | "zsh" | "fish" | "shs" |
+        "log" | "csv" | "ini" | "cfg" | "conf" | "config"
+      )
+    } else {
+      false
+    }
+  } else {
+    false
+  }
+}
+
 /// Check if file is binary using multiple heuristics
+/// Uses fast path for known text extensions before content-based detection
 fn is_binary_file(path: &Path) -> Result<bool, String> {
+  // Fast path: check file extension first
+  if is_known_text_extension(path) {
+    return Ok(false);
+  }
+
+  // Slow path: content-based detection
   let mut buffer = [0u8; 32000]; // Increased buffer size for better detection
   let mut file = fs::File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
 
@@ -171,6 +324,9 @@ struct GrepShard {
   #[shard_param("File", "File path to search in", [common_type::string, common_type::string_var])]
   file: ParamVar,
 
+  #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::none, common_type::string, common_type::string_var])]
+  work_dir: ParamVar,
+
   #[shard_param("CaseInsensitive", "Enable case-insensitive search", [common_type::bool, common_type::bool_var])]
   case_insensitive: ParamVar,
 
@@ -200,6 +356,7 @@ impl Default for GrepShard {
     Self {
       required: ExposedTypes::new(),
       file: ParamVar::default(),
+      work_dir: ParamVar::default(),
       case_insensitive: ParamVar::new(false.into()),
       line_numbers: ParamVar::new(true.into()),
       before_context: ParamVar::new(0i64.into()),
@@ -242,10 +399,27 @@ impl Shard for GrepShard {
     let pattern: &str = input.try_into()?;
 
     // Get file path
-    let file_path: &str = self.file.get().as_ref().try_into().map_err(|_| {
+    let file_path_str: &str = self.file.get().as_ref().try_into().map_err(|_| {
       shlog_error!("File parameter must be a string");
       "File parameter must be a string"
     })?;
+
+    // Get working directory
+    let work_dir = if self.work_dir.get().as_ref().is_none() {
+      env::current_dir().map_err(|e| {
+        shlog_error!("Failed to get current directory: {}", e);
+        "Failed to get current directory"
+      })?
+    } else {
+      let work_dir_str: &str = self.work_dir.get().as_ref().try_into().map_err(|_| {
+        shlog_error!("WorkDir parameter must be a string");
+        "WorkDir parameter must be a string"
+      })?;
+      PathBuf::from(work_dir_str)
+    };
+
+    // Resolve file path
+    let file_path = resolve_path(file_path_str, &work_dir);
 
     // Get parameters
     let case_insensitive: bool = self.case_insensitive.get().as_ref().try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
@@ -349,14 +523,14 @@ impl Shard for GrepShard {
     let max = if max_matches == 0 { i64::MAX } else { max_matches };
     let mut sink = GrepSinkImpl {
       output: AutoSeqVar::new(),
-      file_path: file_path.to_string(),
+      file_path: file_path.display().to_string(),
       line_numbers,
       match_count: 0,
       max_matches: max,
     };
 
     // Search the file
-    let result = searcher.search_path(&matcher, Path::new(file_path), &mut sink);
+    let result = searcher.search_path(&matcher, &file_path, &mut sink);
 
     // Handle search errors
     if let Err(e) = result {
@@ -642,6 +816,12 @@ impl Shard for CreateFileShard {
     // Resolve path
     let abs_path = resolve_path(path_str, &work_dir);
 
+    // Check for symlinks
+    check_not_symlink(&abs_path).map_err(|e| {
+      shlog_error!("{}", e);
+      "Cannot edit symlink"
+    })?;
+
     // Create backup if file exists
     create_backup(&abs_path).map_err(|e| {
       shlog_error!("Backup failed: {}", e);
@@ -656,8 +836,8 @@ impl Shard for CreateFileShard {
       })?;
     }
 
-    // Write file
-    fs::write(&abs_path, content).map_err(|e| {
+    // Write file atomically
+    atomic_write(&abs_path, content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
     })?;
@@ -666,12 +846,14 @@ impl Shard for CreateFileShard {
     let enable_git: bool = self.enable_git_commit.get().as_ref().try_into()
       .map_err(|_| "EnableGitCommit must be a boolean")?;
 
-    if enable_git && is_git_repo(&abs_path) {
-      let _ = git_commit_file(&abs_path, "Creating");
-    }
+    let git_status = if enable_git && is_git_repo(&abs_path) {
+      git_commit_file(&abs_path, "Creating").unwrap_or_else(|e| format!(" (git error: {})", e))
+    } else {
+      String::new()
+    };
 
     let size = content.len();
-    let result = format!("File created: {} ({} bytes)", abs_path.display(), size);
+    let result = format!("File created: {} ({} bytes){}", abs_path.display(), size, git_status);
     self.output = Var::ephemeral_string(&result).into();
     Ok(Some(self.output.0))
   }
@@ -767,6 +949,12 @@ impl Shard for ReplaceStringUniqueShard {
     // Resolve path
     let abs_path = resolve_path(path_str, &work_dir);
 
+    // Check for symlinks
+    check_not_symlink(&abs_path).map_err(|e| {
+      shlog_error!("{}", e);
+      "Cannot edit symlink"
+    })?;
+
     if !abs_path.exists() {
       shlog_error!("File not found: {}", abs_path.display());
       return Err("File not found");
@@ -792,7 +980,7 @@ impl Shard for ReplaceStringUniqueShard {
 
     // Perform replacement
     let new_content = content.replace(old_str, new_str);
-    fs::write(&abs_path, new_content).map_err(|e| {
+    atomic_write(&abs_path, &new_content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
     })?;
@@ -801,11 +989,13 @@ impl Shard for ReplaceStringUniqueShard {
     let enable_git: bool = self.enable_git_commit.get().as_ref().try_into()
       .map_err(|_| "EnableGitCommit must be a boolean")?;
 
-    if enable_git && is_git_repo(&abs_path) {
-      let _ = git_commit_file(&abs_path, "Editing");
-    }
+    let git_status = if enable_git && is_git_repo(&abs_path) {
+      git_commit_file(&abs_path, "Editing").unwrap_or_else(|e| format!(" (git error: {})", e))
+    } else {
+      String::new()
+    };
 
-    let result = format!("Replaced 1 occurrence in {}", abs_path.display());
+    let result = format!("Replaced 1 occurrence in {}{}", abs_path.display(), git_status);
     self.output = Var::ephemeral_string(&result).into();
     Ok(Some(self.output.0))
   }
@@ -901,6 +1091,12 @@ impl Shard for ReplaceStringFirstShard {
     // Resolve path
     let abs_path = resolve_path(path_str, &work_dir);
 
+    // Check for symlinks
+    check_not_symlink(&abs_path).map_err(|e| {
+      shlog_error!("{}", e);
+      "Cannot edit symlink"
+    })?;
+
     if !abs_path.exists() {
       shlog_error!("File not found: {}", abs_path.display());
       return Err("File not found");
@@ -926,7 +1122,7 @@ impl Shard for ReplaceStringFirstShard {
 
     // Replace only first occurrence
     let new_content = content.replacen(old_str, new_str, 1);
-    fs::write(&abs_path, new_content).map_err(|e| {
+    atomic_write(&abs_path, &new_content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
     })?;
@@ -935,16 +1131,19 @@ impl Shard for ReplaceStringFirstShard {
     let enable_git: bool = self.enable_git_commit.get().as_ref().try_into()
       .map_err(|_| "EnableGitCommit must be a boolean")?;
 
-    if enable_git && is_git_repo(&abs_path) {
-      let _ = git_commit_file(&abs_path, "Editing");
-    }
+    let git_status = if enable_git && is_git_repo(&abs_path) {
+      git_commit_file(&abs_path, "Editing").unwrap_or_else(|e| format!(" (git error: {})", e))
+    } else {
+      String::new()
+    };
 
     let matches_text = if total_count == 1 { "match" } else { "matches" };
     let result = format!(
-      "Replaced first occurrence in {} (found {} total {})",
+      "Replaced first occurrence in {} (found {} total {}){}",
       abs_path.display(),
       total_count,
-      matches_text
+      matches_text,
+      git_status
     );
     self.output = Var::ephemeral_string(&result).into();
     Ok(Some(self.output.0))
@@ -1041,6 +1240,12 @@ impl Shard for ReplaceStringAllShard {
     // Resolve path
     let abs_path = resolve_path(path_str, &work_dir);
 
+    // Check for symlinks
+    check_not_symlink(&abs_path).map_err(|e| {
+      shlog_error!("{}", e);
+      "Cannot edit symlink"
+    })?;
+
     if !abs_path.exists() {
       shlog_error!("File not found: {}", abs_path.display());
       return Err("File not found");
@@ -1066,7 +1271,7 @@ impl Shard for ReplaceStringAllShard {
 
     // Replace all occurrences
     let new_content = content.replace(old_str, new_str);
-    fs::write(&abs_path, new_content).map_err(|e| {
+    atomic_write(&abs_path, &new_content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
     })?;
@@ -1075,16 +1280,19 @@ impl Shard for ReplaceStringAllShard {
     let enable_git: bool = self.enable_git_commit.get().as_ref().try_into()
       .map_err(|_| "EnableGitCommit must be a boolean")?;
 
-    if enable_git && is_git_repo(&abs_path) {
-      let _ = git_commit_file(&abs_path, "Editing");
-    }
+    let git_status = if enable_git && is_git_repo(&abs_path) {
+      git_commit_file(&abs_path, "Editing").unwrap_or_else(|e| format!(" (git error: {})", e))
+    } else {
+      String::new()
+    };
 
     let occurrences_text = if count == 1 { "occurrence" } else { "occurrences" };
     let result = format!(
-      "Replaced {} {} in {}",
+      "Replaced {} {} in {}{}",
       count,
       occurrences_text,
-      abs_path.display()
+      abs_path.display(),
+      git_status
     );
     self.output = Var::ephemeral_string(&result).into();
     Ok(Some(self.output.0))
@@ -1104,7 +1312,7 @@ struct InsertAtLineShard {
   #[shard_param("Path", "File path", [common_type::string, common_type::string_var])]
   path: ParamVar,
 
-  #[shard_param("LineNumber", "Line index to insert at (0 = insert before line 1, N = insert before line N+1)", [common_type::int, common_type::int_var])]
+  #[shard_param("LineNumber", "Line number to insert after (0 = very beginning before line 1, N = after line N). Use file's line count to append at end.", [common_type::int, common_type::int_var])]
   line_number: ParamVar,
 
   #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::none, common_type::string, common_type::string_var])]
@@ -1179,6 +1387,12 @@ impl Shard for InsertAtLineShard {
     // Resolve path
     let abs_path = resolve_path(path_str, &work_dir);
 
+    // Check for symlinks
+    check_not_symlink(&abs_path).map_err(|e| {
+      shlog_error!("{}", e);
+      "Cannot edit symlink"
+    })?;
+
     if !abs_path.exists() {
       shlog_error!("File not found: {}", abs_path.display());
       return Err("File not found");
@@ -1209,17 +1423,18 @@ impl Shard for InsertAtLineShard {
     })?;
 
     // Insert content using Vec::insert semantics
-    // line_number = 0 means insert before line 1 (at beginning)
-    // line_number = N means insert before line N+1 (after line N)
+    // line_number = 0: insert at index 0 (very beginning, before line 1)
+    // line_number = N: insert at index N (after line N, before line N+1)
+    // This matches the JSON spec: "insert after line N" behavior
     lines.insert(line_num, content.to_string());
 
-    // Write back, preserving original file's trailing newline behavior
+    // Write back atomically, preserving original file's trailing newline behavior
     let new_content = if had_trailing_newline {
       lines.join("\n") + "\n"
     } else {
       lines.join("\n")
     };
-    fs::write(&abs_path, new_content).map_err(|e| {
+    atomic_write(&abs_path, &new_content).map_err(|e| {
       shlog_error!("Failed to write file: {}", e);
       "Failed to write file"
     })?;
@@ -1228,14 +1443,17 @@ impl Shard for InsertAtLineShard {
     let enable_git: bool = self.enable_git_commit.get().as_ref().try_into()
       .map_err(|_| "EnableGitCommit must be a boolean")?;
 
-    if enable_git && is_git_repo(&abs_path) {
-      let _ = git_commit_file(&abs_path, "Inserting into");
-    }
+    let git_status = if enable_git && is_git_repo(&abs_path) {
+      git_commit_file(&abs_path, "Inserting into").unwrap_or_else(|e| format!(" (git error: {})", e))
+    } else {
+      String::new()
+    };
 
     let result = format!(
-      "Inserted content at line {} in {}",
+      "Inserted content at line {} in {}{}",
       line_num,
-      abs_path.display()
+      abs_path.display(),
+      git_status
     );
     self.output = Var::ephemeral_string(&result).into();
     Ok(Some(self.output.0))
