@@ -116,6 +116,3 @@
 [submodule "deps/FTXUI"]
 	path = deps/FTXUI
 	url = https://github.com/ArthurSonzogni/FTXUI.git
-[submodule "deps/codex"]
-	path = deps/codex
-	url = https://github.com/openai/codex.git

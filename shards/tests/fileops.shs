@@ -1,0 +1,281 @@
+// FileOps module tests
+// Tests for file viewing, creating, editing, and searching operations
+
+// Create test directory structure
+"test-fileops" | FS.CreateDirectories
+
+// ============================================================================
+// Test 1: ViewFile - View entire file with line numbers
+// ============================================================================
+"""Line 1: The quick brown fox
+Line 2: jumps over the lazy dog
+Line 3: The QUICK brown FOX
+Line 4: jumps again and again
+Line 5: Lorem ipsum dolor sit amet
+Line 6: consectetur adipiscing elit
+Line 7: sed do eiusmod tempor
+Line 8: incididunt ut labore
+Line 9: et dolore magna aliqua
+Line 10: Final line of the file""" = view-test-content
+
+"test-fileops/view-test.txt" | FS.Write(view-test-content Overwrite: true)
+
+// View entire file
+"test-fileops/view-test.txt" | FileOps.ViewFile | Log("View entire file")
+
+// ============================================================================
+// Test 2: ViewFile - View specific line range
+// ============================================================================
+"test-fileops/view-test.txt" | FileOps.ViewFile(
+  StartLine: 3
+  EndLine: 6
+) | Log("View lines 3-6")
+
+// ============================================================================
+// Test 3: ViewFile - View from start line to end
+// ============================================================================
+"test-fileops/view-test.txt" | FileOps.ViewFile(
+  StartLine: 8
+  EndLine: -1
+) | Log("View from line 8 to end")
+
+// ============================================================================
+// Test 4: ViewFile - List directory contents
+// ============================================================================
+"test-fileops" | FileOps.ViewFile | Log("Directory listing")
+
+// ============================================================================
+// Test 5: CreateFile - Create new file
+// ============================================================================
+"""This is a newly created file.
+It has multiple lines.
+Created by CreateFile shard.""" | FileOps.CreateFile(
+  Path: "test-fileops/created.txt"
+) | Log("Created new file")
+
+// Verify it was created
+"test-fileops/created.txt" | FileOps.ViewFile | Log("Verify created file")
+
+// ============================================================================
+// Test 6: CreateFile - Overwrite existing file
+// ============================================================================
+"""This content replaces the previous content.
+The file has been overwritten.""" | FileOps.CreateFile(
+  Path: "test-fileops/created.txt"
+) | Log("Overwritten file")
+
+// Verify overwrite
+"test-fileops/created.txt" | FileOps.ViewFile | Log("Verify overwritten file")
+
+// ============================================================================
+// Test 7: ReplaceStringUnique - Replace exactly one occurrence
+// ============================================================================
+"""This is a unique line.
+This line is different.
+Another unique sentence here.""" = unique-test-content
+
+"test-fileops/unique.txt" | FS.Write(unique-test-content Overwrite: true)
+
+// Replace the word "unique" (appears once)
+"test-fileops/unique.txt" | FileOps.ReplaceStringUnique(
+  OldStr: "unique line"
+  NewStr: "REPLACED LINE"
+) | Log("Replace unique occurrence")
+
+// Verify replacement
+"test-fileops/unique.txt" | FileOps.ViewFile | Log("Verify unique replacement")
+
+// ============================================================================
+// Test 8: ReplaceStringFirst - Replace first occurrence
+// ============================================================================
+"""The word test appears here.
+And test appears here too.
+Also test is in this line.
+Finally test is at the end.""" = first-test-content
+
+"test-fileops/first.txt" | FS.Write(first-test-content Overwrite: true)
+
+// Replace first occurrence of "test"
+"test-fileops/first.txt" | FileOps.ReplaceStringFirst(
+  OldStr: "test"
+  NewStr: "TEST"
+) | Log("Replace first occurrence")
+
+// Verify only first was replaced
+"test-fileops/first.txt" | FileOps.ViewFile | Log("Verify first replacement")
+
+// ============================================================================
+// Test 9: ReplaceStringAll - Replace all occurrences
+// ============================================================================
+"""Replace all instances of the word replace.
+This will replace every replace in the file.
+Even if replace appears multiple times on one line: replace replace replace.""" = all-test-content
+
+"test-fileops/all.txt" | FS.Write(all-test-content Overwrite: true)
+
+// Replace all occurrences of "replace"
+"test-fileops/all.txt" | FileOps.ReplaceStringAll(
+  OldStr: "replace"
+  NewStr: "REPLACE"
+) | Log("Replace all occurrences")
+
+// Verify all were replaced
+"test-fileops/all.txt" | FileOps.ViewFile | Log("Verify all replacements")
+
+// ============================================================================
+// Test 10: InsertAtLine - Insert at beginning
+// ============================================================================
+"""Line 1
+Line 2
+Line 3""" = insert-test-content
+
+"test-fileops/insert.txt" | FS.Write(insert-test-content Overwrite: true)
+
+// Insert at line 1 (beginning)
+"INSERTED AT START
+" | FileOps.InsertAtLine(
+  Path: "test-fileops/insert.txt"
+  LineNumber: 1
+) | Log("Insert at beginning")
+
+// Verify insertion
+"test-fileops/insert.txt" | FileOps.ViewFile | Log("Verify insert at beginning")
+
+// ============================================================================
+// Test 11: InsertAtLine - Insert in middle
+// ============================================================================
+"""Line A
+Line B
+Line C
+Line D""" = insert-mid-content
+
+"test-fileops/insert-mid.txt" | FS.Write(insert-mid-content Overwrite: true)
+
+// Insert at line 3 (middle)
+"INSERTED IN MIDDLE
+" | FileOps.InsertAtLine(
+  Path: "test-fileops/insert-mid.txt"
+  LineNumber: 3
+) | Log("Insert in middle")
+
+// Verify insertion
+"test-fileops/insert-mid.txt" | FileOps.ViewFile | Log("Verify insert in middle")
+
+// ============================================================================
+// Test 12: InsertAtLine - Insert at end
+// ============================================================================
+// Insert at line 6 (after last line)
+"INSERTED AT END
+" | FileOps.InsertAtLine(
+  Path: "test-fileops/insert-mid.txt"
+  LineNumber: 6
+) | Log("Insert at end")
+
+// Verify insertion
+"test-fileops/insert-mid.txt" | FileOps.ViewFile | Log("Verify insert at end")
+
+// ============================================================================
+// Test 13: Grep - Verify grep still works in fileops module
+// ============================================================================
+"""The quick brown fox jumps over the lazy dog.
+The QUICK brown FOX jumps again.
+Lorem ipsum dolor sit amet.
+Another line with FOX in it.
+Quick thinking saves the day.
+This is line six.
+This is line seven.
+Final line with nothing special.""" = grep-test-content
+
+"test-fileops/grep-test.txt" | FS.Write(grep-test-content Overwrite: true)
+
+// Basic pattern search
+"fox" | Grep(File: "test-fileops/grep-test.txt") = grep-matches
+grep-matches | Log("Grep: basic search for 'fox'")
+
+// Case insensitive search
+"fox" | Grep(
+  File: "test-fileops/grep-test.txt"
+  CaseInsensitive: true
+) | Log("Grep: case insensitive 'fox'")
+
+// With context lines
+"FOX" | Grep(
+  File: "test-fileops/grep-test.txt"
+  BeforeContext: 1
+  AfterContext: 1
+) | Log("Grep: FOX with context")
+
+// Max matches limit
+"quick|fox|line" | Grep(
+  File: "test-fileops/grep-test.txt"
+  CaseInsensitive: true
+  MaxMatches: 3
+) | Log("Grep: limited to 3 matches")
+
+// Invert match
+"fox|FOX" | Grep(
+  File: "test-fileops/grep-test.txt"
+  InvertMatch: true
+) | Log("Grep: lines without fox/FOX")
+
+// ============================================================================
+// Test 14: Complex workflow - Edit a file multiple times
+// ============================================================================
+"""# Configuration File
+version: 1.0
+debug: false
+timeout: 30
+retries: 3""" = config-content
+
+"test-fileops/config.txt" | FS.Write(config-content Overwrite: true)
+
+"Initial config" | Log
+"test-fileops/config.txt" | FileOps.ViewFile | Log("Initial")
+
+// Update version
+"test-fileops/config.txt" | FileOps.ReplaceStringUnique(
+  OldStr: "version: 1.0"
+  NewStr: "version: 2.0"
+) | Log("Updated version")
+
+// Enable debug
+"test-fileops/config.txt" | FileOps.ReplaceStringUnique(
+  OldStr: "debug: false"
+  NewStr: "debug: true"
+) | Log("Enabled debug")
+
+// Add new setting at end
+"max_connections: 100
+" | FileOps.InsertAtLine(
+  Path: "test-fileops/config.txt"
+  LineNumber: 5
+) | Log("Added new setting")
+
+"Final config" | Log
+"test-fileops/config.txt" | FileOps.ViewFile | Log("Final")
+
+// ============================================================================
+// Test 15: Working with relative paths
+// ============================================================================
+"""Relative path test file.
+This file is accessed using a relative path.""" = relative-content
+
+"test-fileops/relative-test.txt" | FS.Write(relative-content Overwrite: true)
+
+// View using relative path
+"test-fileops/relative-test.txt" | FileOps.ViewFile | Log("View with relative path")
+
+// Edit using relative path
+"test-fileops/relative-test.txt" | FileOps.ReplaceStringFirst(
+  OldStr: "Relative"
+  NewStr: "RELATIVE"
+) | Log("Edit with relative path")
+
+// Verify
+"test-fileops/relative-test.txt" | FileOps.ViewFile | Log("Verify relative path edit")
+
+// ============================================================================
+// Cleanup
+// ============================================================================
+"test-fileops" | FS.RemoveAll
+"All fileops tests completed!" | Log("Tests")
