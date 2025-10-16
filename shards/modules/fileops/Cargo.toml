@@ -17,3 +17,5 @@ grep-searcher = "0.1"
 grep-matcher = "0.1"
 grep-regex = "0.1"
 walkdir = "2.4"
+dirs = "5.0"
+

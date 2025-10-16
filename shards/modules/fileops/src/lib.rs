@@ -27,9 +27,9 @@ use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext};
 /// Resolve a path relative to shell CWD, with tilde expansion
 fn resolve_path(path: &str, shell_cwd: &Path) -> PathBuf {
   if path.starts_with("~/") {
-    // Expand home directory
-    if let Ok(home) = env::var("HOME") {
-      PathBuf::from(home).join(&path[2..])
+    // Expand home directory (cross-platform)
+    if let Some(home) = dirs::home_dir() {
+      home.join(&path[2..])
     } else {
       PathBuf::from(path)
     }
@@ -50,9 +50,13 @@ fn create_backup(abs_path: &Path) -> Result<(), String> {
   let backup_dir = Path::new(".edits_backup");
   fs::create_dir_all(backup_dir).map_err(|e| format!("Failed to create backup directory: {}", e))?;
 
-  // Use hash of absolute path for unique backup filename
+  // Use hash of absolute path + timestamp for unique backup filename
   let hash = calculate_hash(&abs_path.to_string_lossy());
-  let backup_path = backup_dir.join(format!("{}.bak", hash));
+  let timestamp = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .unwrap_or_default()
+    .as_secs();
+  let backup_path = backup_dir.join(format!("{}_{}.bak", hash, timestamp));
 
   fs::copy(abs_path, backup_path).map_err(|e| format!("Failed to create backup: {}", e))?;
   Ok(())
@@ -87,13 +91,19 @@ fn git_commit_file(path: &Path, operation: &str) -> Result<(), String> {
   use std::process::Command;
 
   let dir = path.parent().unwrap_or(path);
+
+  // Use absolute path to avoid issues with special characters in filenames
+  let abs_path = path.canonicalize()
+    .unwrap_or_else(|_| path.to_path_buf());
+  let abs_path_str = abs_path.to_string_lossy();
+
   let filename = path.file_name()
     .and_then(|n| n.to_str())
     .unwrap_or("unknown");
 
-  // git add
+  // git add with -- separator for safety
   let add_result = Command::new("git")
-    .args(&["add", filename])
+    .args(&["add", "--", abs_path_str.as_ref()])
     .current_dir(dir)
     .output()
     .map_err(|e| format!("Git add failed: {}", e))?;
@@ -1074,7 +1084,7 @@ struct InsertAtLineShard {
   #[shard_param("Path", "File path", [common_type::string, common_type::string_var])]
   path: ParamVar,
 
-  #[shard_param("LineNumber", "Line number to insert after (0 = beginning)", [common_type::int, common_type::int_var])]
+  #[shard_param("LineNumber", "Line index to insert at (0 = insert before line 1, N = insert before line N+1)", [common_type::int, common_type::int_var])]
   line_number: ParamVar,
 
   #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::none, common_type::string, common_type::string_var])]
@@ -1175,9 +1185,9 @@ impl Shard for InsertAtLineShard {
       "Failed to create backup"
     })?;
 
-    // Insert content (line_number is where to insert after)
-    // line_number = 0 means insert at beginning
-    // line_number = N means insert after line N
+    // Insert content using Vec::insert semantics
+    // line_number = 0 means insert before line 1 (at beginning)
+    // line_number = N means insert before line N+1 (after line N)
     lines.insert(line_num, content.to_string());
 
     // Write back
