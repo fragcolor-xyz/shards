@@ -8,6 +8,7 @@
 #include <shards/core/shared.hpp>
 #include <shards/utility.hpp>
 #include <magic_enum.hpp>
+#include <cctype>
 
 using json = nlohmann::json;
 
@@ -609,6 +610,61 @@ struct ToJson {
   }
 };
 
+// Helper function to sanitize JSON with invalid escape sequences
+// Useful for handling LLM-generated JSON that may contain tokenization artifacts
+static std::string fix_llm_json_escapes(const std::string& json_str) {
+  std::string result;
+  result.reserve(json_str.size());
+  bool in_string = false;
+
+  for (size_t i = 0; i < json_str.size(); ++i) {
+    char c = json_str[i];
+
+    // Track if we're in a string literal (simple check - toggle on unescaped quotes)
+    if (c == '"' && (i == 0 || json_str[i-1] != '\\')) {
+      in_string = !in_string;
+      result += c;
+      continue;
+    }
+
+    // Only process escapes inside strings
+    if (in_string && c == '\\' && i + 1 < json_str.size()) {
+      char next = json_str[i + 1];
+
+      // Valid single-char escapes: " \ / b f n r t
+      if (next == '"' || next == '\\' || next == '/' ||
+          next == 'b' || next == 'f' || next == 'n' ||
+          next == 'r' || next == 't') {
+        result += c;
+        continue;
+      }
+
+      // Valid unicode escape: \uXXXX (4 hex digits)
+      if (next == 'u' && i + 5 < json_str.size()) {
+        bool valid_unicode = true;
+        for (int j = 2; j <= 5; ++j) {
+          if (!std::isxdigit(static_cast<unsigned char>(json_str[i + j]))) {
+            valid_unicode = false;
+            break;
+          }
+        }
+        if (valid_unicode) {
+          result += c;
+          continue;
+        }
+      }
+
+      // Invalid escape - drop the backslash, keep the character
+      // The next iteration will add the character that follows
+      continue;
+    }
+
+    result += c;
+  }
+
+  return result;
+}
+
 struct FromJson {
   SHVar _output{};
   bool _pure{true};
@@ -746,6 +802,7 @@ struct FromJson {
 
   SHVar &activate(SHContext *context, const SHVar &input) {
     try {
+      // Fast path: try strict JSON parsing first
       json j = json::parse(SHSTRVIEW(input));
 
       if (_pure) {
@@ -754,8 +811,25 @@ struct FromJson {
         _output = j.get<SHVar>();
       }
     } catch (const json::exception &ex) {
-      // re-throw with our type to allow Maybe etc
-      throw ActivationError(ex.what());
+      // Try to fix common LLM tokenization issues with invalid escape sequences
+      std::string input_str(SHSTRVIEW(input));
+      SHLOG_WARNING("JSON parse failed, attempting to sanitize LLM output: {}", ex.what());
+
+      try {
+        auto sanitized = fix_llm_json_escapes(input_str);
+        json j = json::parse(sanitized);
+        SHLOG_INFO("Successfully parsed JSON after sanitization");
+
+        if (_pure) {
+          anyParse(j, _output);
+        } else {
+          _output = j.get<SHVar>();
+        }
+      } catch (const json::exception &ex2) {
+        // Still broken - give up with original error
+        SHLOG_ERROR("JSON sanitization failed, input is too broken to parse");
+        throw ActivationError(ex2.what());
+      }
     }
 
     return _output;

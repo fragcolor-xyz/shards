@@ -2,6 +2,7 @@
 Just testing comments...
 */
 
+
 "debug" | SetLogLevel
 
 @include("hello2.shs")
@@ -88,6 +89,9 @@ Type::Int | Log
 @type({A: Type::Int B: Type::String}) | ToBytes | FromBytes | Is(@type({A: Type::Int B: Type::String})) | Assert.Is(true)
 
 {x: 1 y: 2} | @to-j-from-j | HexToBytes | BytesToString | Log | Assert.Is("""{"x":1,"y":2}""")
+
+// Test JSON sanitization for LLM-generated invalid escapes
+"""{"text":"\n\n-----\Something"}""" | FromJson | ExpectTable | Take("text") | Log | Assert.Is("\n\n-----Something")
 
 @define(my-trait @type({x: Type::Int y: Type::Int}))
 @my-trait | Log
