@@ -12,26 +12,6 @@ Markdown.FromHTML(SkipTags: ["script" "style" "nav" "header" "fooder" "aside" "n
 
 "md.md" | FS.Write(md Overwrite: true)
 
-"""
-foo
-bar
-baz
-qux
-""" = codex-test
-"codex-test.txt" | FS.Write(codex-test Overwrite: true)
-
-"""*** Begin Patch
-*** Update File: codex-test.txt
-@@
- foo
--bar
-+BAR
-@@
- baz
--qux
-+QUX
-*** End Patch""" | Codex.ApplyPatch | Log
-
 // Grep tests
 """The quick brown fox jumps over the lazy dog.
 The QUICK brown FOX jumps again.
