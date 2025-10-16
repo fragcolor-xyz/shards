@@ -18,7 +18,7 @@ check-ci:
 
 # configure cmake in build/Debug
 configure:
-  cmake -B build/Debug -DCMAKE_BUILD_TYPE=Debug
+  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug
 
 # build shards (configures first if needed)
 build: configure
