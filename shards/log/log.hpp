@@ -63,7 +63,7 @@ void setSinkLevel(spdlog::level::level_enum level);
 
 void setStdErrLogLevel(spdlog::level::level_enum level);
 
-void setupDefaultLogger(const SHLogSettings& settings);
+void setupDefaultLogger(const SHLogSettings &settings);
 
 // Setup the default logger if it's not setup already
 void setupDefaultLoggerConditional(std::string fileName);

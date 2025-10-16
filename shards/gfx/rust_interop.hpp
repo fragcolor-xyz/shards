@@ -51,7 +51,7 @@ struct GenericSharedPtr {
   size_t ptr[2];
 };
 
-void gfx_TexturePtr_refAt(GenericSharedPtr *dst, const gfx::TexturePtr* texture);
+void gfx_TexturePtr_refAt(GenericSharedPtr *dst, const gfx::TexturePtr *texture);
 void gfx_TexturePtr_unrefAt(GenericSharedPtr *dst);
 }
 

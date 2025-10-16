@@ -29,7 +29,7 @@ Clipboard::~Clipboard() {
 Clipboard::operator std::string_view() const { return (const char *)data; }
 #else
 Clipboard getClipboard() {
-  char* recvPtr{};
+  char *recvPtr{};
   std::atomic_bool recvReady{};
   static_assert(sizeof(std::atomic_bool) == sizeof(bool), "Just checking");
   gfxClipboardGet(&recvPtr, &recvReady);
@@ -39,7 +39,7 @@ Clipboard getClipboard() {
   return Clipboard(recvPtr);
 }
 void setClipboard(const char *data) {
-  char* dataCopy = strdup(data);
+  char *dataCopy = strdup(data);
   gfxClipboardSet(dataCopy);
 }
 Clipboard::~Clipboard() {

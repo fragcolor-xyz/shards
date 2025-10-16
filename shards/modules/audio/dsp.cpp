@@ -48,7 +48,8 @@ struct FFT : public FFTBase {
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("The time-domain representation of an audio to be converted. Can be a float sequence, float2 sequence or a sound object.");
+    return SHCCSTR("The time-domain representation of an audio to be converted. Can be a float sequence, float2 sequence or a "
+                   "sound object.");
   }
 
   static SHOptionalString outputHelp() {
@@ -151,15 +152,16 @@ struct IFFT : public FFTBase {
   bool _complex{false};
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain representation of an audio (represented as a float2 sequence) and outputs its time-domain representation (as a float sequence, float2 sequence or an audio object.)");
+    return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain "
+                   "representation of an audio (represented as a float2 sequence) and outputs its time-domain representation (as "
+                   "a float sequence, float2 sequence or an audio object.)");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The frequency-domain representation of an audio to be converted.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The frequency-domain representation of an audio to be converted."); }
 
   static SHOptionalString outputHelp() {
-    return SHCCSTR("The time-domain representation of the audio as a float sequence, float2 sequence or an audio object (determined by the Audio and Complex parameters).");
+    return SHCCSTR("The time-domain representation of the audio as a float sequence, float2 sequence or an audio object "
+                   "(determined by the Audio and Complex parameters).");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::Float2SeqType; } // complex numbers

@@ -138,7 +138,7 @@ struct DerivedLayoutInfo {
   }
 };
 
-inline DerivedLayoutInfo parseStructType(shader::Type& parsedType, const SHVar &type, shader::AddressSpace addressSpace) {
+inline DerivedLayoutInfo parseStructType(shader::Type &parsedType, const SHVar &type, shader::AddressSpace addressSpace) {
   parsedType = ShaderTypeParser{}.parse(type);
   if (auto st = std::get_if<shader::StructType>(&parsedType))
     return DerivedLayoutInfo::make(addressSpace, *st);

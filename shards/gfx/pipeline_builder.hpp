@@ -115,7 +115,7 @@ private:
 // Low-level entry-point for modifying render pipelines
 struct IPipelineModifier {
   virtual ~IPipelineModifier() = default;
-  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options){};
+  virtual void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) {};
 };
 
 } // namespace gfx

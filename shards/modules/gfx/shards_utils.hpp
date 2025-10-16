@@ -14,8 +14,8 @@
 #include "shards_types.hpp"
 
 namespace gfx {
-using shards::checkType;
 using shards::checkEnumType;
+using shards::checkType;
 
 struct ReferencedVar {
   const SHVar *ptr;

@@ -33,7 +33,7 @@ IMPL_RELEASE(WGPUShaderModule, wgpuShaderModuleRelease);
 template <typename T> struct WgpuHandle {
   T handle{};
 
-  WgpuHandle() : handle(nullptr){};
+  WgpuHandle() : handle(nullptr) {};
   explicit WgpuHandle(const T &handle) : handle(handle) {}
 
   ~WgpuHandle() { release(); }

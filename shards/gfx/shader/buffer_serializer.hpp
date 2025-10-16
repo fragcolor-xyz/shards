@@ -148,7 +148,8 @@ public:
 
   template <typename T> void read(const LayoutRef &ref, T &dst) { read(ref.type, ref.offset, dst); }
 
-  template <typename T> std::enable_if_t<detail::BufferSerializable<T>::Valid::value> write(const Type &type, size_t offset, const T &src) {
+  template <typename T>
+  std::enable_if_t<detail::BufferSerializable<T>::Valid::value> write(const Type &type, size_t offset, const T &src) {
     using S = detail::BufferSerializable<T>;
     static_assert(S::Valid::value, "Type is not buffer serializable");
 
@@ -171,7 +172,8 @@ public:
                                                      });
   }
 
-  template <typename T> std::enable_if_t<detail::BufferSerializable<T>::Valid::value> read(const Type &type, size_t offset, T &dst) {
+  template <typename T>
+  std::enable_if_t<detail::BufferSerializable<T>::Valid::value> read(const Type &type, size_t offset, T &dst) {
     using S = detail::BufferSerializable<T>;
     static_assert(S::Valid::value, "Type is not buffer serializable");
 

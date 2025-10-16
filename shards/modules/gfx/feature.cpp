@@ -39,7 +39,7 @@ using namespace shards;
 
 namespace gfx {
 enum class BuiltinFeatureId { Transform, BaseColor, VertexColorFromNormal, Wireframe, Velocity, AlphaBlend };
-enum class RequiredAttributes_ { Tangent };  
+enum class RequiredAttributes_ { Tangent };
 } // namespace gfx
 
 ENUM_HELP(gfx::RequiredAttributes_, gfx::RequiredAttributes_::Tangent, SHCCSTR("Require mesh tangents to be available"));
@@ -137,13 +137,15 @@ struct BuiltinFeatureShard {
 struct FeatureTypes {
   static inline shards::Types GeneratedViewInputTableTypes{{ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq}};
   static inline std::array<SHVar, 3> GeneratedViewInputTableKeys{Var("Queue"), Var("View"), Var("Features")};
-  static inline TypeInfo GeneratedViewInputTableType = TypeInfo::FixedTableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
+  static inline TypeInfo GeneratedViewInputTableType =
+      TypeInfo::FixedTableOf(GeneratedViewInputTableTypes, GeneratedViewInputTableKeys);
 
   static inline shards::Type DrawableDataSeqType = Type::SeqOf(CoreInfo::IntType);
   static inline shards::Types GeneratedDrawInputTableTypes{
       {ShardsTypes::DrawQueue, ShardsTypes::View, ShardsTypes::FeatureSeq, DrawableDataSeqType}};
   static inline std::array<SHVar, 4> GeneratedDrawInputTableKeys{Var("Queue"), Var("View"), Var("Features"), Var("Drawables")};
-  static inline TypeInfo GeneratedDrawInputTableType = TypeInfo::FixedTableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
+  static inline TypeInfo GeneratedDrawInputTableType =
+      TypeInfo::FixedTableOf(GeneratedDrawInputTableTypes, GeneratedDrawInputTableKeys);
 
   static inline Type ShaderEntryPointType = Type::SeqOf(CoreInfo::AnyTableType);
 

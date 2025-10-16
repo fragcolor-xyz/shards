@@ -70,8 +70,7 @@ void SHWire::warmup(SHContext *context) {
           auto status = blk->warmup(blk, context);
           if (status.code != SH_ERROR_NONE) {
             std::string_view msg(status.message.string, size_t(status.message.len));
-            SHLOG_ERROR("Warmup failed on wire: {}, shard: {} ({})", name, blk->name(blk),
-                        formatShardSourceLocation(blk));
+            SHLOG_ERROR("Warmup failed on wire: {}, shard: {} ({})", name, blk->name(blk), formatShardSourceLocation(blk));
             throw shards::WarmupError(msg);
           }
         }

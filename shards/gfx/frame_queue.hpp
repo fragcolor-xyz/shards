@@ -108,7 +108,8 @@ public:
     if (mainOutput) {
       for (auto &attachment : mainOutput->attachments) {
         auto outputFormat = attachment.second.texture->getFormat();
-        auto pixelFormat = deriveTextureViewFormat(outputFormat.pixelFormat, outputFormat.flags, attachment.second.texture->getLabel());
+        auto pixelFormat =
+            deriveTextureViewFormat(outputFormat.pixelFormat, outputFormat.flags, attachment.second.texture->getLabel());
         builder.outputs.emplace_back(attachment.first, pixelFormat);
         outputMap.emplace(outputMap.size(), Output{attachment.first, attachment.second});
       }

@@ -10,7 +10,7 @@ namespace gfx::anim {
 static const char internalComponentIdentifier = '$';
 
 // Checks if the given name points to an internal glTF component (translation/rotation/scale)
-static inline bool isGltfBuiltinTarget(FastString path) { 
+static inline bool isGltfBuiltinTarget(FastString path) {
   static FastString $t = "$t";
   static FastString $r = "$r";
   static FastString $s = "$s";

@@ -1850,8 +1850,8 @@ inline bool collectRequiredVariables(const SHInstanceData &data, ExposedInfo &ou
 }
 
 // Overload that works directly with SHExposedTypesInfo to avoid extra copies
-inline bool collectRequiredVariables(const SHInstanceData &data, SHExposedTypesInfo &out, const SHVar &var, SHTypesInfo validTypes,
-                                     const char *debugTag) {
+inline bool collectRequiredVariables(const SHInstanceData &data, SHExposedTypesInfo &out, const SHVar &var,
+                                     SHTypesInfo validTypes, const char *debugTag) {
   std::vector<SHExposedTypeInfo> expInfo;
   TypeInfo ti(var, data, &expInfo, false);
   for (auto &type : validTypes) {

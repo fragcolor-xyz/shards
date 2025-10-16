@@ -27,7 +27,7 @@ OrientedBounds MeshDrawable::getBounds() const {
     //   bounds.expand(extractTranslation(joint));
     // }
     AABounds meshBounds = OrientedBounds(getMeshBounds(mesh), transform).toAligned();
-    AABounds bounds = AABounds::both(meshBounds,  skin->bounds);
+    AABounds bounds = AABounds::both(meshBounds, skin->bounds);
     return OrientedBounds(bounds, linalg::identity).expand(float3(0.5f));
   }
 

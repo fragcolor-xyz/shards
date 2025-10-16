@@ -1,5 +1,7 @@
 set fallback
 
+rust_toolchain := `cat rust.version`
+
 # pull and update in one go
 pull:
   git pull
@@ -23,3 +25,14 @@ configure:
 # build shards (configures first if needed)
 build: configure
   cmake --build build/Debug --target shards
+
+[no-cd]
+cargo-check:
+  RUSTUP_TOOLCHAIN={{ rust_toolchain }} cargo check
+
+tests:
+  build/Debug/shards shards/tests/general.shs
+  build/Debug/shards shards/tests/hello.shs
+
+format:
+  sh format.sh

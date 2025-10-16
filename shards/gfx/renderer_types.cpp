@@ -3,7 +3,7 @@
 
 namespace gfx::detail {
 
-const BufferBinding& CachedPipeline::resolveBufferBindingRef(BufferBindingRef ref) const {
+const BufferBinding &CachedPipeline::resolveBufferBindingRef(BufferBindingRef ref) const {
   if (ref.bindGroup == PipelineBuilder::getDrawBindGroupIndex())
     return drawBufferBindings[ref.bufferIndex];
   else if (ref.bindGroup == PipelineBuilder::getViewBindGroupIndex())

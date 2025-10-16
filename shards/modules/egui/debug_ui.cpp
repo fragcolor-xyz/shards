@@ -182,6 +182,5 @@ struct DebugUI {
 
 SHARDS_REGISTER_FN(debug) {
   using namespace shards::input;
-  REGISTER_SHARD("Inputs.DebugUI", DebugUI); 
-} 
- 
+  REGISTER_SHARD("Inputs.DebugUI", DebugUI);
+}

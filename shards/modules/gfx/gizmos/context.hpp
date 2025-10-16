@@ -32,13 +32,11 @@ struct Base {
   RequiredGizmoContext _gizmoContext;
 
   void baseWarmup(SHContext *context) { _gizmoContext.warmup(context); }
-  void baseCleanup(SHContext* context) { _gizmoContext.cleanup(); }
-  void baseCompose() {
-    _requiredVariables.push_back(RequiredGizmoContext::getExposedTypeInfo());
-  }
+  void baseCleanup(SHContext *context) { _gizmoContext.cleanup(); }
+  void baseCompose() { _requiredVariables.push_back(RequiredGizmoContext::getExposedTypeInfo()); }
 
   void warmup(SHContext *context) { baseWarmup(context); }
-  void cleanup(SHContext* context) { baseCleanup(context); }
+  void cleanup(SHContext *context) { baseCleanup(context); }
 
   PARAM_REQUIRED_VARIABLES();
 };

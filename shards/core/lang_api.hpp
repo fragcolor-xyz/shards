@@ -67,34 +67,36 @@ inline void setupCoreLang(SHCore *result) {
 }
 
 bool InternalCore::read(struct SHStringWithLen name, struct SHStringWithLen code, struct SHStringWithLen basePath,
-  const struct SHStringWithLen *includeDirs, uint32_t numIncludeDirs, struct SHLAst *out_ast) {
-return sh_current_interface.read(name, code, basePath, includeDirs, numIncludeDirs, out_ast);
+                        const struct SHStringWithLen *includeDirs, uint32_t numIncludeDirs, struct SHLAst *out_ast) {
+  return sh_current_interface.read(name, code, basePath, includeDirs, numIncludeDirs, out_ast);
 }
 
 bool InternalCore::loadAst(const uint8_t *bytes, uint32_t size, struct SHLAst *out_ast) {
-return sh_current_interface.loadAst(bytes, size, out_ast);
+  return sh_current_interface.loadAst(bytes, size, out_ast);
 }
 
 void InternalCore::freeError(struct SHLError *error) { sh_current_interface.freeError(error); }
 
-struct SHLEvalEnv *InternalCore::createEvalEnv(struct SHStringWithLen namespace_) { return sh_current_interface.createEvalEnv(namespace_); }
+struct SHLEvalEnv *InternalCore::createEvalEnv(struct SHStringWithLen namespace_) {
+  return sh_current_interface.createEvalEnv(namespace_);
+}
 
 void InternalCore::freeEvalEnv(struct SHLEvalEnv *env) { sh_current_interface.freeEvalEnv(env); }
 
 bool InternalCore::eval(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error) {
-return sh_current_interface.eval(env, ast, error);
+  return sh_current_interface.eval(env, ast, error);
 }
 
 bool InternalCore::transformEnv(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire) {
-return sh_current_interface.transformEnv(env, name, out_wire);
+  return sh_current_interface.transformEnv(env, name, out_wire);
 }
 
 bool InternalCore::transformEnvs(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name, struct SHLWire *out_wire) {
-return sh_current_interface.transformEnvs(env, len, name, out_wire);
+  return sh_current_interface.transformEnvs(env, len, name, out_wire);
 }
 
 bool InternalCore::evalAst(const struct SHVar *ast, struct SHStringWithLen name, struct SHLWire *out_wire) {
-return sh_current_interface.evalAst(ast, name, out_wire);
+  return sh_current_interface.evalAst(ast, name, out_wire);
 }
 
 void InternalCore::freeWire(struct SHLWire *wire) { sh_current_interface.freeWire(wire); }

@@ -11,17 +11,7 @@
 
 namespace gfx {
 
-enum class UniqueIdTag : uint8_t {
-  Mesh,
-  Feature,
-  Drawable,
-  DrawQueue,
-  Material,
-  Step,
-  Texture,
-  View,
-  Buffer
-};
+enum class UniqueIdTag : uint8_t { Mesh, Feature, Drawable, DrawQueue, Material, Step, Texture, View, Buffer };
 
 typedef uint64_t UniqueIdValue;
 

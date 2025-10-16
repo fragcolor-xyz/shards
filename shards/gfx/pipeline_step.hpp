@@ -40,7 +40,7 @@ union ClearValues {
     uint32_t stencil;
   };
 
-  constexpr ClearValues() : color(0.0f){};
+  constexpr ClearValues() : color(0.0f) {};
   constexpr ClearValues(float4 color) : color(color) {}
   constexpr ClearValues(float depth, uint32_t stencil) : depth(depth), stencil(stencil) {}
 

@@ -169,8 +169,7 @@ struct Type {
     }
 
     auto &k = const_cast<std::array<SHVar, N> &>(keys);
-    res._type = {SHType::Table,
-                 {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
+    res._type = {SHType::Table, {.table = {.keys = {&k[0], uint32_t(k.size()), 0}, .types = types}}};
     return res;
   }
 

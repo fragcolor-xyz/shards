@@ -40,16 +40,16 @@ enum class BasicTypes {
 struct CoreInfo {
   static inline Type NoneType{SHTypeInfo{SHType::None}};
 
-#define SH_CORE_TYPE_DEF(_shtype_)                                                                                 \
-  static inline Type _shtype_##Type{SHTypeInfo{SHType::_shtype_}};                                                 \
+#define SH_CORE_TYPE_DEF(_shtype_)                                                                                              \
+  static inline Type _shtype_##Type{SHTypeInfo{SHType::_shtype_}};                                                              \
   static inline Type _shtype_##SeqType{SHTypeInfo{SHType::Seq, {.seqTypes = SHTypesInfo(_shtype_##Type)}}};                     \
   static inline Type _shtype_##TableType{SHTypeInfo{SHType::Table, {.table = {.types = SHTypesInfo(_shtype_##Type)}}}};         \
   static inline Type _shtype_##VarType{SHTypeInfo{SHType::ContextVar, {.contextVarTypes = SHTypesInfo(_shtype_##Type)}}};       \
   static inline Type _shtype_##VarSeqType{SHTypeInfo{SHType::ContextVar, {.contextVarTypes = SHTypesInfo(_shtype_##SeqType)}}}; \
-  static inline Type _shtype_##VarTableType {                                                                      \
-    SHTypeInfo {                                                                                                   \
+  static inline Type _shtype_##VarTableType {                                                                                   \
+    SHTypeInfo {                                                                                                                \
       SHType::ContextVar, { .contextVarTypes = SHTypesInfo(_shtype_##TableType) }                                               \
-    }                                                                                                              \
+    }                                                                                                                           \
   }
 
   SH_CORE_TYPE_DEF(Any);

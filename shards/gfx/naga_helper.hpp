@@ -186,7 +186,7 @@ struct Writer {
     static T dummy{};
     return makeDerivedType(dummy);
   }
-  
+
   template <typename T> inline Handle<Expression> makeConstExpr(T value) {
     Expression e{
         .tag = Expression::Tag::Literal,

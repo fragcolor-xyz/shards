@@ -35,7 +35,9 @@ enum ModifierKey {
   // Usually the windows key or control key on apple
   Secondary
 };
-DECL_ENUM_INFO(ModifierKey, ModifierKey, "Represents modifier keys on a keyboard. Used to detect combinations of key presses for advanced input handling.", 'mdIf');
+DECL_ENUM_INFO(ModifierKey, ModifierKey,
+               "Represents modifier keys on a keyboard. Used to detect combinations of key presses for advanced input handling.",
+               'mdIf');
 
 struct InputsDefaultHelpText {
   static inline const SHOptionalString InputsMouseKey =

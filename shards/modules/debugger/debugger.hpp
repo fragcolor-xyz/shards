@@ -268,7 +268,7 @@ struct Variable {
    * A reference that allows the client to request the location where the
    * variable is declared. This should be present only if the adapter is likely
    * to be able to resolve the location.
-   * 
+   *
    * This reference shares the same lifetime as the `variablesReference`. See
    * 'Lifetime of Object References' in the Overview section for details.
    */
@@ -280,7 +280,7 @@ struct Variable {
    * function pointer, the adapter may be able to look up the function's
    * location. This should be present only if the adapter is likely to be able
    * to resolve the location.
-   * 
+   *
    * This reference shares the same lifetime as the `variablesReference`. See
    * 'Lifetime of Object References' in the Overview section for details.
    */
@@ -416,7 +416,6 @@ struct ScopesArguments {
   uint64_t frameId;
 };
 
-
 struct DAPServer {
   boost::asio::io_context io_context_;
   std::optional<tcp::acceptor> acceptor_;
@@ -427,7 +426,7 @@ struct DAPServer {
   int port_;
   std::string instance_name_;
   std::shared_ptr<spdlog::logger> logger_;
-  
+
   // Service discovery
   static constexpr int DISCOVERY_PORT = 57426;
   static constexpr int STARTING_PORT = 57427;
@@ -446,18 +445,18 @@ struct DAPServer {
   std::function<void(const Command &)> handleCommand;
   std::function<void(const VariablesArguments &, std::vector<Variable> &)> requestVariables;
   std::function<void(const ScopesArguments &, std::vector<Scope> &)> requestScopes;
-  std::function<void(const std::string& instanceName, int actualPort)> onStarted;
+  std::function<void(const std::string &instanceName, int actualPort)> onStarted;
 
 public:
   explicit DAPServer();
   void start();
   void stop();
-  
+
   // New methods
   void startServiceDiscovery();
   void stopServiceDiscovery();
   void sendServiceAnnouncement();
-  const std::string& getInstanceName() const { return instance_name_; }
+  const std::string &getInstanceName() const { return instance_name_; }
   int getActualPort() const { return port_; }
 
   // Event sending methods

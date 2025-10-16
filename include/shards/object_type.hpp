@@ -243,12 +243,12 @@ public:
 };
 
 // NOTE: This needs to be a struct ensure correct initialization order under clang
-#define SHVAR_OBJECT_DECL(_id, _displayName, _definedAs, ...)                                               \
-  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                  \
-  static inline Type _definedAs{                                                                            \
-      {SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = SH_CONCAT(_definedAs, TypeId)}}}}; \
-  static inline shards::ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, shards::CoreCC,       \
-                                                                        SH_CONCAT(_definedAs, TypeId)};
+#define SHVAR_OBJECT_DECL(_id, _displayName, _definedAs, ...)                                                 \
+  static constexpr uint32_t SH_CONCAT(_definedAs, TypeId) = uint32_t(_id);                                    \
+  static inline Type _definedAs{                                                                              \
+      {SHType::Object, {.object = {.vendorId = shards::CoreCC, .typeId = SH_CONCAT(_definedAs, TypeId)}}}};   \
+  static inline shards::ObjectVar<__VA_ARGS__> SH_CONCAT(_definedAs, ObjectVar){_displayName, shards::CoreCC, \
+                                                                                SH_CONCAT(_definedAs, TypeId)};
 
 #endif
 

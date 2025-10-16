@@ -185,7 +185,7 @@ template <class T> struct ShardWrapper {
     } else {
       result->getParam = static_cast<SHGetParamProc>([](Shard *b, int i) { return SHVar(); });
     }
- 
+
     // compose
     if constexpr (has_compose<T>::value) {
       result->compose = static_cast<SHComposeProc>([](Shard *b, SHInstanceData *data) {

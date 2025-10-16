@@ -70,22 +70,20 @@ private:
 
 struct RandomIntOp : public Rand<CoreInfo::IntType, SHType::Int> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard generates a random integer between 0 (inclusive) and the maximum value specified in the Max parameter (exclusive).");
+    return SHCCSTR("This shard generates a random integer between 0 (inclusive) and the maximum value specified in the Max "
+                   "parameter (exclusive).");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs a random integer.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a random integer."); }
 };
 
 struct RandomFloatOp : public Rand<CoreInfo::FloatType, SHType::Float> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard generates a random float between 0 and the maximum value specified in the Max parameter (exclusive).");
+    return SHCCSTR(
+        "This shard generates a random float between 0 and the maximum value specified in the Max parameter (exclusive).");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs a random float.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a random float."); }
 };
 
 using RandomInt = RandomIntOp;
@@ -93,15 +91,14 @@ using RandomFloat = RandomFloatOp;
 
 struct RandomBytes : public RandBase {
   static SHOptionalString help() {
-    return SHCCSTR("This shard generates a random sequence of bytes. The size of the sequence is specified in the Size parameter.");
+    return SHCCSTR(
+        "This shard generates a random sequence of bytes. The size of the sequence is specified in the Size parameter.");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BytesType; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs a random sequence of bytes.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs a random sequence of bytes."); }
   static SHParametersInfo parameters() { return _params; }
 
   void setParam(int index, const SHVar &value) { _size = value.payload.intValue; }

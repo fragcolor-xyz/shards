@@ -671,8 +671,8 @@ struct TextShard : public Base {
     auto &shapeRenderer = gizmoRenderer.getShapeRenderer();
     auto params = gizmoRenderer.getBillboard(toFloat3(_position.get()));
 
-    shapeRenderer.addText(*(Vec3&)(_position.get()), params.x, params.y, float((Var &)_size.get()), SHSTRVIEW(_text.get()),
-                          *(Vec4&)(_color.get()), float2(*(Vec2&)(_align.get())));
+    shapeRenderer.addText(*(Vec3 &)(_position.get()), params.x, params.y, float((Var &)_size.get()), SHSTRVIEW(_text.get()),
+                          *(Vec4 &)(_color.get()), float2(*(Vec2 &)(_align.get())));
 
     return SHVar{};
   }

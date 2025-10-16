@@ -553,7 +553,8 @@ struct PtrToString {
   std::string _storage;
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    _storage.assign(reinterpret_cast<const char *>(input.payload.intValue), strlen(reinterpret_cast<const char *>(input.payload.intValue)));
+    _storage.assign(reinterpret_cast<const char *>(input.payload.intValue),
+                    strlen(reinterpret_cast<const char *>(input.payload.intValue)));
     return Var(_storage);
   }
 };
@@ -570,8 +571,8 @@ struct BytesBuffer {
       throw ActivationError("Buffer size cannot be negative");
     }
     if (static_cast<size_t>(size) > StructBase::MAX_STRUCT_SIZE) {
-      throw ActivationError("Buffer size exceeds maximum allowed size of " +
-                            std::to_string(StructBase::MAX_STRUCT_SIZE) + " bytes");
+      throw ActivationError("Buffer size exceeds maximum allowed size of " + std::to_string(StructBase::MAX_STRUCT_SIZE) +
+                            " bytes");
     }
     _storage.resize(size);
     if (_storage.empty()) {

@@ -262,9 +262,7 @@ struct Disconnect {
 
   static SHOptionalString outputHelp() { return SHCCSTR("The same peer object."); }
 
-  SHTypeInfo compose(SHInstanceData &data) {
-    return data.inputType;
-  }
+  SHTypeInfo compose(SHInstanceData &data) { return data.inputType; }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
     auto &peer = varAsObjectChecked<Peer>(input, Types::Peer);

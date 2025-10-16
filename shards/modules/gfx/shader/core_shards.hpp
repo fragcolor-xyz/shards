@@ -43,7 +43,9 @@ enum class ShaderLiteralType {
 };
 }
 
-DECL_ENUM_INFO(gfx::shader::ShaderLiteralType, ShaderLiteralType, "Type of shader literal insertion. Determines how and where shader code is inserted into the compilation process.", '_slt');
+DECL_ENUM_INFO(gfx::shader::ShaderLiteralType, ShaderLiteralType,
+               "Type of shader literal insertion. Determines how and where shader code is inserted into the compilation process.",
+               '_slt');
 ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Inline,
           SHCCSTR("Insert shader code directly into current scope"));
 ENUM_HELP(gfx::shader::ShaderLiteralType, gfx::shader::ShaderLiteralType::Header,
@@ -186,7 +188,8 @@ struct Literal {
   }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard allows the user to write WGSL code directly and insert it into the shader code. The WGSL code is written as a sequence of strings in the Source parameter.");
+    return SHCCSTR("This shard allows the user to write WGSL code directly and insert it into the shader code. The WGSL code is "
+                   "written as a sequence of strings in the Source parameter.");
   }
 
   static SHOptionalString inputHelp() { return ShaderDefaultHelpText::InputHelpIgnored; }
@@ -436,7 +439,9 @@ struct ShaderReadInput : public Read<blocks::ReadInput> {
 };
 
 struct ShaderReadGlobal : public Read<blocks::ReadGlobal> {
-  static SHOptionalString help() { return SHCCSTR("This shard reads the value of the global shader variable specified in the Name parameter."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard reads the value of the global shader variable specified in the Name parameter.");
+  }
   static SHOptionalString inputHelp() { return ShaderDefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("The value of the global variable specified."); }
 
@@ -458,7 +463,8 @@ struct ReadBuffer final : public IOBase {
   SHTypesInfo outputTypes() { return _type.shardsTypes; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard reads the shader parameter (specified in the Name parameter) from the buffer (specified in the Buffer Name parameter).");
+    return SHCCSTR("This shard reads the shader parameter (specified in the Name parameter) from the buffer (specified in the "
+                   "Buffer Name parameter).");
   }
   static SHOptionalString inputHelp() { return ShaderDefaultHelpText::InputHelpIgnored; }
   static SHOptionalString outputHelp() { return SHCCSTR("The value of the parameter in the buffer specified."); }
@@ -508,7 +514,9 @@ struct ReadBuffer final : public IOBase {
     using shards::Parameters;
     static Parameters params = {
         {"Name", SHCCSTR("The name of the parameter to read"), {CoreInfo::StringType}},
-        {"BufferName", SHCCSTR("The name of the buffer to read from. (either view buffer or object buffer.)"), {CoreInfo::StringType}},
+        {"BufferName",
+         SHCCSTR("The name of the buffer to read from. (either view buffer or object buffer.)"),
+         {CoreInfo::StringType}},
     };
     return params;
   }
@@ -608,13 +616,16 @@ template <typename TShard> struct Write : public IOBase {
   }
 };
 
-struct ShaderWriteOutput: public Write<blocks::WriteOutput> {
+struct ShaderWriteOutput : public Write<blocks::WriteOutput> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard writes the input value to the shader output or one of the outputs of the render pass (specified in the Name parameter).");
+    return SHCCSTR("This shard writes the input value to the shader output or one of the outputs of the render pass (specified "
+                   "in the Name parameter).");
   }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to write to the shader output specified."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The shard outputs none, but the value is passed to the next stage or render target."); }
-  
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The shard outputs none, but the value is passed to the next stage or render target.");
+  }
+
   SHParametersInfo parameters() {
     static shards::Parameters params = {
         {"Name", SHCCSTR("The name of the output to write to."), {shards::CoreInfo::StringType}},
@@ -624,9 +635,13 @@ struct ShaderWriteOutput: public Write<blocks::WriteOutput> {
 };
 
 struct ShaderWriteGlobal : public Write<blocks::WriteGlobal> {
-  static SHOptionalString help() { return SHCCSTR("This shard sets the value passed as input to the global shader variable specified in the Name parameter."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard sets the value passed as input to the global shader variable specified in the Name parameter.");
+  }
   static SHOptionalString inputHelp() { return SHCCSTR("The value to set to the global shader variable specified."); }
-  static SHOptionalString outputHelp() { return SHCCSTR("The shard outputs none, but the value is set to the global shader variable specified."); }
+  static SHOptionalString outputHelp() {
+    return SHCCSTR("The shard outputs none, but the value is set to the global shader variable specified.");
+  }
 
   SHParametersInfo parameters() {
     static shards::Parameters params = {
@@ -878,7 +893,8 @@ struct LinearizeDepth {
 struct WithInput {
   PARAM_VAR(_name, "Name", "The name of the attribute to check for", {CoreInfo::StringType});
   PARAM(shards::ShardsVar, _then, "Then", "The shards to execute if the attribute is being received.", {CoreInfo::ShardsOrNone});
-  PARAM(shards::ShardsVar, _else, "Else", "The shards to execute if the attribute is not being received", {CoreInfo::ShardsOrNone});
+  PARAM(shards::ShardsVar, _else, "Else", "The shards to execute if the attribute is not being received",
+        {CoreInfo::ShardsOrNone});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_then), PARAM_IMPL_FOR(_else));
 
@@ -888,18 +904,17 @@ struct WithInput {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   static SHOptionalString help() {
-    return SHCCSTR(
-        "This shard creates a conditional statement within a shader code. If the shader input specified in the Name parameter is available to the shader stage that calls this shard, "
-        "the code in the Then parameter will be executed. Otherwise, the code in the Else parameter will execute.");
+    return SHCCSTR("This shard creates a conditional statement within a shader code. If the shader input specified in the Name "
+                   "parameter is available to the shader stage that calls this shard, "
+                   "the code in the Then parameter will be executed. Otherwise, the code in the Else parameter will execute.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard does not read the attribute value directly. Use Shader.ReadInput within the Then branch if you need to access the shader input value.");
+    return SHCCSTR("This shard does not read the attribute value directly. Use Shader.ReadInput within the Then branch if you "
+                   "need to access the shader input value.");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard outputs none");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs none"); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
@@ -948,17 +963,17 @@ struct WithTexture {
   static SHTypesInfo outputTypes() { return CoreInfo::NoneType; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a conditional statement within a shader code. If the texture specified in the Name parameter is available for the vertex or pixel, "
+    return SHCCSTR("This shard creates a conditional statement within a shader code. If the texture specified in the Name "
+                   "parameter is available for the vertex or pixel, "
                    "the code in the Then parameter will be executed. Otherwise, the code in the Else parameter will execute.");
   }
 
   static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard does not read the texture directly. Use Shader.SampleTexture within the Then branch if you need to access the texture.");
+    return SHCCSTR("This shard does not read the texture directly. Use Shader.SampleTexture within the Then branch if you need "
+                   "to access the texture.");
   }
 
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("This shard outputs none");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs none"); }
 
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {

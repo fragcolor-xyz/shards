@@ -137,9 +137,7 @@ struct ToBytes {
     return SHCCSTR("This shard takes a value and converts it to a serialized binary representation (a serialized byte array).");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard will take any value.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("This shard will take any value."); }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard will return a seriliazed byte array representing the input value.");
@@ -166,9 +164,7 @@ struct FromBytes {
     return SHCCSTR("This shard takes a serialized binary representation of a value and convert it back to its original type.");
   }
 
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("This shard will take a byte array.");
-  }
+  static SHOptionalString inputHelp() { return SHCCSTR("This shard will take a byte array."); }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("This shard will return the original value converted back to its original type.");

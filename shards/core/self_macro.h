@@ -65,15 +65,13 @@ template <typename Tag, typename Stored> struct _store_type {
 
 template <typename Tag, typename ToStore>
 constexpr typename ::self_macro::detail::value_dependant_type_identity<(::self_macro::detail::_store_type<Tag, ToStore>{}, true),
-                                                                       void>::type
-store() noexcept {
+                                                                       void>::type store() noexcept {
   return static_cast<void>(::self_macro::detail::_store_type<Tag, ToStore>{});
 }
 
 template <typename Tag, typename ToStore, typename T>
 constexpr typename ::self_macro::detail::value_dependant_type_identity<(::self_macro::detail::_store_type<Tag, ToStore>{}, true),
-                                                                       T &&>::type
-store(T &&value) noexcept {
+                                                                       T &&>::type store(T &&value) noexcept {
   return (static_cast<void>(::self_macro::detail::_store_type<Tag, ToStore>{}), static_cast<T &&>(value));
 }
 
@@ -90,11 +88,11 @@ using retrieve = typename decltype(::self_macro::detail::_retrieve_type<Tag>{}._
 #define SELF_MACRO_STORE_TYPE_DECL(TAG, ...) static_assert(::self_macro::store<TAG, __VA_ARGS__>(true), "")
 #define SELF_MACRO_STORE_TYPE_EXPLICIT_INST(TAG, ...) template struct self_macro::detail::_store_type<TAG, __VA_ARGS__>
 
-#define SELF_MACRO_DEFINE_SELF(NAME, ACCESS)                                                                      \
-  struct _self_macro_self_type_tag;                                                                               \
-  auto _self_macro_self_type_tag()                                                                                \
-      ->::self_macro::store_with_type<struct _self_macro_self_type_tag,                                           \
-                                      typename ::self_macro::detail::remove_pointer<decltype(this)>::type, void>; \
+#define SELF_MACRO_DEFINE_SELF(NAME, ACCESS)                                                                       \
+  struct _self_macro_self_type_tag;                                                                                \
+  auto _self_macro_self_type_tag()                                                                                 \
+      -> ::self_macro::store_with_type<struct _self_macro_self_type_tag,                                           \
+                                       typename ::self_macro::detail::remove_pointer<decltype(this)>::type, void>; \
   using NAME = ::self_macro::retrieve<struct _self_macro_self_type_tag>;
 
 #endif /* A28B07F0_3295_4157_97BA_A9367C53CED4 */

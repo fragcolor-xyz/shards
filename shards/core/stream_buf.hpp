@@ -7,7 +7,7 @@
 #include <iomanip>
 
 namespace shards {
-  
+
 struct CachedStreamBuf : std::streambuf {
   std::vector<char> data;
 
@@ -87,7 +87,7 @@ struct VarStringStream {
       for (uint32_t i = 0; i < var.payload.bytesSize; i++)
         stream << std::setw(2) << std::setfill('0') << (int)var.payload.bytesValue[i];
     } else if (var.valueType == SHType::Int16) {
-      auto& s{ stream << std::hex << std::setw(2) << std::setfill('0')};
+      auto &s{stream << std::hex << std::setw(2) << std::setfill('0')};
       for (int i = 0; i < 16; i++) {
         s << ((int)var.payload.int16Value[i] & 0xff);
       }
@@ -107,6 +107,6 @@ struct VarStringStream {
 
   const std::string_view str() { return cache.str(); }
 };
-}
+} // namespace shards
 
 #endif /* F927121D_987F_4BF6_BBC8_DDCE9839EFEE */

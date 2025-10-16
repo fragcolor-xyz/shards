@@ -34,8 +34,8 @@ struct BaseColor {
   static inline FeaturePtr create() {
     using namespace shader;
     using namespace shader::blocks;
-    using shader::Types;
     using shader::NumType;
+    using shader::Types;
 
     NumType colorFieldType(ShaderFieldBaseType::Float32, 4);
 
@@ -58,8 +58,7 @@ struct BaseColor {
             context.readInput("color");
           } else {
             uint64_t maxValue = getShaderFieldMaxValue(colorInputType.baseType);
-            auto colorFieldTypeName =
-                getWGSLTypeName(NumType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
+            auto colorFieldTypeName = getWGSLTypeName(NumType(ShaderFieldBaseType::Float32, colorInputType.numComponents));
             context.write(fmt::format("({}(", colorFieldTypeName));
             context.readInput("color");
             context.write(fmt::format(") / {}(f32({:e}))", colorFieldTypeName, double(maxValue)));

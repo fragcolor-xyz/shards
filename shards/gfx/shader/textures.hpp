@@ -45,8 +45,7 @@ public:
     } else {
       binding = &layout.bindings[it->second];
       if (binding->type != type)
-        throw formatException("Texture {} redefined as type {} but already defined as {}", name, Type(type),
-                              Type(binding->type));
+        throw formatException("Texture {} redefined as type {} but already defined as {}", name, Type(type), Type(binding->type));
     }
     binding->defaultTexcoordBinding = defaultTexcoordBinding;
   }

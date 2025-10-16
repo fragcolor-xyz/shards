@@ -59,7 +59,8 @@ struct FontMap {
   const FontSize &getFontSize(uint32_t fontSize);
 
   static FontMap::Ptr getDefault();
-  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512, WGPUFilterMode filterMode = WGPUFilterMode_Linear);
+  static FontMap::Ptr load(const uint8_t *data, size_t size, int pageSize = 512,
+                           WGPUFilterMode filterMode = WGPUFilterMode_Linear);
 
 private:
   FontSize &getOrCreateFontSize(uint32_t fontSize);

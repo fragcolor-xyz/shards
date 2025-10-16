@@ -76,7 +76,7 @@ void InputMaster::update(gfx::Window &window) {
 
 void InputMaster::postMessage(const Message &message) { messageQueue.push(message); }
 
-void InputMaster::handleMessage(const Message &message, gfx::Window& window) {
+void InputMaster::handleMessage(const Message &message, gfx::Window &window) {
   SPDLOG_LOGGER_DEBUG(logger, "Handling message: {}", debugFormat(message));
   std::visit(
       [&](auto &&arg) {

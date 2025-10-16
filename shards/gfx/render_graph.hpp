@@ -97,9 +97,7 @@ struct RenderTextureCache {
     }
   }
 
-  void clear() {
-    bins.clear();
-  }
+  void clear() { bins.clear(); }
 
   void reset() {
     for (auto &bin : bins) {

@@ -62,7 +62,8 @@ void setupCoreLoggingAPI(SHCore *result) {
 
   result->logLevel = [](int level, SHStringWithLen msg) noexcept {
     std::string_view sv(msg.string, size_t(msg.len));
-    // TODO this prints always this line and file... it's only used when SHCore is involved so lower priority but still annoying and to fix at some point
+    // TODO this prints always this line and file... it's only used when SHCore is involved so lower priority but still annoying
+    // and to fix at some point
     spdlog::default_logger_raw()->log(spdlog::source_loc{__FILE__, __LINE__, SPDLOG_FUNCTION}, (spdlog::level::level_enum)level,
                                       sv);
   };
@@ -78,8 +79,6 @@ void setupCoreLoggingAPI(SHCore *result) {
     logger->log(static_cast<spdlog::level::level_enum>(level), "{}", message);
   };
 
-  result->setupLogger = [](const SHLogSettings* settings) {
-    shards::logging::setupDefaultLogger(*settings);
-  };
+  result->setupLogger = [](const SHLogSettings *settings) { shards::logging::setupDefaultLogger(*settings); };
 }
 } // namespace shards

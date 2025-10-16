@@ -6,13 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Essential Commands
 - **Bootstrap**: `./bootstrap` - Initialize dependencies and tools (run first)
-- **Build**: `./build.sh` - Create debug build using CMake/Ninja
-- **Format**: `./format.sh` - Format C++ code with clang-format
-- **Tests**: `./run_tests` - Run Shards language test suite (requires built executable)
+- **Build**: `just build` - Build shards, binary will be found at `build/Debug/shards`
+- **Format**: `just format` - Format C++ code with clang-format
+- **Tests**: `just tests` - Run Shards language test suite (note: tests take time)
 - **Update**: `./update.sh` - Update git submodules and dependencies
 
 ### Just Commands
 - `just pull` - Git pull and update dependencies in one command
+- `just build` - Build shards, binary will be found at `build/Debug/shards`
+- `just format` - Format C++ code with clang-format
+- `just tests` - Run test suite (note: tests take time)
+- `just cargo-check` - Check Rust code with correct toolchain (use this for Rust development)
 - `just build-docker-image` - Build Docker image with current commit
 
 ## Architecture Overview
@@ -51,21 +55,31 @@ Shards is a flow-based programming language with a unique data flow paradigm. Co
 
 ### Initial Setup
 1. `./bootstrap` - Sets up all dependencies and tools
-2. `./build.sh` - Creates initial debug build
-3. `./run_tests` - Verify installation works
+2. `just build` - Creates initial debug build
+3. `just tests` - Verify installation works
 
 ### Regular Development
 1. Make code changes
-2. `./format.sh` - Format C++ code before committing
-3. `./build.sh` - Rebuild after changes
-4. `./run_tests` - Verify tests pass
+2. `just format` - Format C++ code before committing
+3. `just build` - Rebuild after changes
+4. `just tests` - Verify tests pass
 5. Git commit/push
+
+### Rust Development
+When working on Rust modules or the graphics subsystem:
+1. Make changes to Rust code in `shards/modules/` or `shards/gfx/`
+2. `just cargo-check` - Check Rust code with the correct toolchain
+3. `just build` - Full rebuild to integrate Rust changes
+4. `just tests` - Run test suite to verify changes
+
+**IMPORTANT**: Always use `just cargo-check` instead of `cargo check` directly. The project uses a specific Rust toolchain, and the just command ensures the correct toolchain is used.
 
 ### Testing
 - **Test Files**: `shards/tests/*.shs` contain language-level tests
-- **Test Runner**: `./run_tests` script runs all `.shs` files through shards executable
+- **Test Runner**: `just tests` runs the test suite through shards executable
 - **Test Types**: Core language, graphics (gfx-*), UI, physics, networking
 - Tests create tag files in `shards/tests/tag_ok/` and `shards/tests/tag_err/`
+- **Note**: Tests take time to complete
 
 ### Debugging and Logging
 - **Log Levels**: Control logging verbosity with environment variables
@@ -107,5 +121,3 @@ The build system supports multiple platforms (macOS, Linux, Windows, iOS, etc.).
 
 ### Swift Integration
 Swift files provide iOS/macOS bindings. The main interface is in `include/shards/shards.swift` with module-specific implementations in various directories.
-
-- just run `cmake --build build/debug --target shards` to simply build

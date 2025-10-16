@@ -612,7 +612,7 @@ struct ToJson {
 
 // Helper function to sanitize JSON with invalid escape sequences
 // Useful for handling LLM-generated JSON that may contain tokenization artifacts
-static std::string fix_llm_json_escapes(const std::string& json_str) {
+static std::string fix_llm_json_escapes(const std::string &json_str) {
   std::string result;
   result.reserve(json_str.size());
   bool in_string = false;
@@ -621,7 +621,7 @@ static std::string fix_llm_json_escapes(const std::string& json_str) {
     char c = json_str[i];
 
     // Track if we're in a string literal (simple check - toggle on unescaped quotes)
-    if (c == '"' && (i == 0 || json_str[i-1] != '\\')) {
+    if (c == '"' && (i == 0 || json_str[i - 1] != '\\')) {
       in_string = !in_string;
       result += c;
       continue;
@@ -632,9 +632,7 @@ static std::string fix_llm_json_escapes(const std::string& json_str) {
       char next = json_str[i + 1];
 
       // Valid single-char escapes: " \ / b f n r t
-      if (next == '"' || next == '\\' || next == '/' ||
-          next == 'b' || next == 'f' || next == 'n' ||
-          next == 'r' || next == 't') {
+      if (next == '"' || next == '\\' || next == '/' || next == 'b' || next == 'f' || next == 'n' || next == 'r' || next == 't') {
         result += c;
         continue;
       }

@@ -33,8 +33,7 @@ struct EntryPoint {
 
   EntryPoint() = default;
   template <typename T>
-  EntryPoint(FastString name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment,
-             T &&code = BlockPtr())
+  EntryPoint(FastString name, ProgrammableGraphicsStage stage = ProgrammableGraphicsStage::Fragment, T &&code = BlockPtr())
       : stage(stage), name(name), code(blocks::ConvertToBlock<T>{}(std::forward<T>(code))) {}
 
   EntryPoint(EntryPoint &&other) = default;

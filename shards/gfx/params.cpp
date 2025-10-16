@@ -89,8 +89,8 @@ size_t packNumParameter(uint8_t *outData, size_t outLength, const NumParameter &
   return std::visit(visitor, variant);
 }
 
-using shader::Types;
 using shader::NumType;
+using shader::Types;
 NumType getNumParameterType(const NumParameter &variant) {
   NumType result = {};
   std::visit(

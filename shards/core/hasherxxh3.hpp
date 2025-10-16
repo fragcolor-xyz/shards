@@ -26,7 +26,6 @@ template <> struct std::hash<shards::Hash128> {
   size_t operator()(const shards::Hash128 &h) const { return size_t(h.low); }
 };
 
-
 namespace shards {
 struct DummyHasher {
   template <typename T> void operator()(const T &) {}
@@ -37,7 +36,8 @@ template <typename T>
 concept TriviallyHashable = std::is_trivial_v<T>;
 
 template <typename T, typename TVisitor>
-concept VisitorHashable = !TriviallyHashable<T> && requires(T value, TVisitor visitor, DummyHasher hasher) { visitor(value, hasher); };
+concept VisitorHashable =
+    !TriviallyHashable<T> && requires(T value, TVisitor visitor, DummyHasher hasher) { visitor(value, hasher); };
 
 struct HasherDefaultVisitor {
   template <typename T, typename THasher> void operator()(const T &value, THasher &&hasher) { value.hash(hasher); }

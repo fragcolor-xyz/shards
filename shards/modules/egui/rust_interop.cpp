@@ -45,7 +45,7 @@ gfx::Renderer *gfx_GraphicsContext_getRenderer(const SHVar &graphicsContext) {
 
 DrawQueuePtr *gfx_getDrawQueueFromVar(const SHVar &var) {
   SHDrawQueue &shDrawQueue = varAsObjectChecked<SHDrawQueue>(var, ShardsTypes::DrawQueue);
-  return &shDrawQueue.queue; 
+  return &shDrawQueue.queue;
 }
 
 const egui::Input *gfx_getEguiWindowInputs(gfx::EguiInputTranslator *translator, const SHVar &inputContextVar,

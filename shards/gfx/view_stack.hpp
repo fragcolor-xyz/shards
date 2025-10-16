@@ -7,7 +7,7 @@
 #include <optional>
 
 namespace gfx::detail {
-  struct FrameQueue;
+struct FrameQueue;
 }
 
 namespace gfx {

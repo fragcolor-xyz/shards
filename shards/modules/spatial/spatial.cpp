@@ -32,13 +32,14 @@ struct SpatialUIContextShard {
 
   std::shared_ptr<gfx::GizmoRenderer> _debugRenderer;
 
-  PARAM_PARAMVAR(_queue, "Queue", "The draw queue to insert draw commands into.", {Type::VariableOf(gfx::ShardsTypes::DrawQueue)});
+  PARAM_PARAMVAR(_queue, "Queue", "The draw queue to insert draw commands into.",
+                 {Type::VariableOf(gfx::ShardsTypes::DrawQueue)});
   PARAM_PARAMVAR(_view, "View", "The view that is being used to render.", {Type::VariableOf(gfx::ShardsTypes::View)});
   PARAM(ShardsVar, _contents, "Contents", "The list of UI panels to render.", {CoreInfo::ShardsOrNone});
   PARAM_VAR(_scale, "Scale", "The scale of how many UI units per world unit.", {CoreInfo::FloatType});
   PARAM_VAR(_debug, "Debug", "Visualize panel outlines and pointer input being sent to panels.", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents),
-             PARAM_IMPL_FOR(_scale), PARAM_IMPL_FOR(_debug));
+  PARAM_IMPL(PARAM_IMPL_FOR(_queue), PARAM_IMPL_FOR(_view), PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_scale),
+             PARAM_IMPL_FOR(_debug));
 
   SpatialUIContextShard() {
     _scale = Var(1000.0f);
@@ -60,7 +61,7 @@ struct SpatialUIContextShard {
 
   void warmup(SHContext *context);
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context)
 
     _contents.cleanup();
@@ -168,7 +169,7 @@ struct SpatialPanelShard {
     _context->context.panels.emplace_back(_panel);
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     _context.cleanup();
 

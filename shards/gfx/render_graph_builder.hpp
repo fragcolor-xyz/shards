@@ -644,7 +644,7 @@ public:
         outSuffix += fmt::format(" out: {}", *outputIndex);
       }
       SPDLOG_LOGGER_CALL(logger, logLevel, " - [{}{}] {} fmt: {} size: {}{}", index, unused ? ":UNUSED" : "", frame.name,
-                          magic_enum::enum_name(frame.format), *frame.sizing, outSuffix);
+                         magic_enum::enum_name(frame.format), *frame.sizing, outSuffix);
       ++index;
     }
 

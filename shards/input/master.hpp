@@ -127,7 +127,7 @@ public:
   FocusTracker &getFocusTracker() { return focusTracker; }
 
 private:
-  void handleMessage(const Message &message, gfx::Window& window);
+  void handleMessage(const Message &message, gfx::Window &window);
   void updateAndSortHandlers();
 
   // Assumes already locked

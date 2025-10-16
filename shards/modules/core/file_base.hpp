@@ -9,7 +9,7 @@ namespace fs = boost::filesystem;
 
 namespace shards {
 inline bool getPathChecked(std::string &outFilename, const ParamVar &name_, bool checkExists = true) {
-  const SHVar& name = name_.get();
+  const SHVar &name = name_.get();
   if (name.valueType != SHType::String) {
     SHLOG_DEBUG("FileBase: File parameter is not a string. ({}/{})", name, *name_);
     return false;

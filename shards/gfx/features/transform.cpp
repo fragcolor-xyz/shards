@@ -133,9 +133,8 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
       feature->shaderEntryPoints.emplace_back("initWorldNormal", ProgrammableGraphicsStage::Vertex, std::move(applyTBNTransform));
   initWorldNormal.dependencies.emplace_back("transformLib");
 
-  auto &writePosition =
-      feature->shaderEntryPoints.emplace_back("writePosition", ProgrammableGraphicsStage::Vertex,
-                                              WriteOutput("position", Types::Float4, ReadGlobal("screenPosition")));
+  auto &writePosition = feature->shaderEntryPoints.emplace_back(
+      "writePosition", ProgrammableGraphicsStage::Vertex, WriteOutput("position", Types::Float4, ReadGlobal("screenPosition")));
   writePosition.dependencies.emplace_back("initScreenPosition");
 
   auto &writeNormal = feature->shaderEntryPoints.emplace_back(
@@ -147,9 +146,9 @@ FeaturePtr Transform::create(bool applyView, bool applyProjection) {
   ;
   writeNormal.dependencies.emplace_back("initWorldNormal");
 
-  auto &writeWorldPosition = feature->shaderEntryPoints.emplace_back(
-      "writeWorldPosition", ProgrammableGraphicsStage::Vertex,
-      WriteOutput("worldPosition", Types::Float3, ReadGlobal("worldPosition"), ".xyz"));
+  auto &writeWorldPosition =
+      feature->shaderEntryPoints.emplace_back("writeWorldPosition", ProgrammableGraphicsStage::Vertex,
+                                              WriteOutput("worldPosition", Types::Float3, ReadGlobal("worldPosition"), ".xyz"));
   writeWorldPosition.dependencies.emplace_back("initWorldPosition");
 
   return feature;

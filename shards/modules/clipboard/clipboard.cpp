@@ -8,15 +8,9 @@ namespace shards {
 namespace UI::Clipboard {
 
 struct SetClipboard {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard sets the input string to the system clipboard.");
-  }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("The string to set as the clipboard contents.");
-  }
-  static SHOptionalString outputHelp() {
-    return DefaultHelpText::OutputHelpPass;
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard sets the input string to the system clipboard."); }
+  static SHOptionalString inputHelp() { return SHCCSTR("The string to set as the clipboard contents."); }
+  static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
@@ -33,15 +27,9 @@ struct SetClipboard {
 
 struct GetClipboard {
   std::string _output;
-  static SHOptionalString help() {
-    return SHCCSTR("This shard retrieves the current system clipboard contents.");
-  }
-  static SHOptionalString inputHelp() {
-    return DefaultHelpText::InputHelpIgnored;
-  }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs the current clipboard contents as a string.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard retrieves the current system clipboard contents."); }
+  static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Outputs the current clipboard contents as a string."); }
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 

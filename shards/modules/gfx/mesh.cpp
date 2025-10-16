@@ -24,7 +24,8 @@ struct MeshShard {
   static SHTypesInfo inputTypes() { return InputTable; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a mesh object using the data provided in the Vertices and Indices keys of the input table.");
+    return SHCCSTR(
+        "This shard creates a mesh object using the data provided in the Vertices and Indices keys of the input table.");
   }
 
   static SHOptionalString inputHelp() {
@@ -33,7 +34,8 @@ struct MeshShard {
   static SHOptionalString outputHelp() { return SHCCSTR("The created mesh object."); }
 
   PARAM_VAR(_layoutParam, "Layout",
-            "The names for each vertex attribute. The sequence provided will also be the pattern that dictates how the sequence value of the Vertices key in "
+            "The names for each vertex attribute. The sequence provided will also be the pattern that dictates how the sequence "
+            "value of the Vertices key in "
             "the input table will be interpreted.",
             {VertexAttributeSeqType});
   PARAM_VAR(_windingOrderParam, "WindingOrder", "Determines which side of the triangle is considered the front face.",
@@ -124,7 +126,8 @@ struct BuiltinMeshShard {
     Plane,
   };
 
-  DECL_ENUM_INFO(Type, BuiltinMeshType, "Type of built-in mesh. Identifies predefined mesh shapes available in the system.", 'bmid');
+  DECL_ENUM_INFO(Type, BuiltinMeshType, "Type of built-in mesh. Identifies predefined mesh shapes available in the system.",
+                 'bmid');
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
   static SHTypesInfo outputTypes() { return ShardsTypes::Mesh; }

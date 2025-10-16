@@ -3239,14 +3239,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   setupCoreLoggingAPI(result);
 
-
 #ifdef SH_COMPRESSED_STRINGS
   result->getCompressedString = [](uint32_t crc_id) {
     auto str = getCompiledCompressedString(crc_id);
     return str.string;
   };
 #else
-  result->getCompressedString = [](uint32_t crc_id) -> const char* { return nullptr; };
+  result->getCompressedString = [](uint32_t crc_id) -> const char * { return nullptr; };
 #endif
 
   result->setWireDebugId = [](SHWireRef wire, uint64_t id) {

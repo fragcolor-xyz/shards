@@ -55,7 +55,7 @@ struct DrawableEncodeContext {
 };
 
 struct DrawablePreprocessContext {
-  const shards::pmr::vector<const IDrawable *>& drawables;
+  const shards::pmr::vector<const IDrawable *> &drawables;
   const shards::pmr::vector<Feature *> &features;
   const BuildPipelineOptions &buildPipelineOptions;
   RendererStorage &storage;

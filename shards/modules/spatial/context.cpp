@@ -206,7 +206,7 @@ void Context::evaluate(gfx::DrawQueuePtr queue, double time, float deltaTime) {
 
     if (panel == focusedPanel) {
       // for (auto &otherEvent : otherEvents) {
-        // eguiInputTranslator.translateEvent(*otherEvent);
+      // eguiInputTranslator.translateEvent(*otherEvent);
       // }
     }
     eguiInputTranslator.end();

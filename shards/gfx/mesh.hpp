@@ -115,19 +115,13 @@ public:
   const MeshFormat &getFormat() const { return format; }
 
 #if SH_GFX_CONTEXT_DATA_LABELS
-  void setLabel(std::string_view label) {
-    this->label = label;
-  }
-  
-  std::string_view getLabel() const {
-    return label;
-  }
+  void setLabel(std::string_view label) { this->label = label; }
+
+  std::string_view getLabel() const { return label; }
 #else
   void setLabel(std::string_view) {}
-  
-  std::string_view getLabel() const {
-    return "<unknown>";
-  }
+
+  std::string_view getLabel() const { return "<unknown>"; }
 #endif
 
   size_t getNumVertices() const { return numVertices; }

@@ -11,8 +11,8 @@
 
 namespace shards {
 struct TaskFlowInstance {
-  static tf::Executor& instance();
+  static tf::Executor &instance();
 };
-} // namespace shards::async
+} // namespace shards
 
 #endif /* A036F6B0_2047_4DD1_B2FB_BD670D0373F7 */

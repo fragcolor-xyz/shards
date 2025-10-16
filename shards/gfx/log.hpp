@@ -7,14 +7,9 @@ namespace gfx {
 
 inline shards::logging::Logger getLogger() { return shards::logging::getOrCreate("gfx"); }
 
+inline shards::logging::Logger getContextDataLogger() { return shards::logging::getOrCreate("gfxcd"); }
 
-inline shards::logging::Logger getContextDataLogger() {
-  return shards::logging::getOrCreate("gfxcd");
-}
-
-inline shards::logging::Logger getWgpuLogger() {
-  return shards::logging::getOrCreate("wgpu");
-}
+inline shards::logging::Logger getWgpuLogger() { return shards::logging::getOrCreate("wgpu"); }
 } // namespace gfx
 
 #endif /* DDE8DFC5_0F92_481A_AF98_812B4A76BE44 */

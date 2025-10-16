@@ -211,7 +211,8 @@ struct AttribBuffer {
 
 // Reassembles a mesh out of a set of attributes and an optional index buffer
 inline MeshPtr generateMesh(std::optional<AttribBuffer> indexBuffer,
-                            boost::span<std::tuple<AttribBuffer *, FastString>> attributes, const char* generatedName = "<generated>") {
+                            boost::span<std::tuple<AttribBuffer *, FastString>> attributes,
+                            const char *generatedName = "<generated>") {
   MeshPtr newMesh = std::make_shared<Mesh>();
   MeshFormat format;
   format.primitiveType = PrimitiveType::TriangleList;

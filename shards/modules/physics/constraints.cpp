@@ -121,7 +121,10 @@ template <typename T = JPH::FixedConstraintSettings> struct SetOnCreateConstrain
 struct FixedConstraint final : public ConstraintBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("This shard rigidly connects two physics bodies together. When forces are applied to either body, they react as if they were a single rigid object."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard rigidly connects two physics bodies together. When forces are applied to either body, they react "
+                   "as if they were a single rigid object.");
+  }
 
   PARAM_VAR(_space, "Space",
             "This determines in which space the constraint is setup, all other properties should be in the specified space",
@@ -131,7 +134,8 @@ struct FixedConstraint final : public ConstraintBase {
   PARAM_PARAMVAR(_refB, "SecondReferenceFrame", "The rotation and position of the connection point for the second body.",
                  Float4x4OrVarTypes);
   PARAM_PARAMVAR(_autoDetectPoint, "AutoDetectPoint",
-                 "When the Space parameter is set to World space, the connection points will be automatically set to the current rotation and position of the two bodies. ",
+                 "When the Space parameter is set to World space, the connection points will be automatically set to the current "
+                 "rotation and position of the two bodies. ",
                  {CoreInfo::BoolType, CoreInfo::BoolVarType});
 
   PARAM_IMPL_DERIVED(ConstraintBase, PARAM_IMPL_FOR(_space), PARAM_IMPL_FOR(_refA), PARAM_IMPL_FOR(_refB),
@@ -271,7 +275,10 @@ struct MotorSettings {
 struct DistanceConstraint final : public ConstraintBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("This shard creates a tether between two bodies, keeping the distance between them within the range specified in the MinDistance and MaxDistance parameters."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a tether between two bodies, keeping the distance between them within the range specified "
+                   "in the MinDistance and MaxDistance parameters.");
+  }
 
   PARAM_VAR(_space, "Space",
             "This determines in which space the constraint is setup, all other properties should be in the specified space",
@@ -341,7 +348,10 @@ struct DistanceConstraint final : public ConstraintBase {
 struct SliderConstraint final : public ConstraintBase {
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
-  static SHOptionalString help() { return SHCCSTR("This shard creates a slider constraint between two bodies, turning the two bodies into sliders that can slide along the axis specified in the SliderAxis parameter."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard creates a slider constraint between two bodies, turning the two bodies into sliders that can "
+                   "slide along the axis specified in the SliderAxis parameter.");
+  }
 
   PARAM_VAR(_space, "Space",
             "This determines in which space the constraint is setup, all other properties should be in the specified space",
@@ -356,16 +366,19 @@ struct SliderConstraint final : public ConstraintBase {
   PARAM_PARAMVAR(_normalAxis, "NormalAxis", "Vector perpendicular to the slider axis, to define the frame",
                  {CoreInfo::Float3Type, CoreInfo::Float3VarType});
 
-  PARAM_PARAMVAR(_limitsMin, "LimitsMin", "The maximum distance the slider can move in the negative direction.", {CoreInfo::FloatType, CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_limitsMax, "LimitsMax", "The maximum distance the slider can move in the positive direction.", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_limitsMin, "LimitsMin", "The maximum distance the slider can move in the negative direction.",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_limitsMax, "LimitsMax", "The maximum distance the slider can move in the positive direction.",
+                 {CoreInfo::FloatType, CoreInfo::FloatVarType});
 
   PARAM_PARAMVAR(_limitSpring, "LimitSpring", "When set, makes the limits soft.", SpringSettings::TypesVarOrNone);
 
-  PARAM_PARAMVAR(_maxFrictionForce, "MaxFrictionForce",
-                 "Maximum amount of friction force to apply (in Newtons) on the slider.",
+  PARAM_PARAMVAR(_maxFrictionForce, "MaxFrictionForce", "Maximum amount of friction force to apply (in Newtons) on the slider.",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
 
-  PARAM_PARAMVAR(_motorSettings, "MotorSettings", "Defines the maximum and minimum amount of force of the motor applied to the slider.", {MotorSettings::TypesVarOrNone});
+  PARAM_PARAMVAR(_motorSettings, "MotorSettings",
+                 "Defines the maximum and minimum amount of force of the motor applied to the slider.",
+                 {MotorSettings::TypesVarOrNone});
   PARAM_PARAMVAR(_motorSpringSettings, "MotorSpringSettings", "Defines the Motor spring settings applied on the slider",
                  {SpringSettings::TypesVarOrNone});
 

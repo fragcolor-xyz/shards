@@ -168,9 +168,9 @@ inline const SHExposedTypeInfo *findContextVarExposedType(const SHInstanceData &
   if (var.valueType != SHType::ContextVar)
     return nullptr;
 
-  auto& ctx = CompositionContext::get(data);
+  auto &ctx = CompositionContext::get(data);
   auto varI = ctx.inherited.find(SHSTRVIEW(var));
-  if(varI != ctx.inherited.end()) {
+  if (varI != ctx.inherited.end()) {
     return &varI->second;
   }
 
@@ -189,7 +189,7 @@ template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(co
 }
 
 inline const SHExposedTypeInfo *findExposedVariablePtr(const SHInstanceData &data, std::string_view variableName) {
-  auto& ctx = shards::CompositionContext::get(data);
+  auto &ctx = shards::CompositionContext::get(data);
   return findExposedVariablePtr(ctx.inherited, variableName);
 }
 

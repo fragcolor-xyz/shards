@@ -10,7 +10,7 @@ inline void *SDL_GetNativeWindowPtr(SDL_Window *window, bool useWayland = false)
 #elif SH_ANDROID
   return SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
 #elif SH_LINUX
-  if(useWayland) {
+  if (useWayland) {
     return SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
   } else {
     return SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, NULL);

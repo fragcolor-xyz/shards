@@ -259,7 +259,7 @@ struct RenderOutput {
   TextureUpdates textureUpdates;
   const ClippedPrimitive *primitives;
   size_t numPrimitives;
-  const std::shared_ptr<gfx::Texture>* externalTextures;
+  const std::shared_ptr<gfx::Texture> *externalTextures;
   size_t numExternalTextures;
 };
 

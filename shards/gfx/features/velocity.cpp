@@ -46,7 +46,7 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
   using namespace shader::blocks;
 
   struct PipelineModifier : public IPipelineModifier {
-    void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions& options) {
+    void buildPipeline(PipelineBuilder &builder, const BuildPipelineOptions &options) {
       auto &objectBinding = builder.getOrCreateBufferBinding("object");
       objectBinding.bindGroupId = BindGroupId::Draw;
       objectBinding.structType->addField("previousWorld", Types::Float4x4);
@@ -114,8 +114,8 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
     code->appendLine(WriteGlobal("velocity", Types::Float2, "ndcVelocity"));
 
     // Apply scale to fit in output precision
-    code->appendLine(WithOutput("velocity", WriteOutput("velocity", Types::Float2, ReadGlobal("velocity"),
-                                                        fmt::format(" * {:0.2}", scalingFactor))));
+    code->appendLine(WithOutput(
+        "velocity", WriteOutput("velocity", Types::Float2, ReadGlobal("velocity"), fmt::format(" * {:0.2}", scalingFactor))));
 
     feature->shaderEntryPoints.emplace_back("initVelocity", ProgrammableGraphicsStage::Fragment, std::move(code));
   }

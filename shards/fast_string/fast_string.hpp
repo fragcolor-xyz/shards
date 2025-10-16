@@ -28,7 +28,7 @@ struct FastString {
     return getData().data();
   }
 
-  FastString &operator=(const std::string& s) {
+  FastString &operator=(const std::string &s) {
     initFrom(s);
     return *this;
   }

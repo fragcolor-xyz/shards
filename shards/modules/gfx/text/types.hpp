@@ -38,6 +38,6 @@ struct SHDynamicMesh {
   gfx::text::MeshBuffer buffer;
 };
 
-} // namespace shards::text
+} // namespace gfx::text
 
 #endif

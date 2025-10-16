@@ -605,7 +605,7 @@ m3ApiRawFunction(m3_wasi_unstable_path_open) {
   if (path_len >= 512)
     m3ApiReturn(__WASI_ERRNO_INVAL);
 
-    // copy path so we can ensure it is NULL terminated
+  // copy path so we can ensure it is NULL terminated
 #if defined(M3_COMPILER_MSVC)
   char host_path[512];
 #else
@@ -1200,7 +1200,7 @@ struct Run {
 
   void warmup(SHContext *context) { _arguments.warmup(context); }
 
-  void cleanup(SHContext* context) { _arguments.cleanup(); }
+  void cleanup(SHContext *context) { _arguments.cleanup(); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
     return awaitne(

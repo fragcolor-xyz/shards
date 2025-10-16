@@ -6,7 +6,7 @@
 
 namespace shards::input::debug {
 using OpaqueEvent = void *;
-using OpaqueLayer = void*;
+using OpaqueLayer = void *;
 
 struct ConsumeFlags {
   bool canReceiveInput;
@@ -68,10 +68,10 @@ struct SHVar;
 const char *shards_input_eventToString(shards::input::debug::OpaqueEvent);
 void shards_input_freeString(const char *str);
 bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent);
-void* shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
+void *shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
 size_t shards_input_eventType(shards::input::debug::OpaqueEvent);
 shards::input::debug::OpaqueLayer shards_input_eventConsumedBy(shards::input::debug::OpaqueEvent);
-const char* shards_input_layerName(shards::input::debug::OpaqueLayer);
+const char *shards_input_layerName(shards::input::debug::OpaqueLayer);
 }
 #endif
 #endif /* D9559C5B_F728_4B73_B3D2_372D625A794D */

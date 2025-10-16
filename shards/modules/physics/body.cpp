@@ -49,13 +49,27 @@ struct BodyShard {
   static inline Type PhysicsDOFSeqType = Type::SeqOf(PhysicsDOFEnumInfo::Type);
   static inline Types PhysicsDOFTypes{PhysicsDOFEnumInfo::Type, PhysicsDOFSeqType, Type::VariableOf(PhysicsDOFSeqType)};
 
-  PARAM_PARAMVAR(_location, "Location", "The initial location of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body. Vice versa, the body's location is also updated if the variable's value is changed.", {shards::CoreInfo::Float3VarType});
-  PARAM_PARAMVAR(_rotation, "Rotation", "The initial rotation of the physics object. The variable provided in this parameter is also updated through the physics simulations conducted on this body. Vice versa, the body's rotation is also updated if the variable's value is changed.", {shards::CoreInfo::Float4VarType});
-  PARAM_VAR(_static, "Static", "If false, the physics body will be destroyed when the shard is not activated. If true, the body will persist and be included in the physics simulation even if the shard is not activated.", {shards::CoreInfo::BoolType});
-  PARAM_PARAMVAR(_enabled, "Enabled", "Can be used to toggle the body on or off if it is a persistent body. If false, the body is temporarily removed from the simulation without destroying it.",
+  PARAM_PARAMVAR(
+      _location, "Location",
+      "The initial location of the physics object. The variable provided in this parameter is also updated through the physics "
+      "simulations conducted on this body. Vice versa, the body's location is also updated if the variable's value is changed.",
+      {shards::CoreInfo::Float3VarType});
+  PARAM_PARAMVAR(
+      _rotation, "Rotation",
+      "The initial rotation of the physics object. The variable provided in this parameter is also updated through the physics "
+      "simulations conducted on this body. Vice versa, the body's rotation is also updated if the variable's value is changed.",
+      {shards::CoreInfo::Float4VarType});
+  PARAM_VAR(_static, "Static",
+            "If false, the physics body will be destroyed when the shard is not activated. If true, the body will persist and be "
+            "included in the physics simulation even if the shard is not activated.",
+            {shards::CoreInfo::BoolType});
+  PARAM_PARAMVAR(_enabled, "Enabled",
+                 "Can be used to toggle the body on or off if it is a persistent body. If false, the body is temporarily removed "
+                 "from the simulation without destroying it.",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
   PARAM_PARAMVAR(_shape, "Shape", "The shape of the body.", {SHShape::VarType});
-  PARAM_PARAMVAR(_friction, "Friction", "The friction applied when this physics body is in contact with another physics body.", {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_friction, "Friction", "The friction applied when this physics body is in contact with another physics body.",
+                 {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_restitution, "Restitution", "The bounciness of the body when it collides with another physics body.",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_linearDamping, "LinearDamping", "How much linear velocity decays over time.",
@@ -68,19 +82,23 @@ struct BodyShard {
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_gravityFactor, "GravityFactor", "The gravity factor applied to this body",
                  {shards::CoreInfo::FloatType, shards::CoreInfo::FloatVarType});
-  PARAM_PARAMVAR(_allowedDOFs, "AllowedDOFs", "The translation and rotation axes that the body is allowed to move and rotate around.", PhysicsDOFTypes);
+  PARAM_PARAMVAR(_allowedDOFs, "AllowedDOFs",
+                 "The translation and rotation axes that the body is allowed to move and rotate around.", PhysicsDOFTypes);
   PARAM_PARAMVAR(_motionType, "MotionType", "Motion type of the body, Dynamic, Kinematic, or Static.",
                  {PhysicsMotionEnumInfo::Type, Type::VariableOf(PhysicsMotionEnumInfo::Type)});
-  PARAM_PARAMVAR(
-      _collisionGroup, "CollisionGroup",
-      "The collision group this body belongs to and which collision groups it is allowed to collide with. The first component in the int2 dictates collision group membership mask, the second part contains a filter mask.",
-      {CoreInfo::Int2Type, CoreInfo::Int2VarType});
-  PARAM_VAR(_sensor, "Sensor", "If true, this physics body will be considered a Sensor. Sensors only detect collisions but do not interact with collided objects (AKA triggers)",
+  PARAM_PARAMVAR(_collisionGroup, "CollisionGroup",
+                 "The collision group this body belongs to and which collision groups it is allowed to collide with. The first "
+                 "component in the int2 dictates collision group membership mask, the second part contains a filter mask.",
+                 {CoreInfo::Int2Type, CoreInfo::Int2VarType});
+  PARAM_VAR(_sensor, "Sensor",
+            "If true, this physics body will be considered a Sensor. Sensors only detect collisions but do not interact with "
+            "collided objects (AKA triggers)",
             {CoreInfo::BoolType});
   PARAM_PARAMVAR(_mass, "Mass", "Mass of the body. For mass less or equal to 0, default mass calculation is used instead.",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_tag, "Tag", "Tag attached to this body for use in collision events.", {CoreInfo::AnyType});
-  PARAM_PARAMVAR(_context, "Context", "The physics context object that is managing the physics simulation.", {ShardsContext::VarType});
+  PARAM_PARAMVAR(_context, "Context", "The physics context object that is managing the physics simulation.",
+                 {ShardsContext::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_location), PARAM_IMPL_FOR(_rotation), PARAM_IMPL_FOR(_static), PARAM_IMPL_FOR(_enabled),
              PARAM_IMPL_FOR(_shape), PARAM_IMPL_FOR(_friction), PARAM_IMPL_FOR(_restitution), PARAM_IMPL_FOR(_linearDamping),
              PARAM_IMPL_FOR(_angularDamping), PARAM_IMPL_FOR(_maxLinearVelocity), PARAM_IMPL_FOR(_maxAngularVelocity),

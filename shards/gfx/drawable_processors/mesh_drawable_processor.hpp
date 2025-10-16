@@ -122,7 +122,8 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
     WgpuHandle<WGPUBindGroup> viewBindGroup;
     DrawableDataVec dataContainer;
 
-    PrepareData(allocator_type allocator) : drawableData(allocator), globalBuffers(allocator), viewBufferBindings(allocator), dataContainer(allocator) {}
+    PrepareData(allocator_type allocator)
+        : drawableData(allocator), globalBuffers(allocator), viewBufferBindings(allocator), dataContainer(allocator) {}
   };
 
   SharedBufferPool uniformBufferPool;

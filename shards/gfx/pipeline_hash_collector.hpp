@@ -10,8 +10,7 @@
 namespace gfx::detail {
 
 // Specialize this for custom types
-template <typename T, typename H, typename = void> struct PipelineHash {
-};
+template <typename T, typename H, typename = void> struct PipelineHash {};
 
 template <typename T, typename H>
 struct PipelineHash<T, H, std::void_t<decltype(std::declval<T>().getPipelineHash(*(H *)0), bool())>> {
@@ -27,13 +26,14 @@ template <typename H> struct PipelineHash<float4x4, H> {
   }
 };
 
-template<typename T>
-concept CanApplyPipelineHash = requires(const T &val, shards::DummyHasher hasher) {
-  PipelineHash<T, shards::DummyHasher>::apply(val, hasher);
-};
+template <typename T>
+concept CanApplyPipelineHash =
+    requires(const T &val, shards::DummyHasher hasher) { PipelineHash<T, shards::DummyHasher>::apply(val, hasher); };
 
 struct PipelineHashVisitor {
-  template <CanApplyPipelineHash T, typename H> void operator()(const T &val, H &hasher) { PipelineHash<T, H>::apply(val, hasher); }
+  template <CanApplyPipelineHash T, typename H> void operator()(const T &val, H &hasher) {
+    PipelineHash<T, H>::apply(val, hasher);
+  }
 };
 
 struct References {

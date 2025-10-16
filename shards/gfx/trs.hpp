@@ -63,7 +63,7 @@ struct TRS {
   }
   TRS scaleAround(const TRS &pivot, const float3 &s) const {
     float4 toRotSpaceQ = linalg::qmul(rotation, linalg::qinv(pivot.rotation));
-    float3 relScale =  linalg::qrot(toRotSpaceQ, scale) * s;
+    float3 relScale = linalg::qrot(toRotSpaceQ, scale) * s;
     float3 newLocalScale = linalg::qrot(linalg::qinv(toRotSpaceQ), relScale);
 
     float3 relTsl = (translation - pivot.translation) * s;

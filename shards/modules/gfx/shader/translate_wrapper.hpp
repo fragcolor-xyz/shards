@@ -28,7 +28,7 @@ template <typename TShard> struct TranslateWrapperExternal : public ITranslation
 
   Callback callback;
 
-  TranslateWrapperExternal(Callback callback) : callback(callback){};
+  TranslateWrapperExternal(Callback callback) : callback(callback) {};
   void translate(ShardPtr shard, TranslationContext &context) {
     ShardWrapper *wrapper = reinterpret_cast<ShardWrapper *>(shard);
     TShard *innerShard = &wrapper->shard;

@@ -33,7 +33,7 @@ void stbtt_GetPackedQuadScaled(const stbtt_packedchar *chardata, int pw, int ph,
   *xpos += b->xadvance * scale;
 }
 
-void TextPlacer::verticalAlignOrigin(const FontSize& fontSize, float alignment) {
+void TextPlacer::verticalAlignOrigin(const FontSize &fontSize, float alignment) {
   if (alignment < -0.5f) {
     // -1 to -0.5 interpolates from top to baseline
     float t = (alignment + 0.5f) / 0.5f; // t goes from 0 to 1
@@ -49,7 +49,7 @@ void TextPlacer::verticalAlignOrigin(const FontSize& fontSize, float alignment) 
   pos.y = origin.y;
 }
 
-void TextPlacer::appendChar(const FontSize& fontSize, uint32_t c, float scale) {
+void TextPlacer::appendChar(const FontSize &fontSize, uint32_t c, float scale) {
   if (c == U' ') {
     pos.x += fontSize.spaceSize.x * scale;
     coord.x += 1;
@@ -91,7 +91,7 @@ void TextPlacer::appendChar(const FontSize& fontSize, uint32_t c, float scale) {
   max.y = std::max(max.y, pos.y);
 }
 
-void TextPlacer::appendString(const FontSize& fontSize, std::string_view text, float scale) {
+void TextPlacer::appendString(const FontSize &fontSize, std::string_view text, float scale) {
   const char *str = text.data();
   while (*str) {
     utf8_int32_t codepoint;

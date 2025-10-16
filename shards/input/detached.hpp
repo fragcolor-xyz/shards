@@ -10,7 +10,6 @@
 #include <boost/container/flat_map.hpp>
 #include <type_traits>
 
-
 namespace shards::input {
 // Keeps track of all input state separately and synthesizes it's own events by
 // diffing the previous state with the new state
@@ -74,9 +73,7 @@ public:
     InputState newState = state;
     newState.update();
     NativeEventDecoder decoder{decoderState, virtualInputEvents, state, newState, buffers[getBufferIndex(1)]};
-    auto applyFn = [&](const NativeEventType &event) {
-      decoder.apply(event);
-    };
+    auto applyFn = [&](const NativeEventType &event) { decoder.apply(event); };
     callback(applyFn);
 
     endUpdate(newState);

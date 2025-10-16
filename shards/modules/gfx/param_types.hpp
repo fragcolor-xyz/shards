@@ -5,21 +5,10 @@
 
 namespace gfx::detail {
 using namespace shards;
-static inline Types ValidShaderTypes{{
-    ShardsTypes::Texture,
-    ShardsTypes::TextureCube,
-    ShardsTypes::Buffer,
-    CoreInfo::Float4x4Type,
-    CoreInfo::Float4Type,
-    CoreInfo::Float3Type,
-    CoreInfo::Float2Type,
-    CoreInfo::FloatType,
-    CoreInfo::IntType,
-    CoreInfo::Int2Type,
-    CoreInfo::Int3Type,
-    CoreInfo::Int4Type,
-    CoreInfo::AnyTableType
-}};
+static inline Types ValidShaderTypes{{ShardsTypes::Texture, ShardsTypes::TextureCube, ShardsTypes::Buffer, CoreInfo::Float4x4Type,
+                                      CoreInfo::Float4Type, CoreInfo::Float3Type, CoreInfo::Float2Type, CoreInfo::FloatType,
+                                      CoreInfo::IntType, CoreInfo::Int2Type, CoreInfo::Int3Type, CoreInfo::Int4Type,
+                                      CoreInfo::AnyTableType}};
 
 static inline Type ValidShaderVarTypes = Type::VariableOf(ValidShaderTypes);
 

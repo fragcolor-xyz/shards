@@ -32,7 +32,7 @@ struct MaterialShard {
     _material->material = std::make_shared<Material>();
   }
 
-  void cleanup(SHContext* context) {
+  void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
     if (_material) {
       ShardsTypes::MaterialObjectVar.Release(_material);

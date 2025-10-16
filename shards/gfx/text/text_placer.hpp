@@ -28,9 +28,9 @@ struct TextPlacer {
   std::vector<TextQuad> textQuads;
 
   // Vertically align (0 = bottom-left, 1 = top-left)
-  void verticalAlignOrigin(const FontSize& fontSize, float alignment);
-  void appendChar(const FontSize& fontSize, uint32_t c, float scale = 1.0f);
-  void appendString(const FontSize& fontSize, std::string_view text, float scale = 1.0f);
+  void verticalAlignOrigin(const FontSize &fontSize, float alignment);
+  void appendChar(const FontSize &fontSize, uint32_t c, float scale = 1.0f);
+  void appendString(const FontSize &fontSize, std::string_view text, float scale = 1.0f);
 
   void clear();
   inline float2 getSize() const { return max - origin; }

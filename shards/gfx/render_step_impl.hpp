@@ -6,14 +6,17 @@
 #include "render_graph_build_data.hpp"
 
 namespace gfx::detail {
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data, const RenderFullscreenStep &step);
-void setupNodeFrames(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data, const RenderFullscreenStep &step);
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data,
+                       const RenderFullscreenStep &step);
+void setupNodeFrames(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data,
+                     const RenderFullscreenStep &step);
 void setupRenderGraphNode(RenderGraphNode &node, graph_build_data::NodeBuildData &buildData, const RenderFullscreenStep &step);
 
 void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data, const NoopStep &step);
 void setupRenderGraphNode(RenderGraphNode &node, graph_build_data::NodeBuildData &buildData, const NoopStep &step);
 
-void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data,const RenderDrawablesStep &step);
+void allocateNodeEdges(detail::RenderGraphBuilder &builder, graph_build_data::NodeBuildData &data,
+                       const RenderDrawablesStep &step);
 void setupRenderGraphNode(RenderGraphNode &node, graph_build_data::NodeBuildData &buildData, const RenderDrawablesStep &step);
 } // namespace gfx::detail
 

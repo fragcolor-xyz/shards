@@ -40,10 +40,8 @@ struct Schedule {
 };
 
 struct Run {
-  Run() {
-    _detached = Var(false);
-  }
-  
+  Run() { _detached = Var(false); }
+
   static SHTypesInfo inputTypes() { return shards::CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::BoolType; }
 

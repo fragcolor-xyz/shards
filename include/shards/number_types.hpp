@@ -37,7 +37,7 @@ inline NumberType shTypeToNumberType(SHType type) {
 
 struct NumberConversionOutOfRangeEx {
   int64_t index;
-  NumberConversionOutOfRangeEx(int64_t index) : index(index){};
+  NumberConversionOutOfRangeEx(int64_t index) : index(index) {};
 };
 
 // Convers from one number type to another

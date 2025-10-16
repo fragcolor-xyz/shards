@@ -14,7 +14,8 @@ struct UIPassShard {
   static SHTypesInfo outputTypes() { return gfx::ShardsTypes::PipelineStep; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a render pass object designed for rendering UI using the UI drawable objects from the drawables queue specified in the Queue parameter.");
+    return SHCCSTR("This shard creates a render pass object designed for rendering UI using the UI drawable objects from the "
+                   "drawables queue specified in the Queue parameter.");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }

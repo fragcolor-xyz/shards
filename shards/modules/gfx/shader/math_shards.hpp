@@ -58,7 +58,8 @@ template <typename TShard, typename TOp> struct BinaryOperatorTranslator {
         auto maybeCastToVec = [](std::unique_ptr<IWGSLGenerated> &op, NumType &type, size_t numTargetComponents) {
           if (type.numComponents == 1) {
             type.numComponents = numTargetComponents;
-            op = std::make_unique<WGSLBlock>(type, blocks::makeCompoundBlock(fmt::format("{}(", getWGSLTypeName(type)), op->toBlock(), ")"));
+            op = std::make_unique<WGSLBlock>(
+                type, blocks::makeCompoundBlock(fmt::format("{}(", getWGSLTypeName(type)), op->toBlock(), ")"));
           }
         };
         maybeCastToVec(operandA, typeA, typeB.numComponents);

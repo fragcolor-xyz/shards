@@ -6,7 +6,7 @@
 
 namespace shards {
 
-template <typename S, typename... TArgs> std::runtime_error formatException(const S& format, TArgs &&...args) {
+template <typename S, typename... TArgs> std::runtime_error formatException(const S &format, TArgs &&...args) {
   return std::runtime_error(fmt::format(format, std::forward<TArgs>(args)...));
 }
 

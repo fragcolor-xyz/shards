@@ -56,11 +56,12 @@ private:
 };
 
 void applyShaderEntryPoint(SHContext *context, shader::EntryPoint &entryPoint, const SHVar &input,
-                           const VariableMap &composeWithVariables = VariableMap(), const VariableRemapping& globalVariableRemapping = VariableRemapping());
+                           const VariableMap &composeWithVariables = VariableMap(),
+                           const VariableRemapping &globalVariableRemapping = VariableRemapping());
 
 template <typename T>
-void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash, gfx::shader::VariableMap &composedWith, const VariableRemapping& globalVariableRemapping,
-                            T apply) {
+void applyComposeWithHashed(SHContext *context, const SHVar &input, SHVar &hash, gfx::shader::VariableMap &composedWith,
+                            const VariableRemapping &globalVariableRemapping, T apply) {
   checkType(input.valueType, SHType::Table, "ComposeWith table");
 
   static thread_local shards::HashState<XXH128_hash_t> shHashState;

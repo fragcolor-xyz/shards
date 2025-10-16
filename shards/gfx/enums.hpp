@@ -32,7 +32,7 @@ enum class TextureFormatFlags : uint8_t {
   // Hint that this texture or derived objects shouldn't be cached between frames
   DontCache = 0x08,
   // Uses when texture format is RGBA8Unorm or similar, but is should actually be encoded into Srgb
-  // When this is set out render graph outputs, the renderer 
+  // When this is set out render graph outputs, the renderer
   IsSecretlySrgb = 0x10,
 };
 inline TextureFormatFlags operator|(const TextureFormatFlags &a, const TextureFormatFlags &b) {

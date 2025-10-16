@@ -30,8 +30,6 @@ constexpr uint32_t VendorId = shards::CoreCC;
 struct Window;
 struct Renderer;
 
-
-
 struct SHDrawable {
   using Variant = std::variant<MeshDrawable::Ptr, MeshTreeDrawable::Ptr>;
   Variant drawable;
@@ -82,7 +80,6 @@ struct SHDrawQueue {
 struct SHSampler {
   // Unused for now
 };
-
 
 struct GraphicsContext {
   static constexpr uint32_t TypeId = 'mwnd';

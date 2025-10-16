@@ -196,12 +196,13 @@ struct Extension {
 };
 
 struct ReplaceExtension {
-  std::string _output;  
+  std::string _output;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_PARAMVAR(_newExtension, "NewExtension", "The new extension to replace the existing extension with", {CoreInfo::StringOrStringVar});
+  PARAM_PARAMVAR(_newExtension, "NewExtension", "The new extension to replace the existing extension with",
+                 {CoreInfo::StringOrStringVar});
   PARAM_IMPL(PARAM_IMPL_FOR(_newExtension));
 
   PARAM_REQUIRED_VARIABLES()
@@ -253,8 +254,10 @@ struct Remove {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::BoolType; }
 
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
-  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks",
+            {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
   Remove() { _followSymlinks = Var(true); }
@@ -293,8 +296,10 @@ struct RemoveAll {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
-  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks",
+            {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
 
   RemoveAll() { _followSymlinks = Var(true); }
@@ -421,7 +426,7 @@ struct Parent {
 struct Read {
   std::vector<uint8_t> _buffer;
   std::ifstream _file;
-  std::string _currentPath;  // Track current file for chunked reading
+  std::string _currentPath; // Track current file for chunked reading
   bool _chunking = false;
 
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
@@ -431,11 +436,18 @@ struct Read {
   }
 
   PARAM_VAR(_binary, "Bytes", "If the output should be SHType::Bytes instead of SHType::String", {CoreInfo::BoolType});
-  PARAM_VAR(_maxSize, "MaxSize", "Maximum file size in bytes (default: 0 = unlimited). Set to limit file size and prevent memory exhaustion", {CoreInfo::IntType});
-  PARAM_VAR(_chunkSize, "ChunkSize", "If set, enables chunked reading. Returns ChunkSize bytes per activation. Returns empty when EOF", {CoreInfo::IntType});
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts read operations to this directory", CoreInfo::StringStringVarOrNone);
-  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_binary), PARAM_IMPL_FOR(_maxSize), PARAM_IMPL_FOR(_chunkSize), PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
+  PARAM_VAR(_maxSize, "MaxSize",
+            "Maximum file size in bytes (default: 0 = unlimited). Set to limit file size and prevent memory exhaustion",
+            {CoreInfo::IntType});
+  PARAM_VAR(_chunkSize, "ChunkSize",
+            "If set, enables chunked reading. Returns ChunkSize bytes per activation. Returns empty when EOF",
+            {CoreInfo::IntType});
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts read operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_binary), PARAM_IMPL_FOR(_maxSize), PARAM_IMPL_FOR(_chunkSize), PARAM_IMPL_FOR(_basePath),
+             PARAM_IMPL_FOR(_followSymlinks));
 
   Read() {
     _binary = Var(false);
@@ -470,7 +482,8 @@ struct Read {
 
     // Check if path changed during chunked reading - this is an error
     if (_chunking && _currentPath != pathStr) {
-      throw ActivationError(fmt::format("FS.Read: Cannot change file path during chunked reading. Current: {}, New: {}", _currentPath, pathStr));
+      throw ActivationError(
+          fmt::format("FS.Read: Cannot change file path during chunked reading. Current: {}, New: {}", _currentPath, pathStr));
     }
 
     // Security checks
@@ -502,8 +515,8 @@ struct Read {
         }
 
         if (maxSize > 0 && fileSize > maxSize) {
-          throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
-                                " bytes) exceeds MaxSize limit (" + std::to_string(maxSize) + " bytes).");
+          throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) + " bytes) exceeds MaxSize limit (" +
+                                std::to_string(maxSize) + " bytes).");
         }
 
         _file.open(p.string(), std::ios::binary);
@@ -515,7 +528,7 @@ struct Read {
 
       // Read next chunk
       _buffer.resize(chunkSize);
-      _file.read(reinterpret_cast<char*>(_buffer.data()), chunkSize);
+      _file.read(reinterpret_cast<char *>(_buffer.data()), chunkSize);
       auto bytesRead = _file.gcount();
 
       if (bytesRead == 0) {
@@ -552,8 +565,8 @@ struct Read {
       }
 
       if (maxSize > 0 && fileSize > maxSize) {
-        throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) +
-                              " bytes) exceeds MaxSize limit (" + std::to_string(maxSize) + " bytes).");
+        throw ActivationError("FS.Read, file size (" + std::to_string(fileSize) + " bytes) exceeds MaxSize limit (" +
+                              std::to_string(maxSize) + " bytes).");
       }
 
       if (_binary.payload.boolValue) {
@@ -575,10 +588,12 @@ struct Write {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_contents, "Contents", "The string or bytes to write as the file's contents",
-                 {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::NoneType});
+                 {CoreInfo::StringType, CoreInfo::BytesType, CoreInfo::StringVarType, CoreInfo::BytesVarType,
+                  CoreInfo::NoneType});
   PARAM_VAR(_overwrite, "Overwrite", "Overwrite the file if it already exists", {CoreInfo::BoolType});
   PARAM_VAR(_append, "Append", "If we should append Contents to an existing file", {CoreInfo::BoolType});
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts write operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts write operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
   PARAM_IMPL(PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_overwrite), PARAM_IMPL_FOR(_append), PARAM_IMPL_FOR(_basePath));
 
   Write() {
@@ -643,11 +658,15 @@ struct Copy {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_PARAMVAR(_destination, "Destination", "The destination path, can be a file or a directory", CoreInfo::StringStringVarOrNone);
+  PARAM_PARAMVAR(_destination, "Destination", "The destination path, can be a file or a directory",
+                 CoreInfo::StringStringVarOrNone);
   PARAM_VAR(_overwrite, "Behavior", "What to do when the destination already exists", {IfExistsEnumInfo::Type});
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
-  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks", {CoreInfo::BoolType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_destination), PARAM_IMPL_FOR(_overwrite), PARAM_IMPL_FOR(_basePath), PARAM_IMPL_FOR(_followSymlinks));
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
+  PARAM_VAR(_followSymlinks, "FollowSymlinks", "Follow symbolic links (default: true). Set to false to reject symlinks",
+            {CoreInfo::BoolType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_destination), PARAM_IMPL_FOR(_overwrite), PARAM_IMPL_FOR(_basePath),
+             PARAM_IMPL_FOR(_followSymlinks));
 
   Copy() {
     _overwrite = Var::Enum(IfExists::Fail, CoreCC, IfExistsEnumInfo::TypeId);
@@ -774,7 +793,8 @@ struct CreateDirectories {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
-  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_PARAMVAR(_basePath, "BasePath", "Optional base path - restricts operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
   PARAM_IMPL(PARAM_IMPL_FOR(_basePath));
 
   PARAM_REQUIRED_VARIABLES();
@@ -868,7 +888,8 @@ struct Rename {
   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
 
   PARAM_PARAMVAR(_newName, "NewName", "The new name for the file", CoreInfo::StringOrStringVar);
-  PARAM_PARAMVAR(_basePathParam, "BasePath", "Optional base path - restricts operations to this directory", CoreInfo::StringStringVarOrNone);
+  PARAM_PARAMVAR(_basePathParam, "BasePath", "Optional base path - restricts operations to this directory",
+                 CoreInfo::StringStringVarOrNone);
   PARAM_IMPL(PARAM_IMPL_FOR(_newName), PARAM_IMPL_FOR(_basePathParam));
 
   PARAM_REQUIRED_VARIABLES()
@@ -879,7 +900,7 @@ struct Rename {
     }
     return data.inputType;
   }
-  
+
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 

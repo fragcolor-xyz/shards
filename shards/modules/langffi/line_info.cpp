@@ -22,13 +22,13 @@ struct FileRegistry {
     boost::filesystem::path p(path);
     auto npath = p.lexically_normal();
     auto gpath = npath.generic_string();
-    if(gpath.empty()) {
+    if (gpath.empty()) {
       return 0;
     }
 
     // Normalize drive letter
     gpath[0] = std::toupper(gpath[0]);
-    
+
     std::shared_lock lock(mtx);
 
     auto it = pathToId.find(gpath);

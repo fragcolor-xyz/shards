@@ -21,7 +21,9 @@ TEST_CASE("Test Leaks", "[General]") {
   hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, GetCurrentProcessId());
 
   // Pre-warm
-  { auto testRenderer = createTestRenderer(); }
+  {
+    auto testRenderer = createTestRenderer();
+  }
 
   GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc));
   SPDLOG_INFO("Memory before instances:");

@@ -40,8 +40,7 @@ struct WithInput : public Block {
   BlockPtr inner;
   BlockPtr innerElse;
 
-  template <typename T>
-  WithInput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  template <typename T> WithInput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
   WithInput(FastString name, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),
@@ -100,8 +99,7 @@ struct WithOutput : public Block {
   BlockPtr inner;
   BlockPtr innerElse;
 
-  template <typename T>
-  WithOutput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
+  template <typename T> WithOutput(FastString name, T &&inner) : name(name), inner(ConvertToBlock<T>{}(std::forward<T>(inner))) {}
   template <typename T1, typename T2>
   WithOutput(FastString name, T1 &&inner, T2 &&innerElse)
       : name(name), inner(ConvertToBlock<T1>{}(std::forward<T1>(inner))),

@@ -265,9 +265,10 @@ struct DrawablePassShard {
   static SHTypesInfo outputTypes() { return ShardsTypes::PipelineStep; }
 
   static SHOptionalString help() {
-    return SHCCSTR("This shard creates a render pass object, meant for rendering drawable objects, using the drawables from the drawables "
-                   "queue (specified in the Queue parameter) "
-                   "and the sequence of features objects (specified in the Features parameter).");
+    return SHCCSTR(
+        "This shard creates a render pass object, meant for rendering drawable objects, using the drawables from the drawables "
+        "queue (specified in the Queue parameter) "
+        "and the sequence of features objects (specified in the Features parameter).");
   }
 
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpIgnored; }
@@ -493,7 +494,8 @@ struct CopyPassShard {
   PARAM_EXT(ParamVar, _name, ShardsTypes::NameParameterInfo);
   PARAM_EXT(ParamVar, _outputs, ShardsTypes::OutputsParameterInfo);
   PARAM_EXT(ParamVar, _outputScale, ShardsTypes::OutputScaleParameterInfo);
-  PARAM_PARAMVAR(_inputs, "Inputs", "The names of the render pass objects to modify as a sequence of strings.", {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
+  PARAM_PARAMVAR(_inputs, "Inputs", "The names of the render pass objects to modify as a sequence of strings.",
+                 {CoreInfo::NoneType, CoreInfo::StringSeqType, CoreInfo::StringVarSeqType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_name), PARAM_IMPL_FOR(_outputs), PARAM_IMPL_FOR(_outputScale), PARAM_IMPL_FOR(_inputs));
 
