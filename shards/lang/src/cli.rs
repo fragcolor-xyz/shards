@@ -2,7 +2,8 @@ use crate::error::Error;
 use crate::read::{get_dependencies, read_with_env, ReadEnv};
 use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
-use clap::{arg, Parser};
+use clap::{arg, CommandFactory, Parser};
+use clap_complete::{generate, Shell};
 use shards::core::Core;
 use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
@@ -28,7 +29,7 @@ extern "C" {
 
 #[derive(Debug, clap::Args)]
 struct RunArgs {
-  /// The script to execute
+  /// The script file to execute
   #[arg(value_hint = clap::ValueHint::FilePath)]
   file: String,
 
@@ -36,101 +37,113 @@ struct RunArgs {
   #[arg(long, short = 'd', default_value = "false", action)]
   decompress_strings: bool,
 
-  /// Change the current path to the scripts's path
+  /// Skip changing the current working directory to the script's directory
   #[arg(long, short = 'c', action)]
   skip_cwd: bool,
 
-  /// List of include directories
+  /// Additional include directories for script imports
   #[arg(long, short = 'I')]
   include: Vec<String>,
 
+  /// Arguments to pass to the script (format: key:value)
   #[arg(num_args = 0..)]
   args: Vec<String>,
 }
 
 #[derive(Debug, clap::Subcommand)]
 enum Commands {
-  /// Formats a shards file
+  /// Format a Shards source file
   Format {
-    /// The file to format
+    /// The file to format (use '-' for stdin)
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
-    /// Run the formatter on the file directly
-    /// by default the output will go to stdout
+    /// Format the file in-place (default outputs to stdout)
     #[arg(long, short = 'i', action)]
     inline: bool,
-    /// Optionally an output file name
+    /// Write formatted output to a specific file
     #[arg(long, short = 'o')]
     output: Option<String>,
   },
   /// Run formatter tests
   Test {},
-  /// Reads and executes a Shards file
+  /// Create and run a new Shards script
   New(RunArgs),
+  /// Run a Shards script
   Run(RunArgs),
-  /// Evaluates Shards code from stdin
+  /// Evaluate Shards code from stdin
   Eval {
-    /// Decompress help strings before running the script
+    /// Decompress help strings before evaluation
     #[arg(long, short = 'd', default_value = "false", action)]
     decompress_strings: bool,
+    /// Arguments to pass to the script (format: key:value)
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
-  /// Reads and builds a binary AST Shards file
+  /// Build a binary AST from a Shards source file
   Build {
-    /// The script to evaluate
+    /// The script source file to compile
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
-    /// The output file to write to
+    /// Output file path for the compiled binary
     #[arg(long, short = 'o', default_value = "out.sho")]
     output: String,
-    /// Output as JSON ast
+    /// Output as JSON AST instead of binary
     #[arg(long, short = 'j', action)]
     json: bool,
-    /// List of include directories
+    /// Additional include directories for imports
     #[arg(long, short = 'I')]
     include: Vec<String>,
-    /// The depfile to write, in makefile readable format
+    /// Generate dependency file in Makefile format
     #[arg(long, short = 'd')]
     depfile: Option<String>,
   },
+  /// Generate JSON AST from a Shards source file
   AST {
-    /// The script to evaluate
+    /// The script source file to parse
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
-    /// The output file to write to
+    /// Output file path for the JSON AST
     #[arg(long, short = 'o', default_value = "out.sho")]
     output: String,
-    /// List of include directories
+    /// Additional include directories for imports
     #[arg(long, short = 'I')]
     include: Vec<String>,
   },
-  /// Loads and executes a binary Shards file
+  /// Load and execute a compiled binary Shards file
   Load {
-    /// The binary Shards file to execute
+    /// The compiled binary file (.sho) to execute
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
-    /// Decompress help strings before running the script
+    /// Decompress help strings before execution
     #[arg(long, short = 'd', default_value = "false", action)]
     decompress_strings: bool,
+    /// Arguments to pass to the script (format: key:value)
     #[arg(num_args = 0..)]
     args: Vec<String>,
   },
-  /// Shards documentation search
+  /// Search and display Shards documentation
   Docs {
-    /// The search query
+    /// Name of the shard or enum to look up
     #[arg()]
     name: String,
-    /// The type of the help to search for, can be "shard" or "enum"
+    /// Type of documentation to search: "shard" or "enum"
     #[arg(long = "type", short = 't', default_value = "shard", action)]
     type_: String,
+  },
+  /// Generate shell completion scripts
+  Completions {
+    /// The shell to generate completions for
+    #[arg(value_enum)]
+    shell: Shell,
   },
 }
 
 #[derive(Debug, clap::Parser)]
-#[command(name = "Shards", version = "0.1")]
-#[command(about = "Shards command line tools and executor.")]
+#[command(name = "shards")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(about = "Shards programming language - command line tools and script executor")]
 #[command(author = "Fragcolor Team")]
+#[command(long_about = "Shards is a flow-based programming language with a unique data flow paradigm.\nUse this tool to run scripts, build binaries, format code, and access documentation.")]
 struct Cli {
   #[command(subcommand)]
   command: Commands,
@@ -141,6 +154,12 @@ struct Cli {
 struct SimpleCLI {
   #[command(flatten)]
   run_args: RunArgs,
+}
+
+fn generate_completions(shell: Shell) {
+  let mut cmd = Cli::command();
+  let name = cmd.get_name().to_string();
+  generate(shell, &mut cmd, name, &mut std::io::stdout());
 }
 
 pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool) -> i32 {
@@ -231,6 +250,10 @@ pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool
       } => format(file, output, *inline),
       Commands::Test {} => formatter::run_tests(),
       Commands::Docs { name, type_ } => help(name, type_),
+      Commands::Completions { shell } => {
+        generate_completions(*shell);
+        Ok(())
+      }
     },
     // Try to support a simple "shards script.shs" command line in case none of the above matched
     Err(orig_err) => match SimpleCLI::try_parse_from(args) {
