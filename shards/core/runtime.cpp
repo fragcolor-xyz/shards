@@ -1253,7 +1253,7 @@ SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) no
     data.privateContext = &privateContext;
   try {
     return shards::composeWire(wire, data);
-  } catch (const std::exception &e) {
+  } catch (...) {
     return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
   }
 }
@@ -1264,7 +1264,7 @@ SHComposeResult composeShardsNoExcept(const Shards wire, SHInstanceData &data) n
     data.privateContext = &privateContext;
   try {
     return shards::composeWire(wire, data);
-  } catch (const std::exception &e) {
+  } catch (...) {
     return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
   }
 }
