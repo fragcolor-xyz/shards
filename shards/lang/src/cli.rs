@@ -158,8 +158,7 @@ struct SimpleCLI {
 
 fn generate_completions(shell: Shell) {
   let mut cmd = Cli::command();
-  let name = cmd.get_name().to_string();
-  generate(shell, &mut cmd, name, &mut std::io::stdout());
+  generate(shell, &mut cmd, cmd.get_name(), &mut std::io::stdout());
 }
 
 pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool) -> i32 {
