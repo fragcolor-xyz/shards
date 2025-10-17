@@ -50,7 +50,7 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableE
               wire->name, data.inputType);
   // verify input type
   if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
-    throw ComposeError(fmt::format(
+    throw shards::Error(fmt::format(
         "Attempted to call an already composed wire with a different input type! wire: {}, old type: {}, new type: {}",
         wire->name, (SHTypeInfo)wire->inputType, data.inputType));
   }
@@ -64,7 +64,7 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableE
       return name == xNameView;
     });
     if (res == shared.cend()) {
-      throw ComposeError(
+      throw shards::Error(
           fmt::format("Attempted to call an already composed wire ({}) with a missing required variable: {}", wire->name, name));
     }
   }
@@ -111,7 +111,7 @@ SHTypeInfo WireBase::compose(const SHInstanceData &data) {
 
   auto currentMesh = wire->mesh.lock();
   if (currentMesh && currentMesh != mesh)
-    throw ComposeError(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
+    throw shards::Error(fmt::format("Attempted to compose a wire ({}) that is already part of another mesh!", wire->name));
 
   wire->mesh = data.wire->mesh;
   wire->id = data.wire->id;
@@ -849,7 +849,7 @@ struct SwitchTo : public WireBase {
     if (wire) {
       if (data.wire == wire.get()) {
         SHLOG_ERROR("SwitchTo: wire {} cannot switch to itself", wire->name);
-        throw ComposeError("SwitchTo: wire cannot switch to itself");
+        throw shards::Error("SwitchTo: wire cannot switch to itself");
       }
 
       auto dataCopy = data;
@@ -1199,8 +1199,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
     // We need to validate the sub wire to figure it out!
     auto res = composeWire(wire.get(), data);
 
-    shards::arrayFree(res.exposedInfo);
-    shards::arrayFree(res.requiredInfo);
+    shards::freeComposeResult(res);
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1210,23 +1209,29 @@ struct WireRunner : public BaseLoader<WireRunner> {
       return input;
 
     if (_wireHash.valueType == SHType::None || _wireHash != wire->composedHash || _wirePtr != wire.get()) {
-      if (!_onWorkerThread) {
-        // Compose and hash in a thread
-        await(
-            context,
-            [this, context, wireVar]() {
-              deferredCompose(context);
-              wire->composedHash = shards::hash(wireVar);
-            },
-            [] {});
-      } else {
-        deferredCompose(context);
-        wire->composedHash = shards::hash(wireVar);
-      }
+      try {
+        if (!_onWorkerThread) {
+          // Compose and hash in a thread
+          await(
+              context,
+              [this, context, wireVar]() {
+                deferredCompose(context);
+                wire->composedHash = shards::hash(wireVar);
+              },
+              [] {});
+        } else {
+          deferredCompose(context);
+          wire->composedHash = shards::hash(wireVar);
+        }
 
-      _wireHash = wire->composedHash;
-      _wirePtr = wire.get();
-      doWarmup(context);
+        _wireHash = wire->composedHash;
+        _wirePtr = wire.get();
+        doWarmup(context);
+      } catch (ExtendedError &e) {
+        context->cancelFlow(e.error);
+        context->errorStack.emplace_back(e.errorStackTrace);
+        return {};
+      }
     }
 
     return BaseLoader<WireRunner>::activateWire(context, input);
@@ -1246,7 +1251,7 @@ struct CapturingSpawners : public WireBase {
     resolveWire();
 
     if (!wire) {
-      throw ComposeError("CapturingSpawners: wire not found");
+      throw shards::Error("CapturingSpawners: wire not found");
     }
 
     // Wire needs to capture all it needs, so we need deeper informations
@@ -1353,7 +1358,7 @@ struct ParallelBase : public CapturingSpawners {
 
   void validateThreadCountAtLeastOne() {
     if (_threads.valueType == SHType::Int && _threads.payload.intValue < 1) {
-      throw ComposeError("Threads must be >= 1");
+      throw shards::Error("Threads must be >= 1");
     }
   }
 
@@ -1761,7 +1766,7 @@ struct Expand : public ParallelBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_threads.valueType == SHType::Int && _threads.payload.intValue < 1) {
-      throw ComposeError("Expand, threads must be >= 1");
+      throw shards::Error("Expand, threads must be >= 1");
     }
 
     // input
@@ -1827,7 +1832,7 @@ struct Spawn : public CapturingSpawners {
     WireBase::resolveWire();
 
     if (!wire) {
-      throw ComposeError("Spawn: wire not found");
+      throw shards::Error("Spawn: wire not found");
     }
 
     CapturingSpawners::compose(data, data.inputType);
@@ -2152,7 +2157,7 @@ struct DoMany : public TryMany {
       } else {
         // we don't want to propagate a (Return)
         if (unlikely(runRes.state == SHRunWireOutputState::Returned)) {
-          context->resetErrorStack();
+          context->errorStack.clear();
           context->continueFlow();
         }
       }
@@ -2321,7 +2326,7 @@ struct WireComposer : public BaseLoader<WireComposer> {
     auto wireVar = input;
     wire = SHWire::sharedFromRef(wireVar.payload.wireValue);
     if (unlikely(!wire)) {
-      throw ComposeError("WireComposer: Could not find a wire to compose");
+      throw shards::Error("WireComposer: Could not find a wire to compose");
     }
 
     try {
@@ -2331,7 +2336,7 @@ struct WireComposer : public BaseLoader<WireComposer> {
       auto &extraVars = asTable(_mutableVars.get());
       for (auto &[name, type] : extraVars) {
         if (name.valueType != SHType::String) {
-          throw ComposeError("WireComposer: Extra variables key must be a string");
+          throw shards::Error("WireComposer: Extra variables key must be a string");
         }
         sharedCopy.push_back(
             SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue, .isMutable = true});
@@ -2339,7 +2344,7 @@ struct WireComposer : public BaseLoader<WireComposer> {
       auto &immutableVars = asTable(_immutableVars.get());
       for (auto &[name, type] : immutableVars) {
         if (name.valueType != SHType::String) {
-          throw ComposeError("WireComposer: Immutable variables key must be a string");
+          throw shards::Error("WireComposer: Immutable variables key must be a string");
         }
         sharedCopy.push_back(
             SHExposedTypeInfo{.name = name.payload.stringValue, .exposedType = *type.payload.typeValue, .isMutable = false});
@@ -2361,8 +2366,7 @@ struct WireComposer : public BaseLoader<WireComposer> {
       auto res = composeWire(wire.get(), data);
 
       // Free resources
-      shards::arrayFree(res.exposedInfo);
-      shards::arrayFree(res.requiredInfo);
+      shards::freeComposeResult(res);
 
       return Var("OK");
     } catch (const std::exception &e) {

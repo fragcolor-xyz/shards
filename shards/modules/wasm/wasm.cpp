@@ -1047,7 +1047,7 @@ _catch:
   if (_err_ != m3Err_none) {                                              \
     std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": "); \
     _errMsg.append(_err_);                                                \
-    throw ComposeError(_errMsg);                                          \
+    throw shards::Error(_errMsg);                                          \
   }
 
 #define CHECK_ACTIVATION_ERR(_err_) \
@@ -1149,7 +1149,7 @@ struct Run {
     // here we load the module, that's why Module parameter is not variable
     fs::path p(_moduleName);
     if (!fs::exists(p)) {
-      throw ComposeError("Wasm module not found at the given path");
+      throw shards::Error("Wasm module not found at the given path");
     }
 
     _moduleFileName = p.filename().string();

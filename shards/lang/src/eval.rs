@@ -4531,7 +4531,7 @@ impl Default for EvalShard {
 impl Shard for EvalShard {
   fn input_types(&mut self) -> &Types {
     &read::AST_TYPES
-  }
+  } 
 
   fn output_types(&mut self) -> &Types {
     let full_output: bool = unsafe { (&self.full_output.0).try_into().unwrap_unchecked() };

@@ -271,16 +271,6 @@ struct Vertical {
   exposing: ExposedTypes,
 }
 
-struct Sized {
-  parents: ParamVar,
-  contents: ShardsVar,
-  requiring: ExposedTypes,
-  exposing: ExposedTypes,
-  width: ClonedVar,
-  height: ClonedVar,
-  fill_width: ClonedVar,
-  fill_height: ClonedVar,
-}
 
 pub(crate) mod auto_grid;
 mod collapsing_header;
@@ -292,6 +282,7 @@ mod group;
 mod horizontal;
 mod indent;
 mod layout;
+mod positioned;
 mod scroll_area;
 mod separator;
 mod sized;
@@ -304,6 +295,8 @@ pub fn register_shards() {
   layout::register_shards();
   table::register_shards();
   scroll_area::register_shards();
+  sized::register_shards();
+  positioned::register_shards();
   register_legacy_shard::<CollapsingHeader>();
   register_legacy_shard::<Columns>();
   register_legacy_shard::<Disable>();
@@ -320,5 +313,4 @@ pub fn register_shards() {
   register_legacy_shard::<Separator>();
   register_legacy_shard::<Space>();
   register_legacy_shard::<Vertical>();
-  register_legacy_shard::<Sized>();
 }

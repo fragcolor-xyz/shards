@@ -343,7 +343,7 @@ struct Remove : public JointOp {
     auto pres = _predicate.compose(data);
     PARAM_COMPOSE_MERGE_REQUIRED(_predicate);
     if (pres.outputType.basicType != SHType::Bool) {
-      throw ComposeError("Remove Predicate should output a boolean value.");
+      throw shards::Error("Remove Predicate should output a boolean value.");
     }
 
     return inputType;
@@ -467,31 +467,31 @@ struct XPendBase {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (!_collection.isVariable())
-      throw ComposeError("AppendTo/PrependTo expects a collection variable.");
+      throw shards::Error("AppendTo/PrependTo expects a collection variable.");
 
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
             cons.exposedType.basicType != SHType::String) {
-          throw ComposeError("AppendTo/PrependTo expects either a SHType::Seq, SHType::String "
+          throw shards::Error("AppendTo/PrependTo expects either a SHType::Seq, SHType::String "
                              "or SHType::Bytes variable as collection.");
         } else {
           if (cons.exposedType.basicType != SHType::Seq && cons.exposedType != data.inputType) {
             SHLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}", data.inputType, cons.exposedType);
-            throw ComposeError("Input type not matching the variable.");
+            throw shards::Error("Input type not matching the variable.");
           }
         }
         if (!cons.isMutable) {
-          throw ComposeError("AppendTo/PrependTo expects a mutable variable (Set/Push).");
+          throw shards::Error("AppendTo/PrependTo expects a mutable variable (Set/Push).");
         }
         if (cons.exposedType.basicType == SHType::Seq &&
             (cons.exposedType.seqTypes.len != 1 ||
              !matchTypes(data.inputType, cons.exposedType.seqTypes.elements[0], true, true, true))) {
           if (cons.exposedType.seqTypes.len == 0) {
-            throw ComposeError(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
+            throw shards::Error(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
                                            data.inputType, "<unknown/empty>"));
           } else {
-            throw ComposeError(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
+            throw shards::Error(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
                                            data.inputType, cons.exposedType.seqTypes.elements[0]));
           }
         }
@@ -500,7 +500,7 @@ struct XPendBase {
         return data.inputType;
       }
     }
-    throw ComposeError("AppendTo/PrependTo: Failed to find variable: " + std::string(_collection.variableName()));
+    throw shards::Error("AppendTo/PrependTo: Failed to find variable: " + std::string(_collection.variableName()));
   }
 
   void setParam(int index, const SHVar &value) {
@@ -758,7 +758,7 @@ struct ForEachShard {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.inputType.basicType != SHType::Seq && data.inputType.basicType != SHType::Table) {
-      throw ComposeError("ForEach shard expected a sequence or a table as input.");
+      throw shards::Error("ForEach shard expected a sequence or a table as input.");
     }
 
     // we need to edit a copy of data
@@ -1306,12 +1306,12 @@ struct Erase : SeqUser {
     bool valid = false;
 
     if (info->exposedType.basicType != SHType::Seq && info->exposedType.basicType != SHType::Table) {
-      throw ComposeError(
+      throw shards::Error(
           fmt::format("Erase: Expected a SHType::Seq or SHType::Table, got {}, variable: {}", info->exposedType, _name));
     }
 
     if (!info->isMutable) {
-      throw ComposeError(fmt::format("Erase: Variable {} is not mutable.", _name));
+      throw shards::Error(fmt::format("Erase: Variable {} is not mutable.", _name));
     }
 
     auto isTable = info->exposedType.basicType == SHType::Table;
@@ -1320,13 +1320,13 @@ struct Erase : SeqUser {
     if (isTable) {
       // cannot erase from a fixed struct table
       if (info->exposedType.table.fixedStructTable) {
-        throw ComposeError(fmt::format("Erase: Cannot erase from a fixed struct table, variable: {}", _name));
+        throw shards::Error(fmt::format("Erase: Cannot erase from a fixed struct table, variable: {}", _name));
       }
 
       // we also need to check if there are any non dynamic keys, in that case we forbid erasing
       for (uint32_t i = 0; i < info->exposedType.table.keys.len; i++) {
         if (info->exposedType.table.keys.elements[i].valueType != SHType::None) {
-          throw ComposeError(fmt::format("Erase: Cannot erase from a table with non dynamic keys, variable: {}", _name));
+          throw shards::Error(fmt::format("Erase: Cannot erase from a table with non dynamic keys, variable: {}", _name));
         }
       }
 
@@ -1454,7 +1454,7 @@ struct Assoc : public VariableBase {
       std::string_view vName(shared.name);
       if (vName == _name && !shared.isMutable) {
         SHLOG_ERROR("Assoc: Variable {} is not mutable.", _name);
-        throw ComposeError("Assoc: Variable is not mutable.");
+        throw shards::Error("Assoc: Variable is not mutable.");
       }
     }
 
@@ -1608,10 +1608,10 @@ struct Replace {
           if (expInfo->exposedType.basicType != SHType::String &&             // must be a string
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true) // or a sequence of strings
           ) {
-            throw ComposeError("Replace: Patterns variable must be a string or a sequence of strings.");
+            throw shards::Error("Replace: Patterns variable must be a string or a sequence of strings.");
           }
         } else {
-          throw ComposeError("Replace: Patterns variable not found.");
+          throw shards::Error("Replace: Patterns variable not found.");
         }
       } else {
         // not a variable derive type and check input type
@@ -1620,7 +1620,7 @@ struct Replace {
         if (derived.basicType != SHType::String &&             // must be a string
             !isSequenceOf(CoreInfo::StringType, derived, true) // or a sequence of strings
         ) {
-          throw ComposeError("Replace: Patterns must be a string or a sequence of strings.");
+          throw shards::Error("Replace: Patterns must be a string or a sequence of strings.");
         }
       }
 
@@ -1629,16 +1629,16 @@ struct Replace {
         if (expInfo.has_value()) {
           if (expInfo->exposedType.basicType != SHType::String &&
               !isSequenceOf(CoreInfo::StringType, expInfo->exposedType, true)) {
-            throw ComposeError("Replace: Replacements must be a string or a sequence of strings.");
+            throw shards::Error("Replace: Replacements must be a string or a sequence of strings.");
           }
         } else {
-          throw ComposeError("Replace: Replacements variable not found.");
+          throw shards::Error("Replace: Replacements variable not found.");
         }
       } else {
         auto derived = deriveTypeInfo(_replacements, data);
         DEFER(freeTypeInfo(derived));
         if (derived.basicType != SHType::String && !isSequenceOf(CoreInfo::StringType, derived, true)) {
-          throw ComposeError("Replace: Replacements must be a string or a sequence of strings.");
+          throw shards::Error("Replace: Replacements must be a string or a sequence of strings.");
         }
       }
 
@@ -2755,7 +2755,7 @@ struct LowestHighestShard {
     if (data.inputType.seqTypes.len == 1) {
       return data.inputType.seqTypes.elements[0];
     } else {
-      throw ComposeError("Expected a single type sequence");
+      throw shards::Error("Expected a single type sequence");
     }
   }
 };

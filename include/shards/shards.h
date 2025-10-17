@@ -701,10 +701,11 @@ struct SHComposeResult {
   // Allow external shards to fail
   // Internally we use exceptions
   SHBool failed;
-  struct SHVar failureMessage; // destroyVar after use if failed
 
   SHExposedTypesInfo exposedInfo;
   SHExposedTypesInfo requiredInfo;
+  SHStringWithLen error;
+  SHStringWithLen errorStackTrace;
 
   // used when the last shard of the flow is
   // Restart/Stop/Return etc
@@ -763,6 +764,9 @@ typedef struct SHShardComposeResult(__cdecl *SHComposeV2Proc)(struct Shard *, st
 
 // The core of the shard processing, avoid syscalls here
 typedef const struct SHVar *(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
+
+// Store an error message in the context, for use when aborting a wire
+typedef const char* (*__cdecl SHContextStoreError)(struct SHContext *, SHStringWithLen err);
 
 // Generally when stop() is called
 // Note that context may be null in some cases
@@ -954,6 +958,9 @@ typedef struct SHVar(__cdecl *SHHashVar)(const struct SHVar *var);
 typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param);
 
 typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, struct SHInstanceData data);
+typedef void(__cdecl *SHFreeComposeResult)(struct SHComposeResult *result);
+
+typedef void(__cdecl *SHPushError)(struct SHContext* context, struct SHStringWithLen error);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
@@ -1422,6 +1429,10 @@ typedef struct _SHCore {
   // Utilities for var serialization/deserialization
   SHSerializeVar serializeVar;
   SHDeserializeVar deserializeVar;
+
+  SHFreeComposeResult freeComposeResult;
+
+  SHPushError pushError;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

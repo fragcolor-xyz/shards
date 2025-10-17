@@ -223,9 +223,9 @@ impl LegacyShard for CodeEditor {
 
       let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
         let mut layout_job = if language == "shards" {
-          highlight_shards(ui.ctx(), &theme, string)
+          highlight_shards(&theme, string)
         } else {
-          highlight_generic(ui.ctx(), &theme, string, language)
+          highlight_generic(&theme, string, language)
         };
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))

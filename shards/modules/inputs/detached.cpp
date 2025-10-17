@@ -323,7 +323,7 @@ struct Detached {
     auto name = fmt::format("detached {}", SHSTRVIEW(_name));
     _handler->brancher.addRunnable(_inputShards, name.c_str());
     if (_handler->brancher.wires().empty()) {
-      throw ComposeError(fmt::format("Detached input must an Input runnable"));
+      throw shards::Error(fmt::format("Detached input must an Input runnable"));
     }
 
     ExposedInfo branchShared{RequiredInputContext::getExposedTypeInfo()};
@@ -336,9 +336,7 @@ struct Detached {
 
     auto &inputWire = _handler->brancher.wires().back();
     if (!inputWire->composeResult)
-      throw ComposeError(fmt::format("Failed to compose input wire"));
-    if (inputWire->composeResult->failed)
-      throw ComposeError(fmt::format("Failed to compose input wire: {}", inputWire->composeResult->failureMessage));
+      throw shards::Error(fmt::format("Failed to compose input wire"));
 
     _mainDataSeqTypes = Types{inputWire->outputType};
     auto mainDataSeqType = Type::SeqOf(_mainDataSeqTypes);

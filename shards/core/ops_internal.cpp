@@ -42,7 +42,22 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     }
   } break;
   case SHType::Bytes:
-    os << "<" << var.payload.bytesSize << " SHType::Bytes>" << std::dec;
+    if (fullBytes) {
+      os << "<" << var.payload.bytesSize << " SHType::Bytes: > ";
+      os << std::hex;
+      for (auto i = 0;;) {
+        os << std::setw(2) << std::setfill('0') << static_cast<unsigned>(var.payload.bytesValue[i] & 0xFF);
+        if (++i >= var.payload.bytesSize)
+          break;
+        else {
+          os << " ";
+        }
+      }
+      os << std::dec;
+      os << ">";
+    } else {
+      os << "<" << var.payload.bytesSize << " SHType::Bytes>" << std::dec;
+    }
     break;
   case SHType::Enum: {
     const SHEnumInfo *enumInfo = findEnumInfo(var.payload.enumVendorId, var.payload.enumTypeId);

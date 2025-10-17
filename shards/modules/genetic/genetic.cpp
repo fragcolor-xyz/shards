@@ -140,7 +140,7 @@ struct Evolve {
     fwire->mesh = data.wire->mesh;
     res = composeWire(fwire.get(), vdata);
     if (res.outputType.basicType != SHType::Float) {
-      throw ComposeError("Evolve: fitness wire should output a Float, but instead got " + type2Name(res.outputType.basicType));
+      throw shards::Error("Evolve: fitness wire should output a Float, but instead got " + type2Name(res.outputType.basicType));
     }
     arrayFree(res.exposedInfo);
     arrayFree(res.requiredInfo);
@@ -724,7 +724,7 @@ struct Mutant {
             auto res0 = blk->compose(blk, &dataCopy);
             if (res0.error.code != SH_ERROR_NONE) {
               std::string_view err(res0.error.message.string, size_t(res0.error.message.len));
-              throw ComposeError(err);
+              throw shards::Error(err);
             }
             auto res = res0.result;
             if (res != ptype) {

@@ -144,7 +144,7 @@ struct DrawShard {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
 
     if (!_queue.isVariable())
-      throw ComposeError("Draw requires a queue");
+      throw shards::Error("Draw requires a queue");
 
     if (data.inputType.basicType == SHType::Seq) {
       OVERRIDE_ACTIVATE1(data, activateSeq);

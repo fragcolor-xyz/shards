@@ -174,6 +174,8 @@ struct SHContext {
   bool isResumed{};
 #endif
 
+  std::vector<shards::Error> errorStack;
+
   SHWire *rootWire() const { return wireStack.front(); }
   SHWire *currentWire() const { return wireStack.back(); }
 
@@ -197,19 +199,7 @@ struct SHContext {
   void cancelFlow(std::string_view message) {
     SHLOG_DEBUG("Cancelling flow: {}", message);
     state = SHWireState::Error;
-    errorMessage = message;
-  }
-
-  void pushError(std::string &&message) { errorStack.emplace_back(std::move(message)); }
-  void resetErrorStack() { errorStack.clear(); }
-  std::string formatErrorStack() {
-    // reverse order
-    std::string out;
-    for (auto it = errorStack.rbegin(); it != errorStack.rend(); ++it) {
-      out += *it;
-      out += "\n";
-    }
-    return out;
+    errorStack.emplace_back(message);
   }
 
   constexpr void rebaseFlow() { state = SHWireState::Rebase; }
@@ -224,7 +214,14 @@ struct SHContext {
 
   constexpr bool failed() const { return state == SHWireState::Error; }
 
-  constexpr const std::string &getErrorMessage() { return errorMessage; }
+  static inline std::string NoError{};
+  const std::string& getErrorMessage() { 
+    // Top from stack
+    if(errorStack.size() > 0) {
+      return errorStack.front().message;
+    }
+    return NoError;
+  }
 
   constexpr SHWireState getState() const { return state; }
 
@@ -233,7 +230,6 @@ struct SHContext {
   void mirror(const SHContext *other) {
     state = other->state;
     flowStorage = other->flowStorage;
-    errorMessage = other->errorMessage;
     errorStack = other->errorStack;
   }
 
@@ -242,8 +238,6 @@ private:
   // Used when flow is stopped/restart/return
   // to store the previous result
   SHVar flowStorage{};
-  std::string errorMessage;
-  std::vector<std::string> errorStack;
 };
 
 namespace shards {
@@ -251,6 +245,8 @@ namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);
+
+void freeComposeResult(SHComposeResult &result);
 
 SHVar *findVariable(SHContext *ctx, std::string_view name);
 
@@ -504,7 +500,7 @@ struct RuntimeCallbacks {
 struct CompositionContext {
   pmr::SharedTempAllocator tempAllocator;
   shards::pmr::unordered_map<SHWire *, SHTypeInfo> visitedWires;
-  std::vector<std::string> errorStack;
+  std::vector<shards::Error> errorStack;
 
   shards::LayeredMap<std::string_view, SHExposedTypeInfo> inherited;
 
@@ -514,6 +510,16 @@ struct CompositionContext {
     shassert(data.privateContext != nullptr);
     return *reinterpret_cast<CompositionContext *>(data.privateContext);
   }
+};
+
+// Error with stack trace
+struct ExtendedError : std::exception {
+  std::string error;
+  std::string errorStackTrace;
+  std::string combined;
+
+  ExtendedError(std::string error, std::string errorStackTrace);
+  const char *what() const noexcept override;
 };
 }; // namespace shards
 
@@ -527,27 +533,6 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
   static std::shared_ptr<SHMesh> *makePtr(std::string_view label = "") { return new std::shared_ptr<SHMesh>(new SHMesh(label)); }
 
   ~SHMesh() { terminate(); }
-
-  void prettyCompose(const std::shared_ptr<SHWire> &wire, SHInstanceData &data) {
-    shards::CompositionContext privateContext;
-    data.privateContext = &privateContext;
-    try {
-      auto validation = shards::composeWire(wire.get(), data);
-      shards::arrayFree(validation.exposedInfo);
-      shards::arrayFree(validation.requiredInfo);
-    } catch (const std::exception &e) {
-      // build a reverse stack error log from privateContext.errorStack
-      std::string errors;
-      for (auto it = privateContext.errorStack.rbegin(); it != privateContext.errorStack.rend(); ++it) {
-        errors += *it;
-        if (++it == privateContext.errorStack.rend())
-          break;
-        errors += "\n";
-      }
-      SHLOG_ERROR("Wire {} failed to compose:\n{}", wire->name, errors);
-      throw;
-    }
-  }
 
   void compose(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
     ZoneScoped;
@@ -570,7 +555,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     data.wire = wire.get();
     data.inputType = shards::deriveTypeInfo(input, data);
     DEFER({ shards::freeDerivedInfo(data.inputType); });
-    prettyCompose(wire, data);
+    auto result = shards::composeWire(wire.get(), data);
+    DEFER(shards::freeComposeResult(result));
 
     SHLOG_TRACE("Wire {} composed", wire->name);
   }
@@ -607,7 +593,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
       data.wire = wire.get();
       data.inputType = shards::deriveTypeInfo(input, data);
       DEFER({ shards::freeDerivedInfo(data.inputType); });
-      prettyCompose(wire, data);
+      auto result = shards::composeWire(wire.get(), data);
+      DEFER(shards::freeComposeResult(result));
 
       SHLOG_TRACE("Wire {} composed", wire->name);
     } else {

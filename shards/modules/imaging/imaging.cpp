@@ -526,11 +526,11 @@ struct ImageGetPixel {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (*_asInteger) {
       if (!_default->isNone() && _default.valueType != SHType::Int4)
-        throw ComposeError("Default value should be an Int4");
+        throw shards::Error("Default value should be an Int4");
       return CoreInfo::Int4Type;
     } else {
       if (!_default->isNone() && _default.valueType != SHType::Float4)
-        throw ComposeError("Default value should be a Float4");
+        throw shards::Error("Default value should be a Float4");
       return CoreInfo::Float4Type;
     }
   }

@@ -55,7 +55,7 @@ struct Track {
   SHTypeInfo compose(SHInstanceData &data) {
     auto res = _action.compose(data);
     if (res.failed)
-      throw ComposeError("Failed to compose Track action");
+      throw shards::Error("Failed to compose Track action");
     return res.outputType;
   }
 
@@ -154,7 +154,7 @@ struct Trigger {
   SHTypeInfo compose(SHInstanceData &data) {
     auto res = _action.compose(data);
     if (res.failed)
-      throw ComposeError("Failed to compose Trigger action");
+      throw shards::Error("Failed to compose Trigger action");
     return data.inputType;
   }
 

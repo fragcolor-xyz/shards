@@ -130,7 +130,7 @@ struct BaseRunner : public WireBase {
 
     if (data.wire == wire.get()) {
       // Forbid this and suggest to use Restart shard instead
-      throw ComposeError(fmt::format("Detected recursion in wire {}, please use Restart shard instead", wire->name));
+      throw shards::Error(fmt::format("Detected recursion in wire {}, please use Restart shard instead", wire->name));
     }
 
     // Start/Resume need to capture all it needs, so we need deeper informations
@@ -476,7 +476,7 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       // meaning there was an exception while
       // running the sub wire, stop the parent too
       _outputClone = Var::Empty;
-      context->stopFlow(_outputClone);
+      context->cancelFlow("Wire failed");
       return _outputClone;
     } else {
       if (context->shouldContinue()) {

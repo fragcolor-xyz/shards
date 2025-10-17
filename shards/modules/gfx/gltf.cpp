@@ -181,7 +181,7 @@ struct GLTFShard {
 
     size_t numSources = (havePath ? 1 : 0) + (haveBytes ? 1 : 0) + (haveCopy ? 1 : 0);
     if (numSources > 1) {
-      throw ComposeError("glTF can only have one source (Path, Bytes or Copy)");
+      throw shards::Error("glTF can only have one source (Path, Bytes or Copy)");
     } else if (havePath) {
       if (_path.isNotNullConstant()) {
         _loadMode = LoadFileStatic;
@@ -193,7 +193,7 @@ struct GLTFShard {
     } else if (haveCopy) {
       _loadMode = LoadCopy;
     } else {
-      throw ComposeError("glTF Binary, file path or copy source required");
+      throw shards::Error("glTF Binary, file path or copy source required");
     }
 
     if (hasAnimationController()) {

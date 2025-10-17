@@ -5032,10 +5032,7 @@ impl ShardsVar {
 
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
-      unsafe {
-        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.exposedInfo as *const _ as *mut _);
-        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.requiredInfo as *const _ as *mut _);
-      }
+      unsafe { (*Core).freeComposeResult.unwrap_unchecked()(&compose_result as *const _ as *mut _) }
       self.compose_result = None;
     }
   }
@@ -5096,10 +5093,7 @@ impl ShardsVar {
   pub fn compose(&mut self, data: &InstanceData) -> Result<&ComposeResult, &'static str> {
     // clear old results if any
     if let Some(compose_result) = self.compose_result {
-      unsafe {
-        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.exposedInfo as *const _ as *mut _);
-        (*Core).expTypesFree.unwrap_unchecked()(&compose_result.requiredInfo as *const _ as *mut _);
-      }
+      unsafe { (*Core).freeComposeResult.unwrap_unchecked()(&compose_result as *const _ as *mut _) }
       self.compose_result = None;
     }
 
@@ -5108,16 +5102,10 @@ impl ShardsVar {
       return Ok(self.compose_result.as_ref().unwrap());
     }
 
-    let failed = false;
-
     let mut result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
-      let msg: &str = (&result.failureMessage).try_into().unwrap();
-      shlog!("Compose failed with error {}", msg);
-      destroyVar(&mut result.failureMessage);
-      Err("Composition failed.")
-    } else if failed {
+      unsafe { (*Core).freeComposeResult.unwrap_unchecked()(&result as *const _ as *mut _) }
       Err("Composition failed.")
     } else {
       self.compose_result = Some(result);

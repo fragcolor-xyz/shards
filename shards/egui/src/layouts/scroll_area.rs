@@ -6,7 +6,6 @@ use crate::EguiId;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use shards::core::register_shard;
-use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::Context;
 use shards::types::ExposedTypes;

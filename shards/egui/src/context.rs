@@ -7,7 +7,6 @@ use crate::egui_host::EguiHost;
 use crate::util;
 
 use crate::widgets::image_util::AutoTexturePtr;
-use crate::HELP_OUTPUT_EQUAL_INPUT;
 use crate::INPUT_CONTEXT_TYPE;
 
 use shards::core::register_shard;
@@ -28,6 +27,7 @@ use shards::types::Types;
 use shards::types::Var;
 use shards::types::ANY_TYPES;
 use shards::types::FRAG_CC;
+use shards::types::INT_TYPES;
 use shards::types::SHARDS_OR_NONE_TYPES;
 use std::ffi::CStr;
 
@@ -35,6 +35,7 @@ struct UIOutput {
   full_output: egui::FullOutput,
   ctx: egui::Context,
   texture_refs: Vec<AutoTexturePtr>,
+  num_input_events: u32,
 }
 
 ref_counted_object_type_impl!(UIOutput);
@@ -207,6 +208,7 @@ impl Shard for ContextShard {
         full_output,
         ctx: self.host.get_context().egui_ctx.clone(),
         texture_refs: self.host.take_step_textures(),
+        num_input_events: egui_input.numInputEvents as u32,
       },
       &UI_OUTPUT_TYPE,
     ));
@@ -321,9 +323,54 @@ impl RenderShard {
   }
 }
 
+#[derive(shards::shard)]
+#[shard_info(
+  "UI.CountInputEvents",
+  "Counts the number of input events for a given UI frame"
+)]
+struct CountInputEventsShard {}
+
+impl Default for CountInputEventsShard {
+  fn default() -> Self {
+    Self {}
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for CountInputEventsShard {
+  fn input_types(&mut self) -> &Types {
+    &UI_OUTPUT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &INT_TYPES
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let ui_output =
+      unsafe { &*Var::from_ref_counted_object::<UIOutput>(&input, &UI_OUTPUT_TYPE).unwrap() };
+    Ok(Some(Var::new_int(ui_output.num_input_events as i64)))
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    Ok(common_type::int)
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+}
+
 pub fn register_shards() {
   register_shard::<ContextShard>();
   register_shard::<RenderShard>();
+  register_shard::<CountInputEventsShard>();
 
   let mut info = shards::SHObjectInfo::default();
   info.name = shards::cstr!("UIOutput").as_ptr() as shards::SHString;

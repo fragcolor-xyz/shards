@@ -9,8 +9,6 @@
 #include <nameof.hpp>
 
 namespace shards {
-inline std::string formatShardSourceLocation(Shard *blk);
-
 SH_HAS_MEMBER_TEST(name);
 SH_HAS_MEMBER_TEST(hash);
 SH_HAS_MEMBER_TEST(help);
@@ -192,7 +190,7 @@ template <class T> struct ShardWrapper {
         try {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.compose(*data)};
         } catch (std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                                                  reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}},
                                       SHTypeInfo{}};
@@ -209,7 +207,7 @@ template <class T> struct ShardWrapper {
         try {
           return SHShardComposeResult{SHError::Success, reinterpret_cast<ShardWrapper<T> *>(b)->shard.composeV2(*data)};
         } catch (std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(e.what());
           return SHShardComposeResult{SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                                                  reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}},
                                       SHTypeInfo{}};
@@ -227,7 +225,7 @@ template <class T> struct ShardWrapper {
           reinterpret_cast<ShardWrapper<T> *>(b)->shard.warmup(ctx);
           return SHError::Success;
         } catch (const std::exception &e) {
-          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{} ({}", e.what(), formatShardSourceLocation(b)));
+          reinterpret_cast<ShardWrapper<T> *>(b)->lastError.assign(fmt::format("{}", e.what()));
           return SHError{1, SHStringWithLen{reinterpret_cast<ShardWrapper<T> *>(b)->lastError.data(),
                                             reinterpret_cast<ShardWrapper<T> *>(b)->lastError.size()}};
         }
@@ -330,6 +328,16 @@ template <class T> struct ShardWrapper {
     return result;
   }
 };
+
+template <typename T> inline auto toShardWrapper(T *self) {
+  using Wrapper = ShardWrapper<T>;
+  auto static const offset = offsetof(Wrapper, shard);
+  return reinterpret_cast<Wrapper *>(reinterpret_cast<uint8_t *>(self) - offset);
+}
+
+template <typename T> inline Shard* toShard(T *self) {
+  return &toShardWrapper(self)->header;
+}
 
 #ifdef SHARDS_THIS_MODULE_ID
 #define SHARD_MODULE_STRINGIFY_HELPER(x) #x

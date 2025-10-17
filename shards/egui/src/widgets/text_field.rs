@@ -6,6 +6,7 @@ use crate::MutVarTextBuffer;
 use crate::VarTextBuffer;
 use crate::FLOAT_VAR_OR_NONE_SLICE;
 use crate::HELP_VALUE_IGNORED;
+use crate::INT_VAR_OR_NONE_SLICE;
 use crate::PARENTS_UI_NAME;
 use crate::STRING_VAR_SLICE;
 use egui::RichText;
@@ -30,6 +31,10 @@ use std::ffi::CStr;
 
 lazy_static! {
   static ref TEXTINPUT_OUTPUT_TYPES: Types = vec![common_type::any];
+
+  static ref STRING_VAR_OR_NONE_TYPES: Types = vec![common_type::string, common_type::string_var, common_type::none];
+  
+
 }
 
 #[derive(shards::shard)]
@@ -65,6 +70,12 @@ pub struct TextField {
   password: ClonedVar,
   #[shard_param("Hint", "Hint to show in the text field.", [common_type::string, common_type::string_var, common_type::none])]
   hint: ParamVar,
+  #[shard_param(
+    "DesiredRows",
+    "The desired number of rows to display.",
+    INT_VAR_OR_NONE_SLICE
+  )]
+  desired_rows: ParamVar,
   #[shard_warmup]
   parents: ParamVar,
   #[shard_required]
@@ -86,6 +97,7 @@ impl Default for TextField {
       multiline: false.into(),
       password: false.into(),
       hint: ParamVar::default(),
+      desired_rows: ParamVar::default(),
       exposing: Vec::new(),
       should_expose: false,
       mutable_text: true,
@@ -112,7 +124,11 @@ impl Shard for TextField {
   }
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
-    self.compose_helper(data)?;
+    // Manually compose since we specially handle the variable
+    self.requiring.clear();
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.desired_width).into(), &FLOAT_VAR_OR_NONE_SLICE, "DesiredWidth")?;
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.hint).into(), &STRING_VAR_OR_NONE_TYPES, "Hint")?;
+    shards::util::collect_required_variables_typed(data, &mut self.requiring, (&self.desired_rows).into(), &INT_VAR_OR_NONE_SLICE, "DesiredRows")?;
 
     // Add UI.Parents to the list of required variables
     util::require_parents(&mut self.requiring);
@@ -221,6 +237,14 @@ impl Shard for TextField {
 
     let clip_text: bool = (&self.clip_text.0).try_into().unwrap(); // qed, shards validation
     text_edit = text_edit.clip_text(clip_text);
+
+    text_edit = text_edit.desired_rows(
+      if let Ok(desired_rows) = TryInto::<usize>::try_into(self.desired_rows.get()) {
+        desired_rows
+      } else {
+        1
+      },
+    );
 
     let response = ui.add(text_edit);
 

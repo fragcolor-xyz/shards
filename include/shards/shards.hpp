@@ -70,14 +70,27 @@ public:
   explicit WarmupError(std::string_view msg) : SHException(msg) {}
 };
 
-class ComposeError : public SHException {
+class Error : public std::exception {
 public:
-  explicit ComposeError(std::string_view msg, bool fatal = true) : SHException(msg), fatal(fatal) {}
-
-  bool triggerFailure() const { return fatal; }
-
-private:
+  std::string message;
+  enum ContextType {
+    CTX_Shard,
+    CTX_Wire,
+    CTX_Unknown,
+  };
+  union {
+    Shard *shard;
+    SHWire *wire;
+  };
+  ContextType type;
   bool fatal;
+
+  explicit Error(Shard *shard, std::string_view msg, bool fatal = true)
+      : message(msg), shard(shard), type(CTX_Shard), fatal(fatal) {}
+  explicit Error(const SHWire *wire, std::string_view msg, bool fatal = true)
+      : message(msg), wire(const_cast<SHWire *>(wire)), type(CTX_Wire), fatal(fatal) {}
+  explicit Error(std::string_view msg, bool fatal = true) : message(msg), type(CTX_Unknown), fatal(fatal) {}
+  const char* what() const noexcept override { return message.c_str(); }
 };
 
 class InvalidVarTypeError : public SHException {

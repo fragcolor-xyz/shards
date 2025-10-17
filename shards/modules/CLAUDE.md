@@ -203,7 +203,7 @@ SHARDS_REGISTER_FN(mymodule) {
 ## Best Practices
 
 1. **Memory Management**: Use RAII, clean up in `cleanup()`
-2. **Error Handling**: Use `ActivationError`, `ComposeError`, `WarmupError`
+2. **Error Handling**: Use `throw shards::Error("message")`
 3. **Performance**: Cache computations, reuse buffers
 4. **Type Safety**: Validate inputs in `compose()` when possible
 5. **Documentation**: Provide clear help strings

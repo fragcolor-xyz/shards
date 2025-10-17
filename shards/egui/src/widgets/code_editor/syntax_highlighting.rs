@@ -8,46 +8,63 @@
 use egui::text::LayoutJob;
 
 use core::hash::Hash;
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
+use std::thread;
 use syntect::highlighting::Theme;
 use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxDefinition;
-use syntect::parsing::SyntaxSet;
+use syntect::parsing::{SyntaxDefinition, SyntaxReference, SyntaxSet};
 
-impl egui::util::cache::ComputerMut<(&CodeTheme, &str, &str), LayoutJob> for Highlighter<true> {
-  fn compute(&mut self, (theme, code, language): (&CodeTheme, &str, &str)) -> LayoutJob {
-    self.highlight(theme, code, language)
+// Cache key for highlighting results
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct HighlightCacheKey {
+  theme_name: String,
+  dark_mode: bool,
+  code: String,
+  language: String,
+}
+
+impl HighlightCacheKey {
+  fn new(theme: &CodeTheme, code: &str, language: &str) -> Self {
+    Self {
+      theme_name: theme
+        .theme
+        .name
+        .as_ref()
+        .map(|s| s.clone())
+        .unwrap_or_else(|| "default".to_string()),
+      dark_mode: theme.dark_mode,
+      code: code.to_string(),
+      language: language.to_string(),
+    }
   }
 }
 
-impl egui::util::cache::ComputerMut<(&CodeTheme, &str), LayoutJob> for Highlighter<false> {
-  fn compute(&mut self, (theme, code): (&CodeTheme, &str)) -> LayoutJob {
-    self.highlight(theme, code, "shards")
+/// Memoized Code highlighting for Shards language
+pub(crate) fn highlight_shards(theme: &CodeTheme, code: &str) -> LayoutJob {
+  highlight_generic(theme, code, "shards")
+}
+
+/// Memoized Code highlighting for any language
+pub(crate) fn highlight_generic(theme: &CodeTheme, code: &str, language: &str) -> LayoutJob {
+  let cache_key = HighlightCacheKey::new(theme, code, language);
+
+  // Check static cache first
+  if let Some(cached) = HighlightCache::get(&cache_key) {
+    return cached;
   }
-}
 
-/// Memoized Code highlighting
-pub(crate) fn highlight_shards(ctx: &egui::Context, theme: &CodeTheme, code: &str) -> LayoutJob {
-  type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter<false>>;
+  // Try to highlight with async highlighter
+  let result = if let Some(highlighter) = AsyncHighlighterCache::get_highlighter() {
+    highlighter.highlight(theme, code, language)
+  } else {
+    // Return unhighlighted text while highlighter loads (never cache this!)
+    return create_unhighlighted_layout(theme, code);
+  };
 
-  ctx.memory_mut(|mem| {
-    let highlight_cache = mem.caches.cache::<HighlightCache<'_>>();
-    highlight_cache.get((theme, code))
-  })
-}
-
-/// Memoized Code highlighting
-pub(crate) fn highlight_generic(
-  ctx: &egui::Context,
-  theme: &CodeTheme,
-  code: &str,
-  language: &str,
-) -> LayoutJob {
-  type HighlightCache<'a> = egui::util::cache::FrameCache<LayoutJob, Highlighter<true>>;
-
-  ctx.memory_mut(|mem| {
-    let highlight_cache = mem.caches.cache::<HighlightCache<'_>>();
-    highlight_cache.get((theme, code, language))
-  })
+  // Cache the result
+  HighlightCache::insert(cache_key, result.clone());
+  result
 }
 
 /*
@@ -59,6 +76,84 @@ lazy_static! {
   static ref DEFAULT_THEMES: ThemeSet = ThemeSet::load_defaults();
   static ref DARK_THEME: &'static Theme = &DEFAULT_THEMES.themes["base16-ocean.dark"];
   static ref LIGHT_THEME: &'static Theme = &DEFAULT_THEMES.themes["base16-ocean.light"];
+}
+
+/// Create a simple unhighlighted layout for text
+fn create_unhighlighted_layout(theme: &CodeTheme, text: &str) -> LayoutJob {
+  LayoutJob::simple(
+    text.into(),
+    egui::FontId::monospace(12.0),
+    if theme.dark_mode {
+      egui::Color32::LIGHT_GRAY
+    } else {
+      egui::Color32::DARK_GRAY
+    },
+    f32::INFINITY,
+  )
+}
+
+// Static caches
+static HIGHLIGHTER: LazyLock<Arc<Mutex<Option<Arc<Highlighter>>>>> =
+  LazyLock::new(|| Arc::new(Mutex::new(None)));
+static HIGHLIGHTER_LOADING: LazyLock<Arc<Mutex<bool>>> =
+  LazyLock::new(|| Arc::new(Mutex::new(false)));
+static HIGHLIGHT_CACHE: LazyLock<Arc<RwLock<HashMap<HighlightCacheKey, LayoutJob>>>> =
+  LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+
+struct HighlightCache;
+
+impl HighlightCache {
+  fn get(key: &HighlightCacheKey) -> Option<LayoutJob> {
+    HIGHLIGHT_CACHE.read().ok()?.get(key).cloned()
+  }
+
+  fn insert(key: HighlightCacheKey, value: LayoutJob) {
+    if let Ok(mut cache) = HIGHLIGHT_CACHE.write() {
+      // Limit cache size to prevent memory leaks
+      if cache.len() > 1000 {
+        cache.clear();
+      }
+      cache.insert(key, value);
+    }
+  }
+}
+
+struct AsyncHighlighterCache;
+
+impl AsyncHighlighterCache {
+  fn get_highlighter() -> Option<Arc<Highlighter>> {
+    // Check if already loaded
+    if let Ok(guard) = HIGHLIGHTER.lock() {
+      if let Some(highlighter) = guard.as_ref() {
+        return Some(Arc::clone(highlighter));
+      }
+    }
+
+    // Check if loading is in progress
+    if let Ok(mut loading_guard) = HIGHLIGHTER_LOADING.lock() {
+      if !*loading_guard {
+        *loading_guard = true;
+
+        // Spawn background thread to load highlighter
+        let cache = HIGHLIGHTER.clone();
+        let loading_flag = HIGHLIGHTER_LOADING.clone();
+
+        thread::spawn(move || {
+          let highlighter = Arc::new(Highlighter::default());
+
+          if let Ok(mut guard) = cache.lock() {
+            *guard = Some(highlighter);
+          }
+
+          if let Ok(mut loading_guard) = loading_flag.lock() {
+            *loading_guard = false;
+          }
+        });
+      }
+    }
+
+    None
+  }
 }
 
 pub(crate) struct CodeTheme {
@@ -95,48 +190,69 @@ impl CodeTheme {
   }
 }
 
-struct Highlighter<const FULL_LOAD: bool> {
+#[derive(Clone)]
+struct Highlighter {
   syntaxes: SyntaxSet,
+  syntax_cache: Arc<RwLock<HashMap<String, Option<usize>>>>, // Cache syntax indices by language
 }
 
-impl<const FULL_LOAD: bool> Default for Highlighter<FULL_LOAD> {
+impl Default for Highlighter {
   fn default() -> Self {
-    let syntaxes = if FULL_LOAD {
-      let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
-      builder.add(
-        SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
-      );
-      builder.build()
-    } else {
-      let mut builder = SyntaxSet::new().into_builder();
-      builder.add(
-        SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
-      );
-      builder.build()
-    };
+    let mut builder = SyntaxSet::load_defaults_newlines().into_builder();
+    builder.add(
+      SyntaxDefinition::load_from_str(include_str!("sublime-syntax.yml"), true, None).unwrap(),
+    );
+    let syntaxes = builder.build();
 
     Highlighter {
       syntaxes,
+      syntax_cache: Arc::new(RwLock::new(HashMap::new())),
     }
   }
 }
 
-impl<const FULL_LOAD: bool> Highlighter<FULL_LOAD> {
+impl Highlighter {
+  fn get_cached_syntax(&self, language: &str) -> Option<&SyntaxReference> {
+    // Check cache first
+    if let Ok(cache) = self.syntax_cache.read() {
+      if let Some(&Some(index)) = cache.get(language) {
+        return self.syntaxes.syntaxes().get(index);
+      } else if cache.contains_key(language) {
+        // We've already tried this language and it doesn't exist
+        return None;
+      }
+    }
+
+    // Not in cache, look it up
+    let syntax = self
+      .syntaxes
+      .find_syntax_by_name(language)
+      .or_else(|| self.syntaxes.find_syntax_by_extension(language));
+
+    // Cache the result
+    if let Ok(mut cache) = self.syntax_cache.write() {
+      if let Some(syntax_ref) = syntax {
+        // Find the index of this syntax in the syntaxes vector
+        if let Some(index) = self
+          .syntaxes
+          .syntaxes()
+          .iter()
+          .position(|s| std::ptr::eq(s, syntax_ref))
+        {
+          cache.insert(language.to_string(), Some(index));
+        }
+      } else {
+        cache.insert(language.to_string(), None);
+      }
+    }
+
+    syntax
+  }
+
   fn highlight(&self, theme: &CodeTheme, text: &str, language: &str) -> LayoutJob {
     self
       .highlight_impl(theme, text, language)
-      .unwrap_or_else(|| {
-        LayoutJob::simple(
-          text.into(),
-          egui::FontId::monospace(12.0),
-          if theme.dark_mode {
-            egui::Color32::LIGHT_GRAY
-          } else {
-            egui::Color32::DARK_GRAY
-          },
-          f32::INFINITY,
-        )
-      })
+      .unwrap_or_else(|| create_unhighlighted_layout(theme, text))
   }
 
   fn highlight_impl(&self, theme: &CodeTheme, text: &str, language: &str) -> Option<LayoutJob> {
@@ -144,10 +260,7 @@ impl<const FULL_LOAD: bool> Highlighter<FULL_LOAD> {
     use syntect::highlighting::FontStyle;
     use syntect::util::LinesWithEndings;
 
-    let syntax = self
-      .syntaxes
-      .find_syntax_by_name(language)
-      .or_else(|| self.syntaxes.find_syntax_by_extension(language))?;
+    let syntax = self.get_cached_syntax(language)?;
 
     let mut h = HighlightLines::new(syntax, theme.theme);
 

@@ -209,7 +209,7 @@ struct ReplaceExtension {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_newExtension.isNone()) {
-      throw ComposeError("NewExtension parameter is required and cannot be None");
+      throw shards::Error("NewExtension parameter is required and cannot be None");
     }
     return data.inputType;
   }
@@ -390,7 +390,7 @@ struct RelativeTo {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_basePath.isNone()) {
-      throw ComposeError("BasePath parameter is required and cannot be None");
+      throw shards::Error("BasePath parameter is required and cannot be None");
     }
     return outputTypes().elements[0];
   }
@@ -770,7 +770,7 @@ struct SetWriteTime {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_time.isNone()) {
-      throw ComposeError("Time parameter is required and cannot be None");
+      throw shards::Error("Time parameter is required and cannot be None");
     }
     return data.inputType;
   }
@@ -896,7 +896,7 @@ struct Rename {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_newName.isNone()) {
-      throw ComposeError("NewName parameter is required and cannot be None");
+      throw shards::Error("NewName parameter is required and cannot be None");
     }
     return data.inputType;
   }
@@ -948,7 +948,7 @@ struct Is {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_other.isNone()) {
-      throw ComposeError("Other parameter is required and cannot be None");
+      throw shards::Error("Other parameter is required and cannot be None");
     }
     return data.inputType;
   }
@@ -978,7 +978,7 @@ struct IsAny {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_other.isNone()) {
-      throw ComposeError("Other parameter is required and cannot be None");
+      throw shards::Error("Other parameter is required and cannot be None");
     }
     return CoreInfo::BoolType;
   }
@@ -1013,7 +1013,7 @@ struct IsNotAny {
   SHTypeInfo compose(const SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
     if (_other.isNone()) {
-      throw ComposeError("Other parameter is required and cannot be None");
+      throw shards::Error("Other parameter is required and cannot be None");
     }
     return CoreInfo::BoolType;
   }

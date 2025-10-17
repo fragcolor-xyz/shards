@@ -703,15 +703,11 @@ ALWAYS_INLINE bool is_stack_within_limit(void *stack_start_address, size_t adjus
 }
 
 NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
-  auto &err = context->getErrorMessage();
-  auto msg = fmt::format("{} -> Error: {}, {}", blk->name(blk), err, formatShardSourceLocation(blk));
-
 #if SHARDS_DEBUGGER
-  shards::dbg::onError(context, blk, err);
+  shards::dbg::onError(context, blk, context->getErrorMessage());
 #endif
 
-  SHLOG_ERROR(msg);
-  context->pushError(std::move(msg));
+  context->errorStack.push_back(shards::Error(blk, {}));
   auto wire = context->currentWire();
   if (wire) {
     auto mesh = wire->mesh.lock();
@@ -921,8 +917,7 @@ void validateConnection(InternalCompositionContext &ctx) {
 
   if (!inputMatches) {
     const auto msg =
-        fmt::format("Could not find a matching input type, shard: {} ({}) expected: {}. Found instead: {}",
-                    ctx.bottom->name(ctx.bottom), formatShardSourceLocation(ctx.bottom), inputInfos, ctx.previousOutputType);
+        fmt::format("Could not find a matching input type, expected: {}. Found instead: {}", inputInfos, ctx.previousOutputType);
 #if SH_DEBUG_TYPE_MATCHING
     // Put a breakpoint here to debug
     for (uint32_t i = 0; inputInfos.len > i; i++) {
@@ -933,7 +928,7 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
     }
 #endif
-    throw ComposeError(msg);
+    throw shards::Error(ctx.bottom, msg);
   }
 
   // infer and specialize types if we need to
@@ -954,9 +949,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(msg);
+      throw shards::Error(ctx.bottom, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -982,9 +975,7 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      std::string_view msg(composeResult.error.message.string, size_t(composeResult.error.message.len));
-      SHLOG_ERROR("Error composing shard: {}, wire: {}", msg, ctx.wire ? ctx.wire->name : "(unwired)");
-      throw ComposeError(msg);
+      throw shards::Error(data.shard, composeResult.error.message.string);
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -1003,8 +994,7 @@ void validateConnection(InternalCompositionContext &ctx) {
         }
       }
     } else {
-      SHLOG_ERROR("Shard {} needs to implement the compose method", ctx.bottom->name(ctx.bottom));
-      throw ComposeError("Shard has multiple possible output types and is missing the compose method");
+      throw shards::Error(ctx.bottom, "Shard has multiple possible output types and is missing the compose method");
     }
   }
 
@@ -1034,7 +1024,7 @@ void validateConnection(InternalCompositionContext &ctx) {
         });
     if (!shardHasValidOutputTypes) {
       auto msg = fmt::format("Shard {} doesn't have a valid output type", ctx.bottom->name(ctx.bottom));
-      throw ComposeError(msg);
+      throw shards::Error(ctx.bottom, msg);
     }
   }
 #endif
@@ -1050,7 +1040,8 @@ void validateConnection(InternalCompositionContext &ctx) {
       SHLOG_TRACE("Declared variable: {} mutable: {}, inserted: {}", name, exposed_param.isMutable, inserted.second);
       // check if we are not declaring a mutable var twice, and match the mutability
       if (!inserted.second && inserted.first->second.isMutable != exposed_param.isMutable) {
-        throw ComposeError(fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
+        throw shards::Error(ctx.bottom,
+                            fmt::format("Variable {} declared twice with different mutability in wire {}", name, ctx.wire->name));
       }
       // check that we are not declaring a mutable var twice
       if (!inserted.second && inserted.first->second.isMutable) {
@@ -1058,8 +1049,8 @@ void validateConnection(InternalCompositionContext &ctx) {
             exposed_param.exposedType.basicType == SHType::Table) {
           // Allow redeclaration of mutable tables
         } else if (inserted.first->second.exposedType != exposed_param.exposedType) {
-          throw ComposeError(
-              fmt::format("Mutable variable {} declared twice, with different types in wire {}", name, ctx.wire->name));
+          throw shards::Error(ctx.bottom, fmt::format("Mutable variable {} declared twice, with different types in wire {}", name,
+                                                      ctx.wire->name));
         }
       }
       // clear declared flag on exposed param
@@ -1129,10 +1120,12 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
 #endif
       if (found) {
-        throw ComposeError(fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
-                                       required.second.exposedType, found->exposedType, required.first));
+        throw shards::Error(ctx.bottom,
+                            fmt::format("Required type ({}) does not match currently exposed type ({}) for variable '{}'",
+                                        required.second.exposedType, found->exposedType, required.first));
       } else {
-        throw ComposeError(fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
+        throw shards::Error(
+            ctx.bottom, fmt::format("Required variable '{}' ({}) was not found", required.first, required.second.exposedType));
       }
     } else {
       // Add required stuff that we do not expose ourself
@@ -1167,9 +1160,126 @@ struct ComposeMemory {
 };
 thread_local std::optional<ComposeMemory> ComposeMemory::allocator;
 
+void appendIndented(std::string &out, std::string_view in, std::string_view indent) {
+  for (size_t i = 0; i < in.size(); i++) {
+    if (in[i] == '\n') {
+      out += '\n';
+      out += indent;
+      continue;
+    } else {
+      out += in[i];
+    }
+  }
+}
+
+std::string formatErrorStack(const std::vector<shards::Error> &errorStack, std::string_view indent) {
+  if (errorStack.size() > 0) {
+    std::string e;
+    e.reserve(errorStack.size() * 100);
+    e += indent;
+    std::string subIndent = "  ";
+    std::string subIndentJ = std::string(indent) + "  ";
+
+    bool haveOutput = false;
+    for (size_t i = 0;;) {
+      auto &err = errorStack[i];
+
+      if (!err.message.empty()) {
+        if (haveOutput) {
+          e += "\n";
+          e += indent;
+        }
+        e += subIndent;
+        appendIndented(e, err.message, subIndentJ);
+        haveOutput = true;
+      }
+
+      if (err.type != shards::Error::CTX_Unknown) {
+        if (haveOutput) {
+          e += "\n";
+          e += indent;
+        }
+        e += fmt::format("- ");
+        haveOutput = true;
+      }
+
+      switch (err.type) {
+      case shards::Error::CTX_Shard:
+        shassert(err.shard);
+        e += fmt::format("{} {}", err.shard->name(err.shard), formatShardSourceLocation(err.shard));
+        break;
+      case shards::Error::CTX_Wire:
+        shassert(err.wire);
+        if (auto firstBlk = err.wire->shards.front()) {
+          e += fmt::format("<wire> {} uid:{:x} {}", err.wire->name, uint64_t(err.wire->uniqueId),
+                           formatShardSourceLocation(firstBlk));
+        } else {
+          e += fmt::format("<wire> {} uid:{:x}", err.wire->name, uint64_t(err.wire->uniqueId));
+        }
+        break;
+      default:
+        break;
+      }
+      if (++i >= errorStack.size())
+        break;
+    }
+    return e;
+  } else {
+    return {};
+  }
+}
+
+inline SHStringWithLen toOwnedString(std::string_view s) {
+  SHStringWithLen r{};
+  r.len = s.size();
+  r.string = new char[s.size()];
+  std::memcpy(const_cast<char *>(r.string), s.data(), s.size());
+  return r;
+}
+
+SHComposeResult getComposeError(shards::CompositionContext &privateContext) {
+  std::string emsg = "Composition failed";
+  std::string errorStackTrace = formatErrorStack(privateContext.errorStack, {});
+  return SHComposeResult{
+      .failed = true,
+      .error = toOwnedString(emsg),
+      .errorStackTrace = toOwnedString(errorStackTrace),
+  };
+}
+
+SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept {
+  shards::CompositionContext privateContext;
+  if (!data.privateContext)
+    data.privateContext = &privateContext;
+  try {
+    return shards::composeWire(wire, data);
+  } catch (...) {
+    return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
+  }
+}
+
+SHComposeResult composeShardsNoExcept(const Shards wire, SHInstanceData &data) noexcept {
+  shards::CompositionContext privateContext;
+  if (!data.privateContext)
+    data.privateContext = &privateContext;
+  try {
+    return shards::composeWire(wire, data);
+  } catch (...) {
+    return getComposeError(*reinterpret_cast<shards::CompositionContext *>(data.privateContext));
+  }
+}
+
+ExtendedError::ExtendedError(std::string error, std::string errorStackTrace) : error(error), errorStackTrace(errorStackTrace) {
+  if (errorStackTrace.length() > 0) {
+    combined = fmt::format("{}:\n{}", error, errorStackTrace);
+  } else {
+    combined = error;
+  }
+}
+const char *ExtendedError::what() const noexcept { return combined.c_str(); }
+
 SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
-
   if (data.shard) {
     SHLOG_TRACE("Composing wire: {}, shard: {}, {}", data.wire ? data.wire->name : "(unwired)", data.shard->name(data.shard),
                 formatShardSourceLocation(data.shard));
@@ -1202,238 +1312,258 @@ SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstance
   ctx.onWorkerThread = data.onWorkerThread;
   ctx.fullRequired = reinterpret_cast<decltype(InternalCompositionContext::fullRequired)>(data.requiredVariables);
 
-  // add externally added variables
-  if (ctx.wire) {
-    for (const auto &[key, pVar] : ctx.wire->getExternalVariables()) {
-      const SHExternalVariable &extVar = pVar;
-      const SHVar &var = *extVar.var;
-      if ((var.flags & SHVAR_FLAGS_EXTERNAL) == 0) {
-        throw std::runtime_error(fmt::format("Variable '{}' must have SHVAR_FLAGS_EXTERNAL flag set", key.payload.stringValue));
-      }
+  try {
+    try {
+      // add externally added variables
+      if (ctx.wire) {
+        for (const auto &[key, pVar] : ctx.wire->getExternalVariables()) {
+          const SHExternalVariable &extVar = pVar;
+          const SHVar &var = *extVar.var;
+          if ((var.flags & SHVAR_FLAGS_EXTERNAL) == 0) {
+            throw shards::Error(fmt::format("Variable '{}' must have SHVAR_FLAGS_EXTERNAL flag set", key.payload.stringValue));
+          }
 
-      const SHTypeInfo *type{};
-      if (extVar.type) {
-        type = extVar.type;
-      } else {
-        static TypeCache typeCache;
-        type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
-      }
+          const SHTypeInfo *type{};
+          if (extVar.type) {
+            type = extVar.type;
+          } else {
+            static TypeCache typeCache;
+            type = &typeCache.insertUnique(TypeInfo(var, data, nullptr, true, true));
+          }
 
-      shassert(key.payload.stringValue && "Key must be a valid string");
-      SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
-      expInfo.trackingMask = var.trackingMask;
-      std::string_view sName(key.payload.stringValue, key.payload.stringLen);
-      ctx.sharedContext->inherited.insert(sName, expInfo);
-    }
-
-    // add present mesh variables as well if we have a mesh
-    auto mesh = ctx.wire->mesh.lock();
-    if (mesh) {
-      for (auto &v : mesh->getVariables()) {
-        // only add variables with metadata basically
-        auto metadata = mesh->getMetadata(&v.second);
-        if (metadata) {
-          shassert(v.first.payload.stringValue && "Key must be a valid string");
-          std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
-          ctx.sharedContext->inherited.insert(sName, *metadata);
+          shassert(key.payload.stringValue && "Key must be a valid string");
+          SHExposedTypeInfo expInfo{key.payload.stringValue, {}, *type, true /* mutable */};
+          expInfo.trackingMask = var.trackingMask;
+          std::string_view sName(key.payload.stringValue, key.payload.stringLen);
+          ctx.sharedContext->inherited.insert(sName, expInfo);
         }
-      }
-    }
-  }
 
-  if (data.shared.elements) {
-    for (uint32_t i = 0; i < data.shared.len; i++) {
-      auto &info = data.shared.elements[i];
-      shassert(info.name && "Key must be a valid string");
-      std::string_view sName(info.name);
-      ctx.sharedContext->inherited.insert(sName, info);
-    }
-  }
-
-  for (auto &[_name, item] : ctx.sharedContext->inherited) {
-    ctx.sharedStorage.insert(item);
-  }
-
-  size_t chsize = wire.size();
-  for (size_t i = 0; i < chsize; i++) {
-    Shard *blk = wire[i];
-    ctx.next = nullptr;
-    if (i < chsize - 1)
-      ctx.next = wire[i + 1];
-
-    if (strcmp(blk->name(blk), "Input") == 0) {
-      // Hard code behavior for Input shard and And and Or, in order to validate
-      // with actual wire input the followup
-      ctx.previousOutputType = ctx.wire->inputType;
-    } else if (strcmp(blk->name(blk), "And") == 0 || strcmp(blk->name(blk), "Or") == 0) {
-      // Hard code behavior for Input shard and And and Or, in order to validate
-      // with actual wire input the followup
-      ctx.previousOutputType = ctx.originalInputType;
-    } else {
-      ctx.bottom = blk;
-      try {
-        validateConnection(ctx);
-      } catch (std::exception &ex) {
-        auto verboseMsg = fmt::format("Error composing shard: {}, {}, wire: {}, error: {}", blk->name(blk),
-                                      formatShardSourceLocation(blk), ctx.wire ? ctx.wire->name : "(unwired)", ex.what());
-        // error log it
-        SHLOG_ERROR("{}", verboseMsg);
-        // send error if we can
-        if (data.wire) {
-          auto mesh = data.wire->mesh.lock();
-          if (mesh) {
-            std::string_view what{ex.what()};
-            shards::OwnedVar err{Var(what)};
-            mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+        // add present mesh variables as well if we have a mesh
+        auto mesh = ctx.wire->mesh.lock();
+        if (mesh) {
+          for (auto &v : mesh->getVariables()) {
+            // only add variables with metadata basically
+            auto metadata = mesh->getMetadata(&v.second);
+            if (metadata) {
+              shassert(v.first.payload.stringValue && "Key must be a valid string");
+              std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
+              ctx.sharedContext->inherited.insert(sName, *metadata);
+            }
           }
         }
-        // and finally throw it
-        throw ComposeError(verboseMsg);
       }
+
+      if (data.shared.elements) {
+        for (uint32_t i = 0; i < data.shared.len; i++) {
+          auto &info = data.shared.elements[i];
+          shassert(info.name && "Key must be a valid string");
+          std::string_view sName(info.name);
+          ctx.sharedContext->inherited.insert(sName, info);
+        }
+      }
+
+      for (auto &[_name, item] : ctx.sharedContext->inherited) {
+        ctx.sharedStorage.insert(item);
+      }
+
+      size_t chsize = wire.size();
+      for (size_t i = 0; i < chsize; i++) {
+        Shard *blk = wire[i];
+        ctx.next = nullptr;
+        if (i < chsize - 1)
+          ctx.next = wire[i + 1];
+
+        if (strcmp(blk->name(blk), "Input") == 0) {
+          // Hard code behavior for Input shard and And and Or, in order to validate
+          // with actual wire input the followup
+          ctx.previousOutputType = ctx.wire->inputType;
+        } else if (strcmp(blk->name(blk), "And") == 0 || strcmp(blk->name(blk), "Or") == 0) {
+          // Hard code behavior for Input shard and And and Or, in order to validate
+          // with actual wire input the followup
+          ctx.previousOutputType = ctx.originalInputType;
+        } else {
+          ctx.bottom = blk;
+          try {
+            validateConnection(ctx);
+          } catch (std::exception &ex) {
+            if (data.wire) {
+              auto mesh = data.wire->mesh.lock();
+              if (mesh) {
+                std::string_view what{ex.what()};
+                shards::OwnedVar err{Var(what)};
+                mesh->dispatcher.trigger<SHWire::OnErrorEvent>({data.wire, blk, std::move(err)});
+              }
+            }
+
+            throw;
+          }
+        }
+      }
+
+      SHComposeResult result = {ctx.previousOutputType};
+
+      for (auto &exposed : ctx.exposed) {
+        shards::arrayPush(result.exposedInfo, exposed.second);
+      }
+
+      if (ctx.fullRequired) {
+        for (auto &req : ctx.required) {
+          shards::arrayPush(result.requiredInfo, req);
+          (*ctx.fullRequired).insert_or_assign(req.name, ExposedTypeInfo(req));
+        }
+      } else {
+        for (auto &req : ctx.required) {
+          shards::arrayPush(result.requiredInfo, req);
+        }
+      }
+
+      if (wire.size() > 0) {
+        auto &last = wire.back();
+        if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
+            strcmp(last->name(last), "Fail") == 0) {
+          result.flowStopper = true;
+        } else if (strcmp(last->name(last), "Stop") == 0) {
+          // need to check if first param is none
+          auto fp = last->getParam(last, 0);
+          if (fp.valueType == SHType::None)
+            result.flowStopper = true;
+        }
+      }
+
+      return result;
+    } catch (shards::Error &ex) {
+      if (data.privateContext) {
+        CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+        shassert(context);
+        context->errorStack.push_back(std::move(ex));
+      }
+      throw;
     }
-  }
-
-  SHComposeResult result = {ctx.previousOutputType};
-
-  for (auto &exposed : ctx.exposed) {
-    shards::arrayPush(result.exposedInfo, exposed.second);
-  }
-
-  if (ctx.fullRequired) {
-    for (auto &req : ctx.required) {
-      shards::arrayPush(result.requiredInfo, req);
-      (*ctx.fullRequired).insert_or_assign(req.name, ExposedTypeInfo(req));
-    }
-  } else {
-    for (auto &req : ctx.required) {
-      shards::arrayPush(result.requiredInfo, req);
-    }
-  }
-
-  if (wire.size() > 0) {
-    auto &last = wire.back();
-    if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
-        strcmp(last->name(last), "Fail") == 0) {
-      result.flowStopper = true;
-    } else if (strcmp(last->name(last), "Stop") == 0) {
-      // need to check if first param is none
-      auto fp = last->getParam(last, 0);
-      if (fp.valueType == SHType::None)
-        result.flowStopper = true;
-    }
-  }
-
-  return result;
-}
-
-SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
-  // We need to catch exceptions here and add them to the context
-  try {
-    return internalComposeWire(wire, data);
   } catch (std::exception &ex) {
-    if (data.privateContext) {
-      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
-      context->errorStack.push_back(ex.what());
+    if (ownedContext) {
+      throw ExtendedError("Composition failed", formatErrorStack(ownedContext->errorStack));
     }
     throw;
   }
 }
 
-void validateWireTraits(const SHWire *wire, const SHComposeResult &cr) {
+bool validateWireTraits(const SHWire *wire, const SHComposeResult &cr, SHInstanceData data) {
   TraitMatcher tm;
   for (auto &trait : wire->getTraits()) {
     if (!tm(cr.exposedInfo, trait)) {
-      throw ComposeError(fmt::format("Wire {} does not implement {}:\n{}", wire->name, trait, tm.error));
+      auto pct = reinterpret_cast<CompositionContext *>(data.privateContext);
+      shassert(pct);
+      pct->errorStack.emplace_back(fmt::format("Wire {} does not implement {}", wire->name, trait, tm.error));
+      pct->errorStack.emplace_back(tm.error);
+      return false;
     }
   }
+  return true;
 }
 
 SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
   SHWire *wire = const_cast<SHWire *>(wire_);
 
-  // compare exchange and then shassert we were not composing
-  bool expected = false;
-  if (!wire->composing.compare_exchange_strong(expected, true)) {
-    SHLOG_ERROR("Wire {} is already being composed", wire->name);
-    throw ComposeError("Wire is already being composed");
+  std::optional<CompositionContext> ownedContext{};
+  if (!data.privateContext) {
+    ownedContext.emplace();
+    data.privateContext = &ownedContext.value();
   }
-  // defer reset compose state
-  DEFER(wire->composing.store(false));
 
-  // settle input type of wire before compose
-  if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
-    // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
-    wire->inputType = SHTypeInfo{SHType::Any};
-    wire->ignoreInputTypeCheck = true;
-  } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
-               return strcmp(shard->name(shard), "Input") == 0;
-             })) {
-    // If first shard is a plain None, mark this wire has None input
-    // But make sure we have no (Input) shards
-    auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
-    if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
-      wire->inputType = SHTypeInfo{};
+  try {
+    CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
+    shassert(context);
+
+    // compare exchange and then shassert we were not composing
+    bool expected = false;
+    if (!wire->composing.compare_exchange_strong(expected, true)) {
+      SHLOG_ERROR("Wire {} is already being composed", wire->name);
+      throw shards::Error(wire, "Wire is already being composed");
+    }
+    // defer reset compose state
+    DEFER(wire->composing.store(false));
+
+    // settle input type of wire before compose
+    if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+      // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
+      wire->inputType = SHTypeInfo{SHType::Any};
       wire->ignoreInputTypeCheck = true;
+    } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
+                 return strcmp(shard->name(shard), "Input") == 0;
+               })) {
+      // If first shard is a plain None, mark this wire has None input
+      // But make sure we have no (Input) shards
+      auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
+      if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
+        wire->inputType = SHTypeInfo{};
+        wire->ignoreInputTypeCheck = true;
+      } else {
+        wire->inputType = data.inputType;
+        wire->ignoreInputTypeCheck = false;
+      }
     } else {
       wire->inputType = data.inputType;
       wire->ignoreInputTypeCheck = false;
     }
-  } else {
-    wire->inputType = data.inputType;
-    wire->ignoreInputTypeCheck = false;
-  }
 
-  shassert(wire == data.wire); // caller must pass the same wire as data.wire
+    shassert(wire == data.wire); // caller must pass the same wire as data.wire
 
-  auto res = internalComposeWire(wire->shards, data, true);
-  DEFER({
-    shards::arrayFree(res.exposedInfo);
-    shards::arrayFree(res.requiredInfo);
-  });
+    auto res = internalComposeWire(wire->shards, data, true);
+    DEFER({ shards::freeComposeResult(res); });
 
-  validateWireTraits(wire, res);
+    if (!validateWireTraits(wire, res, data))
+      throw std::runtime_error("Wire traits validation failed");
 
-  // set output type
-  wire->outputType = res.outputType; // this is a shallow copy, because it will come from a shard within the wire
+    // set output type
+    wire->outputType = res.outputType; // this is a shallow copy, because it will come from a shard within the wire
 
-  // validate wire output types for additional return paths
-  if (wire->composeData) {
-    auto &cd = *wire->composeData.get();
-    DEFER({ wire->composeData.reset(); });
-    for (auto &type : cd.outputTypes) {
-      if (!matchTypes(type, res.outputType, true, true, true)) {
-        std::string err =
-            fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
-        throw ComposeError(std::move(err));
+    // validate wire output types for additional return paths
+    if (wire->composeData) {
+      auto &cd = *wire->composeData.get();
+      DEFER({ wire->composeData.reset(); });
+      for (auto &type : cd.outputTypes) {
+        if (!matchTypes(type, res.outputType, true, true, true)) {
+          std::string err =
+              fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
+          context->errorStack.emplace_back(wire_, std::move(err));
+          throw std::runtime_error({});
+        }
       }
     }
-  }
 
-  SHComposeResult result{};
-  // swap to avoid deferred free
-  std::swap(result, res);
-  return result;
+    SHComposeResult result{};
+    // swap to avoid deferred free
+    std::swap(result, res);
+    return result;
+  } catch (std::exception &ex) {
+    if (ownedContext) {
+      throw ExtendedError("Composition failed", formatErrorStack(ownedContext->errorStack));
+    }
+    throw;
+  }
 }
 
+// Root level composeWire / throwing
 SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
   // We need to catch exceptions here and add them to the context
   try {
     return internalComposeWire(wire_, data);
   } catch (std::exception &ex) {
-    if (data.privateContext) {
-      CompositionContext *context = reinterpret_cast<CompositionContext *>(data.privateContext);
-      context->errorStack.push_back(ex.what());
-
-      // also send error event if possible
-      auto mesh = wire_->mesh.lock();
-      if (mesh) {
-        std::string_view what{ex.what()};
-        shards::OwnedVar err{Var(what)};
-        mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
-      }
+    // also send error event if possible
+    auto mesh = wire_->mesh.lock();
+    if (mesh) {
+      std::string_view what{ex.what()};
+      shards::OwnedVar err{Var(what)};
+      mesh->dispatcher.trigger<SHWire::OnErrorEvent>({wire_, nullptr, std::move(err)});
     }
     throw;
   }
+}
+
+// Root level composeWire / throwing
+SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+  // We need to catch exceptions here and add them to the context
+  return internalComposeWire(wire, data);
 }
 
 SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
@@ -1451,6 +1581,18 @@ SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
   }
   return composeWire(shards, data);
 }
+
+void freeComposeResult(SHComposeResult &result) {
+  shards::arrayFree(result.exposedInfo);
+  shards::arrayFree(result.requiredInfo);
+  if (result.error.string) {
+    delete[] result.error.string;
+  }
+  if (result.errorStackTrace.string) {
+    delete[] result.errorStackTrace.string;
+  }
+}
+void InternalCore::freeComposeResult(struct SHComposeResult *result) { shards::freeComposeResult(*result); }
 
 bool validateSetParam(Shard *shard, int index, const SHVar &value) {
   auto params = shard->parameters(shard);
@@ -1793,9 +1935,9 @@ endOfWire:
     }
 
     // print our stack log nicely now
-    auto msg = fmt::format("Wire {} failed with error:\n{}", wire->name, context.formatErrorStack());
-    SHLOG_ERROR(msg);
-    shards::OwnedVar errVar((Var(context.formatErrorStack())));
+    context.errorStack.push_back(shards::Error(wire, {}));
+    SHLOG_ERROR("Activation error\n{}", formatErrorStack(context.errorStack));
+    shards::OwnedVar errVar{Var(context.getErrorMessage())};
     {
       // NOTE: Keep the mesh ptr scoped so we don't keep the mesh referenced
       std::shared_ptr<SHMesh> mesh = wire->mesh.lock();
@@ -2479,7 +2621,6 @@ void stringGrow(SHStringPayload *str, uint32_t newCap) {
   }
 }
 void stringFree(SHStringPayload *str) { arrayFree(*str); }
-
 }; // namespace shards
 
 extern "C" void shards_install_signal_handlers() { installSignalHandlers(); }
@@ -2816,48 +2957,18 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
-    auto &sc = SHWire::sharedFromRef(wire);
-    try {
-      return composeWire(sc.get(), data);
-    } catch (const std::exception &e) {
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var("foreign exception failure during composeWire");
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
+    auto sc = SHWire::sharedFromRef(wire);
+    return shards::composeWireNoExcept(sc.get(), data);
   };
+
+  result->freeComposeResult = [](SHComposeResult *result) noexcept { shards::freeComposeResult(*result); };
 
   result->runWire = [](SHWireRef wire, SHContext *context, const SHVar *input) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     return shards::runSubWire(sc.get(), context, *input);
   };
 
-  result->composeShards = [](Shards shards, SHInstanceData data) noexcept {
-    try {
-      return shards::composeWire(shards, data);
-    } catch (const std::exception &e) {
-      SHLOG_TRACE("composeShards failed: {}", e.what());
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var(e.what(), 0); // explict strlen call with 0
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    } catch (...) {
-      SHLOG_TRACE("composeShards failed: ...");
-      SHComposeResult res{};
-      res.failed = true;
-      auto msgTmp = shards::Var("foreign exception failure during composeWire");
-      shards::cloneVar(res.failureMessage, msgTmp);
-      return res;
-    }
-  };
+  result->composeShards = [](Shards shards, SHInstanceData data) noexcept { return shards::composeShardsNoExcept(shards, data); };
 
   result->validateSetParam = [](Shard *shard, int index, const SHVar *param) noexcept {
     try {
@@ -3180,11 +3291,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                                              const SHTypesInfo *validTypes, const char *debugTag) -> SHBool {
     try {
       return shards::collectRequiredVariables(*data, *out, *var, *validTypes, debugTag);
-    } catch (const shards::ComposeError &e) {
-      SHLOG_ERROR("Type validation failed for parameter {}: {}", debugTag, e.what());
-      return false;
     } catch (const std::exception &e) {
-      SHLOG_ERROR("Unexpected error during type validation for parameter {}: {}", debugTag, e.what());
+      std::string err = fmt::format("Type validation failed for parameter {}: {}", debugTag, e.what());
+      if (data->privateContext) {
+        CompositionContext *context = reinterpret_cast<CompositionContext *>(data->privateContext);
+        context->errorStack.emplace_back(err);
+      } else {
+        SHLOG_ERROR("{}", err);
+      }
       return false;
     } catch (...) {
       SHLOG_ERROR("Unknown non-exception error during type validation for parameter {}", debugTag);
@@ -3196,6 +3310,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     std::string_view sv(str.string, size_t(str.len));
     return shards::fast_string::store(sv);
   };
+
   result->fastStringLoad = [](uint64_t id) {
     auto sv = shards::fast_string::load(id);
     return SHStringWithLen{sv.data(), sv.size()};
@@ -3253,6 +3368,10 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     sc->debugId = id;
   };
 
+  result->pushError = [](SHContext *context, SHStringWithLen error) {
+    context->errorStack.emplace_back(std::string_view(error.string, size_t(error.len)));
+  };
+
   result->serializeVar = &serializeVar;
   result->deserializeVar = &deserializeVar;
 
@@ -3306,7 +3425,7 @@ SHBool shards_cancel_abort(SHContext *context) {
     // ok this flow should stop already... so we can just return false
     return false;
   }
-  context->resetErrorStack();
+  context->errorStack.clear();
   context->continueFlow();
   return true;
 }

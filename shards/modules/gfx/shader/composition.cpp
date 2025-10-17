@@ -24,7 +24,7 @@ static thread_local ShaderCompositionContext *compositionContext{};
 
 ShaderCompositionContext &ShaderCompositionContext::get() {
   if (!compositionContext)
-    throw ComposeError("Shader shards can not be used outside of a shader");
+    throw shards::Error("Shader shards can not be used outside of a shader");
   return *compositionContext;
 }
 
@@ -77,8 +77,7 @@ struct DynamicBlockFromShards : public blocks::Block {
     ShaderCompositionContext shaderCompositionContext(context, composeWith, globalVariableRemapping);
     ShaderCompositionContext::withContext(shaderCompositionContext, [&]() {
       SHComposeResult composeResult = composeWire(shards, instanceData);
-      DEFER(shards::arrayFree(composeResult.exposedInfo));
-      DEFER(shards::arrayFree(composeResult.requiredInfo));
+      DEFER(shards::freeComposeResult(composeResult));
 
       if (composeResult.failed)
         throw formatException("Failed to compose shader shards");

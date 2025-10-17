@@ -762,7 +762,7 @@ struct Server {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     if (_handlerMaster.valueType != SHType::Wire) {
-      throw ComposeError("Handler must be a wire");
+      throw shards::Error("Handler must be a wire");
     }
 
     auto wire = SHWire::sharedFromRef(_handlerMaster.payload.wireValue);
@@ -929,7 +929,7 @@ struct Server {
 
   void warmup(SHContext *context) {
     if (!_pool) {
-      throw ComposeError("Peer wires pool not valid!");
+      throw shards::Error("Peer wires pool not valid!");
     }
 
     // Warm up captured variables

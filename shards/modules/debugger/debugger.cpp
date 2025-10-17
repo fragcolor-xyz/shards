@@ -367,6 +367,7 @@ json DAPServer::handle_dap_request(const json &request) {
     setState(DebuggerState::Running);
 
   } else if (command == "setBreakpoints") {
+    SPDLOG_LOGGER_DEBUG(logger_, "Setting breakpoints");
     json args = request.value("arguments", json::object());
     json sourceJson = args.value("source", json::object());
     auto source = parseSource(sourceJson);
@@ -395,6 +396,9 @@ json DAPServer::handle_dap_request(const json &request) {
     response["body"] = {{"breakpoints", responseBreakpoints}};
   } else if (command == "configurationDone") {
     response["body"] = json::object();
+    if (configurationDone) {
+      configurationDone();
+    }
   } else if (command == "threads") {
     json threads_json = json::array();
     std::vector<Thread> threads;

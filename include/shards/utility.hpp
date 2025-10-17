@@ -322,9 +322,7 @@ public:
   ~TShardsVar() {
     destroy();
     SH_CORE::destroyVar(_shardsParam);
-    SH_CORE::expTypesFree(_wireValidation.exposedInfo);
-    SH_CORE::expTypesFree(_wireValidation.requiredInfo);
-    SH_CORE::destroyVar(_wireValidation.failureMessage);
+    SH_CORE::freeComposeResult(&_wireValidation);
   }
 
   void cleanup(SHContext *context) {
@@ -385,9 +383,7 @@ public:
 
   SHComposeResult compose(const SHInstanceData &data) {
     // Free any previous result!
-    SH_CORE::expTypesFree(_wireValidation.exposedInfo);
-    SH_CORE::expTypesFree(_wireValidation.requiredInfo);
-    SH_CORE::destroyVar(_wireValidation.failureMessage);
+    SH_CORE::freeComposeResult(&_wireValidation);
 
     _wireValidation = SH_CORE::composeShards(_shards, data); // can throw
 

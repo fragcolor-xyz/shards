@@ -56,10 +56,9 @@
         "Unknown Error" | Fail
       } {
         CurrentCaptureLog
-        {= l | Count(l) | Assert.Is(3)}
+        {= l | Count(l) | Assert.Is(2)}
         {Take(0) | Assert.Is("[maybe-curr-log] Hi")}
-        {Take(1) | String.Starts("Fail -> Error") | Assert.Is(true)}
-        {Take(2) | String.Starts("Maybe shard Ignored an error") | Assert.Is(true)}
+        {Take(1) | String.Starts("Maybe shard Ignored an error") | Assert.Is(true)}
         ForEach(Log("The log"))
       }
     )

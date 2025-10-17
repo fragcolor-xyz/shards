@@ -624,19 +624,35 @@ fn process_function(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<FunctionValue
             }
 
             // read string from file
-            let mut code = std::fs::read_to_string(&file_path)
-              .map_err(|e| err(env, &format!("Failed to read file {:?}: {}", file_path, e), &pair))?;
+            let mut code = std::fs::read_to_string(&file_path).map_err(|e| {
+              err(
+                env,
+                &format!("Failed to read file {:?}: {}", file_path, e),
+                &pair,
+              )
+            })?;
             // add new line at the end of the file to be able to parse it correctly
             code.push('\n');
 
             let parent = file_path.parent().unwrap_or(Path::new("."));
-            let successful_parse = ShardsParser::parse(Rule::Program, &code)
-              .map_err(|e| err(env, &format!("Failed to parse file {:?}: {}", file_path, e), &pair))?;
+            let successful_parse = ShardsParser::parse(Rule::Program, &code).map_err(|e| {
+              err(
+                env,
+                &format!("Failed to parse file {:?}: {}", file_path, e),
+                &pair,
+              )
+            })?;
             let mut sub_env: ReadEnv = ReadEnv::new(
               file_path.to_str().unwrap(), // should be qed...
               parent
                 .to_str()
-                .ok_or_else(|| err(env, &format!("Failed to convert file path {:?} to string", parent), &pair))?
+                .ok_or_else(|| {
+                  err(
+                    env,
+                    &format!("Failed to convert file path {:?} to string", parent),
+                    &pair,
+                  )
+                })?
                 .into(),
               Vec::new(),
             );
@@ -1390,6 +1406,8 @@ pub struct ReadShard {
     [common_type::strings, *STRINGS_VAR]
   )]
   include: ParamVar,
+  #[shard_param("Filename", "The filename of the script.", STRING_VAR_OR_NONE_SLICE)]
+  filename: ParamVar,
   #[shard_required]
   required_variables: ExposedTypes,
 }
@@ -1401,6 +1419,7 @@ impl Default for ReadShard {
       output_type: ClonedVar::from(AstType::Bytes),
       base_path: ParamVar::new(Var::ephemeral_string(".")),
       include: ParamVar::new(SeqVar::leaking_new().0),
+      filename: ParamVar::default(),
       required_variables: ExposedTypes::default(),
     }
   }
@@ -1454,9 +1473,44 @@ impl Shard for ReadShard {
       "Failed to parse Shards code"
     })?;
 
+    let filename_var = self.filename.get();
+    let filename = if filename_var.is_none() {
+      ""
+    } else {
+      (filename_var).try_into()?
+    };
+
+    let fn_var = self.filename.get();
+    let name = if fn_var.is_none() {
+      if (filename.is_empty()) {
+        ""
+      } else {
+        Path::new(filename)
+          .file_name()
+          .and_then(|f| f.to_str())
+          .unwrap_or(filename)
+      }
+    } else {
+      (fn_var).try_into()?
+    };
+
     let bp_var = self.base_path.get();
+    let mut tmpBasePath: Option<String> = None;
     let base_path = if bp_var.is_none() {
-      "."
+      if name.is_empty() {
+        "."
+      } else {
+        // Parent path of name
+        tmpBasePath = Some(
+          Path::new(&name)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string(),
+        );
+        &tmpBasePath.unwrap()
+      }
     } else {
       bp_var.try_into()?
     };
@@ -1466,7 +1520,7 @@ impl Shard for ReadShard {
       includes.push((&inc).try_into()?);
     }
 
-    let mut env = ReadEnv::new("", base_path.to_string(), includes);
+    let mut env = ReadEnv::new(name, base_path.to_string(), includes);
     let prog = process_program(
       parsed.into_iter().next().unwrap(), // parsed qed
       &mut env,

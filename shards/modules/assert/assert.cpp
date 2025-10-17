@@ -290,15 +290,21 @@ template <bool Mode> struct Compose {
   PARAM_REQUIRED_VARIABLES();
   SHTypeInfo compose(SHInstanceData &data) {
     PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    SHComposeResult result;
+    DEFER(freeComposeResult(result));
+
     _didCompose = false;
-    try {
-      _contents.compose(data);
-      PARAM_COMPOSE_MERGE_REQUIRED(_contents);
-      _didCompose = true;
-    } catch (const std::exception &e) {
-      _didCompose = false;
+    auto privateCtx = reinterpret_cast<shards::CompositionContext *>(data.privateContext);
+    result = composeShardsNoExcept(_contents.shards(), data);
+    PARAM_COMPOSE_MERGE_REQUIRED(_contents);
+    _didCompose = !result.failed;
+
+    if (Mode == false) {
+      privateCtx->errorStack.clear(); // Need to clear the error stack again so it's clean
+      if (!_didCompose)
+        SHLOG_INFO("Successfully caught compose failure {}\n{}", _tag, result.errorStackTrace);
     }
-    checkThrow();
     return data.inputType;
   }
 

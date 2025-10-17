@@ -53,13 +53,13 @@ public:
         requiredFlags.found = exposed.has_value();
       } else {
         if (!exposed) {
-          throw ComposeError(fmt::format("Required variable {} not found", VariableName));
+          throw shards::Error(fmt::format("Required variable {} not found", VariableName));
         }
       }
     }
 
     if (exposed && exposed.value().exposedType != VariableType) {
-      throw ComposeError(fmt::format("Required variable {} has the wrong type. Expected: {}, was {}", VariableName, VariableType,
+      throw shards::Error(fmt::format("Required variable {} has the wrong type. Expected: {}, was {}", VariableName, VariableType,
                                      exposed.value().exposedType));
     }
 
@@ -183,7 +183,7 @@ template <typename T> const SHExposedTypeInfo *findParamVarExposedType(const SHI
 template <typename T> const SHExposedTypeInfo &findParamVarExposedTypeChecked(const SHInstanceData &data, TParamVar<T> &var) {
   const SHExposedTypeInfo *ti = findParamVarExposedType(data, var);
   if (!ti)
-    throw ComposeError(
+    throw shards::Error(
         fmt::format("Parameter {} not found", var->payload.stringValue)); // safe cos ParamVar should be null terminated
   return *ti;
 }

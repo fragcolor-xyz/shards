@@ -344,7 +344,7 @@ struct WSServerShard {
       }
 
       // Always adjust the context back to continue, peer wire might have changed it
-      context->resetErrorStack();
+      context->errorStack.clear();
       context->continueFlow();
     });
   }

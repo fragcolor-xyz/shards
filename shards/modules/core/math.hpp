@@ -71,7 +71,7 @@ struct UnaryBase : public Base {
     if (ti.basicType == SHType::Seq) {
       _opType = OpType::Seq1;
       if (ti.seqTypes.len != 1)
-        throw ComposeError("UnaryVarOperation expected a Seq with just one type as input");
+        throw shards::Error("UnaryVarOperation expected a Seq with just one type as input");
     } else {
       _opType = OpType::Direct;
     }
@@ -118,19 +118,19 @@ struct BinaryBase : public Base {
 
   static SHParametersInfo parameters() { return SHParametersInfo(mathParamsInfo); }
 
-  ComposeError formatTypeError(const SHType &inputType, const SHType &paramType) {
+  shards::Error formatTypeError(const SHType &inputType, const SHType &paramType) {
     std::stringstream errStream;
     errStream << "Operation not supported between different types ";
     errStream << "(input=" << type2Name(inputType);
     errStream << ", param=" << type2Name(paramType) << ")";
-    return ComposeError(errStream.str());
+    return shards::Error(errStream.str());
   }
 
   OpType validateTypes(const SHTypeInfo &lhs, const SHType &rhs, SHTypeInfo &resultType) {
     OpType opType = OpType::Invalid;
     if (rhs != SHType::Seq && lhs.basicType == SHType::Seq) {
       if (lhs.seqTypes.len != 1)
-        throw ComposeError(fmt::format("Operation not supported with input sequence with multiple types: {}", lhs));
+        throw shards::Error(fmt::format("Operation not supported with input sequence with multiple types: {}", lhs));
       if (rhs != lhs.seqTypes.elements[0].basicType)
         throw formatTypeError(lhs.seqTypes.elements[0].basicType, rhs);
 
@@ -159,13 +159,13 @@ struct BinaryBase : public Base {
         }
       }
       if (!variableFound)
-        throw ComposeError(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
+        throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
     } else {
       _opType = validator.validateTypes(data.inputType, operandSpec.valueType, resultType);
     }
 
     if (_opType == Invalid) {
-      throw ComposeError("Incompatible types for binary operation");
+      throw shards::Error("Incompatible types for binary operation");
     }
 
     return resultType;
@@ -220,7 +220,7 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
       _rhsVecType = VectorTypeLookup::getInstance().get(rhs);
       if (_lhsVecType || _rhsVecType) {
         if (!_lhsVecType || !_rhsVecType)
-          throw ComposeError(
+          throw shards::Error(
               fmt::format("Unsupported types to binary operation ({} and {})", type2Name(lhs.basicType), type2Name(rhs)));
 
         bool sameDimension = _lhsVecType->dimension == _rhsVecType->dimension;
@@ -234,7 +234,7 @@ template <typename TOp, DispatchType DispatchType = DispatchType::NumberTypes> s
           return Broadcast;
         } else {
           if (!sameDimension || _lhsVecType->numberType != _rhsVecType->numberType) {
-            throw ComposeError(fmt::format("Can not multiply vector of size {} ({}) and {} ({})", _lhsVecType->dimension,
+            throw shards::Error(fmt::format("Can not multiply vector of size {} ({}) and {} ({})", _lhsVecType->dimension,
                                            magic_enum::enum_name(_lhsVecType->numberType), _rhsVecType->dimension,
                                            magic_enum::enum_name(_rhsVecType->numberType)));
           }
@@ -542,15 +542,15 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
     SHTypeInfo resultType = data.inputType;
 
     if (!_value.isVariable()) {
-      throw ComposeError("UnaryVarOperation Expected a variable");
+      throw shards::Error("UnaryVarOperation Expected a variable");
     }
 
     for (const auto &share : data.shared) {
       if (share.name == SHSTRVIEW((*_value))) {
         if (share.isProtected)
-          throw ComposeError("UnaryVarOperation cannot write protected variables");
+          throw shards::Error("UnaryVarOperation cannot write protected variables");
         if (!share.isMutable)
-          throw ComposeError("UnaryVarOperation attempt to write immutable variable");
+          throw shards::Error("UnaryVarOperation attempt to write immutable variable");
 
         this->validateTypes(share.exposedType, resultType);
         assert(resultType == data.inputType);
@@ -559,7 +559,7 @@ template <class TOp> struct UnaryVarOperation : public UnaryOperation<TOp> {
       }
     }
 
-    throw ComposeError(fmt::format("Math.Inc/Dec variable {} not found", SHSTRVIEW((*_value))));
+    throw shards::Error(fmt::format("Math.Inc/Dec variable {} not found", SHSTRVIEW((*_value))));
   }
 
   SHExposedTypesInfo requiredVariables() {
@@ -1717,7 +1717,7 @@ struct Lerp final {
     collectRequiredVariables(data, _required, (SHVar &)_second);
 
     if (firstType != secondType)
-      throw ComposeError("Types should match");
+      throw shards::Error("Types should match");
 
     return SHTypeInfo{.basicType = firstType};
   }
@@ -1819,7 +1819,7 @@ struct Clamp final {
     secondType = _second.isVariable() ? findParamVarExposedTypeChecked(data, _second).exposedType.basicType : _second->valueType;
 
     if (firstType != secondType || firstType != data.inputType.basicType)
-      throw ComposeError("Types should match");
+      throw shards::Error("Types should match");
 
     return SHTypeInfo{.basicType = firstType};
   }

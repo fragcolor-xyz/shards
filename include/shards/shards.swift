@@ -1187,11 +1187,8 @@ class ShardsVar {
         nativeShards.len = 0
         nativeShards.elements = nil
 
-        withUnsafeMutablePointer(to: &composeResult.exposedInfo) { ptr in
-            G.Core.pointee.expTypesFree(ptr)
-        }
-        withUnsafeMutablePointer(to: &composeResult.requiredInfo) { ptr in
-            G.Core.pointee.expTypesFree(ptr)
+        withUnsafeMutablePointer(to: &composeResult) { ptr in
+            G.Core.pointee.freeComposeResult(ptr)
         }
 
         composeResult = SHComposeResult()
@@ -1270,7 +1267,7 @@ class ShardsVar {
         // Compose the shards
         composeResult = G.Core.pointee.composeShards(nativeShards, data)
         if composeResult.failed {
-            return .failure(ShardError(message: composeResult.failureMessage.string))
+            return .failure(ShardError(message: composeResult.error.toString() ?? "", errorStackTrace: composeResult.errorStackTrace.toString() ?? ""))
         }
 
         requiredVariables = .init()
@@ -1338,9 +1335,11 @@ public typealias ShardPtr = UnsafeMutablePointer<Shard>?
 
 public final class ShardError: Error {
     public var message: String
+    public var errorStackTrace: String
 
-    init(message: String) {
+    init(message: String, errorStackTrace: String = "") {
         self.message = message
+        self.errorStackTrace = errorStackTrace
     }
 }
 
