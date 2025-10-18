@@ -16,6 +16,7 @@ shards = { path = "../rust" }
 hex = { version = "0.4.3" }
 nanoid = "0.4.0"
 clap = { version = "4.4.7", features = ["derive"] }
+clap_complete = "4.4.7"
 profiling = { version = "1", default-features = false }
 compile-time-crc32 = "0.1.2"
 lazy_static = "1.5.0"
