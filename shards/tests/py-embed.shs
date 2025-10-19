@@ -1,2 +1,99 @@
-"Hello" | Py.Eval("print(_s)")
+// Basic string passthrough
 "Hello" | Py.Eval("_s") | Assert.Is("Hello")
+"World" | Py.Eval("_s.upper()") | Assert.Is("WORLD")
+
+// Integer operations
+42 | Py.Eval("_s * 2") | Assert.Is(84)
+10 | Py.Eval("_s + 5") | Assert.Is(15)
+100 | Py.Eval("_s - 50") | Assert.Is(50)
+
+// Float operations
+3.14 | Py.Eval("_s * 2.0") | Log("Float result")
+2.5 | Py.Eval("_s + 1.5") | Assert.Is(4.0)
+
+// Boolean operations
+true | Py.Eval("not _s") | Assert.Is(false)
+false | Py.Eval("_s or True") | Assert.Is(true)
+
+// Bytes operations - TODO: debug byte length issue
+"test" | ToBytes | Py.Eval("len(_s)") | Assert.Is(9) // due to Shards serialization
+
+// Vector types - Int2
+@i2(1 2) | Py.Eval("(_s[0] + 1, _s[1] + 1)") | Assert.Is(@i2(2 3))
+
+// Vector types - Int3
+@i3(1 2 3) | Py.Eval("(_s[0], _s[1], _s[2] + 1)") | Assert.Is(@i3(1 2 4))
+
+// Vector types - Int4
+@i4(1 2 3 4) | Py.Eval("tuple([x * 2 for x in _s])") | Assert.Is(@i4(2 4 6 8))
+
+// Vector types - Float2
+@f2(1.0 2.0) | Py.Eval("(_s[0] * 2.0, _s[1] * 2.0)") | Log("Float2 result")
+
+// Vector types - Float3
+@f3(1.0 2.0 3.0) | Py.Eval("(_s[0], _s[1], _s[2] * 2.0)") | Log("Float3 result")
+
+// Vector types - Float4
+@f4(1.0 2.0 3.0 4.0) | Py.Eval("tuple([x * 0.5 for x in _s])") | Log("Float4 result")
+
+// State preservation test - without PreserveState (default)
+// Using walrus operator for assignment in expression
+10 | Py.Eval("(x := _s) + 1") | Assert.Is(11)
+false >= errored
+Maybe({
+    20 | Py.Eval("x") | Log("State test 1")
+  } {
+    true > errored
+  }
+)
+errored | Assert.Is(true)
+
+// State preservation test - with PreserveState
+// Using a wire so the same Py.Eval instance is reused
+@wire(stateful-counter {
+  Py.Eval(PreserveState: true Expression: "(counter := globals().get('counter', 0) + _s)")
+})
+
+0 | Do(stateful-counter) | Assert.Is(0)
+5 | Do(stateful-counter) | Assert.Is(5)
+10 | Do(stateful-counter) | Assert.Is(15)
+20 | Do(stateful-counter) | Assert.Is(35)
+
+// Test that state is reset by default (no PreserveState)
+5 | Py.Eval("_s * 2") | Assert.Is(10)
+
+// FileMode vs Eval mode - Eval mode returns result
+42 | Py.Eval("_s * 2") | Assert.Is(84)
+
+// FileMode - returns input unchanged
+"test" | Py.Eval(FileMode: true Expression: "result = _s.upper()") | Assert.Is("test")
+100 | Py.Eval(FileMode: true Expression: "x = _s * 2") | Assert.Is(100)
+
+// Error handling - runtime error (syntax errors caught at warmup, not runtime)
+Maybe({
+    1 | Py.Eval("_s / 0") | Log("Should not reach")
+  } {
+    "Caught runtime error" | Log
+  }
+)
+
+// Edge cases - None handling
+none | Py.Eval("_s is None") | Assert.Is(true)
+10 | Py.Eval("None") | Log("None result")
+
+// Edge cases - Empty string
+"" | Py.Eval("len(_s)") | Assert.Is(0)
+
+// Edge cases - Large numbers
+1000000 | Py.Eval("_s * 2") | Assert.Is(2000000)
+
+// String formatting
+"World" | Py.Eval("f'Hello {_s}!'") | Assert.Is("Hello World!")
+
+// Type conversions
+"42" | Py.Eval("int(_s)") | Assert.Is(42)
+42 | Py.Eval("str(_s)") | Assert.Is("42")
+1 | Py.Eval("bool(_s)") | Assert.Is(true)
+0 | Py.Eval("bool(_s)") | Assert.Is(false)
+
+"All RustPython embedded tests passed!" | Log

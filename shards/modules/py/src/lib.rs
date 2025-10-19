@@ -32,9 +32,18 @@ fn shvar_to_py(vm: &VirtualMachine, var: &Var) -> PyResult<PyObjectRef> {
 
     match var.valueType {
         SHType_None => Ok(vm.ctx.none()),
-        SHType_Bool => Ok(vm.ctx.new_bool(unsafe { var.payload.__bindgen_anon_1.boolValue }).into()),
-        SHType_Int => Ok(vm.ctx.new_int(unsafe { var.payload.__bindgen_anon_1.intValue }).into()),
-        SHType_Float => Ok(vm.ctx.new_float(unsafe { var.payload.__bindgen_anon_1.floatValue }).into()),
+        SHType_Bool => {
+            // SAFETY: valueType is SHType_Bool, so boolValue field is valid
+            Ok(vm.ctx.new_bool(unsafe { var.payload.__bindgen_anon_1.boolValue }).into())
+        }
+        SHType_Int => {
+            // SAFETY: valueType is SHType_Int, so intValue field is valid
+            Ok(vm.ctx.new_int(unsafe { var.payload.__bindgen_anon_1.intValue }).into())
+        }
+        SHType_Float => {
+            // SAFETY: valueType is SHType_Float, so floatValue field is valid
+            Ok(vm.ctx.new_float(unsafe { var.payload.__bindgen_anon_1.floatValue }).into())
+        }
         SHType_String => {
             let str_val: &str = var.try_into().map_err(|e| {
                 vm.new_runtime_error(format!("Failed to convert string: {}", e))
@@ -49,10 +58,12 @@ fn shvar_to_py(vm: &VirtualMachine, var: &Var) -> PyResult<PyObjectRef> {
             Ok(vm.ctx.new_bytes(bytes.to_vec()).into())
         }
         SHType_Int2 => {
+            // SAFETY: valueType is SHType_Int2, so int2Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.int2Value };
             Ok(vm.ctx.new_tuple(vec![vm.ctx.new_int(vals[0]).into(), vm.ctx.new_int(vals[1]).into()]).into())
         }
         SHType_Int3 => {
+            // SAFETY: valueType is SHType_Int3, so int3Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.int3Value };
             Ok(vm.ctx.new_tuple(vec![
                 vm.ctx.new_int(vals[0]).into(),
@@ -61,6 +72,7 @@ fn shvar_to_py(vm: &VirtualMachine, var: &Var) -> PyResult<PyObjectRef> {
             ]).into())
         }
         SHType_Int4 => {
+            // SAFETY: valueType is SHType_Int4, so int4Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.int4Value };
             Ok(vm.ctx.new_tuple(vec![
                 vm.ctx.new_int(vals[0]).into(),
@@ -70,10 +82,12 @@ fn shvar_to_py(vm: &VirtualMachine, var: &Var) -> PyResult<PyObjectRef> {
             ]).into())
         }
         SHType_Float2 => {
+            // SAFETY: valueType is SHType_Float2, so float2Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.float2Value };
             Ok(vm.ctx.new_tuple(vec![vm.ctx.new_float(vals[0] as f64).into(), vm.ctx.new_float(vals[1] as f64).into()]).into())
         }
         SHType_Float3 => {
+            // SAFETY: valueType is SHType_Float3, so float3Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.float3Value };
             Ok(vm.ctx.new_tuple(vec![
                 vm.ctx.new_float(vals[0] as f64).into(),
@@ -82,6 +96,7 @@ fn shvar_to_py(vm: &VirtualMachine, var: &Var) -> PyResult<PyObjectRef> {
             ]).into())
         }
         SHType_Float4 => {
+            // SAFETY: valueType is SHType_Float4, so float4Value field is valid
             let vals = unsafe { var.payload.__bindgen_anon_1.float4Value };
             Ok(vm.ctx.new_tuple(vec![
                 vm.ctx.new_float(vals[0] as f64).into(),
@@ -169,11 +184,20 @@ fn py_to_shvar(vm: &VirtualMachine, obj: PyObjectRef, output: &mut ClonedVar) ->
                             return Ok(());
                         }
                         3 => {
-                            *output = Var::new_int3(vals[0] as i32, vals[1] as i32, vals[2] as i32).into();
+                            // Check bounds for i32
+                            let v0 = i32::try_from(vals[0]).map_err(|_| format!("Int3 element 0 out of i32 range: {}", vals[0]))?;
+                            let v1 = i32::try_from(vals[1]).map_err(|_| format!("Int3 element 1 out of i32 range: {}", vals[1]))?;
+                            let v2 = i32::try_from(vals[2]).map_err(|_| format!("Int3 element 2 out of i32 range: {}", vals[2]))?;
+                            *output = Var::new_int3(v0, v1, v2).into();
                             return Ok(());
                         }
                         4 => {
-                            *output = Var::new_int4(vals[0] as i32, vals[1] as i32, vals[2] as i32, vals[3] as i32).into();
+                            // Check bounds for i32
+                            let v0 = i32::try_from(vals[0]).map_err(|_| format!("Int4 element 0 out of i32 range: {}", vals[0]))?;
+                            let v1 = i32::try_from(vals[1]).map_err(|_| format!("Int4 element 1 out of i32 range: {}", vals[1]))?;
+                            let v2 = i32::try_from(vals[2]).map_err(|_| format!("Int4 element 2 out of i32 range: {}", vals[2]))?;
+                            let v3 = i32::try_from(vals[3]).map_err(|_| format!("Int4 element 3 out of i32 range: {}", vals[3]))?;
+                            *output = Var::new_int4(v0, v1, v2, v3).into();
                             return Ok(());
                         }
                         _ => {}
@@ -205,11 +229,26 @@ fn py_to_shvar(vm: &VirtualMachine, obj: PyObjectRef, output: &mut ClonedVar) ->
                         return Ok(());
                     }
                     3 => {
-                        *output = Var::new_float3(floats[0] as f32, floats[1] as f32, floats[2] as f32).into();
+                        // Check if f64 values fit in f32 range
+                        let v0 = floats[0] as f32;
+                        let v1 = floats[1] as f32;
+                        let v2 = floats[2] as f32;
+                        if !v0.is_finite() || !v1.is_finite() || !v2.is_finite() {
+                            return Err("Float3 values out of f32 range or non-finite".into());
+                        }
+                        *output = Var::new_float3(v0, v1, v2).into();
                         return Ok(());
                     }
                     4 => {
-                        *output = Var::new_float4(floats[0] as f32, floats[1] as f32, floats[2] as f32, floats[3] as f32).into();
+                        // Check if f64 values fit in f32 range
+                        let v0 = floats[0] as f32;
+                        let v1 = floats[1] as f32;
+                        let v2 = floats[2] as f32;
+                        let v3 = floats[3] as f32;
+                        if !v0.is_finite() || !v1.is_finite() || !v2.is_finite() || !v3.is_finite() {
+                            return Err("Float4 values out of f32 range or non-finite".into());
+                        }
+                        *output = Var::new_float4(v0, v1, v2, v3).into();
                         return Ok(());
                     }
                     _ => {}
@@ -317,7 +356,11 @@ impl Shard for PyEvalShard {
             };
 
             let code = vm.compile(expr_str, mode, "<string>".to_owned())
-                .map_err(|_| "Failed to compile Python expression")?;
+                .map_err(|e| {
+                    let error_msg = format!("Failed to compile Python expression: {:?}", e);
+                    shlog_error!("{}", error_msg);
+                    Box::leak(error_msg.into_boxed_str()) as &str
+                })?;
 
             // Store the compiled code as PyObjectRef
             self.compiled_code = Some(code.into());
@@ -427,8 +470,10 @@ impl Shard for PyEvalShard {
         });
 
         result.map_err(|e| {
-            shlog_error!("{}", e);
-            "Python evaluation failed"
+            // Log the detailed error message
+            shlog_error!("Python evaluation failed: {}", e);
+            // Return a static error message with the leaked dynamic content for user
+            Box::leak(format!("Python error: {}", e).into_boxed_str()) as &str
         })
     }
 }

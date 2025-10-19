@@ -16,7 +16,6 @@ if(ENABLE_PYTHON_SHARDS)
 
     add_shards_module(py
       SOURCES ${SOURCES}
-      ${RUST_TARGETS_ARG}
       REGISTER_SHARDS py)
 
     target_link_libraries(shards-module-py Boost::process)
