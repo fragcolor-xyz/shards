@@ -1,1 +1,2 @@
 "Hello" | Py.Eval("print(_s)")
+"Hello" | Py.Eval("_s") | Assert.Is("Hello")
