@@ -1,0 +1,17 @@
+[package]
+name = "shards-py"
+description = "RustPython-based Python integration for Shards"
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Giovanni Petrantoni <sinkingsugar@gmail.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib", "staticlib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+shards = { path = "../../rust" }
+compile-time-crc32 = "0.1.2"
+rustpython-vm = { version = "0.4.0", features = ["freeze-stdlib"] }
+rustpython-pylib = { version = "0.4.0", features = ["freeze-stdlib"] }

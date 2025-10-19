@@ -5102,7 +5102,7 @@ impl ShardsVar {
       return Ok(self.compose_result.as_ref().unwrap());
     }
 
-    let mut result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
+    let result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
       unsafe { (*Core).freeComposeResult.unwrap_unchecked()(&result as *const _ as *mut _) }
