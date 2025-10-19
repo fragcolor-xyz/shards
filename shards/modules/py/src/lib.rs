@@ -13,8 +13,9 @@ extern crate lazy_static;
 
 use rustpython_vm as vm;
 use rustpython_vm::{Interpreter, PyObjectRef, PyResult, VirtualMachine, AsObject};
+use rustpython_stdlib;
 use shards::core::register_shard;
-use shards::shard::Shard;
+use shards::shard::{Shard, DynamicErrStr, push_error};
 use shards::types::common_type;
 use shards::types::{
     ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
@@ -332,8 +333,13 @@ impl Shard for PyEvalShard {
 
         // Create RustPython interpreter instance
         let interp = Interpreter::with_init(Default::default(), |vm| {
-            // Initialize with frozen stdlib
+            // Initialize with frozen stdlib (pure Python modules)
             vm.add_frozen(rustpython_pylib::FROZEN_STDLIB);
+
+            // Initialize native extension modules (_struct, _io, _json, etc.)
+            for (name, init_fn) in rustpython_stdlib::get_module_inits() {
+                vm.add_native_module(name, init_fn);
+            }
         });
 
         // Compile the expression
@@ -344,7 +350,7 @@ impl Shard for PyEvalShard {
             .try_into()
             .map_err(|_| "Failed to get expression string")?;
 
-        interp.enter(|vm| -> Result<(), &str> {
+        let compile_result = interp.enter(|vm| -> Result<(), String> {
             // Create globals dictionary
             self.globals = Some(vm.ctx.new_dict().into());
 
@@ -362,9 +368,8 @@ impl Shard for PyEvalShard {
 
             let code = vm.compile(expr_str, mode, "<string>".to_owned())
                 .map_err(|e| {
-                    let error_msg = format!("Failed to compile Python expression: {:?}", e);
-                    shlog_error!("{}", error_msg);
-                    Box::leak(error_msg.into_boxed_str()) as &str
+                    // Compilation errors have Display impl with detailed messages
+                    format!("Python syntax error: {}", e)
                 })?;
 
             // Store the compiled code as PyObjectRef
@@ -376,6 +381,12 @@ impl Shard for PyEvalShard {
             }
 
             Ok(())
+        });
+
+        compile_result.map_err(|e| {
+            shlog_error!("{}", e);
+            push_error(ctx, &e);
+            DynamicErrStr
         })?;
 
         // Store interpreter for later use
@@ -447,11 +458,27 @@ impl Shard for PyEvalShard {
             let code = code_obj.downcast::<PyCode>()
                 .map_err(|_| "Failed to downcast code object")?;
 
-            // Use exec_dict as both locals and globals
-            let scope = vm::scope::Scope::new(None, exec_dict.clone());
+            // Create scope with builtins so that print, len, import, etc. are available
+            // We use exec_dict for both globals and locals to maintain state
+            let scope = vm::scope::Scope::with_builtins(None, exec_dict.clone(), vm);
             let exec_result = vm
                 .run_code_obj(code, scope)
-                .map_err(|e| format!("Python execution failed: {:?}", e))?;
+                .map_err(|exc| {
+                    // Extract detailed exception information from PyBaseException
+                    let exc_type = exc.class().name();
+
+                    // Try to get the exception message using __str__
+                    let exc_msg = match exc.as_object().str(vm) {
+                        Ok(pystr) => pystr.as_str().to_string(),
+                        Err(_) => String::new()
+                    };
+
+                    if exc_msg.is_empty() {
+                        format!("Python {}", exc_type)
+                    } else {
+                        format!("Python {}: {}", exc_type, exc_msg)
+                    }
+                })?;
 
             // Update our locals after execution
             self.locals = Some(exec_dict.into());
@@ -481,10 +508,9 @@ impl Shard for PyEvalShard {
         });
 
         result.map_err(|e| {
-            // Log the detailed error message
             shlog_error!("Python evaluation failed: {}", e);
-            // Return a static error message with the leaked dynamic content for user
-            Box::leak(format!("Python error: {}", e).into_boxed_str()) as &str
+            push_error(_context, &e);
+            DynamicErrStr
         })
     }
 }
