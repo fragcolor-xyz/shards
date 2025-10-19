@@ -287,11 +287,11 @@ struct PyEvalShard {
     preserve_state: ParamVar,
 
     #[shard_param(
-        "FileMode",
-        "Execute as file instead of as expression (useful for multi-line scripts)",
+        "ScriptMode",
+        "Enable script mode for statements and multi-line code. Returns last expression value or input if none. Uses Python's interactive compiler mode.",
         BOOL_TYPES
     )]
-    file_mode: ParamVar,
+    script_mode: ParamVar,
 
     // Internal state
     interpreter: Option<Interpreter>,
@@ -307,7 +307,7 @@ impl Default for PyEvalShard {
             required: ExposedTypes::new(),
             expression: ParamVar::default(),
             preserve_state: ParamVar::new(Var::new_bool(false)),
-            file_mode: ParamVar::new(Var::new_bool(false)),
+            script_mode: ParamVar::new(Var::new_bool(false)),
             interpreter: None,
             compiled_code: None,
             locals: None,
@@ -349,8 +349,13 @@ impl Shard for PyEvalShard {
             self.globals = Some(vm.ctx.new_dict().into());
 
             // Compile the code
-            let mode = if self.file_mode.get().as_ref().try_into().unwrap_or(false) {
-                vm::compiler::Mode::Exec
+            // NOTE: Mode::Single is Python's interactive/REPL mode. It's designed for single
+            // interactions but surprisingly handles complex multi-statement blocks including
+            // function definitions. It allows statements (unlike Eval) and returns the last
+            // expression value (unlike Exec which always returns None). Side effect: prints
+            // final expression to stdout like the REPL does.
+            let mode = if self.script_mode.get().as_ref().try_into().unwrap_or(false) {
+                vm::compiler::Mode::Single
             } else {
                 vm::compiler::Mode::Eval
             };
@@ -452,16 +457,22 @@ impl Shard for PyEvalShard {
             self.locals = Some(exec_dict.into());
 
             // Handle result based on mode
-            let file_mode: bool = self
-                .file_mode
+            let script_mode: bool = self
+                .script_mode
                 .get()
                 .as_ref()
                 .try_into()
-                .map_err(|_| "Failed to get file_mode value")?;
+                .map_err(|_| "Failed to get script_mode value")?;
 
-            if file_mode {
-                // In file mode, return the input unchanged
-                Ok(Some(*input))
+            if script_mode {
+                // In script mode, try to return result if available
+                // (e.g., if last line was an expression), else return input
+                if vm.is_none(&exec_result) {
+                    Ok(Some(*input))
+                } else {
+                    py_to_shvar(vm, exec_result, &mut self.output)?;
+                    Ok(Some(self.output.0))
+                }
             } else {
                 // In eval mode, convert and return the result
                 py_to_shvar(vm, exec_result, &mut self.output)?;

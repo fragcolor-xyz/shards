@@ -62,12 +62,47 @@ errored | Assert.Is(true)
 // Test that state is reset by default (no PreserveState)
 5 | Py.Eval("_s * 2") | Assert.Is(10)
 
-// FileMode vs Eval mode - Eval mode returns result
+// ScriptMode vs Eval mode - Eval mode returns result
 42 | Py.Eval("_s * 2") | Assert.Is(84)
 
-// FileMode - returns input unchanged
-"test" | Py.Eval(FileMode: true Expression: "result = _s.upper()") | Assert.Is("test")
-100 | Py.Eval(FileMode: true Expression: "x = _s * 2") | Assert.Is(100)
+// ScriptMode - allows statements and returns last expression
+10 | Py.Eval(ScriptMode: true Expression: "x = _s * 2\nx + 5") | Assert.Is(25)
+"test" | Py.Eval(ScriptMode: true Expression: "result = _s.upper()\nresult") | Assert.Is("TEST")
+
+// ScriptMode - statement only (no expression) returns input
+100 | Py.Eval(ScriptMode: true Expression: "x = _s * 2") | Assert.Is(100)
+
+// ScriptMode - more complex: multiple statements with final expression
+10 | Py.Eval(ScriptMode: true Expression: """
+x = _s * 2
+y = x + 10
+z = y * 2
+z
+""") | Assert.Is(60)
+
+// ScriptMode - with conditionals
+5 | Py.Eval(ScriptMode: true Expression: """
+if _s > 3:
+    result = _s * 10
+else:
+    result = _s * 2
+result
+""") | Assert.Is(50)
+
+// ScriptMode - with loops
+3 | Py.Eval(ScriptMode: true Expression: """
+total = 0
+for i in range(_s):
+    total += i
+total
+""") | Assert.Is(3)
+
+// ScriptMode - with function definition (tests Mode::Single capability)
+3 | Py.Eval(ScriptMode: true Expression: """
+def square(x):
+    return x * x
+square(_s)
+""") | Assert.Is(9)
 
 // Error handling - runtime error (syntax errors caught at warmup, not runtime)
 Maybe({
