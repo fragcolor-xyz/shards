@@ -283,22 +283,23 @@ struct PyEvalShard {
     #[shard_param(
         "PreserveState",
         "Whether to preserve variable state between calls",
-        [common_type::bool, common_type::bool_var]
+        [common_type::bool]
     )]
-    preserve_state: ParamVar,
+    preserve_state: ClonedVar,
 
     #[shard_param(
         "ScriptMode",
         "Enable script mode for statements and multi-line code. Returns last expression value or input if none. Uses Python's interactive compiler mode.",
-        [common_type::bool, common_type::bool_var]
+        [common_type::bool]
     )]
-    script_mode: ParamVar,
+    script_mode: ClonedVar,
 
     // Internal state
     interpreter: Option<Interpreter>,
     compiled_code: Option<PyObjectRef>,  // Stores PyRef<PyCode>
     locals: Option<PyObjectRef>,
     globals: Option<PyObjectRef>,
+    last_expression: Option<String>,  // Track last compiled expression for change detection
     output: ClonedVar,
 }
 
@@ -307,12 +308,13 @@ impl Default for PyEvalShard {
         Self {
             required: ExposedTypes::new(),
             expression: ParamVar::default(),
-            preserve_state: ParamVar::new(Var::new_bool(false)),
-            script_mode: ParamVar::new(Var::new_bool(false)),
+            preserve_state: ClonedVar::from(Var::new_bool(false)),
+            script_mode: ClonedVar::from(Var::new_bool(false)),
             interpreter: None,
             compiled_code: None,
             locals: None,
             globals: None,
+            last_expression: None,
             output: ClonedVar::default(),
         }
     }
@@ -342,52 +344,58 @@ impl Shard for PyEvalShard {
             }
         });
 
-        // Compile the expression
-        let expr_str: &str = self
-            .expression
-            .get()
-            .as_ref()
-            .try_into()
-            .map_err(|_| "Failed to get expression string")?;
+        // Try to compile the expression if it's a constant value
+        // If it's a variable, compilation will be deferred to activate()
+        if !self.expression.is_variable() {
+            let expr_str: &str = self
+                .expression
+                .get()
+                .as_ref()
+                .try_into()
+                .map_err(|_| "Failed to get expression string")?;
 
-        let compile_result = interp.enter(|vm| -> Result<(), String> {
-            // Create globals dictionary
-            self.globals = Some(vm.ctx.new_dict().into());
+            let compile_result = interp.enter(|vm| -> Result<(), String> {
+                // Create globals dictionary
+                self.globals = Some(vm.ctx.new_dict().into());
 
-            // Compile the code
-            // NOTE: Mode::Single is Python's interactive/REPL mode. It's designed for single
-            // interactions but surprisingly handles complex multi-statement blocks including
-            // function definitions. It allows statements (unlike Eval) and returns the last
-            // expression value (unlike Exec which always returns None). Side effect: prints
-            // final expression to stdout like the REPL does.
-            let mode = if self.script_mode.get().as_ref().try_into().unwrap_or(false) {
-                vm::compiler::Mode::Single
-            } else {
-                vm::compiler::Mode::Eval
-            };
+                // Compile the code
+                // NOTE: Mode::Single is Python's interactive/REPL mode. It's designed for single
+                // interactions but surprisingly handles complex multi-statement blocks including
+                // function definitions. It allows statements (unlike Eval) and returns the last
+                // expression value (unlike Exec which always returns None). Side effect: prints
+                // final expression to stdout like the REPL does.
+                let mode = if self.script_mode.0.as_ref().try_into().unwrap_or(false) {
+                    vm::compiler::Mode::Single
+                } else {
+                    vm::compiler::Mode::Eval
+                };
 
-            let code = vm.compile(expr_str, mode, "<string>".to_owned())
-                .map_err(|e| {
-                    // Compilation errors have Display impl with detailed messages
-                    format!("Python syntax error: {}", e)
-                })?;
+                let code = vm.compile(expr_str, mode, "<string>".to_owned())
+                    .map_err(|e| {
+                        // Compilation errors have Display impl with detailed messages
+                        format!("Python syntax error: {}", e)
+                    })?;
 
-            // Store the compiled code as PyObjectRef
-            self.compiled_code = Some(code.into());
+                // Store the compiled code as PyObjectRef
+                self.compiled_code = Some(code.into());
 
-            // Initialize locals if not preserving state
-            if !self.preserve_state.get().as_ref().try_into().unwrap_or(false) {
-                self.locals = Some(vm.ctx.new_dict().into());
-            }
+                // Track the compiled expression
+                self.last_expression = Some(expr_str.to_string());
 
-            Ok(())
-        });
+                // Initialize locals if not preserving state
+                if !self.preserve_state.0.as_ref().try_into().unwrap_or(false) {
+                    self.locals = Some(vm.ctx.new_dict().into());
+                }
 
-        compile_result.map_err(|e| {
-            shlog_error!("{}", e);
-            push_error(ctx, &e);
-            DynamicErrStr
-        })?;
+                Ok(())
+            });
+
+            compile_result.map_err(|e| {
+                shlog_error!("{}", e);
+                push_error(ctx, &e);
+                DynamicErrStr
+            })?;
+        }
 
         // Store interpreter for later use
         self.interpreter = Some(interp);
@@ -400,6 +408,7 @@ impl Shard for PyEvalShard {
         self.compiled_code = None;
         self.locals = None;
         self.globals = None;
+        self.last_expression = None;
         self.output = ClonedVar::default();
         Ok(())
     }
@@ -413,13 +422,54 @@ impl Shard for PyEvalShard {
         let interp = self.interpreter.as_ref()
             .ok_or("Interpreter not initialized")?;
 
+        // Get the current expression value
+        let expr_str: &str = self
+            .expression
+            .get()
+            .as_ref()
+            .try_into()
+            .map_err(|_| "Failed to get expression string")?;
+
+        // Check if we need to compile (first time or expression changed)
+        let needs_compile = self.compiled_code.is_none() ||
+            self.last_expression.as_ref().map_or(true, |last| last != expr_str);
+
+        if needs_compile {
+            let compile_result = interp.enter(|vm| -> Result<(), String> {
+                // Create globals dictionary if not exists
+                if self.globals.is_none() {
+                    self.globals = Some(vm.ctx.new_dict().into());
+                }
+
+                // Compile the code
+                let mode = if self.script_mode.0.as_ref().try_into().unwrap_or(false) {
+                    vm::compiler::Mode::Single
+                } else {
+                    vm::compiler::Mode::Eval
+                };
+
+                let code = vm.compile(expr_str, mode, "<string>".to_owned())
+                    .map_err(|e| {
+                        format!("Python syntax error: {}", e)
+                    })?;
+
+                // Store the compiled code and track the expression
+                self.compiled_code = Some(code.into());
+                self.last_expression = Some(expr_str.to_string());
+
+                Ok(())
+            });
+
+            compile_result.map_err(|e| {
+                shlog_error!("{}", e);
+                push_error(_context, &e);
+                DynamicErrStr
+            })?;
+        }
+
         let result = interp.enter(|vm| -> Result<Option<Var>, String> {
             // Create or reset locals dictionary
-            let preserve_state: bool = self
-                .preserve_state
-                .get()
-                .as_ref()
-                .try_into()
+            let preserve_state: bool = self.preserve_state.0.as_ref().try_into()
                 .map_err(|_| "Failed to get preserve_state value")?;
 
             if self.locals.is_none() || !preserve_state {
@@ -484,11 +534,7 @@ impl Shard for PyEvalShard {
             self.locals = Some(exec_dict.into());
 
             // Handle result based on mode
-            let script_mode: bool = self
-                .script_mode
-                .get()
-                .as_ref()
-                .try_into()
+            let script_mode: bool = self.script_mode.0.as_ref().try_into()
                 .map_err(|_| "Failed to get script_mode value")?;
 
             if script_mode {
