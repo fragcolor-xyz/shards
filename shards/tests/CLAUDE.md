@@ -49,7 +49,7 @@ Process(Input: data other-param)                            // Error! Must put u
 - Data flows through `|`
 - No braces for code blocks other than wire and template definitions, no semicolons needed
 - Whitespace flexible
-- Comments start with `//`
+- Comments are C-style
 - No imperative assignments: data flows into variables
 
 ## Identifiers & Names
@@ -168,13 +168,17 @@ They are CHANNELS that direct data flow, like:
 
 Examples showing the flow:
 
-; Creating flow channels
-5 >= counter           ; Start a mutable flow channel named 'counter'
-"hello" = message      ; Start an immutable flow channel named 'message'
+Creating flow channels
+```
+5 >= counter           // Start a mutable flow channel named 'counter'
+"hello" = message      // Start an immutable flow channel named 'message'
+```
 
-; Directing and transforming flows
-counter | Add(1) > counter    ; Take flow from counter, add 1, direct back
-input | Transform | Process > output   ; Chain of flow transformations
+Directing and transforming flows
+```
+counter | Add(1) > counter    // Take flow from counter, add 1, direct back
+input | Transform | Process > output   // Chain of flow transformations
+```
 
 Remember: The | operator is not a pipe between containers.
 It's a direction marker showing how data flows through your system.
