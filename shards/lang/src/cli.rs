@@ -162,20 +162,8 @@ fn generate_completions(shell: Shell) {
   generate(shell, &mut cmd, name, &mut std::io::stdout());
 }
 
-pub fn process_args(argc: i32, argv: *const *const c_char, no_cancellation: bool) -> i32 {
+pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: bool) -> i32 {
   let cancellation_token = new_cancellation_token();
-
-  #[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "visionos")))]
-  if !no_cancellation {
-    let cancellation_token_1 = cancellation_token.clone();
-    let r = ctrlc::set_handler(move || {
-      cancellation_token_1.store(true, atomic::Ordering::Relaxed);
-    });
-    if r.is_err() {
-      shlog!("Failed to set ctrl-c handler");
-      return 1;
-    }
-  }
 
   let args: Vec<String> = unsafe {
     from_raw_parts_allow_null(argv, argc as usize)
