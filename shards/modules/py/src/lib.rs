@@ -19,7 +19,7 @@ use shards::shard::{Shard, DynamicErrStr, push_error};
 use shards::types::common_type;
 use shards::types::{
     ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
-    Type, Types, Var, BOOL_TYPES, STRING_TYPES,
+    Type, Types, Var,
 };
 
 lazy_static! {
@@ -276,21 +276,21 @@ struct PyEvalShard {
     #[shard_param(
         "Expression",
         "Python code to evaluate. Input is available as _s. The value of the last expression is returned.",
-        STRING_TYPES
+        [common_type::string, common_type::string_var]
     )]
     expression: ParamVar,
 
     #[shard_param(
         "PreserveState",
         "Whether to preserve variable state between calls",
-        BOOL_TYPES
+        [common_type::bool, common_type::bool_var]
     )]
     preserve_state: ParamVar,
 
     #[shard_param(
         "ScriptMode",
         "Enable script mode for statements and multi-line code. Returns last expression value or input if none. Uses Python's interactive compiler mode.",
-        BOOL_TYPES
+        [common_type::bool, common_type::bool_var]
     )]
     script_mode: ParamVar,
 
