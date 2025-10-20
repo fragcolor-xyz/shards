@@ -27,8 +27,6 @@ dashmap = "6.0.1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.155"
 
-[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "visionos")))'.dependencies]
-ctrlc = "3.4.0"
 
 [features]
 default = ["exported"]
