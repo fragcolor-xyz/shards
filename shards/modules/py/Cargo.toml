@@ -16,21 +16,21 @@ compile-time-crc32 = "0.1.2"
 # Disable default features to exclude ctypes and lzma
 [dependencies.rustpython-vm]
 git = "https://github.com/fragcolor-xyz/RustPython.git"
-rev = "97f40de3d327a4d44c810104ee7a6b774dde66e4"
+rev = "39e0d529a83accb3774cfba00b10fe1bbf60c309"
 version = "0.4.0"
 default-features = false
 features = ["freeze-stdlib", "compiler", "stdio", "threading"]
 
 [dependencies.rustpython-pylib]
 git = "https://github.com/fragcolor-xyz/RustPython.git"
-rev = "97f40de3d327a4d44c810104ee7a6b774dde66e4"
+rev = "39e0d529a83accb3774cfba00b10fe1bbf60c309"
 version = "0.4.0"
 default-features = false
 features = ["freeze-stdlib"]
 
 [dependencies.rustpython-stdlib]
 git = "https://github.com/fragcolor-xyz/RustPython.git"
-rev = "97f40de3d327a4d44c810104ee7a6b774dde66e4"
+rev = "39e0d529a83accb3774cfba00b10fe1bbf60c309"
 version = "0.4.0"
 default-features = false
 features = ["compiler", "threading"]
