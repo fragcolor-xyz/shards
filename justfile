@@ -36,3 +36,13 @@ tests:
 
 format:
   sh format.sh
+
+check-union mode="Release" target="":
+  #!/bin/bash
+  echo "Checking target {{target}}"
+  export CRSQLITE_COMMIT_SHA=shards-dev
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
+  cd /Users/sugar/devel/shards/build/{{mode}}/src/union/shards-rust-union
+  cargo check --all-features {{target}}
+
+check-union-visionos: (check-union "Release" "--target aarch64-apple-visionos -Zbuild-std") # Does not work yet (some SSL issues)

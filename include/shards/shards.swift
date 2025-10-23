@@ -1333,13 +1333,21 @@ public struct Context {
 
 public typealias ShardPtr = UnsafeMutablePointer<Shard>?
 
-public final class ShardError: Error {
+public final class ShardError: Error, LocalizedError {
     public var message: String
     public var errorStackTrace: String
 
     init(message: String, errorStackTrace: String = "") {
         self.message = message
         self.errorStackTrace = errorStackTrace
+    }
+
+    public var errorDescription: String? {
+        return message
+    }
+
+    public var failureReason: String? {
+        return errorStackTrace.isEmpty ? nil : errorStackTrace
     }
 }
 
