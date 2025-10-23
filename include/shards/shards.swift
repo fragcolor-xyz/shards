@@ -2501,7 +2501,7 @@ enum Shards {
     }
 #endif
 
-#if canImport(UIKit)
+#if canImport(UIKit) && !os(watchOS)
     import UIKit
 
     extension UIView {

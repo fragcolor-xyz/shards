@@ -1,6 +1,8 @@
 import Foundation
 import shards
 
+#if !os(watchOS)
+
 #if canImport(UIKit)
     import SafariServices
     import UIKit
@@ -28,3 +30,11 @@ public func openURL(_ urlString: SHStringWithLen, inApp: Bool, viewControllerPtr
         NSWorkspace.shared.open(url)
     #endif
 }
+
+#else
+
+@_cdecl("shards_openURL")
+public func openURL(_ urlString: SHStringWithLen, inApp: Bool, viewControllerPtr: UnsafeMutableRawPointer?) {
+}
+
+#endif

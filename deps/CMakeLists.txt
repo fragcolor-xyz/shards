@@ -248,7 +248,7 @@ add_subdirectory(tracy)
 target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
 target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT WATCHOS)
   # TODO vulkan build support
   if(WIN32 OR LINUX)
     # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
