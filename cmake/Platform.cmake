@@ -7,6 +7,10 @@ if(APPLE)
     set(VISIONOS TRUE)
   endif()
 
+  if(CMAKE_SYSTEM_NAME MATCHES "watchOS")
+    set(WATCHOS TRUE)
+  endif()
+
   # Set deployment target BEFORE any language enabling or project() calls
   if(IOS)
     if(APPLE_DEPLOYMENT_TARGET)
@@ -24,6 +28,23 @@ if(APPLE)
     endif()
 
     set(deployment_target_flag "-target ${CMAKE_SYSTEM_PROCESSOR}-apple-xros${CMAKE_OSX_DEPLOYMENT_TARGET}")
+ elseif(WATCHOS)
+    if(APPLE_DEPLOYMENT_TARGET)
+      set(CMAKE_OSX_DEPLOYMENT_TARGET "${APPLE_DEPLOYMENT_TARGET}" CACHE STRING "Minimum watchOS deployment version" FORCE)
+    else()
+      set(CMAKE_OSX_DEPLOYMENT_TARGET "10.0" CACHE STRING "Minimum watchOS deployment version" FORCE)
+    endif()
+
+    # Explicitly set architectures for watchOS
+    if(CMAKE_OSX_SYSROOT MATCHES ".*Simulator.*")
+      # Simulator builds
+      set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "watchOS simulator architectures" FORCE)
+      set(deployment_target_flag "-target arm64-apple-watchos${CMAKE_OSX_DEPLOYMENT_TARGET}-simulator")
+    else()
+      # Device builds - modern watches only (Series 9+, Ultra)
+      set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "watchOS device architectures" FORCE)
+      set(deployment_target_flag "-target aarch64-apple-watchos${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
   else()
     set(MACOSX TRUE)
 
