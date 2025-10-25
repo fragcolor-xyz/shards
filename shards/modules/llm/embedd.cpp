@@ -423,7 +423,7 @@ struct Embed {
     }
     batch.n_tokens = tokens.size();
 
-    llama_memory_clear(llama_get_memory(llmContext.ctx.get()), false);
+    llama_memory_clear(llama_get_memory(llmContext.ctx.get()), true);
 
     if (llama_encode(llmContext.ctx.get(), batch) < 0) {
       throw ActivationError("Failed to encode input");
