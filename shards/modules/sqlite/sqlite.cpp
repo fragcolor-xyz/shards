@@ -501,7 +501,7 @@ struct Query : public Base {
     }
   }
 
-  SHVar getOutputRows(SHContext *context, OutputType &output_) {
+  SHVar getOutputRows(SHContext *context, OutputType &output_, const std::atomic<bool> &cancelled) {
     RowOutput *ptr = std::get_if<RowOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<RowOutput>();
@@ -513,6 +513,8 @@ struct Query : public Base {
     bool empty = true;
     int rc;
     bool retry = _retry.payload.boolValue;
+    auto retryStartTime = std::chrono::steady_clock::now();
+    const auto maxRetryDuration = std::chrono::seconds(30);
     do {
       rc = sqlite3_step(prepared->get());
       if (rc == SQLITE_ROW) {
@@ -540,8 +542,17 @@ struct Query : public Base {
         }
       } else if (rc == SQLITE_BUSY) {
         if (retry) {
-          // Try again after yield or next frame
-          std::this_thread::yield();
+          // Check for cancellation
+          if (!context->shouldContinue() || cancelled.load()) {
+            throw ActivationError("Query cancelled while waiting for database");
+          }
+          // Check for timeout
+          auto elapsed = std::chrono::steady_clock::now() - retryStartTime;
+          if (elapsed > maxRetryDuration) {
+            throw ActivationError("Database busy timeout exceeded (30 seconds)");
+          }
+          // Use sleep instead of yield to avoid iOS watchdog killing the app
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } else {
           throw ActivationError("SQLite database is busy and retry is disabled");
         }
@@ -555,7 +566,7 @@ struct Query : public Base {
     return empty ? emptySeqOutput : output.output;
   }
 
-  SHVar getOutputCols(SHContext *context, OutputType &output_) {
+  SHVar getOutputCols(SHContext *context, OutputType &output_, const std::atomic<bool> &cancelled) {
     ColOutput *ptr = std::get_if<ColOutput>(&output_);
     if (!ptr)
       ptr = &output_.emplace<ColOutput>();
@@ -565,6 +576,8 @@ struct Query : public Base {
     bool empty = true;
     int rc;
     bool retry = _retry.payload.boolValue;
+    auto retryStartTime = std::chrono::steady_clock::now();
+    const auto maxRetryDuration = std::chrono::seconds(30);
     do {
       rc = sqlite3_step(prepared->get());
       if (rc == SQLITE_ROW) {
@@ -599,8 +612,17 @@ struct Query : public Base {
         }
       } else if (rc == SQLITE_BUSY) {
         if (retry) {
-          // Try again after yield or next frame
-          std::this_thread::yield();
+          // Check for cancellation
+          if (!context->shouldContinue() || cancelled.load()) {
+            throw ActivationError("Query cancelled while waiting for database");
+          }
+          // Check for timeout
+          auto elapsed = std::chrono::steady_clock::now() - retryStartTime;
+          if (elapsed > maxRetryDuration) {
+            throw ActivationError("Database busy timeout exceeded (30 seconds)");
+          }
+          // Use sleep instead of yield to avoid iOS watchdog killing the app
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } else {
           throw ActivationError("SQLite database is busy and retry is disabled");
         }
@@ -716,7 +738,7 @@ struct Query : public Base {
             throw ActivationError("Not enough parameters for query");
 
           SH_SQLITE_DEBUG_LOG("sqlite query, db: {}, {}", (void *)_connection->db, _query.get().payload.stringValue);
-          return _returnCols ? getOutputCols(context, output) : getOutputRows(context, output);
+          return _returnCols ? getOutputCols(context, output, cancelled) : getOutputRows(context, output, cancelled);
         },
         [&] {
           // Cancellation handler: signal to interrupt lock acquisition
