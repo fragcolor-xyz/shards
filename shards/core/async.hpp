@@ -264,9 +264,7 @@ inline SHVar awaitne(SHContext *context, FUNC &&func, CANCELLATION &&cancel) noe
   if (unlikely(!call.complete)) {
     cancel();
     while (!call.complete) {
-      // Use sleep instead of yield to prevent iOS watchdog from killing the app
-      // during cancellation wait
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::yield();
     }
   }
 
@@ -332,9 +330,7 @@ template <typename FUNC, typename CANCELLATION> inline void await(SHContext *con
   if (unlikely(!call.complete)) {
     cancel();
     while (!call.complete) {
-      // Use sleep instead of yield to prevent iOS watchdog from killing the app
-      // during cancellation wait
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::yield();
     }
   }
 
