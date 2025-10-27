@@ -824,8 +824,6 @@ struct Transaction : public Base {
         throw ActivationError("Transaction cancelled while waiting for lock");
       }
       SH_SUSPEND(context, 0);
-      // Add small sleep to prevent iOS watchdog if SH_SUSPEND doesn't actually suspend
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     await(
