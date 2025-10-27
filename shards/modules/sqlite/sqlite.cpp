@@ -513,7 +513,7 @@ struct Query : public Base {
     bool empty = true;
     int rc;
     bool retry = _retry.payload.boolValue;
-    auto retryStartTime = std::chrono::steady_clock::now();
+    std::optional<std::chrono::steady_clock::time_point> retryStartTime;
     const auto maxRetryDuration = std::chrono::seconds(30);
     do {
       rc = sqlite3_step(prepared->get());
@@ -551,8 +551,12 @@ struct Query : public Base {
           if (!context->shouldContinue() || cancelled.load()) {
             throw ActivationError("Query cancelled while waiting for database");
           }
-          // Check for timeout
-          auto elapsed = std::chrono::steady_clock::now() - retryStartTime;
+          // Start timer on first SQLITE_BUSY (not before, to avoid timing legitimate long queries)
+          if (!retryStartTime.has_value()) {
+            retryStartTime = std::chrono::steady_clock::now();
+          }
+          // Check for timeout - only counts time spent in SQLITE_BUSY retry, not total query time
+          auto elapsed = std::chrono::steady_clock::now() - *retryStartTime;
           if (elapsed > maxRetryDuration) {
             throw ActivationError("Database busy timeout exceeded (30 seconds)");
           }
@@ -581,7 +585,7 @@ struct Query : public Base {
     bool empty = true;
     int rc;
     bool retry = _retry.payload.boolValue;
-    auto retryStartTime = std::chrono::steady_clock::now();
+    std::optional<std::chrono::steady_clock::time_point> retryStartTime;
     const auto maxRetryDuration = std::chrono::seconds(30);
     do {
       rc = sqlite3_step(prepared->get());
@@ -626,8 +630,12 @@ struct Query : public Base {
           if (!context->shouldContinue() || cancelled.load()) {
             throw ActivationError("Query cancelled while waiting for database");
           }
-          // Check for timeout
-          auto elapsed = std::chrono::steady_clock::now() - retryStartTime;
+          // Start timer on first SQLITE_BUSY (not before, to avoid timing legitimate long queries)
+          if (!retryStartTime.has_value()) {
+            retryStartTime = std::chrono::steady_clock::now();
+          }
+          // Check for timeout - only counts time spent in SQLITE_BUSY retry, not total query time
+          auto elapsed = std::chrono::steady_clock::now() - *retryStartTime;
           if (elapsed > maxRetryDuration) {
             throw ActivationError("Database busy timeout exceeded (30 seconds)");
           }
