@@ -810,7 +810,12 @@ struct Transaction : public Base {
     std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
     // try to lock, if we can't we suspend until the lock is available
     while (!lock.try_lock()) {
+      if (!context->shouldContinue()) {
+        throw ActivationError("Transaction cancelled while waiting for lock");
+      }
       SH_SUSPEND(context, 0);
+      // Add small sleep to prevent iOS watchdog if SH_SUSPEND doesn't actually suspend
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     await(
