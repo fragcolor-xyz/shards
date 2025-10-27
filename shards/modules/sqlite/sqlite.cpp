@@ -518,6 +518,11 @@ struct Query : public Base {
     do {
       rc = sqlite3_step(prepared->get());
       if (rc == SQLITE_ROW) {
+        // Check for cancellation during row processing to allow cancelling long queries
+        if (!context->shouldContinue() || cancelled.load()) {
+          throw ActivationError("Query cancelled during row processing");
+        }
+
         auto numCols = sqlite3_column_count(prepared->get());
         if (numCols == 0) {
           continue;
@@ -581,6 +586,11 @@ struct Query : public Base {
     do {
       rc = sqlite3_step(prepared->get());
       if (rc == SQLITE_ROW) {
+        // Check for cancellation during row processing to allow cancelling long queries
+        if (!context->shouldContinue() || cancelled.load()) {
+          throw ActivationError("Query cancelled during row processing");
+        }
+
         auto numCols = sqlite3_column_count(prepared->get());
         if (numCols == 0) {
           continue;
