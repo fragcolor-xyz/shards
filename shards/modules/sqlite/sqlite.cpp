@@ -520,7 +520,8 @@ struct Query : public Base {
       if (rc == SQLITE_ROW) {
         // Check for cancellation during row processing to allow cancelling long queries
         if (!context->shouldContinue() || cancelled.load()) {
-          throw ActivationError("Query cancelled during row processing");
+          // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
+          return empty ? emptySeqOutput : output.output;
         }
 
         auto numCols = sqlite3_column_count(prepared->get());
@@ -549,7 +550,8 @@ struct Query : public Base {
         if (retry) {
           // Check for cancellation
           if (!context->shouldContinue() || cancelled.load()) {
-            throw ActivationError("Query cancelled while waiting for database");
+            // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
+            return empty ? emptySeqOutput : output.output;
           }
           // Start timer on first SQLITE_BUSY (not before, to avoid timing legitimate long queries)
           if (!retryStartTime.has_value()) {
@@ -592,7 +594,8 @@ struct Query : public Base {
       if (rc == SQLITE_ROW) {
         // Check for cancellation during row processing to allow cancelling long queries
         if (!context->shouldContinue() || cancelled.load()) {
-          throw ActivationError("Query cancelled during row processing");
+          // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
+          return empty ? emptySeqOutput : output.output;
         }
 
         auto numCols = sqlite3_column_count(prepared->get());
@@ -628,7 +631,8 @@ struct Query : public Base {
         if (retry) {
           // Check for cancellation
           if (!context->shouldContinue() || cancelled.load()) {
-            throw ActivationError("Query cancelled while waiting for database");
+            // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
+            return empty ? emptySeqOutput : output.output;
           }
           // Start timer on first SQLITE_BUSY (not before, to avoid timing legitimate long queries)
           if (!retryStartTime.has_value()) {
@@ -828,9 +832,7 @@ struct Transaction : public Base {
     std::unique_lock<std::mutex> lock(_connection->transactionMutex, std::defer_lock);
     // try to lock, if we can't we suspend until the lock is available
     while (!lock.try_lock()) {
-      if (!context->shouldContinue()) {
-        throw ActivationError("Transaction cancelled while waiting for lock");
-      }
+      // SH_SUSPEND already checks if we should continue here, and returns if not! (macro)
       SH_SUSPEND(context, 0);
     }
 
