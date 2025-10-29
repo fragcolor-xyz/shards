@@ -595,7 +595,7 @@ struct Query : public Base {
         // Check for cancellation during row processing to allow cancelling long queries
         if (!context->shouldContinue() || cancelled.load()) {
           // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
-          return empty ? emptySeqOutput : output.output;
+          return empty ? emptyTableOutput : output.output;
         }
 
         auto numCols = sqlite3_column_count(prepared->get());
@@ -632,7 +632,7 @@ struct Query : public Base {
           // Check for cancellation
           if (!context->shouldContinue() || cancelled.load()) {
             // Notice, avoid throwing cos this might just be a stop, or another error (the real one)
-            return empty ? emptySeqOutput : output.output;
+            return empty ? emptyTableOutput : output.output;
           }
           // Start timer on first SQLITE_BUSY (not before, to avoid timing legitimate long queries)
           if (!retryStartTime.has_value()) {
