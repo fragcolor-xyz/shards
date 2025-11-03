@@ -3,7 +3,7 @@ target_include_directories(shards-logging PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../..
 target_include_directories(shards-logging PRIVATE ${SHARDS_ROOT}/include)
 target_link_libraries(shards-logging spdlog magic_enum Boost::filesystem Boost::algorithm)
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT WATCHOS)
   target_link_libraries(shards-logging SDL3-static)
   target_compile_definitions(shards-logging PRIVATE SHARDS_LOG_SDL=1)
 endif()

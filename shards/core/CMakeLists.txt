@@ -101,21 +101,26 @@ if(APPLE)
   target_link_libraries(shards-core
     "-framework Foundation"
     "-framework CoreAudio"
-    "-framework AudioToolbox"
     "-framework CoreVideo"
-    "-framework IOKit"
     "-framework QuartzCore"
     "-framework Accelerate"
-    "-framework Metal"
-    "-framework MetalPerformanceShaders"
     "-framework Security"
-    "-framework CoreHaptics"
-    "-framework GameController"
-    "-framework SystemConfiguration"
     -liconv
   )
 
-  if(IOS OR VISIONOS)
+  if(NOT WATCHOS)
+    target_link_libraries(shards-core
+      "-framework AudioToolbox"
+      "-framework IOKit"
+      "-framework Metal"
+      "-framework MetalPerformanceShaders"
+      "-framework CoreHaptics"
+      "-framework GameController"
+      "-framework SystemConfiguration"
+    )
+  endif()
+
+  if(IOS OR VISIONOS OR WATCHOS)
     target_link_libraries(shards-core
       "-framework AVFoundation"
       "-framework CoreGraphics"
