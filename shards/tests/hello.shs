@@ -319,3 +319,6 @@ trigger-1-count | Assert.Is(1) // should not trigger
 true > trigger-1
 Do(trigger-it-1)
 trigger-1-count | Assert.Is(2)
+
+@define(has-nope-shard #("Log" | Maybe({Shards.Help | true} {false})))
+@has-nope-shard | Log("Nope")

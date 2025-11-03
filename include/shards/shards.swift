@@ -2458,6 +2458,8 @@ enum Shards {
 }
 
 #if canImport(SwiftUI)
+    import Combine
+
     class VarObserver: ObservableObject {
         @Published var changeCounter: Int = 0
 
