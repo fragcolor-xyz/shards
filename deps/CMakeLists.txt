@@ -92,8 +92,8 @@ if(NOT EMSCRIPTEN)
 
     # Fix iOS endian compatibility - prevent HAVE_ENDIAN_H from being defined on iOS
     # This allows LibreSSL's compat/endian.h to use the Apple-specific code path
-    if(APPLE AND (IOS OR CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*" OR CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*" OR CMAKE_OSX_SYSROOT MATCHES ".*xros.*"))
-      message(STATUS "Fixing iOS endian compatibility by ensuring HAVE_ENDIAN_H is not defined...")
+    if(APPLE AND (IOS OR CMAKE_OSX_SYSROOT MATCHES ".*iphoneos.*" OR CMAKE_OSX_SYSROOT MATCHES ".*iphonesimulator.*" OR CMAKE_OSX_SYSROOT MATCHES ".*xros.*" OR CMAKE_OSX_SYSROOT MATCHES ".*watchos.*"))
+      message(STATUS "Fixing Apple mobile platform endian compatibility by ensuring HAVE_ENDIAN_H is not defined...")
       # Force HAVE_ENDIAN_H to be undefined for iOS so LibreSSL uses its Apple compatibility code
       if(TARGET ssl_obj)
         target_compile_options(ssl_obj PRIVATE -UHAVE_ENDIAN_H)
@@ -155,7 +155,7 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT WATCHOS)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
 

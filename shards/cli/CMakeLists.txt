@@ -3,7 +3,7 @@ set(cli_SOURCES
 )
 
 function(setup_shards_target TARGET)
-  if(NOT EMSCRIPTEN AND NOT IOS AND NOT VISIONOS)
+  if(NOT EMSCRIPTEN AND NOT IOS AND NOT VISIONOS AND NOT WATCHOS)
     target_link_libraries(${TARGET} Boost::process)
   endif()
 
