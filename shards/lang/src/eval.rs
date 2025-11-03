@@ -2198,6 +2198,8 @@ fn process_platform_built_in() -> Var {
     Var::ephemeral_string("linux")
   } else if cfg!(target_os = "macos") {
     Var::ephemeral_string("macos")
+  } else if cfg!(target_os = "watchos") {
+    Var::ephemeral_string("watchos")
   } else {
     unreachable!("You are running an unknown platform");
   }
@@ -4531,7 +4533,7 @@ impl Default for EvalShard {
 impl Shard for EvalShard {
   fn input_types(&mut self) -> &Types {
     &read::AST_TYPES
-  } 
+  }
 
   fn output_types(&mut self) -> &Types {
     let full_output: bool = unsafe { (&self.full_output.0).try_into().unwrap_unchecked() };
