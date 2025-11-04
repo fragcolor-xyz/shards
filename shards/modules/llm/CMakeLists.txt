@@ -1,4 +1,4 @@
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT SHARDS_NO_LLAMA)
   set(SOURCES
     embedd.cpp
     chat.cpp

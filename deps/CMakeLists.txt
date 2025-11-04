@@ -155,7 +155,7 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS)
+if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
 
@@ -248,7 +248,7 @@ add_subdirectory(tracy)
 target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
 target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS)
+if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_LLAMA)
   # TODO vulkan build support
   if(WIN32 OR LINUX)
     # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
