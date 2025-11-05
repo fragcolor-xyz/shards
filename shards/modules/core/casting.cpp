@@ -609,11 +609,12 @@ template <SHType ET> struct ExpectX {
       // Ok this is for certain then.. this Expect is not needed
       // we can just pass (it will be inlined very quick at runtime)
       data.shard->inlineShardId = InlineShard::NoopShard;
+      return data.inputType;
     } else {
       // Do normal activate
       data.shard->inlineShardId = InlineShard::NotInline;
+      return outputType;
     }
-    return outputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
