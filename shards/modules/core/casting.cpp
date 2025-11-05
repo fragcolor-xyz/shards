@@ -480,10 +480,13 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
 
 template <SHType ET> struct ExpectX {
   static inline Type outputType{{ET}};
+  
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
 
   SHTypesInfo outputTypes() { return outputType; }
+  
   static SHOptionalString outputHelp() {
     if constexpr (ET == SHType::Int) {
       return SHCCSTR("Outputs the input value unchanged if it is of type Int.");
@@ -600,6 +603,19 @@ template <SHType ET> struct ExpectX {
                      "is of the appropriate type; otherwise, the shard will trigger an error, preventing further execution.");
     }
   }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == ET) {
+      // Ok this is for certain then.. this Expect is not needed
+      // we can just pass (it will be inlined very quick at runtime)
+      data.shard->inlineShardId = InlineShard::NoopShard;
+    } else {
+      // Do normal activate
+      data.shard->inlineShardId = InlineShard::NotInline;
+    }
+    return outputType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(input.valueType != ET)) {
       SHLOG_ERROR("Unexpected value: {}", input);
@@ -611,13 +627,30 @@ template <SHType ET> struct ExpectX {
 
 struct ExpectSeq {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
+  
   SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input value unchanged if it is a sequence."); }
+  
   static SHOptionalString help() {
     return SHCCSTR(
         "Checks if the input value is a sequence; otherwise, the shard will trigger an error, preventing further execution.");
   }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Seq) {
+      // Ok this is for certain then.. this Expect is not needed
+      // we can just pass (it will be inlined very quick at runtime)
+      data.shard->inlineShardId = InlineShard::NoopShard;
+    } else {
+      // Do normal activate
+      data.shard->inlineShardId = InlineShard::NotInline;
+    }
+    return CoreInfo::AnySeqType;
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(input.valueType != SHType::Seq)) {
       SHLOG_ERROR("Unexpected value: {}", input);
