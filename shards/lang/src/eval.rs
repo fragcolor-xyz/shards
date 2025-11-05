@@ -1567,7 +1567,6 @@ fn create_take_seq_chain(
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   add_get_shard(var_name, line, e)?;
-  add_expect_seq_shard(line, e)?;
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this
     add_take_shard(var_name, &idx, line, e)?;
@@ -3001,15 +3000,6 @@ fn add_expect_table_shard(
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
   let shard = AutoShardRef::create("ExpectTable", Some(line_info.into())).unwrap(); // qed, ExpectTable must exist
-  e.shards.push(shard);
-  Ok(())
-}
-
-fn add_expect_seq_shard(
-  line_info: LineInfo,
-  e: &mut EvalEnv,
-) -> Result<(), ShardsError> {
-  let shard = AutoShardRef::create("ExpectSeq", Some(line_info.into())).unwrap(); // qed, ExpectSeq must exist
   e.shards.push(shard);
   Ok(())
 }

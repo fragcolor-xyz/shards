@@ -330,7 +330,3 @@ trigger-1-count | Assert.Is(2)
 ; test speculative destructure (will inject ExpectTable)
 any-value:a | Assert.Is(1)
 any-value:b | Assert.Is(2)
-
-[1 2 3] | ToJson | FromJson > any-value
-any-value:0 | Assert.Is(1)
-any-value:2 | Assert.Is(3)
