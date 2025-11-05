@@ -3000,7 +3000,7 @@ fn add_expect_table_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = AutoShardRef::create("ExpectTable", Some(line_info.into())).unwrap(); // qed, Take must exist
+  let shard = AutoShardRef::create("ExpectTable", Some(line_info.into())).unwrap(); // qed, ExpectTable must exist
   e.shards.push(shard);
   Ok(())
 }
@@ -3009,7 +3009,7 @@ fn add_expect_seq_shard(
   line_info: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
-  let shard = AutoShardRef::create("ExpectSeq", Some(line_info.into())).unwrap(); // qed, Take must exist
+  let shard = AutoShardRef::create("ExpectSeq", Some(line_info.into())).unwrap(); // qed, ExpectSeq must exist
   e.shards.push(shard);
   Ok(())
 }
