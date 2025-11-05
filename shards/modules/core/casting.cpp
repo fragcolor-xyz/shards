@@ -354,7 +354,7 @@ struct ToAny {
 };
 
 struct ToAnySeq {
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Converts the input to any sequence type"); }
 
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
@@ -368,16 +368,15 @@ struct ToAnySeq {
     data.shard->inlineShardId = InlineShard::NoopShard;
     return CoreInfo::AnySeqType;
   }
+  
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
 struct ToAnyTable {
-  static inline Type outputType{{SHType::Table}};
-
-  static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Converts the input to table type"); }
 
-  static SHTypesInfo outputTypes() { return outputType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The same value as the input but typed as Table."); }
 
   static SHOptionalString help() {
@@ -386,8 +385,9 @@ struct ToAnyTable {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     data.shard->inlineShardId = InlineShard::NoopShard;
-    return outputType;
+    return CoreInfo::AnyTableType;
   }
+
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
