@@ -759,7 +759,7 @@ template <class SH_CORE> struct TSeqVar : public SHVar {
 
   void push_back(const SHVar &value) {
     resize(size() + 1);
-    cloneVar(back(), value);
+    SH_CORE::cloneVar(back(), value);
   }
 
   TOwnedVar<SH_CORE> &emplace_back(const SHVar &value) {

@@ -1204,6 +1204,7 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto wireVar = _wire.get();
+    shassert(wireVar.valueType == SHType::Wire && "WireRunner: wire variable is not a wire");
     wire = SHWire::sharedFromRef(wireVar.payload.wireValue);
     if (unlikely(!wire))
       return input;
