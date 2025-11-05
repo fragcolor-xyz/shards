@@ -32,8 +32,8 @@ Erase([1] Name: seq Global: true) // erase from global sequence
 Get(seq Global: true) | Log // => [1, 3]
 
 // erase from same-name local and global tables
-{k1: 1 k2: 2 k3: 3} | ExpectTable >= tab // create local table   
-{k1: 1 k2: 2 k3: 3} | ExpectTable | Set(tab Global: true) // create global table   
+{k1: 1 k2: 2 k3: 3} | ToAnyTable >= tab // create local table   
+{k1: 1 k2: 2 k3: 3} | ToAnyTable | Set(tab Global: true) // create global table   
 Erase(["k3" "k1"] Name: tab) // erase from local table
 Get(tab) | Log // => {k2: 2}
 Erase(["k2"] Name: tab Global: true) // erase from global table
