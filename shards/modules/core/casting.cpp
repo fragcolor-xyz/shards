@@ -639,18 +639,6 @@ struct ExpectSeq {
         "Checks if the input value is a sequence; otherwise, the shard will trigger an error, preventing further execution.");
   }
 
-  SHTypeInfo compose(const SHInstanceData &data) {
-    if (data.inputType.basicType == SHType::Seq) {
-      // Ok this is for certain then.. this Expect is not needed
-      // we can just pass (it will be inlined very quick at runtime)
-      data.shard->inlineShardId = InlineShard::NoopShard;
-    } else {
-      // Do normal activate
-      data.shard->inlineShardId = InlineShard::NotInline;
-    }
-    return CoreInfo::AnySeqType;
-  }
-
   SHVar activate(SHContext *context, const SHVar &input) {
     if (unlikely(input.valueType != SHType::Seq)) {
       SHLOG_ERROR("Unexpected value: {}", input);
