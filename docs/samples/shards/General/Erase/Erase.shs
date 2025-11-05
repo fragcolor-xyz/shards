@@ -11,14 +11,14 @@ seq2 | Log // => [200, 400]
 
 // erase single key-value pair from table        
 {k1: 10 k2: 20 k3: 30}
-ToAny | ExpectTable // to make it a dynamic table
+ToAnyTable // to make it a dynamic table
 >= tab1
 Erase("k2" Name: tab1)
 tab1 | Log // => {k3: 30, k1: 10}
 
 // erase multiple key-value pairs from table
 {k1: 100 k2: 200 k3: 300}
-ToAny | ExpectTable // to make it a dynamic table
+ToAnyTable // to make it a dynamic table
 >= tab2
 Erase(["k3" "k1"] Name: tab2)
 tab2 | Log // => {k2: 200}
