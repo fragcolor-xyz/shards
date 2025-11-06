@@ -373,10 +373,12 @@ struct ToAnySeq {
 };
 
 struct ToAnyTable {
+  static inline Type outputType{{SHType::Table}}; // this is not the same of AnyTableType - we do this for compatibility reasons with ExpectTable
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Converts the input to table type"); }
 
-  static SHTypesInfo outputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return outputType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The same value as the input but typed as Table."); }
 
   static SHOptionalString help() {
@@ -385,7 +387,7 @@ struct ToAnyTable {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     data.shard->inlineShardId = InlineShard::NoopShard;
-    return CoreInfo::AnyTableType;
+    return outputType;
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
