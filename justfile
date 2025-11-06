@@ -26,6 +26,28 @@ configure:
 build: configure
   cmake --build build/Debug --target shards
 
+# build shards with filtered output (shows only errors and critical warnings)
+build-quiet: configure
+  #!/bin/bash
+  set -o pipefail
+  cmake --build build/Debug --target shards 2>&1 | \
+    grep -v "^warning:" | \
+    grep -v "^\[.*\].*\.o$" | \
+    grep -v "^   Compiling" | \
+    grep -v "^    Checking" | \
+    grep -v "^     Finished" | \
+    tee /tmp/shards-build.log || \
+    (echo "Build failed. Full log: /tmp/shards-build.log" && tail -50 /tmp/shards-build.log && false)
+
+# check just the rust union compilation
+check-rust: configure
+  #!/bin/bash
+  cd build/Debug/src/union/shards-rust-union
+  export CARGO_TARGET_DIR=/Users/sugar/devel/tmp/rust-target
+  export RUSTUP_TOOLCHAIN=`cat /Users/sugar/devel/shards/rust.version`
+  export CRSQLITE_COMMIT_SHA=shards-dev
+  cargo check 2>&1 | grep -E "(error|localshell)" || echo "✓ Rust check passed"
+
 [no-cd]
 cargo-check:
   RUSTUP_TOOLCHAIN={{ rust_toolchain }} cargo check
