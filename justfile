@@ -20,7 +20,7 @@ check-ci:
 
 # configure cmake in build/Debug
 configure:
-  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug
+  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug > /dev/null
 
 # build shards (configures first if needed)
 build: configure
@@ -42,10 +42,10 @@ build-quiet: configure
 # check just the rust union compilation
 check-rust: configure
   #!/bin/bash
-  cd build/Debug/src/union/shards-rust-union
-  export CARGO_TARGET_DIR=/Users/sugar/devel/tmp/rust-target
-  export RUSTUP_TOOLCHAIN=`cat /Users/sugar/devel/shards/rust.version`
+  export CARGO_TARGET_DIR=`pwd`/../tmp/rust-target
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
   export CRSQLITE_COMMIT_SHA=shards-dev
+  cd build/Debug/src/union/shards-rust-union
   cargo check 2>&1 | grep -E "(error|localshell)" || echo "✓ Rust check passed"
 
 [no-cd]
