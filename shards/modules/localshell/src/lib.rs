@@ -34,6 +34,7 @@ use shards::types::BOOL_TYPES;
 use portable_pty::{CommandBuilder, PtySize, PtySystem};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::time::Duration;
 
 // LocalShell session object wrapper
@@ -296,13 +297,22 @@ impl BlockingShard for CreateShard {
         let mut temp_buf = [0u8; 4096];
 
         for _ in 0..10 {
-            let mut reader_lock = reader_arc.lock()
-                .map_err(|_| "Reader lock poisoned")?;
+            let (tx, rx) = channel();
+            let reader_clone = Arc::clone(&reader_arc);
 
-            // Try to read without blocking too long
-            match reader_lock.read(&mut temp_buf) {
-                Ok(n) if n > 0 => {
-                    output_buffer.extend_from_slice(&temp_buf[..n]);
+            std::thread::spawn(move || {
+                if let Ok(mut reader) = reader_clone.lock() {
+                    let mut buf = [0u8; 4096];
+                    match reader.read(&mut buf) {
+                        Ok(n) => { let _ = tx.send((n, buf)); }
+                        Err(_) => { let _ = tx.send((0, buf)); }
+                    }
+                }
+            });
+
+            match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok((n, buf)) if n > 0 => {
+                    output_buffer.extend_from_slice(&buf[..n]);
                     let output_str = String::from_utf8_lossy(&output_buffer);
                     if is_prompt(&output_str) {
                         break;
@@ -310,42 +320,10 @@ impl BlockingShard for CreateShard {
                 }
                 _ => {}
             }
-            drop(reader_lock);
             std::thread::sleep(Duration::from_millis(100));
         }
 
-        shlog_trace!("Shell ready, disabling echo");
-
-        // Disable echo for cleaner output (Unix only)
-        #[cfg(unix)]
-        {
-            let mut writer_lock = writer_arc.lock()
-                .map_err(|_| "Writer lock poisoned")?;
-            let _ = writer_lock.write_all(b"stty -echo\n");
-            let _ = writer_lock.flush();
-            drop(writer_lock);
-
-            // Drain the command output
-            std::thread::sleep(Duration::from_millis(300));
-            output_buffer.clear();
-            for _ in 0..10 {
-                let mut reader_lock = reader_arc.lock()
-                    .map_err(|_| "Reader lock poisoned")?;
-                match reader_lock.read(&mut temp_buf) {
-                    Ok(n) if n > 0 => {
-                        output_buffer.extend_from_slice(&temp_buf[..n]);
-                        let output_str = String::from_utf8_lossy(&output_buffer);
-                        if is_prompt(&output_str) {
-                            break;
-                        }
-                    }
-                    _ => {}
-                }
-                drop(reader_lock);
-                std::thread::sleep(Duration::from_millis(100));
-            }
-        }
-
+        shlog_trace!("Shell ready");
         shlog_trace!("Local shell created successfully");
 
         // Create LocalShellSession object
@@ -521,27 +499,27 @@ impl BlockingShard for ExecuteShard {
         std::thread::sleep(Duration::from_millis(200));
 
         for iteration in 0..max_iterations {
-            let bytes_read = {
-                let mut reader = local_shell.reader.lock()
-                    .map_err(|_| "Reader lock poisoned")?;
+            // Try to read with timeout to avoid blocking forever
+            let (tx, rx) = channel();
+            let reader_clone = Arc::clone(&local_shell.reader);
 
-                match reader.read(&mut temp_buf) {
-                    Ok(n) => n,
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock
-                           || e.kind() == std::io::ErrorKind::TimedOut => 0,
-                    Err(_) => {
-                        // Process might have died
-                        *local_shell.is_alive.lock()
-                            .map_err(|_| "Alive state lock poisoned")? = false;
-
-                        let mut result_table = AutoTableVar::new();
-                        result_table.0.insert_fast_static("status", &Var::ephemeral_string("process_died"));
-                        result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
-                        result_table.0.insert_fast_static("message", &Var::ephemeral_string("Shell process exited"));
-                        self.output = result_table.to_cloned();
-                        return Ok(self.output.0);
+            std::thread::spawn(move || {
+                if let Ok(mut reader) = reader_clone.lock() {
+                    let mut buf = [0u8; 4096];
+                    match reader.read(&mut buf) {
+                        Ok(n) => { let _ = tx.send((n, buf)); }
+                        Err(_) => { let _ = tx.send((0, buf)); }
                     }
                 }
+            });
+
+            // Wait up to 100ms for the read to complete
+            let bytes_read = match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok((n, buf)) if n > 0 => {
+                    temp_buf[..n].copy_from_slice(&buf[..n]);
+                    n
+                }
+                Ok(_) | Err(_) => 0,
             };
 
             if bytes_read > 0 {
@@ -755,36 +733,36 @@ impl BlockingShard for SendInputShard {
                 .map_err(|_| "Failed to flush writer")?;
         }
 
-        // Wait for output
-        std::thread::sleep(Duration::from_secs(2));
+        // Wait for output - give shell time to process input
+        std::thread::sleep(Duration::from_millis(1000));
 
         // Read output
         let mut output_buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
         let mut was_truncated = false;
 
-        for _ in 0..10 {
-            let bytes_read = {
-                let mut reader = local_shell.reader.lock()
-                    .map_err(|_| "Reader lock poisoned")?;
+        for _ in 0..30 {  // Increased from 10 to 30 (3 seconds total)
+            // Try to read with timeout to avoid blocking forever
+            let (tx, rx) = channel();
+            let reader_clone = Arc::clone(&local_shell.reader);
 
-                match reader.read(&mut temp_buf) {
-                    Ok(n) => n,
-                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock
-                           || e.kind() == std::io::ErrorKind::TimedOut => 0,
-                    Err(_) => {
-                        // Process might have died
-                        *local_shell.is_alive.lock()
-                            .map_err(|_| "Alive state lock poisoned")? = false;
-
-                        let mut result_table = AutoTableVar::new();
-                        result_table.0.insert_fast_static("status", &Var::ephemeral_string("process_died"));
-                        result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
-                        result_table.0.insert_fast_static("message", &Var::ephemeral_string("Shell process exited"));
-                        self.output = result_table.to_cloned();
-                        return Ok(self.output.0);
+            std::thread::spawn(move || {
+                if let Ok(mut reader) = reader_clone.lock() {
+                    let mut buf = [0u8; 4096];
+                    match reader.read(&mut buf) {
+                        Ok(n) => { let _ = tx.send((n, buf)); }
+                        Err(_) => { let _ = tx.send((0, buf)); }
                     }
                 }
+            });
+
+            // Wait up to 100ms for the read to complete
+            let bytes_read = match rx.recv_timeout(Duration::from_millis(100)) {
+                Ok((n, buf)) if n > 0 => {
+                    temp_buf[..n].copy_from_slice(&buf[..n]);
+                    n
+                }
+                Ok(_) | Err(_) => 0,
             };
 
             if bytes_read > 0 {
