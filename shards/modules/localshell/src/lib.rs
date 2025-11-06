@@ -31,10 +31,10 @@ use shards::types::STRING_TYPES;
 use shards::types::NONE_TYPES;
 use shards::types::BOOL_TYPES;
 
-use portable_pty::{CommandBuilder, PtySize, PtySystem};
+use portable_pty::{CommandBuilder, PtySize};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::sync::mpsc::channel;
 use std::time::Duration;
 
 // Configuration constants
@@ -139,6 +139,53 @@ fn is_prompt(text: &str) -> bool {
     }
 }
 
+// Helper function to detect common interactive prompts (password, confirmation, etc.)
+// These patterns indicate a command is waiting for user input
+fn is_interactive_prompt(text: &str) -> bool {
+    // Strip ANSI codes first
+    let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
+    let cleaned = String::from_utf8_lossy(&stripped_bytes);
+
+    // Check last few lines for interactive patterns
+    let lines: Vec<&str> = cleaned.lines().collect();
+    if lines.is_empty() {
+        return false;
+    }
+
+    // Check last 3 lines (some prompts span multiple lines)
+    let check_lines = if lines.len() > 3 { &lines[lines.len()-3..] } else { &lines[..] };
+
+    for line in check_lines {
+        let lower = line.to_lowercase();
+
+        // Common interactive patterns
+        if lower.contains("password:")
+            || lower.contains("passphrase:")
+            || lower.contains("continue?")
+            || lower.contains("(y/n)")
+            || lower.contains("[y/n]")
+            || lower.contains("press enter")
+            || lower.contains("press any key")
+            || lower.contains("are you sure")
+            || lower.ends_with("? ")
+            || lower.ends_with(": ")
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
+// Helper function to mark session as dead after encountering a critical error (like lock poisoning)
+fn mark_session_dead(local_shell: &LocalShellSession, error_context: &str) {
+    shlog_error!("Critical error in LocalShell ({}), marking session as dead", error_context);
+    // Try to set is_alive = false, but if the lock is poisoned, we can't do much
+    if let Ok(mut alive) = local_shell.is_alive.lock() {
+        *alive = false;
+    }
+}
+
 // Helper function to clean output (remove ANSI codes, control chars, and trailing prompts)
 // Reused from SSH module
 fn clean_output(output: &str) -> String {
@@ -203,6 +250,9 @@ pub struct CreateShard {
     #[shard_param("WorkingDirectory", "Initial working directory (default: current directory)", [common_type::string, common_type::string_var, common_type::none])]
     working_dir: ParamVar,
 
+    #[shard_param("ShellArgs", "Arguments to pass to shell (default: ['--login', '-i'] for bash on Unix)", [common_type::strings, common_type::strings_var, common_type::none])]
+    shell_args: ParamVar,
+
     output: ClonedVar,
 }
 
@@ -212,6 +262,7 @@ impl Default for CreateShard {
             required: ExposedTypes::new(),
             shell: ParamVar::new(Var::default()),
             working_dir: ParamVar::new(Var::default()),
+            shell_args: ParamVar::new(Var::default()),
             output: ClonedVar::default(),
         }
     }
@@ -291,11 +342,30 @@ impl BlockingShard for CreateShard {
             cmd.cwd(wd);
         }
 
-        // For bash, use --login to get environment and -i for interactive mode
-        #[cfg(unix)]
-        if shell_cmd.contains("bash") {
-            cmd.arg("--login");
-            cmd.arg("-i");
+        // Set shell arguments
+        let shell_args_var = self.shell_args.get();
+        if !shell_args_var.is_none() {
+            // User provided custom arguments
+            let args_seq: shards::types::SeqVar = shell_args_var.as_ref().try_into()
+                .map_err(|_| "ShellArgs must be a sequence of strings")?;
+            for arg_var in args_seq.iter() {
+                let arg_str = match arg_var.as_ref() {
+                    Var { valueType: shards::shardsc::SHType_String, .. } => {
+                        let s: &str = arg_var.as_ref().try_into()
+                            .map_err(|_| "ShellArgs elements must be strings")?;
+                        s
+                    }
+                    _ => return Err("ShellArgs elements must be strings"),
+                };
+                cmd.arg(arg_str);
+            }
+        } else {
+            // Default arguments for bash: --login to get environment, -i for interactive mode
+            #[cfg(unix)]
+            if shell_cmd.contains("bash") {
+                cmd.arg("--login");
+                cmd.arg("-i");
+            }
         }
 
         // Spawn the child process
@@ -378,6 +448,7 @@ impl BlockingShard for CreateShard {
                 }
 
                 // Read from PTY (this will block until data is available)
+                // The is_alive check above ensures we exit gracefully when session is closed
                 match reader_clone.lock() {
                     Ok(mut reader) => {
                         match reader.read(&mut buf) {
@@ -470,10 +541,8 @@ pub struct ExecuteShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    // NOTE: Timeout parameter is declared for API compatibility with SSH module
-    // but is not currently used in the implementation. Actual timeout is hardcoded
-    // to COMMAND_MAX_ITERATIONS * ITERATION_SLEEP_MS (5 seconds).
-    // TODO: Implement actual timeout logic using this parameter.
+    // Timeout for command execution in seconds
+    // The implementation uses 10 iterations per second (ITERATION_SLEEP_MS = 100ms)
     #[shard_param("Timeout", "Command timeout in seconds (default: 30)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -538,6 +607,12 @@ impl BlockingShard for ExecuteShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
+        // Get timeout parameter and calculate max iterations
+        // Each iteration is ITERATION_SLEEP_MS (100ms), so timeout_secs * 10 = max iterations
+        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
+        let timeout_secs = if timeout_secs <= 0 { 30 } else { timeout_secs };  // Default to 30s if invalid
+        let max_iterations = (timeout_secs as usize) * 10;  // 10 iterations per second
+
         // Extract local shell object
         let local_shell = unsafe {
             Var::from_ref_counted_object::<LocalShellSession>(&session_var, &*LOCAL_SHELL_TYPE)?
@@ -555,16 +630,26 @@ impl BlockingShard for ExecuteShard {
 
         // Check if there's a pending interactive command
         {
-            let mut pending = local_shell.pending_interactive.lock()
-                .map_err(|_| "Interactive state lock poisoned")?;
+            let mut pending = match local_shell.pending_interactive.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "interactive lock poisoned in Execute");
+                    return Err("Interactive state lock poisoned");
+                }
+            };
             if pending.is_some() {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
 
                 // Send Ctrl+C to cancel the interactive command
                 // Writer lock is released immediately after write to avoid blocking
                 {
-                    let mut writer = local_shell.writer.lock()
-                        .map_err(|_| "Writer lock poisoned")?;
+                    let mut writer = match local_shell.writer.lock() {
+                        Ok(guard) => guard,
+                        Err(_) => {
+                            mark_session_dead(local_shell, "writer lock poisoned in Execute");
+                            return Err("Writer lock poisoned");
+                        }
+                    };
                     let _ = writer.write_all(&[3]);
                     let _ = writer.flush();
                 } // Writer lock released here
@@ -582,8 +667,13 @@ impl BlockingShard for ExecuteShard {
 
         // Clear shared buffer before sending command
         {
-            let mut shared_buffer = local_shell.output_buffer.lock()
-                .map_err(|_| "Buffer lock poisoned")?;
+            let mut shared_buffer = match local_shell.output_buffer.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "buffer lock poisoned before command");
+                    return Err("Buffer lock poisoned");
+                }
+            };
             shared_buffer.clear();
             shlog_trace!("Cleared shared buffer before command");
         }
@@ -591,8 +681,13 @@ impl BlockingShard for ExecuteShard {
         // Send command
         let cmd_with_newline = format!("{}\n", cmd);
         {
-            let mut writer = local_shell.writer.lock()
-                .map_err(|_| "Writer lock poisoned")?;
+            let mut writer = match local_shell.writer.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "writer lock poisoned sending command");
+                    return Err("Writer lock poisoned");
+                }
+            };
             writer.write_all(cmd_with_newline.as_bytes())
                 .map_err(|_| "Failed to write command to shell (IO error)")?;
             writer.flush()
@@ -611,24 +706,26 @@ impl BlockingShard for ExecuteShard {
         // Give shell time to process command
         std::thread::sleep(Duration::from_millis(COMMAND_OUTPUT_WAIT_MS));
 
-        for iteration in 0..COMMAND_MAX_ITERATIONS {
-            // Read from shared buffer
-            let current_buffer_size = {
+        for iteration in 0..max_iterations {
+            // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
+            let new_data = {
                 let shared_buffer = local_shell.output_buffer.lock()
                     .map_err(|_| "Buffer lock poisoned")?;
-                shared_buffer.len()
+
+                // Only copy new data since last read
+                if shared_buffer.len() > last_buffer_size {
+                    shared_buffer[last_buffer_size..].to_vec()
+                } else {
+                    Vec::new()
+                }
             };
 
-            let bytes_read = current_buffer_size - last_buffer_size;
+            let bytes_read = new_data.len();
 
             if bytes_read > 0 {
-                // Copy new data from shared buffer
-                let shared_buffer = local_shell.output_buffer.lock()
-                    .map_err(|_| "Buffer lock poisoned")?;
-                output_buffer.extend_from_slice(&shared_buffer[last_buffer_size..]);
-                drop(shared_buffer);
-
-                last_buffer_size = current_buffer_size;
+                // Append new data to our local output buffer
+                output_buffer.extend_from_slice(&new_data);
+                last_buffer_size += bytes_read;
 
                 // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
@@ -662,17 +759,41 @@ impl BlockingShard for ExecuteShard {
                     output_buffer.is_empty()
                 );
 
-                // Only consider interactive if we have output AND consistent no-data period
+                // Interactive command detection logic:
+                // We detect a command as interactive if it stops producing output but doesn't return to shell prompt.
+                //
+                // Conditions explained:
+                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (20 iterations = 2 seconds):
+                //    - Gives command enough time to complete output before assuming it's waiting for input
+                //    - 2 seconds balances between false positives (slow commands) and responsiveness
+                //
+                // 2. !output_buffer.is_empty():
+                //    - Command must have produced SOME output (avoids detecting hung commands as interactive)
+                //    - Interactive prompts typically display text before waiting
+                //
+                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥10 iterations = ≥1 second):
+                //    - Prevents premature detection during command startup
+                //    - Allows time for fast commands to complete normally
+                //
                 if no_data_count >= INTERACTIVE_DETECTION_ITERATIONS && !output_buffer.is_empty() && iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 {
-                    // Check one more time if there's a prompt we might have missed
                     let output_str = String::from_utf8_lossy(&output_buffer);
+
+                    // First check for shell prompt (command completed normally)
                     if is_prompt(&output_str) {
                         prompt_detected = true;
                         shlog_trace!("Prompt detected on final check");
                         break;
                     }
-                    // No output for 2 seconds after having received some data, likely interactive
-                    shlog_trace!("Command appears to be interactive (no new data for 2s)");
+
+                    // Check for common interactive prompt patterns (password, confirmation, etc.)
+                    if is_interactive_prompt(&output_str) {
+                        shlog_trace!("Interactive prompt pattern detected: {:?}", output_str.lines().last());
+                        break;
+                    }
+
+                    // No shell prompt, no obvious interactive pattern, but no new data for 2 seconds
+                    // Likely an interactive command waiting for input
+                    shlog_trace!("Command appears to be interactive (no new data for 2s, no prompt detected)");
                     break;
                 }
             }
@@ -744,10 +865,8 @@ pub struct SendInputShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    // NOTE: Timeout parameter is declared for API compatibility with SSH module
-    // but is not currently used in the implementation. Actual timeout is hardcoded
-    // to SENDINPUT_MAX_ITERATIONS * ITERATION_SLEEP_MS (3 seconds).
-    // TODO: Implement actual timeout logic using this parameter.
+    // Timeout for reading response after sending input, in seconds
+    // The implementation uses 10 iterations per second (ITERATION_SLEEP_MS = 100ms)
     #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -807,6 +926,11 @@ impl BlockingShard for SendInputShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
+        // Get timeout parameter and calculate max iterations
+        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
+        let timeout_secs = if timeout_secs <= 0 { 10 } else { timeout_secs };  // Default to 10s if invalid
+        let max_iterations = (timeout_secs as usize) * 10;  // 10 iterations per second
+
         // Extract local shell object
         let local_shell = unsafe {
             Var::from_ref_counted_object::<LocalShellSession>(&session_var, &*LOCAL_SHELL_TYPE)?
@@ -824,8 +948,13 @@ impl BlockingShard for SendInputShard {
 
         // Check if there's a pending interactive command
         {
-            let pending = local_shell.pending_interactive.lock()
-                .map_err(|_| "Interactive state lock poisoned")?;
+            let pending = match local_shell.pending_interactive.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "interactive lock poisoned in SendInput");
+                    return Err("Interactive state lock poisoned");
+                }
+            };
             if pending.is_none() {
                 return Err("No interactive command is pending");
             }
@@ -833,8 +962,13 @@ impl BlockingShard for SendInputShard {
 
         // Note current buffer position before sending input
         let start_buffer_size = {
-            let shared_buffer = local_shell.output_buffer.lock()
-                .map_err(|_| "Buffer lock poisoned")?;
+            let shared_buffer = match local_shell.output_buffer.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "buffer lock poisoned in SendInput");
+                    return Err("Buffer lock poisoned");
+                }
+            };
             shared_buffer.len()
         };
 
@@ -842,8 +976,13 @@ impl BlockingShard for SendInputShard {
         if !input_str.is_empty() {
             let input_with_newline = format!("{}\n", input_str);
             shlog_trace!("SendInput: Writing {} bytes: {:?}", input_with_newline.len(), input_with_newline);
-            let mut writer = local_shell.writer.lock()
-                .map_err(|_| "Writer lock poisoned")?;
+            let mut writer = match local_shell.writer.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_dead(local_shell, "writer lock poisoned in SendInput");
+                    return Err("Writer lock poisoned");
+                }
+            };
             writer.write_all(input_with_newline.as_bytes())
                 .map_err(|_| "Failed to write input to interactive command (IO error)")?;
             writer.flush()
@@ -860,24 +999,26 @@ impl BlockingShard for SendInputShard {
         let mut last_buffer_size = start_buffer_size;
         let mut was_truncated = false;
 
-        for iteration in 0..SENDINPUT_MAX_ITERATIONS {
-            // Read from shared buffer
-            let current_buffer_size = {
+        for iteration in 0..max_iterations {
+            // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
+            let new_data = {
                 let shared_buffer = local_shell.output_buffer.lock()
                     .map_err(|_| "Buffer lock poisoned")?;
-                shared_buffer.len()
+
+                // Only copy new data since last read
+                if shared_buffer.len() > last_buffer_size {
+                    shared_buffer[last_buffer_size..].to_vec()
+                } else {
+                    Vec::new()
+                }
             };
 
-            let bytes_read = current_buffer_size - last_buffer_size;
+            let bytes_read = new_data.len();
 
             if bytes_read > 0 {
-                // Copy new data from shared buffer
-                let shared_buffer = local_shell.output_buffer.lock()
-                    .map_err(|_| "Buffer lock poisoned")?;
-                output_buffer.extend_from_slice(&shared_buffer[last_buffer_size..]);
-                drop(shared_buffer);
-
-                last_buffer_size = current_buffer_size;
+                // Append new data to our local output buffer
+                output_buffer.extend_from_slice(&new_data);
+                last_buffer_size += bytes_read;
 
                 // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
