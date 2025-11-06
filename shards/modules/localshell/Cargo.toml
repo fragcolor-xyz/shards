@@ -14,5 +14,4 @@ lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 strip-ansi-escapes = "0.2"
-regex = "1.10"
 portable-pty = "0.8"

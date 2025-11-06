@@ -37,6 +37,20 @@ use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::time::Duration;
 
+// Configuration constants
+// These match the SSH module's patterns and timeouts
+const INITIAL_PROMPT_WAIT_MS: u64 = 500;
+const INITIAL_PROMPT_MAX_RETRIES: usize = 10;
+const READER_THREAD_TIMEOUT_MS: u64 = 50;
+const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
+const COMMAND_MAX_ITERATIONS: usize = 50;
+const INTERACTIVE_DETECTION_ITERATIONS: usize = 20; // 20 * 100ms = 2 seconds
+const ITERATION_SLEEP_MS: u64 = 100;
+const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
+const SENDINPUT_MAX_ITERATIONS: usize = 30;
+const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
+const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
+
 // LocalShell session object wrapper
 mod local_shell {
     use super::*;
@@ -301,12 +315,12 @@ impl BlockingShard for CreateShard {
         let writer_arc = Arc::new(Mutex::new(writer));
 
         // Wait for initial prompt
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(INITIAL_PROMPT_WAIT_MS));
 
         let mut output_buffer = Vec::new();
         let mut temp_buf = [0u8; 4096];
 
-        for _ in 0..10 {
+        for _ in 0..INITIAL_PROMPT_MAX_RETRIES {
             let (tx, rx) = channel();
             let reader_clone = Arc::clone(&reader_arc);
 
@@ -320,7 +334,7 @@ impl BlockingShard for CreateShard {
                 }
             });
 
-            match rx.recv_timeout(Duration::from_millis(100)) {
+            match rx.recv_timeout(Duration::from_millis(ITERATION_SLEEP_MS)) {
                 Ok((n, buf)) if n > 0 => {
                     output_buffer.extend_from_slice(&buf[..n]);
                     let output_str = String::from_utf8_lossy(&output_buffer);
@@ -330,7 +344,7 @@ impl BlockingShard for CreateShard {
                 }
                 _ => {}
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         shlog_trace!("Shell ready");
@@ -356,37 +370,68 @@ impl BlockingShard for CreateShard {
                         shlog_trace!("Reader thread exiting");
                         break;
                     }
+                    Err(e) => {
+                        shlog_trace!("Reader thread: alive lock poisoned: {}", e);
+                        break;
+                    }
                     _ => {}
                 }
 
                 // Read from PTY (this will block until data is available)
-                if let Ok(mut reader) = reader_clone.lock() {
-                    match reader.read(&mut buf) {
-                        Ok(n) if n > 0 => {
-                            // Append to shared buffer
-                            if let Ok(mut buffer) = buffer_clone.lock() {
-                                buffer.extend_from_slice(&buf[..n]);
-                                shlog_trace!("Reader thread: read {} bytes, buffer now {} bytes", n, buffer.len());
+                match reader_clone.lock() {
+                    Ok(mut reader) => {
+                        match reader.read(&mut buf) {
+                            Ok(n) if n > 0 => {
+                                // Append to shared buffer with truncation
+                                match buffer_clone.lock() {
+                                    Ok(mut buffer) => {
+                                        buffer.extend_from_slice(&buf[..n]);
+
+                                        // Truncate buffer if it exceeds max size
+                                        if buffer.len() > MAX_BUFFER_BYTES {
+                                            if truncate_to_tail(&mut buffer, MAX_BUFFER_BYTES) {
+                                                shlog_trace!("Reader thread: buffer truncated to {} bytes", buffer.len());
+                                            }
+                                        }
+
+                                        shlog_trace!("Reader thread: read {} bytes, buffer now {} bytes", n, buffer.len());
+                                    }
+                                    Err(e) => {
+                                        shlog_trace!("Reader thread: buffer lock poisoned: {}", e);
+                                        break;
+                                    }
+                                }
                             }
-                        }
-                        Ok(_) => {
-                            // EOF - process died
-                            if let Ok(mut alive) = alive_clone.lock() {
-                                *alive = false;
+                            Ok(_) => {
+                                // EOF - process died
+                                match alive_clone.lock() {
+                                    Ok(mut alive) => {
+                                        *alive = false;
+                                    }
+                                    Err(e) => {
+                                        shlog_trace!("Reader thread: alive lock poisoned on EOF: {}", e);
+                                    }
+                                }
+                                break;
                             }
-                            break;
-                        }
-                        Err(e) => {
-                            shlog_trace!("Reader thread: read error: {}", e);
-                            if let Ok(mut alive) = alive_clone.lock() {
-                                *alive = false;
+                            Err(e) => {
+                                shlog_trace!("Reader thread: read error: {}", e);
+                                match alive_clone.lock() {
+                                    Ok(mut alive) => {
+                                        *alive = false;
+                                    }
+                                    Err(e) => {
+                                        shlog_trace!("Reader thread: alive lock poisoned on error: {}", e);
+                                    }
+                                }
+                                break;
                             }
-                            break;
                         }
                     }
-                } else {
-                    // Failed to lock reader
-                    break;
+                    Err(e) => {
+                        shlog_trace!("Reader thread: reader lock poisoned: {}", e);
+                        break;
+                    }
                 }
             }
             shlog_trace!("Reader thread finished");
@@ -425,6 +470,10 @@ pub struct ExecuteShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
+    // NOTE: Timeout parameter is declared for API compatibility with SSH module
+    // but is not currently used in the implementation. Actual timeout is hardcoded
+    // to COMMAND_MAX_ITERATIONS * ITERATION_SLEEP_MS (5 seconds).
+    // TODO: Implement actual timeout logic using this parameter.
     #[shard_param("Timeout", "Command timeout in seconds (default: 30)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -512,31 +561,20 @@ impl BlockingShard for ExecuteShard {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
 
                 // Send Ctrl+C to cancel the interactive command
+                // Writer lock is released immediately after write to avoid blocking
                 {
                     let mut writer = local_shell.writer.lock()
                         .map_err(|_| "Writer lock poisoned")?;
                     let _ = writer.write_all(&[3]);
                     let _ = writer.flush();
-                }
+                } // Writer lock released here
 
                 // Give the shell time to process Ctrl+C
+                // Any response will be read by the reader thread into the shared buffer
                 std::thread::sleep(Duration::from_millis(300));
 
-                // Drain any Ctrl+C response
-                {
-                    let mut reader = local_shell.reader.lock()
-                        .map_err(|_| "Reader lock poisoned")?;
-                    let mut drain_buf = [0u8; 4096];
-                    for _ in 0..5 {
-                        match reader.read(&mut drain_buf) {
-                            Ok(n) if n > 0 => {
-                                shlog_trace!("Drained {} bytes after Ctrl+C", n);
-                            }
-                            _ => break,
-                        }
-                        std::thread::sleep(Duration::from_millis(100));
-                    }
-                }
+                // Note: We don't need to drain the response - the shared buffer will be
+                // cleared before the next command anyway, and the reader thread handles all reads
 
                 *pending = None;
             }
@@ -556,25 +594,24 @@ impl BlockingShard for ExecuteShard {
             let mut writer = local_shell.writer.lock()
                 .map_err(|_| "Writer lock poisoned")?;
             writer.write_all(cmd_with_newline.as_bytes())
-                .map_err(|_| "Failed to write command")?;
+                .map_err(|_| "Failed to write command to shell (IO error)")?;
             writer.flush()
-                .map_err(|_| "Failed to flush writer")?;
+                .map_err(|_| "Failed to flush command writer (IO error)")?;
         }
 
         // Read output from shared buffer with timeout-based prompt detection
         let mut output_buffer = Vec::new();
         let mut last_buffer_size = 0;
         let mut no_data_count = 0;
-        let max_iterations = 50; // 5 seconds total (50 * 100ms)
         let mut prompt_detected = false;
         let mut was_truncated = false;
 
         shlog_trace!("Starting to read command output from shared buffer");
 
         // Give shell time to process command
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(COMMAND_OUTPUT_WAIT_MS));
 
-        for iteration in 0..max_iterations {
+        for iteration in 0..COMMAND_MAX_ITERATIONS {
             // Read from shared buffer
             let current_buffer_size = {
                 let shared_buffer = local_shell.output_buffer.lock()
@@ -626,7 +663,7 @@ impl BlockingShard for ExecuteShard {
                 );
 
                 // Only consider interactive if we have output AND consistent no-data period
-                if no_data_count >= 20 && !output_buffer.is_empty() && iteration >= 10 {
+                if no_data_count >= INTERACTIVE_DETECTION_ITERATIONS && !output_buffer.is_empty() && iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 {
                     // Check one more time if there's a prompt we might have missed
                     let output_str = String::from_utf8_lossy(&output_buffer);
                     if is_prompt(&output_str) {
@@ -639,7 +676,7 @@ impl BlockingShard for ExecuteShard {
                     break;
                 }
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         // Determine status and prepare output
@@ -707,6 +744,10 @@ pub struct SendInputShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
+    // NOTE: Timeout parameter is declared for API compatibility with SSH module
+    // but is not currently used in the implementation. Actual timeout is hardcoded
+    // to SENDINPUT_MAX_ITERATIONS * ITERATION_SLEEP_MS (3 seconds).
+    // TODO: Implement actual timeout logic using this parameter.
     #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -804,14 +845,14 @@ impl BlockingShard for SendInputShard {
             let mut writer = local_shell.writer.lock()
                 .map_err(|_| "Writer lock poisoned")?;
             writer.write_all(input_with_newline.as_bytes())
-                .map_err(|_| "Failed to write input")?;
+                .map_err(|_| "Failed to write input to interactive command (IO error)")?;
             writer.flush()
-                .map_err(|_| "Failed to flush writer")?;
+                .map_err(|_| "Failed to flush input writer (IO error)")?;
             shlog_trace!("SendInput: Write and flush succeeded");
         }
 
         // Wait for output - give shell time to process input
-        std::thread::sleep(Duration::from_millis(500));
+        std::thread::sleep(Duration::from_millis(SENDINPUT_INITIAL_WAIT_MS));
         shlog_trace!("SendInput: Starting to read output after input (starting from byte {})", start_buffer_size);
 
         // Read output from shared buffer
@@ -819,7 +860,7 @@ impl BlockingShard for SendInputShard {
         let mut last_buffer_size = start_buffer_size;
         let mut was_truncated = false;
 
-        for iteration in 0..30 {  // 3 seconds total (30 * 100ms)
+        for iteration in 0..SENDINPUT_MAX_ITERATIONS {
             // Read from shared buffer
             let current_buffer_size = {
                 let shared_buffer = local_shell.output_buffer.lock()
@@ -855,7 +896,7 @@ impl BlockingShard for SendInputShard {
             } else {
                 shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}", iteration, output_buffer.len());
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         shlog_trace!("SendInput: Finished reading, total output: {} bytes", output_buffer.len());
