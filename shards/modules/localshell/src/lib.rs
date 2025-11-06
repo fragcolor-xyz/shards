@@ -47,6 +47,8 @@ mod local_shell {
         pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
         pub is_alive: Arc<Mutex<bool>>,
+        pub output_buffer: Arc<Mutex<Vec<u8>>>,
+        pub reader_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     }
 
     #[derive(Clone)]
@@ -58,9 +60,17 @@ mod local_shell {
         fn drop(&mut self) {
             shlog_trace!("Dropping LocalShellSession, cleaning up");
 
-            // Mark as not alive
+            // Mark as not alive (this will signal the reader thread to exit)
             if let Ok(mut is_alive) = self.is_alive.lock() {
                 *is_alive = false;
+            }
+
+            // Wait for reader thread to finish
+            if let Ok(mut thread_opt) = self.reader_thread.lock() {
+                if let Some(thread) = thread_opt.take() {
+                    shlog_trace!("Waiting for reader thread to finish");
+                    let _ = thread.join();
+                }
             }
 
             // Close writer to signal shell to exit
@@ -326,13 +336,71 @@ impl BlockingShard for CreateShard {
         shlog_trace!("Shell ready");
         shlog_trace!("Local shell created successfully");
 
+        // Create shared output buffer
+        let output_buffer = Arc::new(Mutex::new(Vec::new()));
+        let is_alive = Arc::new(Mutex::new(true));
+
+        // Start reader thread
+        let reader_clone = Arc::clone(&reader_arc);
+        let buffer_clone = Arc::clone(&output_buffer);
+        let alive_clone = Arc::clone(&is_alive);
+
+        let reader_thread = std::thread::spawn(move || {
+            shlog_trace!("Reader thread started");
+            let mut buf = [0u8; 4096];
+
+            loop {
+                // Check if we should exit (non-blocking check)
+                match alive_clone.lock() {
+                    Ok(alive) if !*alive => {
+                        shlog_trace!("Reader thread exiting");
+                        break;
+                    }
+                    _ => {}
+                }
+
+                // Read from PTY (this will block until data is available)
+                if let Ok(mut reader) = reader_clone.lock() {
+                    match reader.read(&mut buf) {
+                        Ok(n) if n > 0 => {
+                            // Append to shared buffer
+                            if let Ok(mut buffer) = buffer_clone.lock() {
+                                buffer.extend_from_slice(&buf[..n]);
+                                shlog_trace!("Reader thread: read {} bytes, buffer now {} bytes", n, buffer.len());
+                            }
+                        }
+                        Ok(_) => {
+                            // EOF - process died
+                            if let Ok(mut alive) = alive_clone.lock() {
+                                *alive = false;
+                            }
+                            break;
+                        }
+                        Err(e) => {
+                            shlog_trace!("Reader thread: read error: {}", e);
+                            if let Ok(mut alive) = alive_clone.lock() {
+                                *alive = false;
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    // Failed to lock reader
+                    break;
+                }
+            }
+            shlog_trace!("Reader thread finished");
+        });
+
         // Create LocalShellSession object
         let local_shell = LocalShellSession {
             pair: Arc::new(Mutex::new(pair)),
             reader: reader_arc,
             writer: writer_arc,
             pending_interactive: Arc::new(Mutex::new(None)),
-            is_alive: Arc::new(Mutex::new(true)),
+            is_alive,
+            output_buffer,
+            reader_thread: Arc::new(Mutex::new(Some(reader_thread))),
         };
 
         let shell_var = Var::new_ref_counted(local_shell, &*LOCAL_SHELL_TYPE);
@@ -474,6 +542,14 @@ impl BlockingShard for ExecuteShard {
             }
         }
 
+        // Clear shared buffer before sending command
+        {
+            let mut shared_buffer = local_shell.output_buffer.lock()
+                .map_err(|_| "Buffer lock poisoned")?;
+            shared_buffer.clear();
+            shlog_trace!("Cleared shared buffer before command");
+        }
+
         // Send command
         let cmd_with_newline = format!("{}\n", cmd);
         {
@@ -485,45 +561,37 @@ impl BlockingShard for ExecuteShard {
                 .map_err(|_| "Failed to flush writer")?;
         }
 
-        // Read output with timeout-based prompt detection
+        // Read output from shared buffer with timeout-based prompt detection
         let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
+        let mut last_buffer_size = 0;
         let mut no_data_count = 0;
         let max_iterations = 50; // 5 seconds total (50 * 100ms)
         let mut prompt_detected = false;
         let mut was_truncated = false;
 
-        shlog_trace!("Starting to read command output");
+        shlog_trace!("Starting to read command output from shared buffer");
 
         // Give shell time to process command
         std::thread::sleep(Duration::from_millis(200));
 
         for iteration in 0..max_iterations {
-            // Try to read with timeout to avoid blocking forever
-            let (tx, rx) = channel();
-            let reader_clone = Arc::clone(&local_shell.reader);
-
-            std::thread::spawn(move || {
-                if let Ok(mut reader) = reader_clone.lock() {
-                    let mut buf = [0u8; 4096];
-                    match reader.read(&mut buf) {
-                        Ok(n) => { let _ = tx.send((n, buf)); }
-                        Err(_) => { let _ = tx.send((0, buf)); }
-                    }
-                }
-            });
-
-            // Wait up to 100ms for the read to complete
-            let bytes_read = match rx.recv_timeout(Duration::from_millis(100)) {
-                Ok((n, buf)) if n > 0 => {
-                    temp_buf[..n].copy_from_slice(&buf[..n]);
-                    n
-                }
-                Ok(_) | Err(_) => 0,
+            // Read from shared buffer
+            let current_buffer_size = {
+                let shared_buffer = local_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                shared_buffer.len()
             };
 
+            let bytes_read = current_buffer_size - last_buffer_size;
+
             if bytes_read > 0 {
-                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+                // Copy new data from shared buffer
+                let shared_buffer = local_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                output_buffer.extend_from_slice(&shared_buffer[last_buffer_size..]);
+                drop(shared_buffer);
+
+                last_buffer_size = current_buffer_size;
 
                 // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
@@ -722,60 +790,75 @@ impl BlockingShard for SendInputShard {
             }
         }
 
+        // Note current buffer position before sending input
+        let start_buffer_size = {
+            let shared_buffer = local_shell.output_buffer.lock()
+                .map_err(|_| "Buffer lock poisoned")?;
+            shared_buffer.len()
+        };
+
         // Send input (if not empty)
         if !input_str.is_empty() {
             let input_with_newline = format!("{}\n", input_str);
+            shlog_trace!("SendInput: Writing {} bytes: {:?}", input_with_newline.len(), input_with_newline);
             let mut writer = local_shell.writer.lock()
                 .map_err(|_| "Writer lock poisoned")?;
             writer.write_all(input_with_newline.as_bytes())
                 .map_err(|_| "Failed to write input")?;
             writer.flush()
                 .map_err(|_| "Failed to flush writer")?;
+            shlog_trace!("SendInput: Write and flush succeeded");
         }
 
         // Wait for output - give shell time to process input
-        std::thread::sleep(Duration::from_millis(1000));
+        std::thread::sleep(Duration::from_millis(500));
+        shlog_trace!("SendInput: Starting to read output after input (starting from byte {})", start_buffer_size);
 
-        // Read output
+        // Read output from shared buffer
         let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
+        let mut last_buffer_size = start_buffer_size;
         let mut was_truncated = false;
 
-        for _ in 0..30 {  // Increased from 10 to 30 (3 seconds total)
-            // Try to read with timeout to avoid blocking forever
-            let (tx, rx) = channel();
-            let reader_clone = Arc::clone(&local_shell.reader);
-
-            std::thread::spawn(move || {
-                if let Ok(mut reader) = reader_clone.lock() {
-                    let mut buf = [0u8; 4096];
-                    match reader.read(&mut buf) {
-                        Ok(n) => { let _ = tx.send((n, buf)); }
-                        Err(_) => { let _ = tx.send((0, buf)); }
-                    }
-                }
-            });
-
-            // Wait up to 100ms for the read to complete
-            let bytes_read = match rx.recv_timeout(Duration::from_millis(100)) {
-                Ok((n, buf)) if n > 0 => {
-                    temp_buf[..n].copy_from_slice(&buf[..n]);
-                    n
-                }
-                Ok(_) | Err(_) => 0,
+        for iteration in 0..30 {  // 3 seconds total (30 * 100ms)
+            // Read from shared buffer
+            let current_buffer_size = {
+                let shared_buffer = local_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                shared_buffer.len()
             };
 
+            let bytes_read = current_buffer_size - last_buffer_size;
+
             if bytes_read > 0 {
-                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+                // Copy new data from shared buffer
+                let shared_buffer = local_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                output_buffer.extend_from_slice(&shared_buffer[last_buffer_size..]);
+                drop(shared_buffer);
+
+                last_buffer_size = current_buffer_size;
 
                 // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
                     was_truncated = true;
                     shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
                 }
+
+                let output_str = String::from_utf8_lossy(&output_buffer);
+                shlog_trace!(
+                    "SendInput: Read {} bytes (iteration {}), buffer size: {}, content: {:?}",
+                    bytes_read,
+                    iteration,
+                    output_buffer.len(),
+                    output_str
+                );
+            } else {
+                shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}", iteration, output_buffer.len());
             }
             std::thread::sleep(Duration::from_millis(100));
         }
+
+        shlog_trace!("SendInput: Finished reading, total output: {} bytes", output_buffer.len());
 
         // Check for prompt
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
