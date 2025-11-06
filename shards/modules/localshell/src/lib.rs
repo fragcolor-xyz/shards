@@ -63,6 +63,7 @@ mod local_shell {
         pub is_alive: Arc<Mutex<bool>>,
         pub output_buffer: Arc<Mutex<Vec<u8>>>,
         pub reader_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
+        pub child: Arc<Mutex<Option<Box<dyn portable_pty::Child + Send + Sync>>>>,
     }
 
     #[derive(Clone)]
@@ -74,22 +75,28 @@ mod local_shell {
         fn drop(&mut self) {
             shlog_trace!("Dropping LocalShellSession, cleaning up");
 
-            // Mark as not alive (this will signal the reader thread to exit)
+            // Mark as not alive (prevents new operations)
             if let Ok(mut is_alive) = self.is_alive.lock() {
                 *is_alive = false;
             }
 
+            // Kill the shell child process - this will close the PTY and wake up the reader thread
+            if let Ok(mut child_opt) = self.child.lock() {
+                if let Some(mut child) = child_opt.take() {
+                    shlog_trace!("Killing shell child process");
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+            }
+
+            // Now the reader thread should wake up (from EOF) and exit
             // Wait for reader thread to finish
             if let Ok(mut thread_opt) = self.reader_thread.lock() {
                 if let Some(thread) = thread_opt.take() {
                     shlog_trace!("Waiting for reader thread to finish");
                     let _ = thread.join();
+                    shlog_trace!("Reader thread joined successfully");
                 }
-            }
-
-            // Close writer to signal shell to exit
-            if let Ok(mut writer) = self.writer.lock() {
-                let _ = writer.flush();
             }
 
             shlog_trace!("LocalShellSession cleanup complete");
@@ -368,8 +375,8 @@ impl BlockingShard for CreateShard {
             }
         }
 
-        // Spawn the child process
-        let _child = pair
+        // Spawn the child process and store it for cleanup
+        let child = pair
             .slave
             .spawn_command(cmd)
             .map_err(|_| "Failed to spawn shell")?;
@@ -517,6 +524,7 @@ impl BlockingShard for CreateShard {
             is_alive,
             output_buffer,
             reader_thread: Arc::new(Mutex::new(Some(reader_thread))),
+            child: Arc::new(Mutex::new(Some(child))),
         };
 
         let shell_var = Var::new_ref_counted(local_shell, &*LOCAL_SHELL_TYPE);
