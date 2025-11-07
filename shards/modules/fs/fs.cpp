@@ -84,83 +84,6 @@ static void validateBasePath(const fs::path &path, const fs::path &basePath) {
   SHLOG_TRACE("validateBasePath: path is within basePath");
 }
 
-struct Iterate {
-  SHSeq _storage = {};
-  std::vector<std::string> _strings;
-
-  void destroy() {
-    if (_storage.elements) {
-      shards::arrayFree(_storage);
-    }
-  }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringSeqType; }
-
-  bool _recursive = true;
-
-  static inline ParamsInfo params = ParamsInfo(ParamsInfo::Param(
-      "Recursive", SHCCSTR("If the iteration should be recursive, following sub-directories."), CoreInfo::BoolType));
-  static SHParametersInfo parameters() { return SHParametersInfo(params); }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _recursive = bool(Var(value));
-      break;
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var(_recursive);
-    default:
-      return Var::Empty;
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    shards::arrayResize(_storage, 0);
-    _strings.clear();
-
-    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
-
-    if (!fs::exists(p)) {
-      throw ActivationError(fmt::format("FS.Iterate, path {} does not exist.", p));
-    }
-
-    if (_recursive) {
-      auto dIterator = fs::recursive_directory_iterator(p);
-      for (auto &subP : dIterator) {
-        auto &path = subP.path();
-        auto str = path.string();
-#ifdef _WIN32
-        boost::replace_all(str, "\\", "/");
-#endif
-        _strings.push_back(str);
-      }
-    } else {
-      auto dIterator = fs::directory_iterator(p);
-      for (auto &subP : dIterator) {
-        auto &path = subP.path();
-        auto str = path.string();
-#ifdef _WIN32
-        boost::replace_all(str, "\\", "/");
-#endif
-        _strings.push_back(str);
-      }
-    }
-
-    shards::arrayResize(_storage, 0);
-    for (auto &sRef : _strings) {
-      shards::arrayPush(_storage, Var(sRef));
-    }
-
-    return Var(_storage);
-  }
-};
-
 struct Join {
   fs::path _buffer;
   std::string _result;
@@ -1037,7 +960,6 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_ENUM(Copy::IfExistsEnumInfo);
 
   REGISTER_SHARD("FS.Join", Join);
-  REGISTER_SHARD("FS.Iterate", Iterate);
   REGISTER_SHARD("FS.Extension", Extension);
   REGISTER_SHARD("FS.ReplaceExtension", ReplaceExtension);
   REGISTER_SHARD("FS.Filename", Filename);
