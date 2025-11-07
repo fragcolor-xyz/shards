@@ -20,11 +20,33 @@ check-ci:
 
 # configure cmake in build/Debug
 configure:
-  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug
+  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug > /dev/null
 
 # build shards (configures first if needed)
 build: configure
   cmake --build build/Debug --target shards
+
+# build shards with filtered output (shows only errors and critical warnings)
+build-quiet: configure
+  #!/bin/bash
+  set -o pipefail
+  cmake --build build/Debug --target shards 2>&1 | \
+    grep -v "^warning:" | \
+    grep -v "^\[.*\].*\.o$" | \
+    grep -v "^   Compiling" | \
+    grep -v "^    Checking" | \
+    grep -v "^     Finished" | \
+    tee /tmp/shards-build.log || \
+    (echo "Build failed. Full log: /tmp/shards-build.log" && tail -50 /tmp/shards-build.log && false)
+
+# check just the rust union compilation
+check-rust: configure
+  #!/bin/bash
+  export CARGO_TARGET_DIR=`pwd`/../tmp/rust-target
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
+  export CRSQLITE_COMMIT_SHA=shards-dev
+  cd build/Debug/src/union/shards-rust-union
+  cargo check 2>&1 | grep -E "(error|localshell)" || echo "✓ Rust check passed"
 
 [no-cd]
 cargo-check:
