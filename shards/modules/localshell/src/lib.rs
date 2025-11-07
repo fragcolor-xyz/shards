@@ -34,6 +34,7 @@ use shards::types::BOOL_TYPES;
 use portable_pty::{CommandBuilder, PtySize};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -55,12 +56,20 @@ const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid
 mod local_shell {
     use super::*;
 
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum SessionState {
+        Running,
+        ProcessDied,
+        Corrupted(String),
+    }
+
     pub struct LocalShellSession {
         pub pair: Arc<Mutex<Option<portable_pty::PtyPair>>>,
         pub reader: Arc<Mutex<Box<dyn Read + Send>>>,
         pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
-        pub is_alive: Arc<Mutex<bool>>,
+        pub is_alive: Arc<AtomicBool>,
+        pub state: Arc<Mutex<SessionState>>,
         pub output_buffer: Arc<Mutex<Vec<u8>>>,
         pub reader_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
         pub child: Arc<Mutex<Option<Box<dyn portable_pty::Child + Send + Sync>>>>,
@@ -76,9 +85,7 @@ mod local_shell {
             shlog_trace!("Dropping LocalShellSession, cleaning up");
 
             // Step 1: Mark as not alive (prevents new operations)
-            if let Ok(mut is_alive) = self.is_alive.lock() {
-                *is_alive = false;
-            }
+            self.is_alive.store(false, Ordering::Release);
 
             // Step 2: Kill the shell child process
             if let Ok(mut child_opt) = self.child.lock() {
@@ -215,12 +222,13 @@ fn is_interactive_prompt(text: &str) -> bool {
     false
 }
 
-// Helper function to mark session as dead after encountering a critical error (like lock poisoning)
-fn mark_session_dead(local_shell: &LocalShellSession, error_context: &str) {
-    shlog_error!("Critical error in LocalShell ({}), marking session as dead", error_context);
-    // Try to set is_alive = false, but if the lock is poisoned, we can't do much
-    if let Ok(mut alive) = local_shell.is_alive.lock() {
-        *alive = false;
+// Helper function to mark session as corrupted after encountering a critical error (like lock poisoning)
+fn mark_session_corrupted(local_shell: &LocalShellSession, error_context: &str) {
+    shlog_error!("Critical error in LocalShell ({}), marking session as corrupted", error_context);
+    local_shell.is_alive.store(false, Ordering::Release);
+    // Try to set state, but if the lock is poisoned, is_alive=false is enough
+    if let Ok(mut state) = local_shell.state.lock() {
+        *state = SessionState::Corrupted(error_context.to_string());
     }
 }
 
@@ -458,9 +466,10 @@ impl BlockingShard for CreateShard {
         shlog_trace!("Shell ready");
         shlog_trace!("Local shell created successfully");
 
-        // Create shared output buffer
+        // Create shared output buffer and state
         let output_buffer = Arc::new(Mutex::new(Vec::new()));
-        let is_alive = Arc::new(Mutex::new(true));
+        let is_alive = Arc::new(AtomicBool::new(true));
+        let state = Arc::new(Mutex::new(SessionState::Running));
 
         // Start reader thread
         let reader_clone = Arc::clone(&reader_arc);
@@ -472,17 +481,10 @@ impl BlockingShard for CreateShard {
             let mut buf = [0u8; 4096];
 
             loop {
-                // Check if we should exit (non-blocking check)
-                match alive_clone.lock() {
-                    Ok(alive) if !*alive => {
-                        shlog_trace!("Reader thread exiting");
-                        break;
-                    }
-                    Err(e) => {
-                        shlog_trace!("Reader thread: alive lock poisoned: {}", e);
-                        break;
-                    }
-                    _ => {}
+                // Check if we should exit (lock-free atomic check)
+                if !alive_clone.load(Ordering::Acquire) {
+                    shlog_trace!("Reader thread exiting");
+                    break;
                 }
 
                 // Read from PTY (this will block until data is available)
@@ -513,26 +515,14 @@ impl BlockingShard for CreateShard {
                             }
                             Ok(_) => {
                                 // EOF - process died
-                                match alive_clone.lock() {
-                                    Ok(mut alive) => {
-                                        *alive = false;
-                                    }
-                                    Err(e) => {
-                                        shlog_trace!("Reader thread: alive lock poisoned on EOF: {}", e);
-                                    }
-                                }
+                                alive_clone.store(false, Ordering::Release);
+                                shlog_trace!("Reader thread: EOF detected, process died");
                                 break;
                             }
                             Err(e) => {
+                                // Read error - process died or FD closed
+                                alive_clone.store(false, Ordering::Release);
                                 shlog_trace!("Reader thread: read error: {}", e);
-                                match alive_clone.lock() {
-                                    Ok(mut alive) => {
-                                        *alive = false;
-                                    }
-                                    Err(e) => {
-                                        shlog_trace!("Reader thread: alive lock poisoned on error: {}", e);
-                                    }
-                                }
                                 break;
                             }
                         }
@@ -553,6 +543,7 @@ impl BlockingShard for CreateShard {
             writer: writer_arc,
             pending_interactive: Arc::new(Mutex::new(None)),
             is_alive,
+            state,
             output_buffer,
             reader_thread: Arc::new(Mutex::new(Some(reader_thread))),
             child: Arc::new(Mutex::new(Some(child))),
@@ -659,11 +650,20 @@ impl BlockingShard for ExecuteShard {
         let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
 
         // Check if shell is still alive
-        {
-            let is_alive = local_shell.is_alive.lock()
-                .map_err(|_| "Alive state lock poisoned")?;
-            if !*is_alive {
-                return Err("Local shell process has exited");
+        if !local_shell.is_alive.load(Ordering::Acquire) {
+            // Check state to provide better error message
+            if let Ok(state) = local_shell.state.lock() {
+                return Err(match *state {
+                    SessionState::ProcessDied => "Local shell process has exited",
+                    SessionState::Corrupted(ref reason) => {
+                        shlog_error!("Session corrupted: {}", reason);
+                        "Local shell session corrupted due to internal error"
+                    },
+                    SessionState::Running => "Local shell is not alive (unexpected state)",
+                });
+            } else {
+                // State lock is poisoned too
+                return Err("Local shell session corrupted (state lock poisoned)");
             }
         }
 
@@ -672,7 +672,7 @@ impl BlockingShard for ExecuteShard {
             let mut pending = match local_shell.pending_interactive.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "interactive lock poisoned in Execute");
+                    mark_session_corrupted(local_shell, "interactive lock poisoned in Execute");
                     return Err("Interactive state lock poisoned");
                 }
             };
@@ -685,7 +685,7 @@ impl BlockingShard for ExecuteShard {
                     let mut writer = match local_shell.writer.lock() {
                         Ok(guard) => guard,
                         Err(_) => {
-                            mark_session_dead(local_shell, "writer lock poisoned in Execute");
+                            mark_session_corrupted(local_shell, "writer lock poisoned in Execute");
                             return Err("Writer lock poisoned");
                         }
                     };
@@ -709,7 +709,7 @@ impl BlockingShard for ExecuteShard {
             let mut shared_buffer = match local_shell.output_buffer.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "buffer lock poisoned before command");
+                    mark_session_corrupted(local_shell, "buffer lock poisoned before command");
                     return Err("Buffer lock poisoned");
                 }
             };
@@ -723,7 +723,7 @@ impl BlockingShard for ExecuteShard {
             let mut writer = match local_shell.writer.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "writer lock poisoned sending command");
+                    mark_session_corrupted(local_shell, "writer lock poisoned sending command");
                     return Err("Writer lock poisoned");
                 }
             };
@@ -977,11 +977,20 @@ impl BlockingShard for SendInputShard {
         let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
 
         // Check if shell is still alive
-        {
-            let is_alive = local_shell.is_alive.lock()
-                .map_err(|_| "Alive state lock poisoned")?;
-            if !*is_alive {
-                return Err("Local shell process has exited");
+        if !local_shell.is_alive.load(Ordering::Acquire) {
+            // Check state to provide better error message
+            if let Ok(state) = local_shell.state.lock() {
+                return Err(match *state {
+                    SessionState::ProcessDied => "Local shell process has exited",
+                    SessionState::Corrupted(ref reason) => {
+                        shlog_error!("Session corrupted: {}", reason);
+                        "Local shell session corrupted due to internal error"
+                    },
+                    SessionState::Running => "Local shell is not alive (unexpected state)",
+                });
+            } else {
+                // State lock is poisoned too
+                return Err("Local shell session corrupted (state lock poisoned)");
             }
         }
 
@@ -990,7 +999,7 @@ impl BlockingShard for SendInputShard {
             let pending = match local_shell.pending_interactive.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "interactive lock poisoned in SendInput");
+                    mark_session_corrupted(local_shell, "interactive lock poisoned in SendInput");
                     return Err("Interactive state lock poisoned");
                 }
             };
@@ -1004,7 +1013,7 @@ impl BlockingShard for SendInputShard {
             let shared_buffer = match local_shell.output_buffer.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "buffer lock poisoned in SendInput");
+                    mark_session_corrupted(local_shell, "buffer lock poisoned in SendInput");
                     return Err("Buffer lock poisoned");
                 }
             };
@@ -1018,7 +1027,7 @@ impl BlockingShard for SendInputShard {
             let mut writer = match local_shell.writer.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
-                    mark_session_dead(local_shell, "writer lock poisoned in SendInput");
+                    mark_session_corrupted(local_shell, "writer lock poisoned in SendInput");
                     return Err("Writer lock poisoned");
                 }
             };
@@ -1184,11 +1193,10 @@ impl Shard for IsAliveShard {
             unsafe { Var::from_ref_counted_object::<LocalShellSession>(&input, &*LOCAL_SHELL_TYPE)? };
         let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
 
-        // Check alive status flag
-        let is_alive = local_shell.is_alive.lock()
-            .map_err(|_| "Alive state lock poisoned")?;
+        // Check alive status flag (lock-free atomic read)
+        let is_alive = local_shell.is_alive.load(Ordering::Acquire);
 
-        self.output = (*is_alive).into();
+        self.output = is_alive.into();
         Ok(Some(self.output.0))
     }
 }
