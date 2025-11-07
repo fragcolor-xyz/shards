@@ -75,12 +75,12 @@ mod local_shell {
         fn drop(&mut self) {
             shlog_trace!("Dropping LocalShellSession, cleaning up");
 
-            // Mark as not alive (prevents new operations)
+            // Step 1: Mark as not alive (prevents new operations)
             if let Ok(mut is_alive) = self.is_alive.lock() {
                 *is_alive = false;
             }
 
-            // Kill the shell child process - this will close the PTY and wake up the reader thread
+            // Step 2: Kill the shell child process
             if let Ok(mut child_opt) = self.child.lock() {
                 if let Some(mut child) = child_opt.take() {
                     shlog_trace!("Killing shell child process");
@@ -89,13 +89,39 @@ mod local_shell {
                 }
             }
 
-            // Now the reader thread should wake up (from EOF) and exit
-            // Wait for reader thread to finish
+            // Step 3: Replace the reader with empty reader to close the PTY file descriptor
+            // This is critical on Linux where killing the child might not close the PTY
+            {
+                if let Ok(mut reader) = self.reader.lock() {
+                    *reader = Box::new(std::io::empty()) as Box<dyn Read + Send>;
+                    shlog_trace!("Reader replaced with empty reader, PTY file descriptor should be closed");
+                }
+            }
+
+            // Step 4: Wait for reader thread with timeout using thread handles
+            // This prevents hanging forever if something goes wrong
             if let Ok(mut thread_opt) = self.reader_thread.lock() {
                 if let Some(thread) = thread_opt.take() {
                     shlog_trace!("Waiting for reader thread to finish");
-                    let _ = thread.join();
-                    shlog_trace!("Reader thread joined successfully");
+
+                    // Give it 2 seconds to exit gracefully
+                    let mut finished = false;
+                    for _i in 0..20 {
+                        if thread.is_finished() {
+                            finished = true;
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(100));
+                    }
+
+                    if finished {
+                        let _ = thread.join();
+                        shlog_trace!("Reader thread joined successfully");
+                    } else {
+                        shlog_error!("Reader thread did not finish within timeout, leaving it detached (thread leak)");
+                        // Don't join - let it leak rather than hang forever
+                        // This is better than hanging the entire process
+                    }
                 }
             }
 
