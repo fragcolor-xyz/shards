@@ -56,7 +56,7 @@ mod local_shell {
     use super::*;
 
     pub struct LocalShellSession {
-        pub pair: Arc<Mutex<portable_pty::PtyPair>>,
+        pub pair: Arc<Mutex<Option<portable_pty::PtyPair>>>,
         pub reader: Arc<Mutex<Box<dyn Read + Send>>>,
         pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
@@ -89,17 +89,23 @@ mod local_shell {
                 }
             }
 
-            // Step 3: Replace the reader with empty reader to close the PTY file descriptor
-            // This is critical on Linux where killing the child might not close the PTY
-            {
-                if let Ok(mut reader) = self.reader.lock() {
-                    *reader = Box::new(std::io::empty()) as Box<dyn Read + Send>;
-                    shlog_trace!("Reader replaced with empty reader, PTY file descriptor should be closed");
+            // Step 3: CRITICAL - Drop the PTY pair to close file descriptors
+            // This MUST happen before we try to lock the reader, because:
+            // - The reader thread holds reader lock while blocked in read()
+            // - We can't get the lock while the thread is blocking
+            // - Dropping the pair closes the master PTY FD
+            // - This causes the blocking read() to return with EOF
+            // - Then the reader thread releases the lock and exits
+            if let Ok(mut pair_opt) = self.pair.lock() {
+                if let Some(pair) = pair_opt.take() {
+                    shlog_trace!("Dropping PTY pair to close file descriptors");
+                    drop(pair);
+                    shlog_trace!("PTY pair dropped");
                 }
             }
 
-            // Step 4: Wait for reader thread with timeout using thread handles
-            // This prevents hanging forever if something goes wrong
+            // Step 4: Wait for reader thread with timeout
+            // The thread should now exit quickly since the PTY FD is closed
             if let Ok(mut thread_opt) = self.reader_thread.lock() {
                 if let Some(thread) = thread_opt.take() {
                     shlog_trace!("Waiting for reader thread to finish");
@@ -120,7 +126,6 @@ mod local_shell {
                     } else {
                         shlog_error!("Reader thread did not finish within timeout, leaving it detached (thread leak)");
                         // Don't join - let it leak rather than hang forever
-                        // This is better than hanging the entire process
                     }
                 }
             }
@@ -543,7 +548,7 @@ impl BlockingShard for CreateShard {
 
         // Create LocalShellSession object
         let local_shell = LocalShellSession {
-            pair: Arc::new(Mutex::new(pair)),
+            pair: Arc::new(Mutex::new(Some(pair))),
             reader: reader_arc,
             writer: writer_arc,
             pending_interactive: Arc::new(Mutex::new(None)),
