@@ -396,7 +396,7 @@ struct IterateShard {
   )]
   follow_links: ClonedVar,
 
-  output: ClonedVar,
+  output: AutoSeqVar,
 }
 
 impl Default for IterateShard {
@@ -407,7 +407,7 @@ impl Default for IterateShard {
       use_ignore: ClonedVar(Var::from(false)),
       hidden: ClonedVar(Var::from(true)),
       follow_links: ClonedVar(Var::from(false)),
-      output: ClonedVar::default(),
+      output: AutoSeqVar::new(),
     }
   }
 }
@@ -445,12 +445,17 @@ impl Shard for IterateShard {
       return Err("FS.Iterate, path does not exist.");
     }
 
+    if !path.is_dir() {
+      return Err("FS.Iterate, path is not a directory.");
+    }
+
     let recursive: bool = (&self.recursive.0).try_into().unwrap_or(true);
     let use_ignore: bool = (&self.use_ignore.0).try_into().unwrap_or(false);
     let hidden: bool = (&self.hidden.0).try_into().unwrap_or(true);
     let follow_links: bool = (&self.follow_links.0).try_into().unwrap_or(false);
 
-    let mut paths = Vec::new();
+    // Clear output sequence for new results
+    self.output.0.clear();
 
     let mut builder = WalkBuilder::new(path);
 
@@ -504,7 +509,8 @@ impl Shard for IterateShard {
             path_str = path_str.replace("\\", "/");
           }
 
-          paths.push(path_str);
+          // Push directly to output sequence (more memory efficient than collecting into Vec first)
+          self.output.0.push(&Var::ephemeral_string(path_str.as_str()));
         }
         Err(e) => {
           // Log but continue - don't fail entire iteration for one bad entry
@@ -515,13 +521,7 @@ impl Shard for IterateShard {
       }
     }
 
-    // Convert Vec<String> to SHVar sequence
-    let vars: Vec<Var> = paths
-      .iter()
-      .map(|s| Var::ephemeral_string(s.as_str()))
-      .collect();
-    self.output.assign(&vars.as_slice().into());
-    Ok(Some(self.output.0))
+    Ok(Some(self.output.0 .0))
   }
 }
 
