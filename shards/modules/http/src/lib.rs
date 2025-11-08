@@ -23,7 +23,7 @@ use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::common_type;
-use shards::shard::{DynamicErrStr, push_error};
+use shards::shard::DynamicErrStr;
 
 use shards::types::AutoTableVar;
 use shards::types::ClonedVar;
@@ -52,6 +52,7 @@ use std::convert::TryInto;
 use std::collections::HashMap;
 
 use std::sync::{Arc, Mutex};
+use tokio_util::sync::CancellationToken;
 
 fn print_error(e: &dyn std::error::Error) {
   shlog_error!("Error: {}", e);
@@ -216,7 +217,7 @@ struct RequestBase {
   invalid_certs: bool,
   required: ExposedTypes,
   streaming: bool,
-  task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+  task_cancel: Option<CancellationToken>,
   global_client: Option<VarRef>,
 }
 
@@ -349,12 +350,9 @@ impl RequestBase {
 
   fn _cleanup(&mut self, ctx: Option<&Context>) {
     // Cancel any running task
-    if let Some(cancel) = &self.task_cancel {
-      if let Some(tx) = cancel.lock().unwrap().take() {
-        shlog_trace!("Cancelling HTTP task");
-        // Send cancellation signal - ignore error if receiver dropped
-        let _ = tx.send(());
-      }
+    if let Some(cancel_token) = &self.task_cancel {
+      shlog_trace!("Cancelling HTTP task");
+      cancel_token.cancel();
     }
     self.task_cancel = None;
 
@@ -394,19 +392,16 @@ impl RequestBase {
     let full_response = self.full_response;
     let streaming = self.streaming;
 
-    // Create a cancellation token that we'll store
-    let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
-    let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
-    self.task_cancel = Some(cancellation.clone());
+    // Create a cancellation token that can be checked multiple times
+    let cancel_token = CancellationToken::new();
+    self.task_cancel = Some(cancel_token.clone());
+    let cancel_token_async = cancel_token.clone();
 
     let result = run_future(
       context,
       async move {
         let runtime = TOKIO_RUNTIME.clone();
         let request = request; // Capture request in the async block
-
-        // Setup cancellation receiver
-        let cancel_rx = cancel_rx;
 
         // Lock the runtime briefly to spawn the task
         let task: tokio::task::JoinHandle<Result<ClonedVar, String>> = {
@@ -417,7 +412,7 @@ impl RequestBase {
               resp = request.send() => resp.map_err(|e| {
                 format!("Request failed {:?}", e)
               })?,
-              _ = cancel_rx => return Err("Request cancelled".to_string())
+              _ = cancel_token_async.cancelled() => return Err("Request cancelled".to_string())
             };
 
             if !full_response && !response.status().is_success() {
@@ -516,16 +511,13 @@ impl RequestBase {
       },
       move || {
         shlog_debug!("Request cancelled");
-        // Cancel any running task
-        if let Some(tx) = cancellation.lock().unwrap().take() {
-          shlog_trace!("Cancelling HTTP task");
-          // Send cancellation signal - ignore error if receiver dropped
-          let _ = tx.send(());
-        }
+        // Cancel the token
+        cancel_token.cancel();
       },
     );
 
     if let Err(e) = result {
+      shlog_error!("HTTP request failed: {}", e);
       return Err(DynamicErrStr);
     }
     let result = result.unwrap();
@@ -929,7 +921,7 @@ struct HttpStreamShard {
   output: ClonedVar,
 
   // Add cancellation support
-  task_cancel: Option<Arc<Mutex<Option<tokio::sync::oneshot::Sender<()>>>>>,
+  task_cancel: Option<CancellationToken>,
 }
 
 impl Default for HttpStreamShard {
@@ -964,12 +956,9 @@ impl Shard for HttpStreamShard {
 
   fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
     // Cancel any running task
-    if let Some(cancel) = &self.task_cancel {
-      if let Some(tx) = cancel.lock().unwrap().take() {
-        shlog_trace!("Cancelling HTTP stream task");
-        // Send cancellation signal - ignore error if receiver dropped
-        let _ = tx.send(());
-      }
+    if let Some(cancel_token) = &self.task_cancel {
+      shlog_trace!("Cancelling HTTP stream task");
+      cancel_token.cancel();
     }
     self.task_cancel = None;
 
@@ -985,10 +974,10 @@ impl Shard for HttpStreamShard {
   fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &'static str> {
     let stream = *self.stream.get();
 
-    // Create a cancellation token that we'll store
-    let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
-    let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
-    self.task_cancel = Some(cancellation.clone());
+    // Create a cancellation token that can be checked multiple times
+    let cancel_token = CancellationToken::new();
+    self.task_cancel = Some(cancel_token.clone());
+    let cancel_token_async = cancel_token.clone();
 
     let result = run_future(
       context,
@@ -1006,12 +995,50 @@ impl Shard for HttpStreamShard {
               chunk = response.chunk() => chunk.map_err(|e| {
                 FastError::Dynamic(format!("{:?}", e))
               }),
-              _ = cancel_rx => return Err(FastError::Static("Stream read cancelled"))
+              _ = cancel_token_async.cancelled() => return Err(FastError::Static("Stream read cancelled"))
             };
 
             let bytes = bytes_result?;
-            if let Some(bytes) = bytes {
-              Ok(ClonedVar::new_bytes(&bytes))
+            if let Some(first_chunk) = bytes {
+              // Accumulate any additional chunks that are immediately available
+              let mut accumulated = first_chunk.to_vec();
+
+              // Try to read more chunks with zero timeout (non-blocking)
+              // Each iteration checks for cancellation
+              loop {
+                let chunk_result = tokio::select! {
+                  result = tokio::time::timeout(
+                    tokio::time::Duration::from_millis(0),
+                    response.chunk()
+                  ) => result,
+                  _ = cancel_token_async.cancelled() => return Err(FastError::Static("Stream read cancelled during accumulation"))
+                };
+
+                match chunk_result {
+                  Ok(Ok(Some(chunk))) => {
+                    accumulated.extend_from_slice(&chunk);
+                  }
+                  Ok(Ok(None)) => {
+                    // Stream ended
+                    break;
+                  }
+                  Ok(Err(e)) => {
+                    // I/O error during chunk read - return partial data accumulated so far
+                    // This is acceptable because:
+                    // 1. The stream interface expects partial/chunked data
+                    // 2. The first chunk was successfully read
+                    // 3. Subsequent activations will fail if the connection is broken
+                    shlog_warn!("Error reading chunk during accumulation: {:?}", e);
+                    break;
+                  }
+                  Err(_) => {
+                    // Timeout (nothing immediately available)
+                    break;
+                  }
+                }
+              }
+
+              Ok(ClonedVar::new_bytes(&accumulated))
             } else {
               Ok(ClonedVar::new_bytes(&[]))
             }
@@ -1022,18 +1049,15 @@ impl Shard for HttpStreamShard {
           FastError::Dynamic(e.to_string())
         })?
       },
-      || {
+      move || {
         shlog_debug!("Request cancelled");
-        // Cancel any running task
-        if let Some(tx) = cancellation.lock().unwrap().take() {
-          shlog_trace!("Cancelling HTTP task");
-          // Send cancellation signal - ignore error if receiver dropped
-          let _ = tx.send(());
-        }
+        // Cancel the token
+        cancel_token.cancel();
       },
     );
 
     if let Err(e) = result {
+      shlog_error!("HTTP stream read failed: {}", e);
       return Err(DynamicErrStr);
     }
     let result = result.unwrap();
