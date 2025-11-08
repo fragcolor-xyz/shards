@@ -23,7 +23,7 @@ use shards::fourCharacterCode;
 use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::types::common_type;
-use shards::shard::{DynamicErrStr, push_error};
+use shards::shard::DynamicErrStr;
 
 use shards::types::AutoTableVar;
 use shards::types::ClonedVar;
@@ -526,6 +526,7 @@ impl RequestBase {
     );
 
     if let Err(e) = result {
+      shlog_error!("HTTP request failed: {}", e);
       return Err(DynamicErrStr);
     }
     let result = result.unwrap();
@@ -1067,7 +1068,8 @@ impl Shard for HttpStreamShard {
       },
     );
 
-    if let Err(_e) = result {
+    if let Err(e) = result {
+      shlog_error!("HTTP stream read failed: {}", e);
       return Err(DynamicErrStr);
     }
     let result = result.unwrap();
