@@ -48,7 +48,7 @@ std::unordered_set<const SHWire *> &WireBase::gatheringWires() {
 void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableExposedInfo &shared) {
   SHLOG_TRACE("WireBase::verifyAlreadyComposed, source: {} composing: {} inputType: {}", data.wire ? data.wire->name : nullptr,
               wire->name, data.inputType);
-  // verify input type
+  // Verify input type compatibility
   // Special case: None input type accepts any input (wire doesn't use input)
   bool typeMatches = wire->inputType->basicType == SHType::None ||
                      matchTypes(data.inputType, wire->inputType, true, true, true);
