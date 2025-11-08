@@ -360,6 +360,171 @@ impl BlockingShard for SaveFileDialog {
   }
 }
 
+use ignore::WalkBuilder;
+
+#[derive(shards::shard)]
+#[shard_info("FS.Iterate", "Iterates files in a directory")]
+struct IterateShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param(
+    "Recursive",
+    "If the iteration should be recursive, following sub-directories.",
+    BOOL_TYPES_SLICE
+  )]
+  recursive: ClonedVar,
+
+  #[shard_param(
+    "UseIgnore",
+    "Whether to respect .ignore, .gitignore, and other VCS ignore files.",
+    BOOL_TYPES_SLICE
+  )]
+  use_ignore: ClonedVar,
+
+  #[shard_param(
+    "Hidden",
+    "Whether to include hidden files (files starting with .).",
+    BOOL_TYPES_SLICE
+  )]
+  hidden: ClonedVar,
+
+  #[shard_param(
+    "FollowLinks",
+    "Whether to follow symbolic links.",
+    BOOL_TYPES_SLICE
+  )]
+  follow_links: ClonedVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for IterateShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      recursive: ClonedVar(Var::from(true)),
+      use_ignore: ClonedVar(Var::from(false)),
+      hidden: ClonedVar(Var::from(true)),
+      follow_links: ClonedVar(Var::from(false)),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for IterateShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_STRINGS_TYPES
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &'static str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &'static str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &'static str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
+    let path_str: &str = input.try_into()?;
+    let path = std::path::Path::new(path_str);
+
+    if !path.exists() {
+      return Err("FS.Iterate, path does not exist.");
+    }
+
+    if !path.is_dir() {
+      return Err("FS.Iterate, path is not a directory.");
+    }
+
+    let recursive: bool = (&self.recursive.0).try_into().unwrap_or(true);
+    let use_ignore: bool = (&self.use_ignore.0).try_into().unwrap_or(false);
+    let hidden: bool = (&self.hidden.0).try_into().unwrap_or(true);
+    let follow_links: bool = (&self.follow_links.0).try_into().unwrap_or(false);
+
+    // Clear output sequence for new results
+    self.output.0.clear();
+
+    let mut builder = WalkBuilder::new(path);
+
+    // Set recursion depth
+    if !recursive {
+      builder.max_depth(Some(1));
+    }
+
+    // Control ignore file filtering
+    if !use_ignore {
+      // Disable all standard filters to match old C++ behavior
+      builder.standard_filters(false);
+    } else {
+      // Enable ignore file filtering
+      builder
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .ignore(true)
+        .parents(true);
+    }
+
+    // Control hidden files
+    // Note: hidden(true) means "ignore hidden files" in the ignore crate
+    // Our parameter Hidden: true means "include hidden files"
+    // So we invert
+    builder.hidden(!hidden);
+
+    // Control symlink following
+    builder.follow_links(follow_links);
+
+    // Build and iterate
+    // Note: The ignore crate has a build_parallel() API, but it uses a callback pattern
+    // that requires locking a mutex per entry or using channels, which negates any
+    // parallel performance benefits. Sequential iteration is more honest and efficient.
+    for entry in builder.build() {
+      match entry {
+        Ok(entry) => {
+          // Skip the root directory itself (depth 0)
+          // This matches the behavior of boost::filesystem::directory_iterator
+          // which only returns directory contents, not the directory itself
+          if entry.depth() == 0 {
+            continue;
+          }
+
+          let mut path_str = entry.path().display().to_string();
+
+          // Normalize Windows backslashes to forward slashes
+          #[cfg(target_os = "windows")]
+          {
+            path_str = path_str.replace("\\", "/");
+          }
+
+          // Push directly to output sequence (more memory efficient than collecting into Vec first)
+          self.output.0.push(&Var::ephemeral_string(path_str.as_str()));
+        }
+        Err(e) => {
+          // Log but continue - don't fail entire iteration for one bad entry
+          // This handles permission errors, symlink loops, etc.
+          shlog_warn!("Skipping entry due to error: {}", e);
+          continue;
+        }
+      }
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
 #[derive(shards::shard)]
@@ -500,5 +665,6 @@ pub extern "C" fn shardsRegister_fs_rust(core: *mut SHCore) {
 
   register_shard::<FileDialog>();
   register_legacy_shard::<SaveFileDialog>();
+  register_shard::<IterateShard>();
   register_shard::<NotifyShard>();
 }
