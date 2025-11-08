@@ -1010,8 +1010,31 @@ impl Shard for HttpStreamShard {
             };
 
             let bytes = bytes_result?;
-            if let Some(bytes) = bytes {
-              Ok(ClonedVar::new_bytes(&bytes))
+            if let Some(first_chunk) = bytes {
+              // Accumulate any additional chunks that are immediately available
+              let mut accumulated = first_chunk.to_vec();
+
+              // Try to read more chunks with zero timeout (non-blocking)
+              loop {
+                match tokio::time::timeout(
+                  tokio::time::Duration::from_millis(0),
+                  response.chunk()
+                ).await {
+                  Ok(Ok(Some(chunk))) => {
+                    accumulated.extend_from_slice(&chunk);
+                  }
+                  Ok(Ok(None)) => {
+                    // Stream ended
+                    break;
+                  }
+                  Ok(Err(_)) | Err(_) => {
+                    // Error or timeout (nothing immediately available)
+                    break;
+                  }
+                }
+              }
+
+              Ok(ClonedVar::new_bytes(&accumulated))
             } else {
               Ok(ClonedVar::new_bytes(&[]))
             }
