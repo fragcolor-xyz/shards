@@ -1036,7 +1036,7 @@ impl Shard for HttpStreamShard {
                   }
                   Ok(Err(e)) => {
                     // I/O error during chunk read - log and return partial data
-                    shlog_debug!("Error reading chunk during accumulation: {:?}", e);
+                    shlog_warn!("Error reading chunk during accumulation: {:?}", e);
                     break;
                   }
                   Err(_) => {
