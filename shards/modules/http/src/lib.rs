@@ -986,7 +986,7 @@ impl Shard for HttpStreamShard {
     let stream = *self.stream.get();
 
     // Create a cancellation token that we'll store
-    let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
+    let (cancel_tx, mut cancel_rx) = tokio::sync::oneshot::channel::<()>();
     let cancellation = Arc::new(Mutex::new(Some(cancel_tx)));
     self.task_cancel = Some(cancellation.clone());
 
@@ -1006,7 +1006,7 @@ impl Shard for HttpStreamShard {
               chunk = response.chunk() => chunk.map_err(|e| {
                 FastError::Dynamic(format!("{:?}", e))
               }),
-              _ = cancel_rx => return Err(FastError::Static("Stream read cancelled"))
+              _ = &mut cancel_rx => return Err(FastError::Static("Stream read cancelled"))
             };
 
             let bytes = bytes_result?;
@@ -1015,11 +1015,17 @@ impl Shard for HttpStreamShard {
               let mut accumulated = first_chunk.to_vec();
 
               // Try to read more chunks with zero timeout (non-blocking)
+              // Each iteration checks for cancellation
               loop {
-                match tokio::time::timeout(
-                  tokio::time::Duration::from_millis(0),
-                  response.chunk()
-                ).await {
+                let chunk_result = tokio::select! {
+                  result = tokio::time::timeout(
+                    tokio::time::Duration::from_millis(0),
+                    response.chunk()
+                  ) => result,
+                  _ = &mut cancel_rx => return Err(FastError::Static("Stream read cancelled during accumulation"))
+                };
+
+                match chunk_result {
                   Ok(Ok(Some(chunk))) => {
                     accumulated.extend_from_slice(&chunk);
                   }
@@ -1027,8 +1033,13 @@ impl Shard for HttpStreamShard {
                     // Stream ended
                     break;
                   }
-                  Ok(Err(_)) | Err(_) => {
-                    // Error or timeout (nothing immediately available)
+                  Ok(Err(e)) => {
+                    // I/O error during chunk read - log and return partial data
+                    shlog_debug!("Error reading chunk during accumulation: {:?}", e);
+                    break;
+                  }
+                  Err(_) => {
+                    // Timeout (nothing immediately available)
                     break;
                   }
                 }
@@ -1056,7 +1067,7 @@ impl Shard for HttpStreamShard {
       },
     );
 
-    if let Err(e) = result {
+    if let Err(_e) = result {
       return Err(DynamicErrStr);
     }
     let result = result.unwrap();
