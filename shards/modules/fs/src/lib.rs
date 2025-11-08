@@ -486,6 +486,13 @@ impl Shard for IterateShard {
     for entry in builder.build() {
       match entry {
         Ok(entry) => {
+          // Skip the root directory itself (depth 0)
+          // This matches the behavior of boost::filesystem::directory_iterator
+          // which only returns directory contents, not the directory itself
+          if entry.depth() == 0 {
+            continue;
+          }
+
           let mut path_str = entry.path().display().to_string();
 
           // Normalize Windows backslashes to forward slashes
