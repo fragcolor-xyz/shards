@@ -62,7 +62,8 @@ struct TextureShard {
             {CoreInfo::NoneType, ShardsTypes::TextureTypeEnumInfo::Type});
   PARAM_PARAMVAR(_format, "Format",
                  "The format to use to create the texture. The texture will be usable as a render target. (Render target only)",
-                 {CoreInfo::NoneType, ShardsTypes::TextureFormatEnumInfo::Type, Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
+                 {CoreInfo::NoneType, ShardsTypes::TextureFormatEnumInfo::Type,
+                  Type::VariableOf(ShardsTypes::TextureFormatEnumInfo::Type)});
   PARAM_PARAMVAR(_resolution, "Resolution", "The resolution of the texture to create. (Render target only)",
                  {CoreInfo::NoneType, CoreInfo::Int2Type, Type::VariableOf(CoreInfo::Int2Type)});
   PARAM_PARAMVAR(_mipLevels, "MipLevels", "The number of mip levels to create. (Render target only)",
@@ -74,8 +75,7 @@ struct TextureShard {
                   Type::SeqOf(ShardsTypes::TextureAddressingEnumInfo::Type)});
   PARAM_PARAMVAR(_filtering, "Filtering", "For sampling, sets the filter mode.",
                  {CoreInfo::NoneType, ShardsTypes::TextureFilteringEnumInfo::Type});
-  PARAM_PARAMVAR(_label, "Label", "Debug label for this object.",
-                 {CoreInfo::StringOrStringVar, {CoreInfo::NoneType}});
+  PARAM_PARAMVAR(_label, "Label", "Debug label for this object.", {CoreInfo::StringOrStringVar, {CoreInfo::NoneType}});
   PARAM_IMPL(PARAM_IMPL_FOR(_interpretAs), PARAM_IMPL_FOR(_format), PARAM_IMPL_FOR(_resolution), PARAM_IMPL_FOR(_mipLevels),
              PARAM_IMPL_FOR(_dimension), PARAM_IMPL_FOR(_addressing), PARAM_IMPL_FOR(_filtering), PARAM_IMPL_FOR(_label));
 

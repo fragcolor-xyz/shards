@@ -642,7 +642,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   std::weak_ptr<SHMesh> mesh;
 
-  std::vector<Shard *> shards;
+  std::vector<ShardPtr> shards;
 
   // used only in the case of external variables
   std::unordered_map<uint64_t, shards::TypeInfo> typesCache;

@@ -1047,7 +1047,7 @@ _catch:
   if (_err_ != m3Err_none) {                                              \
     std::string _errMsg("Wasm error " + std::to_string(__LINE__) + ": "); \
     _errMsg.append(_err_);                                                \
-    throw shards::Error(_errMsg);                                          \
+    throw shards::Error(_errMsg);                                         \
   }
 
 #define CHECK_ACTIVATION_ERR(_err_) \

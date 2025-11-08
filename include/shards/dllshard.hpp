@@ -131,21 +131,21 @@ public:
 
   static void destroyVar(SHVar &var) { sCore._core->destroyVar(&var); }
 
-#define SH_ARRAY_INTERFACE(_arr_, _val_, _short_)                                                                 \
+#define SH_ARRAY_INTERFACE(_arr_, _val_, _short_)                                                                \
   static void _short_##Free(_arr_ *seq) { sCore._core->_short_##Free(seq); };                                    \
-                                                                                                                  \
+                                                                                                                 \
   static void _short_##Resize(_arr_ *seq, uint64_t size) { sCore._core->_short_##Resize(seq, size); };           \
-                                                                                                                  \
-  static void _short_##Push(_arr_ *seq, const _val_ *value) { sCore._core->_short_##Push(seq, value); };        \
-                                                                                                                  \
-  static void _short_##Insert(_arr_ *seq, uint64_t index, const _val_ *value) {                                   \
-    sCore._core->_short_##Insert(seq, index, value);                                                            \
-  };                                                                                                              \
-                                                                                                                  \
+                                                                                                                 \
+  static void _short_##Push(_arr_ *seq, const _val_ *value) { sCore._core->_short_##Push(seq, value); };         \
+                                                                                                                 \
+  static void _short_##Insert(_arr_ *seq, uint64_t index, const _val_ *value) {                                  \
+    sCore._core->_short_##Insert(seq, index, value);                                                             \
+  };                                                                                                             \
+                                                                                                                 \
   static _val_ _short_##Pop(_arr_ *seq) { return sCore._core->_short_##Pop(seq); };                              \
-                                                                                                                  \
+                                                                                                                 \
   static void _short_##FastDelete(_arr_ *seq, uint64_t index) { sCore._core->_short_##FastDelete(seq, index); }; \
-                                                                                                                  \
+                                                                                                                 \
   static void _short_##SlowDelete(_arr_ *seq, uint64_t index) { sCore._core->_short_##SlowDelete(seq, index); }
 
   SH_ARRAY_INTERFACE(SHSeq, SHVar, seq);
@@ -533,7 +533,6 @@ public:
 using IterableSeq = IterableArray<SHSeq, SHVar, &Core::seqResize, &Core::seqFree, &Core::seqPush>;
 using IterableExposedInfo =
     IterableArray<SHExposedTypesInfo, SHExposedTypeInfo, &Core::expTypesResize, &Core::expTypesFree, &Core::expTypesPush>;
-
 
 template <typename E, const char *Name_, const SHOptionalString &Help_, int32_t VendorId_, int32_t TypeId_, bool IsFlags_ = false>
 class EnumInfo : public TEnumInfo<Core, E, Name_, Help_, VendorId_, TypeId_, IsFlags_> {

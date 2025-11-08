@@ -215,9 +215,9 @@ struct SHContext {
   constexpr bool failed() const { return state == SHWireState::Error; }
 
   static inline std::string NoError{};
-  const std::string& getErrorMessage() { 
+  const std::string &getErrorMessage() {
     // Top from stack
-    if(errorStack.size() > 0) {
+    if (errorStack.size() > 0) {
       return errorStack.front().message;
     }
     return NoError;
@@ -241,7 +241,7 @@ private:
 };
 
 namespace shards {
-[[nodiscard]] SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWire(const std::vector<ShardPtr> &wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);

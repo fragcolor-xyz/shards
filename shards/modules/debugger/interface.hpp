@@ -31,7 +31,7 @@ template <typename T> std::tuple<Shard **, size_t, size_t> extractShardsParam(T 
   } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
     start = shards.data();
     stride = sizeof(ShardPtr);
-    len = shards.size();
+    len = shards.size() - 1; // excluding null terminator
   } else {
     shassert(false && "Unreachable shardsActivation case");
   }

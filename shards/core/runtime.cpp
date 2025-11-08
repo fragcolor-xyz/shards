@@ -1278,7 +1278,7 @@ ExtendedError::ExtendedError(std::string error, std::string errorStackTrace) : e
 }
 const char *ExtendedError::what() const noexcept { return combined.c_str(); }
 
-SHComposeResult internalComposeWire(const std::vector<Shard *> &wire, SHInstanceData data, bool fromWire = false) {
+SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanceData data, bool fromWire = false) {
   ZoneScoped;
   if (data.shard) {
     SHLOG_TRACE("Composing wire: {}, shard: {}, {}", data.wire ? data.wire->name : "(unwired)", data.shard->name(data.shard),
@@ -1561,13 +1561,13 @@ SHComposeResult composeWire(const SHWire *wire_, SHInstanceData data) {
 }
 
 // Root level composeWire / throwing
-SHComposeResult composeWire(const std::vector<Shard *> &wire, SHInstanceData data) {
+SHComposeResult composeWire(const std::vector<ShardPtr> &wire, SHInstanceData data) {
   // We need to catch exceptions here and add them to the context
   return internalComposeWire(wire, data);
 }
 
 SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
-  std::vector<Shard *> shards;
+  std::vector<ShardPtr> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i]);
   }
@@ -1575,7 +1575,7 @@ SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
 }
 
 SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
-  std::vector<Shard *> shards;
+  std::vector<ShardPtr> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
     shards.push_back(wire.elements[i].payload.shardValue);
   }

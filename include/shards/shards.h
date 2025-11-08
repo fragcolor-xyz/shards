@@ -766,7 +766,7 @@ typedef struct SHShardComposeResult(__cdecl *SHComposeV2Proc)(struct Shard *, st
 typedef const struct SHVar *(__cdecl *SHActivateProc)(struct Shard *, struct SHContext *, const struct SHVar *);
 
 // Store an error message in the context, for use when aborting a wire
-typedef const char* (*__cdecl SHContextStoreError)(struct SHContext *, SHStringWithLen err);
+typedef const char *(*__cdecl SHContextStoreError)(struct SHContext *, SHStringWithLen err);
 
 // Generally when stop() is called
 // Note that context may be null in some cases
@@ -960,7 +960,7 @@ typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, cons
 typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, struct SHInstanceData data);
 typedef void(__cdecl *SHFreeComposeResult)(struct SHComposeResult *result);
 
-typedef void(__cdecl *SHPushError)(struct SHContext* context, struct SHStringWithLen error);
+typedef void(__cdecl *SHPushError)(struct SHContext *context, struct SHStringWithLen error);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
 typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,

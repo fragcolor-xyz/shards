@@ -60,7 +60,7 @@ public:
 
     if (exposed && exposed.value().exposedType != VariableType) {
       throw shards::Error(fmt::format("Required variable {} has the wrong type. Expected: {}, was {}", VariableName, VariableType,
-                                     exposed.value().exposedType));
+                                      exposed.value().exposedType));
     }
 
     if (exposed) {

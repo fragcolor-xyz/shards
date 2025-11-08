@@ -368,12 +368,13 @@ struct ToAnySeq {
     data.shard->inlineShardId = InlineShard::NoopShard;
     return CoreInfo::AnySeqType;
   }
-  
+
   SHVar activate(SHContext *context, const SHVar &input) { return input; }
 };
 
 struct ToAnyTable {
-  static inline Type outputType{{SHType::Table}}; // this is not the same of AnyTableType - we do this for compatibility reasons with ExpectTable
+  static inline Type outputType{
+      {SHType::Table}}; // this is not the same of AnyTableType - we do this for compatibility reasons with ExpectTable
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHOptionalString inputHelp() { return SHCCSTR("Converts the input to table type"); }
@@ -520,13 +521,13 @@ static inline void expectTypeCheck(const SHVar &input, uint64_t expectedTypeHash
 
 template <SHType ET> struct ExpectX {
   static inline Type outputType{{ET}};
-  
+
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  
+
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
 
   SHTypesInfo outputTypes() { return outputType; }
-  
+
   static SHOptionalString outputHelp() {
     if constexpr (ET == SHType::Int) {
       return SHCCSTR("Outputs the input value unchanged if it is of type Int.");
@@ -668,13 +669,13 @@ template <SHType ET> struct ExpectX {
 
 struct ExpectSeq {
   SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
-  
+
   static SHOptionalString inputHelp() { return DefaultHelpText::InputHelpAnyType; }
-  
+
   SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
-  
+
   static SHOptionalString outputHelp() { return SHCCSTR("Outputs the input value unchanged if it is a sequence."); }
-  
+
   static SHOptionalString help() {
     return SHCCSTR(
         "Checks if the input value is a sequence; otherwise, the shard will trigger an error, preventing further execution.");

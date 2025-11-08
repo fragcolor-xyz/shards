@@ -774,7 +774,7 @@ struct Restart {
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.wire->inputType->basicType != SHType::None && !matchTypes(data.inputType, data.wire->inputType, false, true, true)) {
       throw shards::Error(fmt::format("Restart input and wire input type mismatch, wire: {} receives {}, shard receives: {}",
-                                     data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
+                                      data.wire->name, SHTypeInfo(data.wire->inputType), data.inputType));
     }
     return data.inputType; // Actually, we are a flow stopper.
   }
@@ -1173,7 +1173,7 @@ struct SetBase : public VariableBase {
             !(reference.exposedType.basicType == SHType::Table && reference.exposedType.table.types.len == 0) &&
             !matchTypes(data.inputType, reference.exposedType, true, true, true)) {
           throw shards::Error(fmt::format("Set/Ref/Update, variable {} already set as another type: {} (new type: {})", _name,
-                                         reference.exposedType, data.inputType));
+                                          reference.exposedType, data.inputType));
         }
         if (failIfExists && !overwrite) {
           throw shards::Error(fmt::format("Ref, variable \"{}\" already exists", _name));
@@ -1684,7 +1684,7 @@ struct Update : public SetUpdateBase {
           possibleTypes += fmt::format("{}", tableInnerValueTypes.elements[i]);
         }
         throw shards::Error(fmt::format("Update: error, update is changing table field for key {} from {} => {}", *_key,
-                                       possibleTypes, data.inputType));
+                                        possibleTypes, data.inputType));
       }
 
       const_cast<Shard *>(data.shard)->inlineShardId = InlineShard::CoreSetUpdateTable;
@@ -1887,8 +1887,8 @@ struct Get : public VariableBase {
       } else {
         if (_key.isVariable()) {
           throw shards::Error("Get (" + _name + ":" + std::string(_key.variableName()) +
-                             "[variable]): Could not infer an output type, key not found "
-                             "and no Default value provided.");
+                              "[variable]): Could not infer an output type, key not found "
+                              "and no Default value provided.");
         } else {
           // refactored
           auto msg = fmt::format("Get ({}:{}): Could not infer an output type, key not found and no Default value provided.",
@@ -3417,7 +3417,7 @@ struct Take {
       _seqOutput = false;
     } else {
       throw shards::Error(fmt::format("Take: Expected indices to be either Seq, Int or String, but got: {}, with input: {}",
-                                     _indices, data.inputType));
+                                      _indices, data.inputType));
     }
 
     _tableOutput = isTable;
@@ -3497,7 +3497,7 @@ struct Take {
           if (data.inputType.table.keys.len != data.inputType.table.types.len) {
             SHLOG_ERROR("Table input type: {}", data.inputType);
             throw shards::Error("Take: Expected same number of types for numer of "
-                               "keys in table input.");
+                                "keys in table input.");
           }
 
           if (_seqOutput) {
@@ -3514,7 +3514,7 @@ struct Take {
             if (_seqOutputTypes.size() == 0) {
               SHLOG_ERROR("Table input type: {} missing keys: {}", data.inputType, _indices);
               throw shards::Error("Take: Failed to find a matching keys in the "
-                                 "input type table");
+                                  "input type table");
             }
             _seqOutputType = Type::SeqOf(SHTypesInfo{_seqOutputTypes.data(), uint32_t(_seqOutputTypes.size()), 0});
             return _seqOutputType;

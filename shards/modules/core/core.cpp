@@ -474,7 +474,7 @@ struct XPendBase {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
             cons.exposedType.basicType != SHType::String) {
           throw shards::Error("AppendTo/PrependTo expects either a SHType::Seq, SHType::String "
-                             "or SHType::Bytes variable as collection.");
+                              "or SHType::Bytes variable as collection.");
         } else {
           if (cons.exposedType.basicType != SHType::Seq && cons.exposedType != data.inputType) {
             SHLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}", data.inputType, cons.exposedType);
@@ -489,10 +489,10 @@ struct XPendBase {
              !matchTypes(data.inputType, cons.exposedType.seqTypes.elements[0], true, true, true))) {
           if (cons.exposedType.seqTypes.len == 0) {
             throw shards::Error(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
-                                           data.inputType, "<unknown/empty>"));
+                                            data.inputType, "<unknown/empty>"));
           } else {
             throw shards::Error(fmt::format("AppendTo/PrependTo input type is not compatible (in: {}, expected: {})",
-                                           data.inputType, cons.exposedType.seqTypes.elements[0]));
+                                            data.inputType, cons.exposedType.seqTypes.elements[0]));
           }
         }
         _isGlobal = cons.global;

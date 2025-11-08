@@ -30,8 +30,8 @@ static inline ParamsInfo condParamsInfo =
 struct Cond {
   // WORKS but TODO refactor using newer abstracted types
   SHVar _wires{};
-  std::vector<std::vector<Shard *>> _conditions;
-  std::vector<std::vector<Shard *>> _actions;
+  std::vector<std::vector<ShardPtr>> _conditions;
+  std::vector<std::vector<ShardPtr>> _actions;
   bool _passthrough = true;
   bool _threading = false;
   SHComposeResult _wireValidation{};

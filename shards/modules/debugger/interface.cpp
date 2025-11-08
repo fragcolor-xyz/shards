@@ -617,7 +617,7 @@ struct State {
         } else if (cmd == CommandType::Pause) {
           server->sendStoppedEvent("pause", threadId, "Execution paused by user");
           command.reset();
-        } else if(cmd == CommandType::Stop) {
+        } else if (cmd == CommandType::Stop) {
           continue_ = true;
           command.reset();
         }
