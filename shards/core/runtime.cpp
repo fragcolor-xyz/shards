@@ -1487,7 +1487,6 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
       // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
       wire->inputType = SHTypeInfo{SHType::Any};
-      wire->ignoreInputTypeCheck = true;
     } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
                  return strcmp(shard->name(shard), "Input") == 0;
                })) {
@@ -1496,14 +1495,11 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
       auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
       if (inTypes.len == 1 && inTypes.elements[0].basicType == SHType::None) {
         wire->inputType = SHTypeInfo{};
-        wire->ignoreInputTypeCheck = true;
       } else {
         wire->inputType = data.inputType;
-        wire->ignoreInputTypeCheck = false;
       }
     } else {
       wire->inputType = data.inputType;
-      wire->ignoreInputTypeCheck = false;
     }
 
     shassert(wire == data.wire); // caller must pass the same wire as data.wire

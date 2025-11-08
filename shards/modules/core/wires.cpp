@@ -49,7 +49,10 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableE
   SHLOG_TRACE("WireBase::verifyAlreadyComposed, source: {} composing: {} inputType: {}", data.wire ? data.wire->name : nullptr,
               wire->name, data.inputType);
   // verify input type
-  if (!passthrough && data.inputType != wire->inputType && !wire->ignoreInputTypeCheck) {
+  // Special case: None input type accepts any input (wire doesn't use input)
+  bool typeMatches = wire->inputType->basicType == SHType::None ||
+                     matchTypes(data.inputType, wire->inputType, true, true, true);
+  if (!passthrough && !typeMatches) {
     throw shards::Error(fmt::format(
         "Attempted to call an already composed wire with a different input type! wire: {}, old type: {}, new type: {}",
         wire->name, (SHTypeInfo)wire->inputType, data.inputType));

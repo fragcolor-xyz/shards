@@ -624,9 +624,6 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
   bool detached{false};
   std::unordered_set<void *> wireUsers;
 
-  // flag if we changed inputType to None or Any on purpose
-  mutable bool ignoreInputTypeCheck{false};
-
   mutable shards::TypeInfo inputType{};
   mutable shards::TypeInfo outputType{};
 
