@@ -483,6 +483,9 @@ impl Shard for IterateShard {
     builder.follow_links(follow_links);
 
     // Build and iterate
+    // Note: The ignore crate has a build_parallel() API, but it uses a callback pattern
+    // that requires locking a mutex per entry or using channels, which negates any
+    // parallel performance benefits. Sequential iteration is more honest and efficient.
     for entry in builder.build() {
       match entry {
         Ok(entry) => {
@@ -504,8 +507,10 @@ impl Shard for IterateShard {
           paths.push(path_str);
         }
         Err(e) => {
-          shlog_error!("Error walking directory: {}", e);
-          return Err("Error walking directory");
+          // Log but continue - don't fail entire iteration for one bad entry
+          // This handles permission errors, symlink loops, etc.
+          shlog_warn!("Skipping entry due to error: {}", e);
+          continue;
         }
       }
     }
