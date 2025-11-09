@@ -2416,6 +2416,8 @@ void _gatherShards(const ShardsCollection &coll, std::vector<ShardInfo> &out, co
     if (!gatheringWires().count(wire)) {
       gatheringWires().insert(wire);
       for (auto blk : wire->shards) {
+        if (blk == nullptr)
+          break; // null terminated shards collection
         _gatherShards(blk, out, wire);
       }
     }

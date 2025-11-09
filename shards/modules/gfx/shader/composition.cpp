@@ -103,6 +103,9 @@ struct DynamicBlockFromShards : public blocks::Block {
       }
 
       for (ShardPtr shard : shards) {
+        if (shard == nullptr)
+          break; // stop at null terminator
+
         shaderCtx.processShard(shard);
       }
       shaderCtx.finalize();

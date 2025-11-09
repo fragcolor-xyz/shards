@@ -662,7 +662,11 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     shassert(!blk->owned);
     blk->owned = true;
     shards::incRef(blk);
+    if (!shards.empty()) {
+      shards.pop_back(); // pop the null terminator
+    }
     shards.push_back(blk);
+    shards.push_back(nullptr); // push the null terminator
   }
 
   // Also removes ownership of the shard
