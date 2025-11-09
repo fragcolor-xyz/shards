@@ -908,11 +908,7 @@
   Get(s1)
   Is(s2)
   Assert.Is(true true)
-  
-  Get(s1)
-  DShard("Is" [s2])
-  Assert.Is(true true)
-  
+
   4 | Push(s1)
   5 | Push(s1)
   

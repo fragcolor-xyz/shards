@@ -1,1 +1,0 @@
-Each element of the sequence of values provided in the `Parameters` parameter will be passed to the corresponding parameter of the final shard that DShard transforms into. The first element in the sequence will be passed to the parameter with index 0, the second will be passed to the parameter with index 1, and so on.
