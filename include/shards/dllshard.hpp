@@ -163,11 +163,11 @@ public:
 
   static SHComposeResult composeShards(Shards shards, SHInstanceData data) { return sCore._core->composeShards(shards, data); }
 
-  static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+  static SHWireState runShards(ShardPtr *shards, SHContext *context, const SHVar &input, SHVar &output) {
     return sCore._core->runShards(shards, context, &input, &output);
   }
 
-  static SHWireState runShards2(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+  static SHWireState runShards2(ShardPtr *shards, SHContext *context, const SHVar &input, SHVar &output) {
     return sCore._core->runShards2(shards, context, &input, &output);
   }
 

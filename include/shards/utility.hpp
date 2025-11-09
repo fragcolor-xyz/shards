@@ -328,7 +328,7 @@ public:
     SH_CORE::freeComposeResult(&_wireValidation);
   }
 
-  void cleanup(SHContext *context) {
+  void cleanup(SHContext *context) const {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
       if (blk == nullptr)
@@ -343,7 +343,7 @@ public:
     }
   }
 
-  void warmup(SHContext *context) {
+  void warmup(SHContext *context) const {
     for (auto blk : _shardsArray) {
       if (blk == nullptr)
         break; // the end
@@ -401,11 +401,12 @@ public:
     return _wireValidation;
   }
 
-  template <bool CALLER_HANDLES_RETURN = false> SHWireState activate(SHContext *context, const SHVar &input, SHVar &output) {
+  template <bool CALLER_HANDLES_RETURN = false>
+  SHWireState activate(SHContext *context, const SHVar &input, SHVar &output) const {
     if constexpr (CALLER_HANDLES_RETURN)
-      return SH_CORE::runShards2(_shards, context, input, output);
+      return SH_CORE::runShards2(_shards.elements, context, input, output);
     else
-      return SH_CORE::runShards(_shards, context, input, output);
+      return SH_CORE::runShards(_shards.elements, context, input, output);
   }
 
   operator bool() const {

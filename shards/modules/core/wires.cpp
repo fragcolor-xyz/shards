@@ -50,8 +50,7 @@ void WireBase::verifyAlreadyComposed(const SHInstanceData &data, const IterableE
               wire->name, data.inputType);
   // Verify input type compatibility
   // Special case: None input type accepts any input (wire doesn't use input)
-  bool typeMatches = wire->inputType->basicType == SHType::None ||
-                     matchTypes(data.inputType, wire->inputType, true, true, true);
+  bool typeMatches = wire->inputType->basicType == SHType::None || matchTypes(data.inputType, wire->inputType, true, true, true);
   if (!passthrough && !typeMatches) {
     throw shards::Error(fmt::format(
         "Attempted to call an already composed wire with a different input type! wire: {}, old type: {}, new type: {}",

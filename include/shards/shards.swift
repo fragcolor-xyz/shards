@@ -1178,8 +1178,12 @@ class ShardsVar {
     private var exposedVariables = ExposedTypes()
 
     private func reset() {
-        // Free all shards
-        for shard in shardsPtrs {
+        // Free all shards (skip NULL terminator if present)
+        let shardsToDestroy = shardsPtrs.last != nil && shardsPtrs.last! == nil
+            ? shardsPtrs.dropLast()
+            : shardsPtrs[...]
+
+        for shard in shardsToDestroy {
             shard!.pointee.destroy(shard!)
         }
         shardsPtrs.removeAll()
@@ -1199,7 +1203,12 @@ class ShardsVar {
 
     func cleanup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
-        for shard in shardsPtrs {
+        // Skip the last element (NULL terminator) if present
+        let shardsToCleanup = shardsPtrs.last != nil && shardsPtrs.last! == nil
+            ? shardsPtrs.dropLast()
+            : shardsPtrs[...]
+
+        for shard in shardsToCleanup {
             error = shard!.pointee.cleanup(shard!, context.context)
             if error.code != 0 {
                 return .failure(ShardError(message: error.message.toString()!))
@@ -1210,7 +1219,12 @@ class ShardsVar {
 
     func warmup(context: Context) -> Result<Void, ShardError> {
         var error = SHError()
-        for shard in shardsPtrs {
+        // Skip the last element (NULL terminator) if present
+        let shardsToWarmup = shardsPtrs.last != nil && shardsPtrs.last! == nil
+            ? shardsPtrs.dropLast()
+            : shardsPtrs[...]
+
+        for shard in shardsToWarmup {
             error = shard!.pointee.warmup(shard!, context.context)
             if error.code != 0 {
                 return .failure(ShardError(message: error.message.toString()!))
@@ -1246,10 +1260,13 @@ class ShardsVar {
 
         paramValue = .init(cloning: value)
 
+        // Add NULL terminator for NULL-terminated array iteration
+        shardsPtrs.append(nil)
+
         withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
             nativeShards.elements = ptr
         }
-        nativeShards.len = UInt32(shardsPtrs.count)
+        nativeShards.len = UInt32(shardsPtrs.count - 1) // Don't count the NULL terminator in length
         nativeShards.cap = UInt32(0)
 
         return .success(())
@@ -1286,7 +1303,7 @@ class ShardsVar {
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
             withUnsafeMutablePointer(to: &output) { ptr in
-                G.Core.pointee.runShards(nativeShards, context.context, input, ptr)
+                G.Core.pointee.runShards(nativeShards.elements, context.context, input, ptr)
             }
         }
         return state
@@ -1301,7 +1318,7 @@ class ShardsVar {
 
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
-            G.Core.pointee.runShards2(nativeShards, context, input, output)
+            G.Core.pointee.runShards2(nativeShards.elements, context, input, output)
         }
         return state
     }

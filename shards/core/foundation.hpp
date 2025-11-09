@@ -92,14 +92,12 @@ void stringFree(SHStringPayload *str);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept;
 [[nodiscard]] SHComposeResult composeShardsNoExcept(Shards wire, SHInstanceData &data) noexcept;
-// caller does not handle return
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-// caller handles return
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-// caller does not handle return
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
-// caller handles return
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept;
+
+// Single unified activation API - NULL-terminated ShardPtr array
+SHWireState activateShards(ShardPtr *shards, SHContext *context, const SHVar &wireInput,
+                           SHVar &output) noexcept; // caller does not handle return
+SHWireState activateShards2(ShardPtr *shards, SHContext *context, const SHVar &wireInput,
+                            SHVar &output) noexcept; // caller handles return
 SHVar *findVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceGlobalVariable(SHContext *ctx, std::string_view name);
 SHVar *referenceVariable(SHContext *ctx, std::string_view name);
@@ -1453,11 +1451,11 @@ struct InternalCore {
 
   static SHComposeResult composeShards(Shards shards, SHInstanceData data) { return shards::composeWire(shards, data); }
 
-  static SHWireState runShards(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+  static SHWireState runShards(ShardPtr *shards, SHContext *context, const SHVar &input, SHVar &output) {
     return shards::activateShards(shards, context, input, output);
   }
 
-  static SHWireState runShards2(Shards shards, SHContext *context, const SHVar &input, SHVar &output) {
+  static SHWireState runShards2(ShardPtr *shards, SHContext *context, const SHVar &input, SHVar &output) {
     return shards::activateShards2(shards, context, input, output);
   }
 

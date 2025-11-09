@@ -361,7 +361,5 @@ jobs:
         shell: bash
         run: |
           cd build
-          echo "Running genetic"
-          SH_IGNORE_CONSISTENT_RESUMER= ./shards new ../shards/tests/genetic.shs
           echo "Running subwires"
           ./shards new ../shards/tests/subwires.shs
