@@ -5022,7 +5022,14 @@ impl Clone for ShardsVar {
 
 impl ShardsVar {
   fn destroy(&mut self) {
-    for shard in &self.shards {
+    // Skip the last element (NULL terminator) if present
+    let shards_to_cleanup = if !self.shards.is_empty() && self.shards.last().unwrap().0.is_null() {
+      &self.shards[..self.shards.len() - 1]
+    } else {
+      &self.shards[..]
+    };
+
+    for shard in shards_to_cleanup {
       if let Err(e) = shard.cleanup(None) {
         shlog!("Errors during shard cleanup: {}", e);
       }
@@ -5039,7 +5046,14 @@ impl ShardsVar {
 
   #[inline(always)]
   pub fn cleanup(&mut self, ctx: Option<&Context>) {
-    for shard in self.shards.iter().rev() {
+    // Skip the last element (NULL terminator) if present
+    let shards_to_cleanup = if !self.shards.is_empty() && self.shards.last().unwrap().0.is_null() {
+      &self.shards[..self.shards.len() - 1]
+    } else {
+      &self.shards[..]
+    };
+
+    for shard in shards_to_cleanup.iter().rev() {
       if let Err(e) = shard.cleanup(ctx) {
         shlog!("Errors during shard cleanup: {}", e);
       }
@@ -5048,7 +5062,14 @@ impl ShardsVar {
 
   #[inline(always)]
   pub fn warmup(&self, context: &Context) -> Result<(), &'static str> {
-    for shard in self.shards.iter() {
+    // Skip the last element (NULL terminator) if present
+    let shards_to_warmup = if !self.shards.is_empty() && self.shards.last().unwrap().0.is_null() {
+      &self.shards[..self.shards.len() - 1]
+    } else {
+      &self.shards[..]
+    };
+
+    for shard in shards_to_warmup.iter() {
       if let Err(e) = shard.warmup(context) {
         shlog!("Errors during shard warmup: {}", e);
         return Err(e);
@@ -5075,9 +5096,12 @@ impl ShardsVar {
       return Err("Expected sequence or shard variable, but casting failed.");
     }
 
+    // Add NULL terminator for NULL-terminated array iteration
+    self.shards.push(ShardRef(std::ptr::null_mut()));
+
     self.native_shards = Shards {
       elements: self.shards.as_mut_ptr() as *mut *mut _,
-      len: self.shards.len() as u32,
+      len: (self.shards.len() - 1) as u32, // Don't count the NULL terminator in length
       cap: 0,
     };
 
