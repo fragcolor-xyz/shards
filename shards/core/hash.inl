@@ -359,6 +359,8 @@ template <typename TDigest> inline TDigest HashState<TDigest>::hash(const std::s
     shassert(error == XXH_OK);
 
     for (auto &blk : wire->shards) {
+      if (blk == nullptr)
+        break; // null terminated shards collection
       SHVar tmp{};
       tmp.valueType = SHType::ShardRef;
       tmp.payload.shardValue = blk;

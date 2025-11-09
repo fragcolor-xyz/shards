@@ -306,6 +306,9 @@ private:
   void destroy() {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
+      if (blk == nullptr)
+        continue; // reverse iteration!
+
       auto errors = blk->cleanup(blk, nullptr);
       if (errors.code != SH_ERROR_NONE) {
         auto msg = std::string_view(errors.message.string, errors.message.len);
@@ -328,6 +331,8 @@ public:
   void cleanup(SHContext *context) {
     for (auto it = _shardsArray.rbegin(); it != _shardsArray.rend(); ++it) {
       auto blk = *it;
+      if (blk == nullptr)
+        continue; // reverse iteration!
 
       auto errors = blk->cleanup(blk, context);
       if (errors.code != SH_ERROR_NONE) {
@@ -339,7 +344,10 @@ public:
   }
 
   void warmup(SHContext *context) {
-    for (auto &blk : _shardsArray) {
+    for (auto blk : _shardsArray) {
+      if (blk == nullptr)
+        break; // the end
+
       if (blk->warmup) {
         auto errors = blk->warmup(blk, context);
         if (errors.code != SH_ERROR_NONE) {
@@ -373,6 +381,9 @@ public:
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
     const auto nshards = _shardsArray.size();
+
+    _shardsArray.push_back(nullptr); // add null shards terminator BEFORE setting pointer to avoid reallocation
+
     _shards.elements = nshards > 0 ? &_shardsArray[0] : nullptr;
     _shards.len = uint32_t(nshards);
 
@@ -397,7 +408,9 @@ public:
       return SH_CORE::runShards(_shards, context, input, output);
   }
 
-  operator bool() const { return _shardsArray.size() > 0; }
+  operator bool() const {
+    return _shardsArray.size() > 1; // account null shards terminator here!
+  }
 
   const Shards &shards() const { return _shards; }
   const SHComposeResult &composeResult() const { return _wireValidation; }

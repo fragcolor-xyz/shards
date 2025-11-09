@@ -886,7 +886,7 @@ TEST_CASE("SHMap") {
 TEST_CASE("CXX-Wire-DSL") {
   // TODO, improve this
   auto wire = shards::Wire("test-wire").looped(true).let(1).shard("Log").shard("Math.Add", 2).shard("Assert.Is", 3, true);
-  assert(wire->shards.size() == 4);
+  assert(wire->shards.size() == 5); // 4 shards + null terminator
 }
 
 TEST_CASE("DynamicArray") {
