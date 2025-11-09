@@ -396,6 +396,8 @@ void TranslationRegistry::registerHandler(const char *blockName, ITranslationHan
 }
 
 ITranslationHandler *TranslationRegistry::resolve(ShardPtr shard) {
+  if (shard == nullptr)
+    return nullptr; // null terminator or invalid shard
   auto it = handlers.find((const char *)shard->name(shard));
   if (it != handlers.end())
     return it->second;

@@ -212,6 +212,8 @@ inline std::unique_ptr<IWGSLGenerated> translateParamVar(const shards::ParamVar 
 inline void processShards(boost::span<ShardPtr> shards, TranslationContext &context) {
   for (size_t i = 0; i < shards.size(); i++) {
     ShardPtr shard = shards[i];
+    if (shard == nullptr)
+      break; // null terminator
     context.processShard(shard);
   }
 }
