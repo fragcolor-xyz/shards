@@ -1369,6 +1369,8 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
       size_t chsize = wire.size() > 0 && wire.back() == nullptr ? wire.size() - 1 : wire.size(); // exclude null terminator if present
       for (size_t i = 0; i < chsize; i++) {
         Shard *blk = wire[i];
+        if (blk == nullptr)
+          break; // skip null terminator or embedded nulls
         ctx.next = nullptr;
         if (i < chsize - 1)
           ctx.next = wire[i + 1];
@@ -1565,6 +1567,8 @@ SHComposeResult composeWire(const std::vector<ShardPtr> &wire, SHInstanceData da
 SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
   std::vector<ShardPtr> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
+    if (wire.elements[i] == nullptr)
+      break; // stop at null terminator
     shards.push_back(wire.elements[i]);
   }
   return composeWire(shards, data);
@@ -1573,7 +1577,10 @@ SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
 SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
   std::vector<ShardPtr> shards;
   for (uint32_t i = 0; wire.len > i; i++) {
-    shards.push_back(wire.elements[i].payload.shardValue);
+    auto shard = wire.elements[i].payload.shardValue;
+    if (shard == nullptr)
+      break; // stop at null terminator
+    shards.push_back(shard);
   }
   return composeWire(shards, data);
 }
