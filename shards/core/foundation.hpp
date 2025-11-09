@@ -671,6 +671,9 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // Also removes ownership of the shard
   void removeShard(Shard *blk) {
+    if (blk == nullptr) {
+      throw shards::SHException("removeShard: cannot remove nullptr terminator!");
+    }
     auto findIt = std::find(shards.begin(), shards.end(), blk);
     if (findIt != shards.end()) {
       shards.erase(findIt);
@@ -810,6 +813,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 private:
   SHWire(std::string_view wire_name) : name(wire_name) {
     SHLOG_TRACE("Creating wire: {}", name);
+    shards.push_back(nullptr); // Initialize with null terminator
     regenerateId();
   }
 

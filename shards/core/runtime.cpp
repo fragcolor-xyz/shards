@@ -3003,7 +3003,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                     wire->looped,
                     wire->unsafe,
                     wire,
-                    {!wire->shards.empty() ? &wire->shards[0] : nullptr, uint32_t(wire->shards.size() - 1), 0},
+                    {&wire->shards[0], uint32_t(wire->shards.size() - 1), 0}, // Always safe, guaranteed null terminator
                     shards::isRunning(wire),
                     wire->state == SHWire::State::Failed || !wire->finishedError.empty(),
                     SHStringWithLen{wire->finishedError.c_str(), wire->finishedError.size()},
