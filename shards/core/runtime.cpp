@@ -737,6 +737,12 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   auto *input = &initialInput;
   const auto *output = &finalOutput;
 
+  // Guard against null shards pointer
+  if (unlikely(shards == nullptr)) {
+    finalOutput = initialInput;
+    return SHWireState::Continue;
+  }
+
 #if SHARDS_DEBUGGER
   // For debugger, we need to calculate length by iterating to nullptr
   size_t dbg_len = 0;
