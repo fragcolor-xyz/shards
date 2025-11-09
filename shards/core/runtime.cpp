@@ -1487,10 +1487,10 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     DEFER(wire->composing.store(false));
 
     // settle input type of wire before compose
-    if (wire->shards.size() > 0 && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+    if (wire->shards.size() > 0 && wire->shards[0] != nullptr && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
       // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
       wire->inputType = SHTypeInfo{SHType::Any};
-    } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
+    } else if (wire->shards.size() > 0 && wire->shards[0] != nullptr && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
                  return shard != nullptr && strcmp(shard->name(shard), "Input") == 0;
                })) {
       // If first shard is a plain None, mark this wire has None input
