@@ -5121,7 +5121,7 @@ impl ShardsVar {
 
     unsafe {
       (*Core).runShards.unwrap_unchecked()(
-        self.native_shards,
+        self.native_shards.elements,
         context as *const _ as *mut _,
         input,
         output,
@@ -5143,7 +5143,7 @@ impl ShardsVar {
 
     unsafe {
       (*Core).runShards2.unwrap_unchecked()(
-        self.native_shards,
+        self.native_shards.elements,
         context as *const _ as *mut _,
         input,
         output,

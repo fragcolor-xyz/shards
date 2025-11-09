@@ -1286,7 +1286,7 @@ class ShardsVar {
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
             withUnsafeMutablePointer(to: &output) { ptr in
-                G.Core.pointee.runShards(nativeShards, context.context, input, ptr)
+                G.Core.pointee.runShards(nativeShards.elements, context.context, input, ptr)
             }
         }
         return state
@@ -1301,7 +1301,7 @@ class ShardsVar {
 
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
-            G.Core.pointee.runShards2(nativeShards, context, input, output)
+            G.Core.pointee.runShards2(nativeShards.elements, context, input, output)
         }
         return state
     }

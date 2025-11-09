@@ -625,18 +625,15 @@ struct Mutant {
       _indices = value;
       break;
     case 2: {
-      _mutations = value;
-      if (_mutations.valueType == SHType::Seq) {
-        for (auto &mut : _mutations) {
-          if (mut.valueType == SHType::ShardRef) {
-            auto blk = mut.payload.shardValue;
-            blk->owned = true;
-          } else if (mut.valueType == SHType::Seq) {
-            for (auto &bv : mut) {
-              auto blk = bv.payload.shardValue;
-              blk->owned = true;
-            }
-          }
+      // Parse input sequence into vector of ShardsVar
+      _mutations.clear();
+      if (value.valueType == SHType::Seq) {
+        auto seq = value.payload.seqValue;
+        _mutations.reserve(seq.len);
+        for (uint32_t i = 0; i < seq.len; i++) {
+          ShardsVar sv;
+          sv = seq.elements[i]; // Can be ShardRef, Seq, or None
+          _mutations.push_back(std::move(sv));
         }
       }
     } break;
@@ -654,8 +651,14 @@ struct Mutant {
       return _shard;
     case 1:
       return _indices;
-    case 2:
-      return _mutations;
+    case 2: {
+      // Build sequence from ShardsVar vector
+      _mutationsSeq.clear();
+      for (auto &sv : _mutations) {
+        _mutationsSeq.push_back(SHVar(sv));
+      }
+      return Var(_mutationsSeq);
+    }
     case 3:
       return _options;
     default:
@@ -664,36 +667,14 @@ struct Mutant {
   }
 
   void cleanupMutations(SHContext *context) const {
-    if (_mutations.valueType == SHType::Seq) {
-      for (auto &mut : _mutations) {
-        if (mut.valueType == SHType::ShardRef) {
-          auto blk = mut.payload.shardValue;
-          blk->cleanup(blk, context);
-        } else if (mut.valueType == SHType::Seq) {
-          for (auto &bv : mut) {
-            auto blk = bv.payload.shardValue;
-            blk->cleanup(blk, context);
-          }
-        }
-      }
+    for (auto &sv : _mutations) {
+      sv.cleanup(context);
     }
   }
 
   void warmupMutations(SHContext *ctx) const {
-    if (_mutations.valueType == SHType::Seq) {
-      for (auto &mut : _mutations) {
-        if (mut.valueType == SHType::ShardRef) {
-          auto blk = mut.payload.shardValue;
-          if (blk->warmup)
-            blk->warmup(blk, ctx);
-        } else if (mut.valueType == SHType::Seq) {
-          for (auto &bv : mut) {
-            auto blk = bv.payload.shardValue;
-            if (blk->warmup)
-              blk->warmup(blk, ctx);
-          }
-        }
-      }
+    for (auto &sv : _mutations) {
+      sv.warmup(ctx);
     }
   }
 
@@ -709,37 +690,20 @@ struct Mutant {
   SHTypeInfo compose(SHInstanceData &data) {
     auto inner = mutant();
     // validate parameters
-    if (_mutations.valueType == SHType::Seq && inner) {
+    if (!_mutations.empty() && inner) {
       auto dataCopy = data;
       int idx = 0;
       auto innerParams = inner->parameters(inner);
-      for (auto &mut : _mutations) {
+      for (auto &sv : _mutations) {
         if (idx >= int(innerParams.len))
           break;
         TypeInfo ptype(inner->getParam(inner, idx), data);
         dataCopy.inputType = ptype;
-        if (mut.valueType == SHType::ShardRef) {
-          auto blk = mut.payload.shardValue;
-          if (blk->compose) {
-            auto res0 = blk->compose(blk, &dataCopy);
-            if (res0.error.code != SH_ERROR_NONE) {
-              std::string_view err(res0.error.message.string, size_t(res0.error.message.len));
-              throw shards::Error(err);
-            }
-            auto res = res0.result;
-            if (res != ptype) {
-              throw SHException("Expected same type as input in parameter "
-                                "mutation wire's output.");
-            }
-          }
-        } else if (mut.valueType == SHType::Seq) {
-          auto res = composeWire(mut.payload.seqValue, dataCopy);
+        if (sv) { // Only compose if ShardsVar is not empty
+          auto res = sv.compose(dataCopy);
           if (res.outputType != ptype) {
-            throw SHException("Expected same type as input in parameter "
-                              "mutation wire's output.");
+            throw SHException("Expected same type as input in parameter mutation wire's output.");
           }
-          arrayFree(res.exposedInfo);
-          arrayFree(res.requiredInfo);
         }
         idx++;
       }
@@ -782,7 +746,8 @@ private:
   friend struct Evolve;
   ShardsVar _shard{};
   OwnedVar _indices{};
-  OwnedVar _mutations{};
+  std::vector<ShardsVar> _mutations{};
+  mutable std::vector<SHVar> _mutationsSeq{}; // Cached for getParam
   OwnedVar _options{};
   static inline Parameters _params{
       {"Shard", SHCCSTR("The shard to mutate."), {CoreInfo::ShardRefType}},
@@ -935,24 +900,20 @@ inline void Evolve::mutate(Evolve::Individual &individual) {
         auto current = mutant->getParam(mutant, int(iseq.elements[rparam].payload.intValue));
         // if we have mutation shards use them
         // if not use default operation
-        if (mutator._mutations.valueType == SHType::Seq && uint32_t(rparam) < mutator._mutations.payload.seqValue.len) {
-          // we need to warmup / cleanup in this case
-          // mutant mini wire also currently is not composed! FIXME?
-          mutator.warmupMutations(&ctx);
-          auto mblks = mutator._mutations.payload.seqValue.elements[rparam];
-          if (mblks.valueType == SHType::ShardRef) {
-            auto blk = mblks.payload.shardValue;
-            current = *blk->activate(blk, &ctx, &current);
-          } else if (mblks.valueType == SHType::Seq) {
-            auto blks = mblks.payload.seqValue;
+        if (uint32_t(rparam) < mutator._mutations.size()) {
+          auto &mutation = mutator._mutations[rparam];
+          if (mutation) { // Check if ShardsVar is not empty
+            // we need to warmup / cleanup in this case
+            // mutant mini wire also currently is not composed! FIXME?
+            mutator.warmupMutations(&ctx);
             SHVar out{};
-            activateShards(blks, &ctx, current, out);
+            mutation.activate(&ctx, current, out);
             current = out;
+            mutator.cleanupMutations(nullptr);
           } else {
-            // Was likely None, so use default op
+            // Was None, so use default op
             mutateVar(current);
           }
-          mutator.cleanupMutations(nullptr);
         } else {
           mutateVar(current);
         }

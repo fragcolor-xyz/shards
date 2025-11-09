@@ -276,9 +276,8 @@ struct Cond {
     SHVar actionInput = input;
     SHVar finalOutput{};
     for (auto &cond : _conditions) {
-      shassert(cond.size() > 0 && "condition vector must be null-terminated");
-      Shards shards{&cond[0], (uint32_t)(cond.size() - 1), 0}; // exclude null terminator
-      auto state = activateShards2(shards, context, input, _output);
+      // Simple NULL-terminated activation - just pass the pointer!
+      auto state = activateShards2(&cond[0], context, input, _output);
       // conditional flow so we might have "returns" form (And) (Or)
       if (unlikely(state > SHWireState::Return))
         return _output;
@@ -287,9 +286,7 @@ struct Cond {
         // Do the action if true!
         // And stop here
         memset(&_output, 0, sizeof(SHVar));
-        shassert(_actions[idx].size() > 0 && "action vector must be null-terminated");
-        Shards action{&_actions[idx][0], (uint32_t)(_actions[idx].size() - 1), 0}; // exclude null terminator
-        state = activateShards(action, context, actionInput, _output);
+        state = activateShards(&_actions[idx][0], context, actionInput, _output);
         if (state != SHWireState::Continue)
           return _output;
         if (_threading) {

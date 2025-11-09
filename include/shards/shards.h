@@ -963,18 +963,19 @@ typedef void(__cdecl *SHFreeComposeResult)(struct SHComposeResult *result);
 typedef void(__cdecl *SHPushError)(struct SHContext *context, struct SHStringWithLen error);
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
                                                        struct SHVar *output);
 #else
-typedef SHWireState(__cdecl *SHRunShards)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SHWireState(__cdecl *SHRunShards)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
                                           struct SHVar *output);
 #endif
 
 #if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
-                                                             struct SHVar *output, struct SHVar *outHash);
+typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context,
+                                                             const struct SHVar *input, struct SHVar *output,
+                                                             struct SHVar *outHash);
 #else
-typedef SHWireState(__cdecl *SHRunShardsHashed)(Shards shards, struct SHContext *context, const struct SHVar *input,
+typedef SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
                                                 struct SHVar *output, struct SHVar *outHash);
 #endif
 

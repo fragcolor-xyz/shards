@@ -1280,7 +1280,7 @@ struct ClientShard : public NetworkBase {
       _peer.endReceive();
 
       SHVar output{};
-      activateShards(SHVar(_blks).payload.seqValue, context, _peer.payload, output);
+      _blks.activate(context, _peer.payload, output);
       // no need to handle errors as context will eventually deal with it after activation
     }
 

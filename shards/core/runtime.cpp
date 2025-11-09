@@ -718,8 +718,8 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
   }
 }
 
-template <typename T, bool HANDLES_RETURN>
-ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
+template <bool HANDLES_RETURN>
+ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
 // check for stack overflow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
@@ -737,33 +737,18 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   auto *input = &initialInput;
   const auto *output = &finalOutput;
 
-  // find len based on shards type
-  size_t len;
-  if constexpr (std::is_same<T, Shards>::value || std::is_same<T, SHSeq>::value) {
-    len = shards.len;
-  } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
-    shassert(shards.size() > 0 && "shards vector must be null-terminated");
-    len = shards.size() - 1; // exclude null terminator
-  } else {
-    shassert(false && "Unreachable shardsActivation case");
-  }
-
 #if SHARDS_DEBUGGER
-  shards::dbg::onEnterActivation(shards, context, &input, &output);
-  DEFER({ shards::dbg::onExitActivation(shards, context); });
+  // For debugger, we need to calculate length by iterating to nullptr
+  size_t dbg_len = 0;
+  for (ShardPtr *p = shards; *p != nullptr; p++)
+    dbg_len++;
+  shards::dbg::onEnterActivation(context, &input, &output, shards, sizeof(ShardPtr), dbg_len);
+  DEFER({ shards::dbg::onExitActivation(context, shards, sizeof(ShardPtr), dbg_len); });
 #endif
 
-  for (size_t i = 0; i < len; i++) {
-    ShardPtr blk;
-    if constexpr (std::is_same<T, Shards>::value) {
-      blk = shards.elements[i];
-    } else if constexpr (std::is_same<T, SHSeq>::value) {
-      blk = shards.elements[i].payload.shardValue;
-    } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
-      blk = shards[i];
-    } else {
-      shassert(false && "Unreachable shardsActivation case");
-    }
+  // NULL-terminated iteration - simple and elegant!
+  while (*shards != nullptr) {
+    ShardPtr blk = *shards++;
 
     {
 #ifdef TRACY_ENABLE
@@ -819,20 +804,13 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   return SHWireState::Continue;
 }
 
-SHWireState activateShards(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<Shards, false>(shards, context, wireInput, output);
+// Direct ShardPtr* activation - the preferred path!
+SHWireState activateShards(ShardPtr *shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<false>(shards, context, wireInput, output);
 }
 
-SHWireState activateShards2(Shards shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<Shards, true>(shards, context, wireInput, output);
-}
-
-SHWireState activateShards(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<SHSeq, false>(shards, context, wireInput, output);
-}
-
-SHWireState activateShards2(SHSeq shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
-  return shardsActivation<SHSeq, true>(shards, context, wireInput, output);
+SHWireState activateShards2(ShardPtr *shards, SHContext *context, const SHVar &wireInput, SHVar &output) noexcept {
+  return shardsActivation<true>(shards, context, wireInput, output);
 }
 
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
@@ -1367,7 +1345,8 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
         ctx.sharedStorage.insert(item);
       }
 
-      size_t chsize = wire.size() > 0 && wire.back() == nullptr ? wire.size() - 1 : wire.size(); // exclude null terminator if present
+      size_t chsize =
+          wire.size() > 0 && wire.back() == nullptr ? wire.size() - 1 : wire.size(); // exclude null terminator if present
       for (size_t i = 0; i < chsize; i++) {
         Shard *blk = wire[i];
         if (blk == nullptr)
@@ -1487,12 +1466,13 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
     DEFER(wire->composing.store(false));
 
     // settle input type of wire before compose
-    if (wire->shards.size() > 0 && wire->shards[0] != nullptr && strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
+    if (wire->shards.size() > 0 && wire->shards[0] != nullptr &&
+        strncmp(wire->shards[0]->name(wire->shards[0]), "Expect", 6) == 0) {
       // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
       wire->inputType = SHTypeInfo{SHType::Any};
-    } else if (wire->shards.size() > 0 && wire->shards[0] != nullptr && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
-                 return shard != nullptr && strcmp(shard->name(shard), "Input") == 0;
-               })) {
+    } else if (wire->shards.size() > 0 && wire->shards[0] != nullptr &&
+               !std::any_of(wire->shards.begin(), wire->shards.end(),
+                            [&](const auto &shard) { return shard != nullptr && strcmp(shard->name(shard), "Input") == 0; })) {
       // If first shard is a plain None, mark this wire has None input
       // But make sure we have no (Input) shards
       auto inTypes = wire->shards[0]->inputTypes(wire->shards[0]);
@@ -1774,7 +1754,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   auto *input = &wireInput;
 run_wire_logic:
   try {
-    auto state = shardsActivation<std::vector<ShardPtr>, false>(wire->shards, context, *input, wire->previousOutput);
+    auto state = shardsActivation<false>(&wire->shards[0], context, *input, wire->previousOutput);
     switch (state) {
     case SHWireState::Return:
       return {context->getFlowStorage(), SHRunWireOutputState::Returned};
@@ -2987,11 +2967,11 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     }
   };
 
-  result->runShards = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
+  result->runShards = [](ShardPtr *shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
     return shards::activateShards(shards, context, *input, *output);
   };
 
-  result->runShards2 = [](Shards shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
+  result->runShards2 = [](ShardPtr *shards, SHContext *context, const SHVar *input, SHVar *output) noexcept {
     return shards::activateShards2(shards, context, *input, *output);
   };
 

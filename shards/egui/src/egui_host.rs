@@ -131,7 +131,7 @@ impl EguiHost {
               util::with_object_stack_var(&mut self.instance, ui_ctx, &EGUI_CTX_TYPE, || {
                 Ok(unsafe {
                   (*Core).runShards.unwrap()(
-                    *contents,
+                    contents.elements,
                     shards_context as *const _ as *mut _,
                     input,
                     &mut _output,
