@@ -2492,6 +2492,8 @@ void _gatherWires(const ShardsCollection &coll, std::vector<WireNode> &out, cons
       out.emplace_back(currentWire, wire); // current, previous
       gatheringWires().insert(currentWire);
       for (auto blk : currentWire->shards) {
+        if (blk == nullptr)
+          break; // null terminated shards collection
         _gatherWires(blk, out, currentWire);
       }
     }

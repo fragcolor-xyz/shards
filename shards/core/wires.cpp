@@ -25,9 +25,13 @@ void SHWire::addTrait(SHTrait inTrait) {
 
 void SHWire::destroy() {
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
+    if (*it == nullptr)
+      continue; // skip null terminator in reverse iteration
     (*it)->cleanup(*it, nullptr);
   }
   for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
+    if (*it == nullptr)
+      continue; // skip null terminator in reverse iteration
     decRef(*it);
   }
 
@@ -64,6 +68,8 @@ void SHWire::warmup(SHContext *context) {
     context->wireStack.push_back(this);
     DEFER({ context->wireStack.pop_back(); });
     for (auto blk : shards) {
+      if (blk == nullptr)
+        break; // null terminator
       try {
         if (blk->warmup) {
           auto status = blk->warmup(blk, context);
@@ -112,6 +118,8 @@ void SHWire::cleanup(bool force) {
     // Do this in reverse to allow a safer cleanup
     for (auto it = shards.rbegin(); it != shards.rend(); ++it) {
       auto blk = *it;
+      if (blk == nullptr)
+        continue; // skip null terminator in reverse iteration
       try {
         blk->cleanup(blk, context);
       }
