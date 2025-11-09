@@ -721,7 +721,8 @@ struct Serialization {
         total += sizeof(int32_t);
       }
       { // Shards len
-        uint32_t len = uint32_t(wire->shards.size() > 0 ? wire->shards.size() - 1 : 0); // exclude null terminator
+        shassert(wire->shards.size() > 0 && "wire->shards must be null-terminated");
+        uint32_t len = uint32_t(wire->shards.size() - 1); // exclude null terminator
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
       }

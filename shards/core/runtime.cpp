@@ -742,7 +742,8 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   if constexpr (std::is_same<T, Shards>::value || std::is_same<T, SHSeq>::value) {
     len = shards.len;
   } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
-    len = shards.size() > 0 ? shards.size() - 1 : 0; // exclude null terminator
+    shassert(shards.size() > 0 && "shards vector must be null-terminated");
+    len = shards.size() - 1; // exclude null terminator
   } else {
     shassert(false && "Unreachable shardsActivation case");
   }
@@ -2997,11 +2998,12 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->getWireInfo = [](SHWireRef wireref) noexcept {
     auto &sc = SHWire::sharedFromRef(wireref);
     auto wire = sc.get();
+    shassert(wire->shards.size() > 0 && "wire->shards must be null-terminated");
     SHWireInfo info{SHStringWithLen{wire->name.c_str(), wire->name.size()},
                     wire->looped,
                     wire->unsafe,
                     wire,
-                    {!wire->shards.empty() ? &wire->shards[0] : nullptr, uint32_t(wire->shards.size() > 0 ? wire->shards.size() - 1 : 0), 0},
+                    {!wire->shards.empty() ? &wire->shards[0] : nullptr, uint32_t(wire->shards.size() - 1), 0},
                     shards::isRunning(wire),
                     wire->state == SHWire::State::Failed || !wire->finishedError.empty(),
                     SHStringWithLen{wire->finishedError.c_str(), wire->finishedError.size()},
