@@ -13,6 +13,7 @@
 #include <pdqsort.h>
 #include <random>
 #include <sstream>
+#include <deque>
 
 // Windows fix
 #ifdef MAX_PRIORITY
@@ -625,11 +626,10 @@ struct Mutant {
       _indices = value;
       break;
     case 2: {
-      // Parse input sequence into vector of ShardsVar
+      // Parse input sequence into deque of ShardsVar (deque provides stable element addresses)
       _mutations.clear();
       if (value.valueType == SHType::Seq) {
         auto seq = value.payload.seqValue;
-        _mutations.reserve(seq.len);
         for (uint32_t i = 0; i < seq.len; i++) {
           ShardsVar sv;
           sv = seq.elements[i]; // Can be ShardRef, Seq, or None
@@ -746,7 +746,7 @@ private:
   friend struct Evolve;
   ShardsVar _shard{};
   OwnedVar _indices{};
-  std::vector<ShardsVar> _mutations{};
+  std::deque<ShardsVar> _mutations{};
   mutable std::vector<SHVar> _mutationsSeq{}; // Cached for getParam
   OwnedVar _options{};
   static inline Parameters _params{
