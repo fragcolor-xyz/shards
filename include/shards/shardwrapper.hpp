@@ -54,6 +54,9 @@ template <class T> struct ShardWrapper {
     // set the metadata pointer
     result->metadata = &metadata;
 
+    // initialize trampoline field
+    result->nestedShards = nullptr;
+
     // name
     if constexpr (has_name<T>::value) {
       result->name = static_cast<SHNameProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.name(); });

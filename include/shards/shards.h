@@ -820,6 +820,10 @@ struct Shard {
   // Optional compile time defined metadata
   struct ShardMetadata *metadata;
 
+  // Trampoline execution: NULL-terminated array of shards to execute next,
+  // or nullptr. Control flow shards set this to avoid recursion.
+  ShardPtr *nestedShards;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,

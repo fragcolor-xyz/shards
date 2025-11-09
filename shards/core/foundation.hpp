@@ -1905,6 +1905,55 @@ inline void swlFree(SHStringWithLen &in) {
   }
 }
 
+// Helper class for trampoline execution
+// Manages NULL-terminated ShardPtr* arrays for control flow shards
+class FlattenedShards {
+  ShardPtr *_array = nullptr;
+
+public:
+  ~FlattenedShards() {
+    if (_array) {
+      delete[] _array;
+    }
+  }
+
+  // No copy
+  FlattenedShards(const FlattenedShards &) = delete;
+  FlattenedShards &operator=(const FlattenedShards &) = delete;
+
+  // Allow move
+  FlattenedShards() = default;
+  FlattenedShards(FlattenedShards &&other) noexcept : _array(other._array) { other._array = nullptr; }
+  FlattenedShards &operator=(FlattenedShards &&other) noexcept {
+    if (this != &other) {
+      if (_array) {
+        delete[] _array;
+      }
+      _array = other._array;
+      other._array = nullptr;
+    }
+    return *this;
+  }
+
+  // Flatten a ShardsVar into a NULL-terminated ShardPtr* array
+  void flatten(const ShardsVar &shards) {
+    if (_array) {
+      delete[] _array;
+    }
+
+    auto shs = shards.shards(); // Get the Shards struct
+    auto len = shs.len;
+    _array = new ShardPtr[len + 1];
+    for (uint32_t i = 0; i < len; i++) {
+      _array[i] = shs.elements[i];
+    }
+    _array[len] = nullptr; // NULL terminator
+  }
+
+  // Get the NULL-terminated array
+  ShardPtr *get() const { return _array; }
+};
+
 }; // namespace shards
 
 inline auto format_as(SHWire::State state) { return magic_enum::enum_name(state); }

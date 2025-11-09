@@ -721,7 +721,7 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 template <bool HANDLES_RETURN>
 ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
                                            SHVar *outHash = nullptr) noexcept {
-// check for stack overflow
+// check for stack overflow - still useful for detecting very deep control flow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
   if (unlikely(!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit()))) {
     uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
@@ -733,15 +733,20 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   }
 #endif
 
-  // store initial input, as pointer, otherwise we risk corruption if the input changes while we are processing
-  auto *input = &initialInput;
-  const auto *output = &finalOutput;
-
   // Guard against null shards pointer
   if (unlikely(shards == nullptr)) {
     finalOutput = initialInput;
     return SHWireState::Continue;
   }
+
+  // Trampoline execution: explicit stack instead of recursion
+  // This avoids stack overflow and I-cache thrashing for deeply nested flows
+  boost::container::small_vector<ShardPtr *, 8> stack;
+  stack.push_back(shards);
+
+  auto *input = &initialInput;
+  const auto *output = &finalOutput;
+  finalOutput = initialInput; // Initialize output
 
 #if SHARDS_DEBUGGER
   // For debugger, we need to calculate length by iterating to nullptr
@@ -752,9 +757,18 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   DEFER({ shards::dbg::onExitActivation(context, shards, sizeof(ShardPtr), dbg_len); });
 #endif
 
-  // NULL-terminated iteration - simple and elegant!
-  while (*shards != nullptr) {
-    ShardPtr blk = *shards++;
+  while (!stack.empty()) {
+    ShardPtr *current = stack.back();
+
+    // Check for NULL terminator
+    if (*current == nullptr) {
+      stack.pop_back();
+      continue;
+    }
+
+    // Get current shard and advance pointer
+    ShardPtr blk = *current;
+    stack.back()++; // Advance to next shard in sequence
 
     {
 #ifdef TRACY_ENABLE
@@ -775,6 +789,12 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
       output = activateShardInline(blk, context, *input);
       shassert(output && "activateShardInline returned nullptr");
+    }
+
+    // Check if shard set nestedShards (control flow)
+    if (unlikely(blk->nestedShards != nullptr)) {
+      stack.push_back(blk->nestedShards);
+      blk->nestedShards = nullptr; // Clear for next activation
     }
 
     // Deal with aftermath of activation
