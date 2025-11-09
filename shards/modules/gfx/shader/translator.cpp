@@ -136,6 +136,8 @@ TranslatedFunction TranslationContext::processShards(const std::vector<ShardPtr>
   stack.emplace_back(std::move(functionScope));
 
   for (ShardPtr shard : shards) {
+    if (shard == nullptr)
+      break; // null terminated shards collection
     processShard(shard);
   }
   stack.pop_back();

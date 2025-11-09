@@ -721,12 +721,14 @@ struct Serialization {
         total += sizeof(int32_t);
       }
       { // Shards len
-        uint32_t len = uint32_t(wire->shards.size());
+        uint32_t len = uint32_t(wire->shards.size() > 0 ? wire->shards.size() - 1 : 0); // exclude null terminator
         write((const uint8_t *)&len, sizeof(uint32_t));
         total += sizeof(uint32_t);
       }
       // Shards
       for (auto shard : wire->shards) {
+        if (shard == nullptr)
+          break; // null terminated shards collection
         SHVar shardVar{};
         shardVar.valueType = SHType::ShardRef;
         shardVar.payload.shardValue = shard;

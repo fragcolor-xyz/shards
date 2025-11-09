@@ -60,12 +60,16 @@ struct Cond {
   void warmup(SHContext *ctx) {
     for (auto &blks : _conditions) {
       for (auto &blk : blks) {
+        if (blk == nullptr)
+          break; // null terminator
         if (blk->warmup)
           blk->warmup(blk, ctx);
       }
     }
     for (auto &blks : _actions) {
       for (auto &blk : blks) {
+        if (blk == nullptr)
+          break; // null terminator
         if (blk->warmup)
           blk->warmup(blk, ctx);
       }
@@ -77,6 +81,8 @@ struct Cond {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
+        if (shard == nullptr)
+          continue; // skip null terminator in reverse iteration
         shard->cleanup(shard, context);
       }
     }
@@ -84,6 +90,8 @@ struct Cond {
       auto &shards = *it;
       for (auto jt = shards.rbegin(); jt != shards.rend(); ++jt) {
         auto shard = *jt;
+        if (shard == nullptr)
+          continue; // skip null terminator in reverse iteration
         shard->cleanup(shard, context);
       }
     }
@@ -127,6 +135,7 @@ struct Cond {
                 _actions[idx].push_back(blk);
               }
             }
+            _actions[idx].push_back(nullptr); // null terminator
 
             idx++;
           } else { // condition
@@ -143,6 +152,7 @@ struct Cond {
                 _conditions[idx].push_back(blk);
               }
             }
+            _conditions[idx].push_back(nullptr); // null terminator
           }
         }
       }
@@ -266,7 +276,7 @@ struct Cond {
     SHVar actionInput = input;
     SHVar finalOutput{};
     for (auto &cond : _conditions) {
-      Shards shards{&cond[0], (uint32_t)cond.size(), 0};
+      Shards shards{&cond[0], (uint32_t)(cond.size() > 0 ? cond.size() - 1 : 0), 0}; // exclude null terminator
       auto state = activateShards2(shards, context, input, _output);
       // conditional flow so we might have "returns" form (And) (Or)
       if (unlikely(state > SHWireState::Return))
@@ -276,7 +286,7 @@ struct Cond {
         // Do the action if true!
         // And stop here
         memset(&_output, 0, sizeof(SHVar));
-        Shards action{&_actions[idx][0], (uint32_t)_actions[idx].size(), 0};
+        Shards action{&_actions[idx][0], (uint32_t)(_actions[idx].size() > 0 ? _actions[idx].size() - 1 : 0), 0}; // exclude null terminator
         state = activateShards(action, context, actionInput, _output);
         if (state != SHWireState::Continue)
           return _output;

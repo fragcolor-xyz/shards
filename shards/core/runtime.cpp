@@ -742,7 +742,7 @@ ALWAYS_INLINE SHWireState shardsActivation(T &shards, SHContext *context, const 
   if constexpr (std::is_same<T, Shards>::value || std::is_same<T, SHSeq>::value) {
     len = shards.len;
   } else if constexpr (std::is_same<T, std::vector<ShardPtr>>::value) {
-    len = shards.size();
+    len = shards.size() > 0 ? shards.size() - 1 : 0; // exclude null terminator
   } else {
     shassert(false && "Unreachable shardsActivation case");
   }
@@ -1366,7 +1366,7 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
         ctx.sharedStorage.insert(item);
       }
 
-      size_t chsize = wire.size();
+      size_t chsize = wire.size() > 0 && wire.back() == nullptr ? wire.size() - 1 : wire.size(); // exclude null terminator if present
       for (size_t i = 0; i < chsize; i++) {
         Shard *blk = wire[i];
         ctx.next = nullptr;
@@ -1417,8 +1417,8 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
         }
       }
 
-      if (wire.size() > 0) {
-        auto &last = wire.back();
+      if (chsize > 0) {
+        auto &last = wire[chsize - 1]; // use chsize which excludes null terminator
         if (strcmp(last->name(last), "Restart") == 0 || strcmp(last->name(last), "Return") == 0 ||
             strcmp(last->name(last), "Fail") == 0) {
           result.flowStopper = true;
@@ -1488,7 +1488,7 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
       // If first shard is an Expect, this wire can accept ANY input type as the type is checked at runtime
       wire->inputType = SHTypeInfo{SHType::Any};
     } else if (wire->shards.size() > 0 && !std::any_of(wire->shards.begin(), wire->shards.end(), [&](const auto &shard) {
-                 return strcmp(shard->name(shard), "Input") == 0;
+                 return shard != nullptr && strcmp(shard->name(shard), "Input") == 0;
                })) {
       // If first shard is a plain None, mark this wire has None input
       // But make sure we have no (Input) shards
@@ -2992,7 +2992,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
                     wire->looped,
                     wire->unsafe,
                     wire,
-                    {!wire->shards.empty() ? &wire->shards[0] : nullptr, uint32_t(wire->shards.size()), 0},
+                    {!wire->shards.empty() ? &wire->shards[0] : nullptr, uint32_t(wire->shards.size() > 0 ? wire->shards.size() - 1 : 0), 0},
                     shards::isRunning(wire),
                     wire->state == SHWire::State::Failed || !wire->finishedError.empty(),
                     SHStringWithLen{wire->finishedError.c_str(), wire->finishedError.size()},

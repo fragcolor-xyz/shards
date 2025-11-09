@@ -474,6 +474,8 @@ void to_json(json &j, const SHWireRef &wireref) {
   auto wire = SHWire::sharedFromRef(wireref);
   std::vector<json> shards;
   for (auto blk : wire->shards) {
+    if (blk == nullptr)
+      break; // null terminated shards collection
     SHVar blkVar{};
     blkVar.valueType = SHType::ShardRef;
     blkVar.payload.shardValue = blk;
