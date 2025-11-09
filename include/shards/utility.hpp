@@ -381,10 +381,11 @@ public:
     // We want to avoid copies in hot paths
     // So we write here the var we pass to CORE
     const auto nshards = _shardsArray.size();
+
+    _shardsArray.push_back(nullptr); // add null shards terminator BEFORE setting pointer to avoid reallocation
+
     _shards.elements = nshards > 0 ? &_shardsArray[0] : nullptr;
     _shards.len = uint32_t(nshards);
-
-    _shardsArray.push_back(nullptr); // add null shards terminator (at end of this call, we want len to know real shards count)
 
     return _shardsParam;
   }
