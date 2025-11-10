@@ -769,6 +769,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   while (!stack.empty()) {
     auto &frame = stack.back();
     ShardPtr blk; // Declare here to avoid goto jump over initialization
+    bool isContinuation = false;
 
     // Check for NULL terminator
     if (*frame.current == nullptr) {
@@ -777,69 +778,39 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
         output = frame.output;
       }
 
+    handleContinuation:
       // Handle continuation for state machine shards (If/When/Repeat)
-      // State machines use multi-phase execution:
-      //   Phase 1: Push predicate/condition, return with needsContinuation=true
-      //   Phase 2+: Re-activate after nested completes, examine result, push next phase
-      //   Final: Return result with needsContinuation=false
       auto continuationShard = frame.continuationShard;
       stack.pop_back();
 
       if (continuationShard) {
-        // Re-activate the shard to continue its state machine
-        // Example: If shard examines predicate result and decides which branch to push
-        output = activateShardInline(continuationShard, context, *output);
-        shassert(output && "activateShardInline returned nullptr");
-
-        // Check if continuation pushed more nested shards (next phase of state machine)
-        if (unlikely(continuationShard->nestedShards != nullptr)) {
-          stack.push_back({
-            continuationShard->nestedShards,
-            output,  // New frame's input (used for Rebase in nested predicates)
-            continuationShard->preserveOutput ? output : nullptr,
-            continuationShard->needsContinuation ? continuationShard : nullptr
-          });
-          continuationShard->nestedShards = nullptr;
-
-          if (unlikely(stack.size() > MAX_TRAMPOLINE_DEPTH)) {
-            SHLOG_ERROR("Trampoline stack overflow detected, wire: {} depth: {}", context->currentWire()->name, stack.size());
-            context->cancelFlow("Trampoline stack overflow detected");
-            return SHWireState::Error;
-          }
-        }
-
-        // Check if continuation had flow control issues
+        // Clear Return state if nested blocks used it (e.g., Or short-circuiting)
         if (unlikely(!context->shouldContinue())) {
-          finalOutput = *output;
           auto state = context->getState();
-          switch (state) {
-          case SHWireState::Return:
-            if constexpr (HANDLES_RETURN)
-              context->continueFlow();
-            return SHWireState::Return;
-          case SHWireState::Error:
-            handleActivationError(context, continuationShard);
-            [[fallthrough]];
-          case SHWireState::Stop:
-          case SHWireState::Restart:
+          if (state == SHWireState::Return) {
+            context->continueFlow(); // Clear Return before continuing state machine
+          } else {
+            // Other flow control states (Error, Stop, Restart) should propagate
+            finalOutput = *output;
+            if (state == SHWireState::Error) {
+              handleActivationError(context, continuationShard);
+            }
             return state;
-          case SHWireState::Rebase:
-            // Should not happen during continuation
-            input = stack.empty() ? &initialInput : stack.back().input;
-            context->continueFlow();
-            goto nextIteration;
-          case SHWireState::Continue:
-            break;
           }
         }
+
+        // Set blk to continuation shard and activate it through the unified path
+        blk = continuationShard;
+        isContinuation = true;
+        // Fall through to unified activation below
+      } else {
+        goto nextIteration;
       }
-
-      goto nextIteration;
+    } else {
+      // Get current shard and advance pointer
+      blk = *frame.current;
+      frame.current++; // Advance to next shard in sequence
     }
-
-    // Get current shard and advance pointer
-    blk = *frame.current;
-    frame.current++; // Advance to next shard in sequence
 
     {
 #ifdef TRACY_ENABLE
@@ -869,12 +840,9 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       // - input: starting input for this frame (for Rebase in nested predicates)
       // - output: output to restore after frame (nullptr for passthrough, set for preserveOutput/Sub)
       // - continuationShard: shard to re-activate after frame (nullptr or this shard for state machines)
-      stack.push_back({
-        blk->nestedShards,
-        output,  // Nested block's input becomes this output
-        blk->preserveOutput ? output : nullptr,
-        blk->needsContinuation ? blk : nullptr
-      });
+      stack.push_back({blk->nestedShards,
+                       output, // Nested block's input becomes this output
+                       blk->preserveOutput ? output : nullptr, blk->needsContinuation ? blk : nullptr});
       blk->nestedShards = nullptr; // Clear for next activation
 
       // Prevent unbounded heap growth from infinite nesting
@@ -886,14 +854,83 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
     }
 
     // Deal with aftermath of activation
+    // Continuation shards have simpler flow control (no Return unwinding needed)
+    if (isContinuation) {
+      if (unlikely(!context->shouldContinue())) {
+        finalOutput = *output;
+        auto state = context->getState();
+        switch (state) {
+        case SHWireState::Return:
+          // Return in continuation is normal (e.g., Or short-circuit in next phase)
+          context->continueFlow();
+          break;
+        case SHWireState::Error:
+          handleActivationError(context, blk);
+          [[fallthrough]];
+        case SHWireState::Stop:
+        case SHWireState::Restart:
+          return state;
+        case SHWireState::Rebase:
+          input = stack.empty() ? &initialInput : stack.back().input;
+          context->continueFlow();
+          goto nextIteration;
+        case SHWireState::Continue:
+          break;
+        }
+      }
+      goto nextIteration;
+    }
+
+    // Regular shard flow control handling (includes Return unwinding)
     if (unlikely(!context->shouldContinue())) {
       finalOutput = *output; // shallow copy it anyways
       auto state = context->getState();
       switch (state) {
-      case SHWireState::Return:
-        if constexpr (HANDLES_RETURN)
+      case SHWireState::Return: {
+        // Check if there's a continuation waiting (state machine like If/When/Repeat)
+        // If so, Return should unwind to the continuation, not exit the trampoline
+        ShardPtr continuationToInvoke = nullptr;
+        for (auto &f : stack) {
+          if (f.continuationShard) {
+            continuationToInvoke = f.continuationShard;
+            break;
+          }
+        }
+
+        if (continuationToInvoke) {
+          // Return unwinds frames until we hit the continuation
+          // This handles short-circuiting (Or/And) in nested predicates
           context->continueFlow();
-        return SHWireState::Return;
+
+          // Pop frames until we find the one with this continuation
+          while (!stack.empty()) {
+            auto &currentFrame = stack.back();
+
+            // Restore preserved output before popping
+            if (currentFrame.output) {
+              output = currentFrame.output;
+            }
+
+            // If this frame has the continuation, jump to reuse the continuation handler
+            if (currentFrame.continuationShard) {
+              frame = currentFrame;  // Update frame reference for continuation handler
+              goto handleContinuation;
+            }
+
+            // No continuation on this frame, pop it and continue unwinding
+            stack.pop_back();
+          }
+
+          // If we get here, continuation wasn't found (shouldn't happen)
+          SHLOG_ERROR("Return: continuation expected but not found in stack");
+          return SHWireState::Error;
+        } else {
+          // No continuation: Return exits the trampoline
+          if constexpr (HANDLES_RETURN)
+            context->continueFlow();
+          return SHWireState::Return;
+        }
+      }
       case SHWireState::Error: {
         handleActivationError(context, blk);
         [[fallthrough]];

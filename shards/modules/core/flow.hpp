@@ -763,8 +763,8 @@ struct IfBlock {
   FlattenedShards _elseFlat;
 
   // Storage for state machine
-  shards::Var _predicateResult;  // Result from predicate
-  shards::Var _originalInput;    // Original input (for branches and passthrough)
+  shards::Var _predicateResult; // Result from predicate
+  shards::Var _originalInput;   // Original input (for branches and passthrough)
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
@@ -867,14 +867,14 @@ struct IfBlock {
     case State::Initial:
       // Phase 1: Push predicate for trampoline execution
       _state = State::AfterPredicate;
-      _originalInput = input;  // Save original input for branches and passthrough
+      _originalInput = input; // Save original input for branches and passthrough
       self->nestedShards = _condFlat.get();
       self->needsContinuation = true;
-      return input;  // Input will be passed to predicate
+      return input; // Input will be passed to predicate
 
     case State::AfterPredicate:
       // Phase 2: Examine predicate result and push appropriate branch
-      _predicateResult = input;  // Input is now the predicate's output (bool)
+      _predicateResult = input; // Input is now the predicate's output (bool)
       _state = State::AfterBranch;
 
       // Determine which branch to execute based on predicate result
@@ -883,22 +883,22 @@ struct IfBlock {
       } else {
         self->nestedShards = _elseFlat.get();
       }
-      self->needsContinuation = true;  // Need phase 3 to handle passthrough
+      self->needsContinuation = true; // Need phase 3 to handle passthrough
 
       // Return original input for the branch to use
       return _originalInput;
 
     case State::AfterBranch:
       // Phase 3: Handle passthrough and return final result
-      _state = State::Initial;  // Reset for next activation
+      _state = State::Initial; // Reset for next activation
       self->needsContinuation = false;
 
       // Input is now the branch's output
       if (_passth) {
-        return _originalInput;  // Passthrough: return original input
+        return _originalInput; // Passthrough: return original input
       } else {
-        _output = input;  // Save branch output
-        return _output;   // Return branch output
+        _output = input; // Save branch output
+        return _output;  // Return branch output
       }
     }
 
