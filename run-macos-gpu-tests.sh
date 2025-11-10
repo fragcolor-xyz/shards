@@ -10,6 +10,7 @@ SKIP_AUDIO=false
 SKIP_MISC=false
 SKIP_SAMPLES=false
 VERBOSE=false
+SHARDS_BIN="shards"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
             VERBOSE=true
             shift
             ;;
+        --shards-bin)
+            SHARDS_BIN="$2"
+            shift 2
+            ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -46,10 +51,12 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-audio     Skip audio tests"
             echo "  --skip-misc      Skip miscellaneous tests (ml, physics, crdts, tui, etc.)"
             echo "  --skip-samples   Skip sample tests"
+            echo "  --shards-bin     Path to shards binary (default: shards)"
             echo "  --verbose, -v    Show full commands being run"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Example: $0 --skip-audio --skip-samples"
+            echo "Example: $0 --shards-bin build/Debug/shards"
             exit 0
             ;;
         *)
@@ -59,6 +66,14 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Convert SHARDS_BIN to absolute path if it's a relative path
+if [[ "$SHARDS_BIN" != /* ]] && [[ "$SHARDS_BIN" != "shards" ]]; then
+    SHARDS_BIN="$(pwd)/$SHARDS_BIN"
+elif [[ "$SHARDS_BIN" == "shards" ]]; then
+    # If it's just "shards", try to find the full path
+    SHARDS_BIN="$(command -v shards || echo shards)"
+fi
 
 export LOG_GFX=debug
 export RUST_BACKTRACE=full
@@ -89,16 +104,16 @@ run_test() {
 
     if [ "$VERBOSE" = true ]; then
         if [ -n "$env_vars" ]; then
-            echo "Running: $env_vars shards \"$test_file\" $extra_args"
+            echo "Running: $env_vars $SHARDS_BIN \"$test_file\" $extra_args"
         else
-            echo "Running: shards \"$test_file\" $extra_args"
+            echo "Running: $SHARDS_BIN \"$test_file\" $extra_args"
         fi
     fi
 
     if [ -n "$env_vars" ]; then
-        eval "$env_vars shards \"$test_file\" $extra_args" > "$log_file" 2>&1
+        eval "$env_vars $SHARDS_BIN \"$test_file\" $extra_args" > "$log_file" 2>&1
     else
-        shards "$test_file" $extra_args > "$log_file" 2>&1
+        $SHARDS_BIN "$test_file" $extra_args > "$log_file" 2>&1
     fi
 
     local exit_code=$?
@@ -120,7 +135,7 @@ run_test() {
 
 # Export function for parallel execution
 export -f run_test
-export LOG_DIR RED GREEN YELLOW NC VERBOSE
+export LOG_DIR RED GREEN YELLOW NC VERBOSE SHARDS_BIN
 
 echo "========================================"
 echo "Starting GPU Tests (Parallel)"
