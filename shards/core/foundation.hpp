@@ -1936,6 +1936,10 @@ public:
   }
 
   // Flatten a ShardsVar into a NULL-terminated ShardPtr* array
+  // IMPORTANT: This must only be called during compose(), never during activate().
+  // The Shards design ensures safety: nestedShards is set fresh on each activate()
+  // and immediately cleared after use, so the old array is never referenced when
+  // flatten() is called again during a subsequent compose().
   void flatten(const ShardsVar &shards) {
     if (_array) {
       delete[] _array;

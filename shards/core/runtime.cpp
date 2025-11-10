@@ -741,6 +741,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
   // Trampoline execution: explicit stack instead of recursion
   // This avoids stack overflow and I-cache thrashing for deeply nested flows
+  constexpr size_t MAX_TRAMPOLINE_DEPTH = 1000;
   boost::container::small_vector<ShardPtr *, 8> stack;
   boost::container::small_vector<const SHVar*, 8> savedOutputs; // Save output pointers for preserveOutput shards
   boost::container::small_vector<size_t, 8> savedDepths;        // Track which stack depth each saved output belongs to
@@ -811,6 +812,13 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       }
       stack.push_back(blk->nestedShards);
       blk->nestedShards = nullptr; // Clear for next activation
+
+      // Prevent unbounded heap growth from infinite nesting
+      if (unlikely(stack.size() > MAX_TRAMPOLINE_DEPTH)) {
+        SHLOG_ERROR("Trampoline stack overflow detected, wire: {} depth: {}", context->currentWire()->name, stack.size());
+        context->cancelFlow("Trampoline stack overflow detected");
+        return SHWireState::Error;
+      }
     }
 
     // Deal with aftermath of activation
