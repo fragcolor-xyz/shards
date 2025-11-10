@@ -828,6 +828,10 @@ struct Shard {
   // nestedShards (used by Sub). Most control flow shards want false (passthrough).
   SHBool preserveOutput;
 
+  // Trampoline execution: if true, re-activate this shard after nestedShards complete.
+  // Used by conditional control flow (If/When/Repeat) for multi-phase state machines.
+  SHBool needsContinuation;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,

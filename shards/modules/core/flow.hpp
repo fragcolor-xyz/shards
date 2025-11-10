@@ -746,10 +746,25 @@ struct IfBlock {
       {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return _params; }
 
+  // State machine phases
+  enum class State { Initial, AfterPredicate, AfterBranch };
+
   ShardsVar _cond{};
   ShardsVar _then{};
   ShardsVar _else{};
   bool _passth = false;
+
+  // State machine state
+  State _state = State::Initial;
+
+  // Flattened shard arrays for trampoline execution
+  FlattenedShards _condFlat;
+  FlattenedShards _thenFlat;
+  FlattenedShards _elseFlat;
+
+  // Storage for state machine
+  shards::Var _predicateResult;  // Result from predicate
+  shards::Var _originalInput;    // Original input (for branches and passthrough)
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
@@ -794,6 +809,12 @@ struct IfBlock {
                       data.wire ? data.wire->name : "unknown", formatShardSourceLocation(self));
       }
     }
+
+    // Flatten shards for trampoline execution
+    _condFlat.flatten(_cond);
+    _thenFlat.flatten(_then);
+    _elseFlat.flatten(_else);
+
     return _passth ? data.inputType : outputType;
   }
 
@@ -810,22 +831,79 @@ struct IfBlock {
   }
 
   shards::Var _output;
-  const SHVar &activate(SHContext *context, const SHVar &input) {
-    auto state = _cond.activate<true>(context, input, _output);
-    if (unlikely(state > SHWireState::Return))
-      return input;
 
-    // type check in compose!
-    if (_output.payload.boolValue) {
-      _then.activate(context, input, _output);
-    } else {
-      _else.activate(context, input, _output);
+  // State Machine Execution Flow (using continuation-based trampoline):
+  //
+  // ACTIVATION 1 (Initial):
+  //   - Save original input
+  //   - Push predicate shards to trampoline
+  //   - Set needsContinuation=true (tell trampoline to call us back)
+  //   - State transition: Initial -> AfterPredicate
+  //   - Return: original input (passed to predicate)
+  //
+  // [Trampoline executes predicate shards, gets bool result]
+  //
+  // ACTIVATION 2 (AfterPredicate):
+  //   - Input is now predicate result (bool)
+  //   - Examine result, choose Then or Else branch
+  //   - Push chosen branch shards to trampoline
+  //   - Set needsContinuation=true (need phase 3)
+  //   - State transition: AfterPredicate -> AfterBranch
+  //   - Return: original input (passed to branch)
+  //
+  // [Trampoline executes branch shards, gets branch output]
+  //
+  // ACTIVATION 3 (AfterBranch):
+  //   - Input is now branch output
+  //   - Apply passthrough logic
+  //   - Set needsContinuation=false (we're done)
+  //   - State transition: AfterBranch -> Initial
+  //   - Return: passthrough ? original input : branch output
+  //
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    auto self = toShard(this);
+
+    switch (_state) {
+    case State::Initial:
+      // Phase 1: Push predicate for trampoline execution
+      _state = State::AfterPredicate;
+      _originalInput = input;  // Save original input for branches and passthrough
+      self->nestedShards = _condFlat.get();
+      self->needsContinuation = true;
+      return input;  // Input will be passed to predicate
+
+    case State::AfterPredicate:
+      // Phase 2: Examine predicate result and push appropriate branch
+      _predicateResult = input;  // Input is now the predicate's output (bool)
+      _state = State::AfterBranch;
+
+      // Determine which branch to execute based on predicate result
+      if (_predicateResult.payload.boolValue) {
+        self->nestedShards = _thenFlat.get();
+      } else {
+        self->nestedShards = _elseFlat.get();
+      }
+      self->needsContinuation = true;  // Need phase 3 to handle passthrough
+
+      // Return original input for the branch to use
+      return _originalInput;
+
+    case State::AfterBranch:
+      // Phase 3: Handle passthrough and return final result
+      _state = State::Initial;  // Reset for next activation
+      self->needsContinuation = false;
+
+      // Input is now the branch's output
+      if (_passth) {
+        return _originalInput;  // Passthrough: return original input
+      } else {
+        _output = input;  // Save branch output
+        return _output;   // Return branch output
+      }
     }
 
-    if (!_passth)
-      return _output;
-    else
-      return input;
+    // Should never reach here
+    return input;
   }
 };
 

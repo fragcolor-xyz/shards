@@ -744,12 +744,14 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   constexpr size_t MAX_TRAMPOLINE_DEPTH = 1000;
 
   struct StackFrame {
-    ShardPtr *current;      // Position in shard sequence
-    const SHVar *output;    // Output to restore after frame (nullptr for passthrough)
+    ShardPtr *current;          // Position in shard sequence
+    const SHVar *input;         // Input for this frame (for Rebase in nested predicates)
+    const SHVar *output;        // Output to restore after frame (for preserveOutput/Sub)
+    ShardPtr continuationShard; // Shard to re-activate after frame completes (for state machines)
   };
 
   boost::container::small_vector<StackFrame, 8> stack;
-  stack.push_back({shards, nullptr}); // Initial frame
+  stack.push_back({shards, &initialInput, nullptr, nullptr}); // Initial frame
 
   auto *input = &initialInput;
   const auto *output = &finalOutput;
@@ -774,7 +776,63 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       if (frame.output) {
         output = frame.output;
       }
+
+      // Handle continuation for state machine shards (If/When/Repeat)
+      // State machines use multi-phase execution:
+      //   Phase 1: Push predicate/condition, return with needsContinuation=true
+      //   Phase 2+: Re-activate after nested completes, examine result, push next phase
+      //   Final: Return result with needsContinuation=false
+      auto continuationShard = frame.continuationShard;
       stack.pop_back();
+
+      if (continuationShard) {
+        // Re-activate the shard to continue its state machine
+        // Example: If shard examines predicate result and decides which branch to push
+        output = activateShardInline(continuationShard, context, *output);
+        shassert(output && "activateShardInline returned nullptr");
+
+        // Check if continuation pushed more nested shards (next phase of state machine)
+        if (unlikely(continuationShard->nestedShards != nullptr)) {
+          stack.push_back({
+            continuationShard->nestedShards,
+            output,  // New frame's input (used for Rebase in nested predicates)
+            continuationShard->preserveOutput ? output : nullptr,
+            continuationShard->needsContinuation ? continuationShard : nullptr
+          });
+          continuationShard->nestedShards = nullptr;
+
+          if (unlikely(stack.size() > MAX_TRAMPOLINE_DEPTH)) {
+            SHLOG_ERROR("Trampoline stack overflow detected, wire: {} depth: {}", context->currentWire()->name, stack.size());
+            context->cancelFlow("Trampoline stack overflow detected");
+            return SHWireState::Error;
+          }
+        }
+
+        // Check if continuation had flow control issues
+        if (unlikely(!context->shouldContinue())) {
+          finalOutput = *output;
+          auto state = context->getState();
+          switch (state) {
+          case SHWireState::Return:
+            if constexpr (HANDLES_RETURN)
+              context->continueFlow();
+            return SHWireState::Return;
+          case SHWireState::Error:
+            handleActivationError(context, continuationShard);
+            [[fallthrough]];
+          case SHWireState::Stop:
+          case SHWireState::Restart:
+            return state;
+          case SHWireState::Rebase:
+            // Should not happen during continuation
+            input = stack.empty() ? &initialInput : stack.back().input;
+            context->continueFlow();
+            goto nextIteration;
+          case SHWireState::Continue:
+            break;
+          }
+        }
+      }
 
       goto nextIteration;
     }
@@ -806,10 +864,17 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
     // Check if shard set nestedShards (control flow)
     if (unlikely(blk->nestedShards != nullptr)) {
-      // Push nested frame:
+      // Push nested frame with complete execution snapshot:
       // - current: nested shard sequence to execute
-      // - output: output to restore after (nullptr for passthrough, set for preserveOutput)
-      stack.push_back({blk->nestedShards, blk->preserveOutput ? output : nullptr});
+      // - input: starting input for this frame (for Rebase in nested predicates)
+      // - output: output to restore after frame (nullptr for passthrough, set for preserveOutput/Sub)
+      // - continuationShard: shard to re-activate after frame (nullptr or this shard for state machines)
+      stack.push_back({
+        blk->nestedShards,
+        output,  // Nested block's input becomes this output
+        blk->preserveOutput ? output : nullptr,
+        blk->needsContinuation ? blk : nullptr
+      });
       blk->nestedShards = nullptr; // Clear for next activation
 
       // Prevent unbounded heap growth from infinite nesting
@@ -831,15 +896,16 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
         return SHWireState::Return;
       case SHWireState::Error: {
         handleActivationError(context, blk);
+        [[fallthrough]];
       }
       case SHWireState::Stop:
       case SHWireState::Restart:
         return state;
       case SHWireState::Rebase:
-        // Reset input to wire's initial input
-        // Note: Rebase is handled correctly for nested control flow (If/When predicates)
-        // because those shards stay recursive and have their own initialInput parameter
-        input = &initialInput;
+        // Reset input to this frame's starting input (for And/Or in predicates)
+        // This correctly handles cases like: If({IsMore(50) And IsMore(100)} ...)
+        // where both predicates need the same input (the predicate block's input)
+        input = stack.back().input;
         context->continueFlow();
         continue;
       case SHWireState::Continue:

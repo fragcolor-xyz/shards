@@ -57,6 +57,7 @@ template <class T> struct ShardWrapper {
     // initialize trampoline fields
     result->nestedShards = nullptr;
     result->preserveOutput = false;
+    result->needsContinuation = false;
 
     // name
     if constexpr (has_name<T>::value) {
