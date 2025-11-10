@@ -744,12 +744,12 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   constexpr size_t MAX_TRAMPOLINE_DEPTH = 1000;
 
   struct StackFrame {
-    ShardPtr *current;           // Current position in shard sequence
-    const SHVar *savedOutput;    // Output to restore (nullptr for passthrough shards)
+    ShardPtr *current;      // Position in shard sequence
+    const SHVar *output;    // Output to restore after frame (nullptr for passthrough)
   };
 
   boost::container::small_vector<StackFrame, 8> stack;
-  stack.push_back({shards, nullptr}); // Initial frame, no output to preserve
+  stack.push_back({shards, nullptr}); // Initial frame
 
   auto *input = &initialInput;
   const auto *output = &finalOutput;
@@ -770,9 +770,9 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
     // Check for NULL terminator
     if (*frame.current == nullptr) {
-      // Restore saved output if this frame preserved it
-      if (frame.savedOutput) {
-        output = frame.savedOutput;
+      // Restore output if this frame preserved it (Sub behavior)
+      if (frame.output) {
+        output = frame.output;
       }
       stack.pop_back();
 
@@ -806,9 +806,9 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
     // Check if shard set nestedShards (control flow)
     if (unlikely(blk->nestedShards != nullptr)) {
-      // Push nested shards with optional output preservation
-      // preserveOutput=true (Sub): save output pointer to restore after nested execution
-      // preserveOutput=false (IfBlock, When, etc.): nullptr for passthrough behavior
+      // Push nested frame:
+      // - current: nested shard sequence to execute
+      // - output: output to restore after (nullptr for passthrough, set for preserveOutput)
       stack.push_back({blk->nestedShards, blk->preserveOutput ? output : nullptr});
       blk->nestedShards = nullptr; // Clear for next activation
 
@@ -836,7 +836,9 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       case SHWireState::Restart:
         return state;
       case SHWireState::Rebase:
-        // reset input to wire one and reset state
+        // Reset input to wire's initial input
+        // Note: Rebase is handled correctly for nested control flow (If/When predicates)
+        // because those shards stay recursive and have their own initialInput parameter
         input = &initialInput;
         context->continueFlow();
         continue;
