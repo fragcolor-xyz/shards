@@ -742,7 +742,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   // Trampoline execution: explicit stack instead of recursion
   // This avoids stack overflow and I-cache thrashing for deeply nested flows
   boost::container::small_vector<ShardPtr *, 8> stack;
-  boost::container::small_vector<const SHVar*, 8> savedOutputs; // Save output pointers (8 bytes each) for preserveOutput shards
+  boost::container::small_vector<const SHVar*, 8> savedOutputs; // Save output pointers for preserveOutput shards
   boost::container::small_vector<size_t, 8> savedDepths;        // Track which stack depth each saved output belongs to
   stack.push_back(shards);
 
@@ -806,7 +806,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       // Only save output pointer if shard wants to preserve it (e.g., Sub)
       // Most control flow shards want passthrough, so this is rarely needed
       if (blk->preserveOutput) {
-        savedOutputs.push_back(output);      // Save pointer (8 bytes), not value!
+        savedOutputs.push_back(output);      // Save pointer, not value!
         savedDepths.push_back(stack.size()); // Save depth we'll return to after nested execution
       }
       stack.push_back(blk->nestedShards);
