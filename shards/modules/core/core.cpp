@@ -756,6 +756,24 @@ struct ForEachShard {
 
   SHVar getParam(int index) { return _shards; }
 
+  // State machine phases
+  enum class State { Initial, Processing };
+
+  State _state = State::Initial;
+
+  // For iteration
+  shards::Var _inputStorage;         // Store the input (sequence or table)
+  uint32_t _currentIndex = 0;        // Current iteration index
+  bool _isTable = false;             // Whether we're iterating a table
+  std::vector<std::pair<SHVar, SHVar>> _tableEntries; // For table iteration (key-value pairs)
+
+  // Flattened shard arrays for trampoline execution
+  FlattenedShards _shardsFlat;
+
+  // For creating table items
+  std::array<SHVar, 2> _tableItem;
+  shards::Var _tableItemVar;
+
   SHTypeInfo compose(const SHInstanceData &data) {
     if (data.inputType.basicType != SHType::Seq && data.inputType.basicType != SHType::Table) {
       throw shards::Error("ForEach shard expected a sequence or a table as input.");
@@ -811,11 +829,8 @@ struct ForEachShard {
 
     _shards.compose(dataCopy);
 
-    if (data.inputType.basicType == SHType::Table) {
-      OVERRIDE_ACTIVATE1(data, activateTable);
-    } else {
-      OVERRIDE_ACTIVATE1(data, activateSeq);
-    }
+    // Trampoline: flatten shards for non-recursive execution
+    _shardsFlat.flatten(_shards);
 
     return data.inputType;
   }
@@ -860,37 +875,103 @@ struct ForEachShard {
     }
   }
 
-  void activateSeq(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
-      auto &item = input.payload.seqValue.elements[i];
-      assignVariableValue(*_tmp0, item);
-      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
-      auto state = _shards.activate<true>(context, item, output);
-      if (state != SHWireState::Continue)
-        break;
-    }
-  }
+  // State Machine Execution Flow (using continuation-based trampoline):
+  //
+  // ACTIVATION 1 (Initial):
+  //   - Store input (sequence or table)
+  //   - If table: convert to vector of entries
+  //   - Set currentIndex = 0
+  //   - Transition to Processing state
+  //   - Fall through to Processing
+  //
+  // ACTIVATION N (Processing):
+  //   - Check if currentIndex < length
+  //   - If yes:
+  //     - Set $0, $1 (for tables), $i variables
+  //     - Get current element
+  //     - Push shards to trampoline
+  //     - Set needsContinuation=true
+  //     - Increment currentIndex
+  //     - Return element as input to shards
+  //   - If no:
+  //     - Transition back to Initial
+  //     - Set needsContinuation=false
+  //     - Return original input
+  //
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    auto self = toShard(this);
 
-  void activateTable(SHContext *context, const SHVar &input) {
-    SHVar output{};
-    const auto &table = input.payload.tableValue;
-    uint32_t i = 0;
-    for (auto &[k, v] : table) {
-      assignVariableValue(*_tmp0, k);
-      assignVariableValue(*_tmp1, v);
-      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
-      _tableItem[0] = k;
-      _tableItem[1] = v;
-      const auto item = Var(_tableItem);
-      auto state = _shards.activate<true>(context, item, output);
-      if (state != SHWireState::Continue)
-        break;
-      i++;
-    }
-  }
+    switch (_state) {
+    case State::Initial:
+      // Phase 1: Set up iteration
+      _inputStorage = input;
+      _currentIndex = 0;
 
-  void activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation path"); }
+      if (input.valueType == SHType::Table) {
+        // Convert table to vector of entries for indexable iteration
+        _isTable = true;
+        _tableEntries.clear();
+        const auto &table = input.payload.tableValue;
+        for (auto &[k, v] : table) {
+          _tableEntries.emplace_back(k, v);
+        }
+      } else {
+        _isTable = false;
+      }
+
+      _state = State::Processing;
+      // Fall through to Processing
+
+    case State::Processing: {
+      // Check if we have more elements to process
+      uint32_t length;
+      if (_isTable) {
+        length = static_cast<uint32_t>(_tableEntries.size());
+      } else {
+        length = _inputStorage.payload.seqValue.len;
+      }
+
+      if (_currentIndex < length) {
+        // More elements: set variables and push shards
+        assignVariableValue(*_tmpIndex, Var(int64_t(_currentIndex)));
+
+        if (_isTable) {
+          // Table iteration: set $0 (key) and $1 (value)
+          auto &[k, v] = _tableEntries[_currentIndex];
+          assignVariableValue(*_tmp0, k);
+          assignVariableValue(*_tmp1, v);
+
+          // Create item as [key, value] sequence
+          _tableItem[0] = k;
+          _tableItem[1] = v;
+          _tableItemVar = Var(_tableItem);
+
+          _currentIndex++;
+          self->nestedShards = _shardsFlat.get();
+          self->needsContinuation = true;
+          return _tableItemVar;
+        } else {
+          // Sequence iteration: set $0 (element)
+          auto &item = _inputStorage.payload.seqValue.elements[_currentIndex];
+          assignVariableValue(*_tmp0, item);
+
+          _currentIndex++;
+          self->nestedShards = _shardsFlat.get();
+          self->needsContinuation = true;
+          return item;
+        }
+      } else {
+        // No more elements: done
+        _state = State::Initial;
+        self->needsContinuation = false;
+        _tableEntries.clear(); // Clean up table entries
+        return _inputStorage;
+      }
+    }
+    }
+
+    return input;
+  }
 
 private:
   static inline Parameters _params{
@@ -905,7 +986,6 @@ private:
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
   SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
-  std::array<SHVar, 2> _tableItem;
 };
 
 struct Map {

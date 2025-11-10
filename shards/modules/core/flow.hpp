@@ -653,9 +653,24 @@ template <bool COND> struct When {
       {"Passthrough", SHCCSTR("The output of this shard will be its input."), {CoreInfo::BoolType}}};
   static SHParametersInfo parameters() { return _params; }
 
+  // State machine phases
+  enum class State { Initial, AfterPredicate, AfterAction };
+
   ShardsVar _cond{};
   ShardsVar _action{};
   bool _passth = true;
+
+  // State machine state
+  State _state = State::Initial;
+
+  // Flattened shard arrays for trampoline execution
+  FlattenedShards _condFlat;
+  FlattenedShards _actionFlat;
+
+  // Storage for state machine
+  shards::Var _predicateResult; // Result from predicate
+  shards::Var _originalInput;   // Original input (for action and passthrough)
+  shards::Var _output;          // Final output storage
 
   void setParam(int index, const SHVar &value) {
     if (index == 0)
@@ -694,6 +709,11 @@ template <bool COND> struct When {
                             "does not match input type.");
       }
     }
+
+    // Trampoline: flatten shards for non-recursive execution
+    _condFlat.flatten(_cond);
+    _actionFlat.flatten(_action);
+
     return data.inputType;
   }
 
@@ -707,17 +727,73 @@ template <bool COND> struct When {
     _action.warmup(ctx);
   }
 
-  shards::Var _output;
+  // State Machine Execution Flow (using continuation-based trampoline):
+  //
+  // ACTIVATION 1 (Initial):
+  //   - Save original input
+  //   - Push predicate shards to trampoline
+  //   - Set needsContinuation=true (tell trampoline to call us back)
+  //   - State transition: Initial -> AfterPredicate
+  //   - Return: original input (passed to predicate)
+  //
+  // [Trampoline executes predicate shards, gets bool result]
+  //
+  // ACTIVATION 2 (AfterPredicate):
+  //   - Input is now predicate result (bool)
+  //   - Check if result matches COND
+  //   - If matches: push action shards, set needsContinuation=true, AfterPredicate -> AfterAction
+  //   - If doesn't match: done, set needsContinuation=false, AfterPredicate -> Initial, return input
+  //
+  // [Trampoline executes action shards if pushed, gets action output]
+  //
+  // ACTIVATION 3 (AfterAction):
+  //   - Input is now action output
+  //   - Apply passthrough logic
+  //   - Set needsContinuation=false (we're done)
+  //   - State transition: AfterAction -> Initial
+  //   - Return: passthrough ? original input : action output
+  //
   const SHVar &activate(SHContext *context, const SHVar &input) {
-    auto state = _cond.activate<true>(context, input, _output);
-    if (unlikely(state > SHWireState::Return))
+    auto self = toShard(this);
+
+    switch (_state) {
+    case State::Initial:
+      // Phase 1: Push predicate for trampoline execution
+      _state = State::AfterPredicate;
+      _originalInput = input;
+      self->nestedShards = _condFlat.get();
+      self->needsContinuation = true;
       return input;
 
-    // type check in compose!
-    if (_output.payload.boolValue == COND) {
-      _action.activate(context, input, _output);
-      if (!_passth)
+    case State::AfterPredicate:
+      // Phase 2: Examine predicate result and conditionally push action
+      _predicateResult = input;
+
+      // Check if predicate result matches COND (true for When, false for WhenNot)
+      if (_predicateResult.payload.boolValue == COND) {
+        // Condition satisfied: push action shards
+        _state = State::AfterAction;
+        self->nestedShards = _actionFlat.get();
+        self->needsContinuation = true;
+        return _originalInput; // Pass original input to action
+      } else {
+        // Condition not satisfied: skip action, return input
+        _state = State::Initial;
+        self->needsContinuation = false;
+        return _originalInput;
+      }
+
+    case State::AfterAction:
+      // Phase 3: Handle passthrough and return final result
+      _state = State::Initial;
+      self->needsContinuation = false;
+
+      if (_passth) {
+        return _originalInput;
+      } else {
+        _output = input; // Store action output
         return _output;
+      }
     }
 
     return input;

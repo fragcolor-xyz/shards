@@ -4379,9 +4379,24 @@ struct ForRangeShard {
 
   static SHParametersInfo parameters() { return _params; }
 
+  // State machine phases
+  enum class State { Initial, Processing };
+
+  State _state = State::Initial;
+
   ParamVar _from{Var(0)};
   ParamVar _to{Var(1)};
   ShardsVar _shards{};
+
+  // For iteration
+  shards::Var _inputStorage;   // Store the original input
+  int64_t _current = 0;        // Current iteration value
+  int64_t _end = 0;            // End value
+  bool _increment = true;      // true if incrementing, false if decrementing
+  shards::Var _currentVar;     // Storage for current value as SHVar
+
+  // Flattened shard arrays for trampoline execution
+  FlattenedShards _shardsFlat;
 
   std::array<SHExposedTypeInfo, 2> _requiring;
 
@@ -4456,30 +4471,84 @@ struct ForRangeShard {
 
     _shards.compose(dataCopy);
 
+    // Trampoline: flatten shards for non-recursive execution
+    _shardsFlat.flatten(_shards);
+
     return data.inputType;
   }
 
-  void activate(SHContext *context, const SHVar &input) {
-    auto from = _from.get().payload.intValue;
-    auto to = _to.get().payload.intValue;
+  // State Machine Execution Flow (using continuation-based trampoline):
+  //
+  // ACTIVATION 1 (Initial):
+  //   - Store original input
+  //   - Get from/to values
+  //   - Determine direction (increment or decrement)
+  //   - Set current = from
+  //   - Transition to Processing state
+  //   - Fall through to Processing
+  //
+  // ACTIVATION N (Processing):
+  //   - Check if we should continue:
+  //     - If incrementing: current <= end
+  //     - If decrementing: current >= end
+  //   - If yes:
+  //     - Create current value as SHVar
+  //     - Push shards to trampoline
+  //     - Set needsContinuation=true
+  //     - Increment/decrement current
+  //     - Return current value as input to shards
+  //   - If no:
+  //     - Transition back to Initial
+  //     - Set needsContinuation=false
+  //     - Return original input
+  //
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    auto self = toShard(this);
 
-    SHVar output{};
-    SHVar item{};
-    if (from <= to) {
-      for (auto i = from; i <= to; i++) {
-        item = Var(i);
-        auto state = _shards.activate<true>(context, item, output);
-        if (state != SHWireState::Continue)
-          break;
+    switch (_state) {
+    case State::Initial:
+      // Phase 1: Set up iteration
+      _inputStorage = input;
+      _current = _from.get().payload.intValue;
+      _end = _to.get().payload.intValue;
+      _increment = (_current <= _end);
+
+      _state = State::Processing;
+      // Fall through to Processing
+
+    case State::Processing: {
+      // Check if we should continue iterating
+      bool shouldContinue;
+      if (_increment) {
+        shouldContinue = (_current <= _end);
+      } else {
+        shouldContinue = (_current >= _end);
       }
-    } else if (from > to) {
-      for (auto i = from; i >= to; i--) {
-        item = Var(i);
-        auto state = _shards.activate<true>(context, item, output);
-        if (state != SHWireState::Continue)
-          break;
+
+      if (shouldContinue) {
+        // More iterations: push shards with current value
+        _currentVar = Var(_current);
+
+        // Increment/decrement for next iteration
+        if (_increment) {
+          _current++;
+        } else {
+          _current--;
+        }
+
+        self->nestedShards = _shardsFlat.get();
+        self->needsContinuation = true;
+        return _currentVar;
+      } else {
+        // No more iterations: done
+        _state = State::Initial;
+        self->needsContinuation = false;
+        return _inputStorage;
       }
     }
+    }
+
+    return input;
   }
 };
 struct IntRangeShard {
