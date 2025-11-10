@@ -742,10 +742,14 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   // Trampoline execution: explicit stack instead of recursion
   // This avoids stack overflow and I-cache thrashing for deeply nested flows
   constexpr size_t MAX_TRAMPOLINE_DEPTH = 1000;
-  boost::container::small_vector<ShardPtr *, 8> stack;
-  boost::container::small_vector<const SHVar*, 8> savedOutputs; // Save output pointers for preserveOutput shards
-  boost::container::small_vector<size_t, 8> savedDepths;        // Track which stack depth each saved output belongs to
-  stack.push_back(shards);
+
+  struct StackFrame {
+    ShardPtr *current;           // Current position in shard sequence
+    const SHVar *savedOutput;    // Output to restore (nullptr for passthrough shards)
+  };
+
+  boost::container::small_vector<StackFrame, 8> stack;
+  stack.push_back({shards, nullptr}); // Initial frame, no output to preserve
 
   auto *input = &initialInput;
   const auto *output = &finalOutput;
@@ -761,25 +765,23 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 #endif
 
   while (!stack.empty()) {
-    ShardPtr *current = stack.back();
+    auto &frame = stack.back();
     ShardPtr blk; // Declare here to avoid goto jump over initialization
 
     // Check for NULL terminator
-    if (*current == nullptr) {
-      stack.pop_back();
-      // Restore saved output pointer if we're returning to a depth that saved one
-      if (!savedDepths.empty() && savedDepths.back() == stack.size()) {
-        output = savedOutputs.back(); // Restore pointer to preserved output (no copy!)
-        savedOutputs.pop_back();
-        savedDepths.pop_back();
+    if (*frame.current == nullptr) {
+      // Restore saved output if this frame preserved it
+      if (frame.savedOutput) {
+        output = frame.savedOutput;
       }
+      stack.pop_back();
 
       goto nextIteration;
     }
 
     // Get current shard and advance pointer
-    blk = *current;
-    stack.back()++; // Advance to next shard in sequence
+    blk = *frame.current;
+    frame.current++; // Advance to next shard in sequence
 
     {
 #ifdef TRACY_ENABLE
@@ -804,13 +806,10 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
     // Check if shard set nestedShards (control flow)
     if (unlikely(blk->nestedShards != nullptr)) {
-      // Only save output pointer if shard wants to preserve it (e.g., Sub)
-      // Most control flow shards want passthrough, so this is rarely needed
-      if (blk->preserveOutput) {
-        savedOutputs.push_back(output);      // Save pointer, not value!
-        savedDepths.push_back(stack.size()); // Save depth we'll return to after nested execution
-      }
-      stack.push_back(blk->nestedShards);
+      // Push nested shards with optional output preservation
+      // preserveOutput=true (Sub): save output pointer to restore after nested execution
+      // preserveOutput=false (IfBlock, When, etc.): nullptr for passthrough behavior
+      stack.push_back({blk->nestedShards, blk->preserveOutput ? output : nullptr});
       blk->nestedShards = nullptr; // Clear for next activation
 
       // Prevent unbounded heap growth from infinite nesting
