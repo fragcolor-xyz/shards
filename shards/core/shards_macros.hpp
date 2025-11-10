@@ -93,6 +93,7 @@
     result->metadata = &_name_##Runtime::metadata;                                                                       \
     result->nestedShards = nullptr;                                                                                      \
     result->preserveOutput = false;                                                                                      \
+    result->needsContinuation = false;                                                                                   \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_namespace_ "." #_name_; });                       \
     result->hash = static_cast<SHHashProc>([](Shard *shard) {                                                            \
       return ::shards::constant<::shards::crc32(#_namespace_ "." #_name_ SHARDS_CURRENT_ABI_STR)>::value;                \
@@ -132,6 +133,7 @@
     result->metadata = &_name_##Runtime::metadata;                                                                       \
     result->nestedShards = nullptr;                                                                                      \
     result->preserveOutput = false;                                                                                      \
+    result->needsContinuation = false;                                                                                   \
     result->name = static_cast<SHNameProc>([](Shard *shard) { return #_name_; });                                        \
     result->hash = static_cast<SHHashProc>(                                                                              \
         [](Shard *shard) { return ::shards::constant<::shards::crc32(#_name_ SHARDS_CURRENT_ABI_STR)>::value; });        \

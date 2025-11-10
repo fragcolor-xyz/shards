@@ -750,8 +750,13 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
     ShardPtr continuationShard; // Shard to re-activate after frame completes (for state machines)
   };
 
-  boost::container::small_vector<StackFrame, 8> stack;
+  boost::container::small_vector<StackFrame, 10> stack;
   stack.push_back({shards, &initialInput, nullptr, nullptr}); // Initial frame
+
+  // Track continuation indices for O(1) everywhere (push/pop/lookup)
+  // Stack of frame indices where continuations exist (LIFO = nearest at back)
+  // 10 frames handles deep sequential chains, 6 continuations handles deep nesting
+  boost::container::small_vector<size_t, 6> continuationIndices;
 
   auto *input = &initialInput;
   const auto *output = &finalOutput;
@@ -782,6 +787,11 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       // Handle continuation for state machine shards (If/When/Repeat)
       auto continuationShard = frame.continuationShard;
       stack.pop_back();
+
+      // Update continuation indices stack - O(1)
+      if (!continuationIndices.empty() && continuationIndices.back() == stack.size()) {
+        continuationIndices.pop_back();
+      }
 
       if (continuationShard) {
         // Clear Return state if nested blocks used it (e.g., Or short-circuiting)
@@ -840,10 +850,16 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       // - input: starting input for this frame (for Rebase in nested predicates)
       // - output: output to restore after frame (nullptr for passthrough, set for preserveOutput/Sub)
       // - continuationShard: shard to re-activate after frame (nullptr or this shard for state machines)
+      auto hasContinuation = blk->needsContinuation;
       stack.push_back({blk->nestedShards,
                        output, // Nested block's input becomes this output
-                       blk->preserveOutput ? output : nullptr, blk->needsContinuation ? blk : nullptr});
+                       blk->preserveOutput ? output : nullptr, hasContinuation ? blk : nullptr});
       blk->nestedShards = nullptr; // Clear for next activation
+
+      // Track continuation index for O(1) Return unwinding
+      if (hasContinuation) {
+        continuationIndices.push_back(stack.size() - 1);
+      }
 
       // Prevent unbounded heap growth from infinite nesting
       if (unlikely(stack.size() > MAX_TRAMPOLINE_DEPTH)) {
@@ -888,22 +904,17 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       switch (state) {
       case SHWireState::Return: {
         // Check if there's a continuation waiting (state machine like If/When/Repeat)
-        // If so, Return should unwind to the continuation, not exit the trampoline
-        ShardPtr continuationToInvoke = nullptr;
-        for (auto &f : stack) {
-          if (f.continuationShard) {
-            continuationToInvoke = f.continuationShard;
-            break;
-          }
-        }
-
-        if (continuationToInvoke) {
-          // Return unwinds frames until we hit the continuation
+        // O(1) lookup: check if continuation indices stack is non-empty
+        if (!continuationIndices.empty()) {
+          // Return unwinds frames until we hit the continuation - O(frames to unwind)
           // This handles short-circuiting (Or/And) in nested predicates
           context->continueFlow();
 
-          // Pop frames until we find the one with this continuation
-          while (!stack.empty()) {
+          // Get target continuation index - O(1)
+          size_t targetIdx = continuationIndices.back();
+
+          // Pop frames until we reach the continuation frame
+          while (stack.size() > targetIdx + 1) {
             auto &currentFrame = stack.back();
 
             // Restore preserved output before popping
@@ -911,19 +922,12 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
               output = currentFrame.output;
             }
 
-            // If this frame has the continuation, jump to reuse the continuation handler
-            if (currentFrame.continuationShard) {
-              frame = currentFrame;  // Update frame reference for continuation handler
-              goto handleContinuation;
-            }
-
-            // No continuation on this frame, pop it and continue unwinding
             stack.pop_back();
           }
 
-          // If we get here, continuation wasn't found (shouldn't happen)
-          SHLOG_ERROR("Return: continuation expected but not found in stack");
-          return SHWireState::Error;
+          // Now stack.back() is the frame with the continuation
+          frame = stack.back();
+          goto handleContinuation;
         } else {
           // No continuation: Return exits the trampoline
           if constexpr (HANDLES_RETURN)
