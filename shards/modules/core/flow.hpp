@@ -986,6 +986,8 @@ struct Match {
 struct Sub {
   ShardsVar _shards{};
   SHComposeResult _composition{};
+  FlattenedShards _shardsFlat{}; // Trampoline: flattened shard array
+  SHVar _preservedOutput{};      // Trampoline: storage for output to preserve
 
   static SHOptionalString help() {
     return SHCCSTR("Activates a shard or a sequence of shards independently, without consuming the input. I.e. the input of the "
@@ -1012,6 +1014,10 @@ struct Sub {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     _composition = _shards.compose(data);
+    // Trampoline: flatten shards for non-recursive execution
+    _shardsFlat.flatten(_shards);
+    // Trampoline: mark that this shard preserves its output
+    toShard(this)->preserveOutput = true;
     return data.inputType;
   }
 
@@ -1021,9 +1027,13 @@ struct Sub {
 
   void cleanup(SHContext *ctx) { _shards.cleanup(ctx); }
 
-  void activate(SHContext *context, const SHVar &input) {
-    SHVar output{}; // ignored but next call needs it
-    _shards.activate(context, input, output);
+  const SHVar &activate(SHContext *context, const SHVar &input) {
+    // Trampoline: set nestedShards instead of recursively calling activate
+    // The nested shards will execute with input, but we return input unchanged
+    // Store input in our own storage so we can return a stable pointer
+    _preservedOutput = input;
+    toShard(this)->nestedShards = _shardsFlat.get();
+    return _preservedOutput; // Return reference to our stored copy
   }
 };
 } // namespace shards

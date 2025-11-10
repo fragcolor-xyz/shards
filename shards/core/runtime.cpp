@@ -719,8 +719,8 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 }
 
 template <bool HANDLES_RETURN>
-ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
-                                           SHVar *outHash = nullptr) noexcept {
+ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput,
+                                           SHVar &finalOutput) noexcept {
 // check for stack overflow - still useful for detecting very deep control flow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
   if (unlikely(!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit()))) {
@@ -742,6 +742,8 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   // Trampoline execution: explicit stack instead of recursion
   // This avoids stack overflow and I-cache thrashing for deeply nested flows
   boost::container::small_vector<ShardPtr *, 8> stack;
+  boost::container::small_vector<const SHVar*, 8> savedOutputs; // Save output pointers (8 bytes each) for preserveOutput shards
+  boost::container::small_vector<size_t, 8> savedDepths;        // Track which stack depth each saved output belongs to
   stack.push_back(shards);
 
   auto *input = &initialInput;
@@ -759,15 +761,23 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
   while (!stack.empty()) {
     ShardPtr *current = stack.back();
+    ShardPtr blk; // Declare here to avoid goto jump over initialization
 
     // Check for NULL terminator
     if (*current == nullptr) {
       stack.pop_back();
-      continue;
+      // Restore saved output pointer if we're returning to a depth that saved one
+      if (!savedDepths.empty() && savedDepths.back() == stack.size()) {
+        output = savedOutputs.back(); // Restore pointer to preserved output (no copy!)
+        savedOutputs.pop_back();
+        savedDepths.pop_back();
+      }
+
+      goto nextIteration;
     }
 
     // Get current shard and advance pointer
-    ShardPtr blk = *current;
+    blk = *current;
     stack.back()++; // Advance to next shard in sequence
 
     {
@@ -793,6 +803,12 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 
     // Check if shard set nestedShards (control flow)
     if (unlikely(blk->nestedShards != nullptr)) {
+      // Only save output pointer if shard wants to preserve it (e.g., Sub)
+      // Most control flow shards want passthrough, so this is rarely needed
+      if (blk->preserveOutput) {
+        savedOutputs.push_back(output);      // Save pointer (8 bytes), not value!
+        savedDepths.push_back(stack.size()); // Save depth we'll return to after nested execution
+      }
       stack.push_back(blk->nestedShards);
       blk->nestedShards = nullptr; // Clear for next activation
     }
@@ -822,6 +838,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
       }
     }
 
+  nextIteration:
     // Pass output to next block input
     input = output;
   }

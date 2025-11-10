@@ -824,6 +824,10 @@ struct Shard {
   // or nullptr. Control flow shards set this to avoid recursion.
   ShardPtr *nestedShards;
 
+  // Trampoline execution: if true, preserve this shard's output when executing
+  // nestedShards (used by Sub). Most control flow shards want false (passthrough).
+  SHBool preserveOutput;
+
   // \-- The interface to fill --/
 
   SHNameProc name;             // Returns the name of the shard, do not free the string,
@@ -972,15 +976,6 @@ typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShards)(ShardPtr *shards, struct 
 #else
 typedef SHWireState(__cdecl *SHRunShards)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
                                           struct SHVar *output);
-#endif
-
-#if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context,
-                                                             const struct SHVar *input, struct SHVar *output,
-                                                             struct SHVar *outHash);
-#else
-typedef SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
-                                                struct SHVar *output, struct SHVar *outHash);
 #endif
 
 typedef void(__cdecl *SHLog)(struct SHStringWithLen msg);
@@ -1221,10 +1216,6 @@ typedef struct _SHCore {
   SHRunShards runShards;
   // caller handles return state
   SHRunShards runShards2;
-  // caller not handling return state
-  SHRunShardsHashed runShardsHashed;
-  // caller handles return state
-  SHRunShardsHashed runShardsHashed2;
 
   // Logging
   SHLog log;
