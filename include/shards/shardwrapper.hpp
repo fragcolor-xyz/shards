@@ -44,8 +44,29 @@ template <class T> struct ShardWrapper {
 
   static inline const char *name = "";
   static inline const char *aliasOf = "";
-  static inline ShardMetadata metadata;
+  static inline ShardMetadata metadata{};
   static inline uint32_t crc = 0;
+
+  // Initialize metadata with static values (called during registration)
+  static void initMetadata() {
+    metadata.staticName = name;
+    metadata.nameLength = name ? strlen(name) : 0;
+    metadata.hash = crc;
+
+    // These will be populated if the shard type has static methods
+    if constexpr (!has_help<T>::value) {
+      metadata.help = SHOptionalString();
+    }
+    if constexpr (!has_inputHelp<T>::value) {
+      metadata.inputHelp = SHOptionalString();
+    }
+    if constexpr (!has_outputHelp<T>::value) {
+      metadata.outputHelp = SHOptionalString();
+    }
+    if constexpr (!has_parameters<T>::value) {
+      metadata.parameters = SHParametersInfo();
+    }
+  }
 
   static Shard *create() {
     auto self = new (std::align_val_t{16}) ShardWrapper<T>();
@@ -58,21 +79,22 @@ template <class T> struct ShardWrapper {
     if constexpr (has_name<T>::value) {
       result->name = static_cast<SHNameProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.name(); });
     } else {
-      result->name = static_cast<SHNameProc>([](Shard *b) { return name; });
+      result->name = static_cast<SHNameProc>([](Shard *b) { return b->metadata->staticName; });
+      result->nameLength = metadata.nameLength;
     }
 
     // hash
     if constexpr (has_hash<T>::value) {
       result->hash = static_cast<SHHashProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.hash(); });
     } else {
-      result->hash = static_cast<SHHashProc>([](Shard *b) { return crc; });
+      result->hash = static_cast<SHHashProc>([](Shard *b) { return b->metadata->hash; });
     }
 
     // help
     if constexpr (has_help<T>::value) {
       result->help = static_cast<SHHelpProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.help(); });
     } else {
-      result->help = static_cast<SHHelpProc>([](Shard *b) { return SHOptionalString(); });
+      result->help = static_cast<SHHelpProc>([](Shard *b) { return b->metadata->help; });
     }
 
     // inputHelp
@@ -80,7 +102,7 @@ template <class T> struct ShardWrapper {
       result->inputHelp =
           static_cast<SHHelpProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.inputHelp(); });
     } else {
-      result->inputHelp = static_cast<SHHelpProc>([](Shard *b) { return SHOptionalString(); });
+      result->inputHelp = static_cast<SHHelpProc>([](Shard *b) { return b->metadata->inputHelp; });
     }
 
     // outputHelp
@@ -88,7 +110,7 @@ template <class T> struct ShardWrapper {
       result->outputHelp =
           static_cast<SHHelpProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.outputHelp(); });
     } else {
-      result->outputHelp = static_cast<SHHelpProc>([](Shard *b) { return SHOptionalString(); });
+      result->outputHelp = static_cast<SHHelpProc>([](Shard *b) { return b->metadata->outputHelp; });
     }
 
     // properties
@@ -157,7 +179,7 @@ template <class T> struct ShardWrapper {
       result->parameters =
           static_cast<SHParametersProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.parameters(); });
     } else {
-      result->parameters = static_cast<SHParametersProc>([](Shard *b) { return SHParametersInfo(); });
+      result->parameters = static_cast<SHParametersProc>([](Shard *b) { return b->metadata->parameters; });
     }
 
     // setParam
@@ -348,11 +370,15 @@ template <typename T> inline Shard *toShard(T *self) { return &toShardWrapper(se
   ::shards::ShardWrapper<__type__>::name = __name__;                                                                   \
   ::shards::ShardWrapper<__type__>::crc = ::shards::constant<::shards::crc32(__name__ SHARDS_CURRENT_ABI_STR)>::value; \
   ::shards::ShardWrapper<__type__>::metadata.category = SHString(SHARD_MODULE_STRINGIFY(SHARDS_THIS_MODULE_ID));       \
+  ::shards::ShardWrapper<__type__>::initMetadata();                                                                    \
   ::shards::registerShard(::shards::ShardWrapper<__type__>::name, &::shards::ShardWrapper<__type__>::create,           \
                           NAMEOF_FULL_TYPE(__type__))
 
 #define REGISTER_SHARD_ALIAS(__name__, __aliasOf__, __type__)       \
+  ::shards::ShardWrapper<__type__>::name = __name__;                \
+  ::shards::ShardWrapper<__type__>::crc = ::shards::constant<::shards::crc32(__name__ SHARDS_CURRENT_ABI_STR)>::value; \
   ::shards::ShardWrapper<__type__>::metadata.aliasOf = __aliasOf__; \
+  ::shards::ShardWrapper<__type__>::initMetadata();                 \
   ::shards::registerShard(__name__, &::shards::ShardWrapper<__type__>::create, NAMEOF_FULL_TYPE(__type__))
 
 #define OVERRIDE_ACTIVATE(__data__, __func__)                                                                            \

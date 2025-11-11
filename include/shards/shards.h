@@ -789,6 +789,21 @@ struct ShardMetadata {
   SHString category;
   // Optional compile time defined alias of another shard
   SHString aliasOf;
+
+  // Static name for shards that don't override name()
+  SHString staticName;
+  // Cached name length
+  uint32_t nameLength;
+  // Type-level hash (crc32)
+  uint32_t hash;
+
+  // Static documentation strings
+  SHOptionalString help;
+  SHOptionalString inputHelp;
+  SHOptionalString outputHelp;
+
+  // Parameter structure (static for a shard type)
+  SHParametersInfo parameters;
 };
 
 struct Shard {
