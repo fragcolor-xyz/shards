@@ -484,6 +484,13 @@ if(APPLE)
     $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-parameter>
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-missing-field-initializers>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-nullability-extension>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-nullability-extension>
+  )
+  # Also pass to external projects
+  list(APPEND EXTERNAL_CMAKE_ARGS
+    "-DCMAKE_C_FLAGS=-Wno-nullability-extension"
+    "-DCMAKE_CXX_FLAGS=-Wno-nullability-extension"
   )
 endif()
 

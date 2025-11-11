@@ -791,49 +791,52 @@ struct ShardMetadata {
   SHString aliasOf;
 };
 
+#define SHARD_FLAGS_NONE (0)
+#define SHARD_FLAGS_OWNED_SHARD (1 << 0) // 1 - flag to ensure shards are unique when flows/wires
+
 struct Shard {
   // \-- Internal stuff, do not directly use! --/
 
-  // magic tricks to make some shards inline
-  SHInlineShards inlineShardId;
+  // The hot path - optimized for cache locality!
+  // First cache line (64 bytes) contains all frequently accessed fields:
+  // - VM execution: inlineShardId (accessed first!), activate
+  // - Reference counting: refCount
+  // - Profiling: name, nameLength
+  // - Error logging: line, column, file
+  // - Debug: id, flags
 
-  // used to manage the lifetime of this shard, should be set to 0
-  uint32_t refCount;
+  SHInlineShards inlineShardId; // uint32_t - accessed FIRST in VM loop!
+  uint32_t refCount;            // used to manage the lifetime of this shard
 
-  // flag to ensure shards are unique when flows/wires
-  SHBool owned;
+  SHActivateProc activate;      // hot path execution
 
-  // name length, used for profiling and more
-  uint32_t nameLength;
+  SHNameProc name;              // Returns the name of the shard, do not free the string,
+                                // generally const
+  uint32_t nameLength;          // name length, used for profiling and more
 
-  // some debug/utility info
+  // Debug/error logging info (accessed when logging errors)
   uint32_t line;
   uint32_t column;
   uint32_t file;
 
-  // internal use only, to optionally identify the shard within a single program
-  uint64_t id;
+  // Less frequently accessed
+  uint32_t id;                  // internal use only, to optionally identify the shard
+  uint32_t flags;               // Shard flags (SHARD_FLAGS_OWNED_SHARD, etc.)
 
-  // internal use only, to uniquely identify the shard
-  uint64_t debuggerId;
-
-  // Optional compile time defined metadata
-  struct ShardMetadata *metadata;
+  // Still in first cache line - commonly used function pointers
+  SHHashProc hash;              // Returns the hash of the shard, useful for serialization
+  SHWarmupProc warmup;          // Called before running the wire, once
 
   // \-- The interface to fill --/
 
-  SHNameProc name;             // Returns the name of the shard, do not free the string,
-                               // generally const
-  SHHashProc hash;             // Returns the hash of the shard, useful for serialization
-  SHHelpProc help;             // Returns the help text of the shard, do not free the
-                               // string, generally const
-  SHHelpProc inputHelp;        // optional help text for the input
-  SHHelpProc outputHelp;       // optional help text for the output
-  SHPropertiesProc properties; // optional properties
+  SHHelpProc help;              // Returns the help text of the shard
+  SHHelpProc inputHelp;         // optional help text for the input
+  SHHelpProc outputHelp;        // optional help text for the output
+  SHPropertiesProc properties;  // optional properties
 
-  SHSetupProc setup;     // A one time constructor setup for the shard
-  SHDestroyProc destroy; // A one time finalizer for the shard, shards should
-                         // also free all the memory in here!
+  SHSetupProc setup;            // A one time constructor setup for the shard
+  SHDestroyProc destroy;        // A one time finalizer for the shard, shards should
+                                // also free all the memory in here!
 
   SHInputTypesProc inputTypes;
   SHOutputTypesProc outputTypes;
@@ -846,30 +849,18 @@ struct Shard {
   SHComposeProc compose;
   SHComposeV2Proc composeV2;
 
+  // Called every time you stop a coroutine or sometimes
+  // internally to clean up the shard
+  SHCleanupProc cleanup;
+
   SHParametersProc parameters;
   SHSetParamProc setParam; // Set a parameter, the shard will copy the value, so
                            // if you allocated any memory you should free it
   SHGetParamProc getParam; // Gets a parameter, the shard is the owner of any
                            // allocated stuff, DO NOT free them
 
-  SHWarmupProc warmup; // Called before running the wire, once
-  SHActivateProc activate;
-  // Called every time you stop a coroutine or sometimes
-  // internally to clean up the shard
-  SHCleanupProc cleanup;
-
-  // Optional genetic programming helpers
-  // getState/setState are also used during serialization
-  // assume all the following to be called out of wire
-  // likely the wire will be stopped after cleanup() called
-  // so any state (in fact) should be kept
-  SHMutateProc mutate;
-  SHCrossoverProc crossover;
-  // intended as persistent state during shard lifetime
-  // persisting cleanups
-  SHGetStateProc getState;
-  SHSetStateProc setState;
-  SHResetStateProc resetState;
+  // Optional compile time defined metadata
+  struct ShardMetadata *metadata;
 };
 
 struct SHWireProviderUpdate {
@@ -1002,9 +993,6 @@ typedef SHBool(__cdecl *SHIsWireRunning)(SHWireRef wire);
 typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
 typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, struct SHInstanceData data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
-typedef SHWireRef(__cdecl *SHGetGlobalWire)(struct SHStringWithLen name);
-typedef void(__cdecl *SHSetGlobalWire)(struct SHStringWithLen name, SHWireRef wire);
-typedef void(__cdecl *SHUnsetGlobalWire)(struct SHStringWithLen name);
 
 typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
@@ -1247,9 +1235,6 @@ typedef struct _SHCore {
   SHComposeWire composeWire;
   SHRunWire runWire;
   SHGetWireInfo getWireInfo;
-  SHGetGlobalWire getGlobalWire;
-  SHSetGlobalWire setGlobalWire;
-  SHUnsetGlobalWire unsetGlobalWire;
 
   // Wire scheduling
   SHCreateMesh createMesh;

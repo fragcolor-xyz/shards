@@ -123,15 +123,15 @@ struct Cond {
           auto val = value.payload.seqValue.elements[i];
           if (i % 2) { // action
             if (val.valueType == SHType::ShardRef) {
-              assert(!val.payload.shardValue->owned);
-              val.payload.shardValue->owned = true;
+              assert(!(val.payload.shardValue->flags & SHARD_FLAGS_OWNED_SHARD));
+              val.payload.shardValue->flags |= SHARD_FLAGS_OWNED_SHARD;
               _actions[idx].push_back(val.payload.shardValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
-                assert(!blk->owned);
-                blk->owned = true;
+                assert(!(blk->flags & SHARD_FLAGS_OWNED_SHARD));
+                blk->flags |= SHARD_FLAGS_OWNED_SHARD;
                 _actions[idx].push_back(blk);
               }
             }
@@ -140,15 +140,15 @@ struct Cond {
             idx++;
           } else { // condition
             if (val.valueType == SHType::ShardRef) {
-              assert(!val.payload.shardValue->owned);
-              val.payload.shardValue->owned = true;
+              assert(!(val.payload.shardValue->flags & SHARD_FLAGS_OWNED_SHARD));
+              val.payload.shardValue->flags |= SHARD_FLAGS_OWNED_SHARD;
               _conditions[idx].push_back(val.payload.shardValue);
             } else { // seq
               for (uint32_t y = 0; y < val.payload.seqValue.len; y++) {
                 assert(val.payload.seqValue.elements[y].valueType == SHType::ShardRef);
                 auto blk = val.payload.seqValue.elements[y].payload.shardValue;
-                assert(!blk->owned);
-                blk->owned = true;
+                assert(!(blk->flags & SHARD_FLAGS_OWNED_SHARD));
+                blk->flags |= SHARD_FLAGS_OWNED_SHARD;
                 _conditions[idx].push_back(blk);
               }
             }

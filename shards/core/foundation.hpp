@@ -119,8 +119,6 @@ const SHObjectInfo *findObjectInfo(int32_t vendorId, int32_t typeId);
 int64_t findObjectTypeId(std::string_view name);
 const SHEnumInfo *findEnumInfo(int32_t vendorId, int32_t typeId);
 int64_t findEnumId(std::string_view name);
-void registerWire(SHWire *wire);
-void unregisterWire(SHWire *wire);
 
 void imageIncRef(SHImage *ptr);
 void imageDecRef(SHImage *ptr);
@@ -657,8 +655,8 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
 
   // Also the wire takes ownership of the shard!
   void addShard(Shard *blk) {
-    shassert(!blk->owned);
-    blk->owned = true;
+    shassert(!(blk->flags & SHARD_FLAGS_OWNED_SHARD));
+    blk->flags |= SHARD_FLAGS_OWNED_SHARD;
     shards::incRef(blk);
     if (!shards.empty()) {
       shards.pop_back(); // pop the null terminator
@@ -675,7 +673,7 @@ struct SHWire : public std::enable_shared_from_this<SHWire> {
     auto findIt = std::find(shards.begin(), shards.end(), blk);
     if (findIt != shards.end()) {
       shards.erase(findIt);
-      blk->owned = false;
+      blk->flags &= ~SHARD_FLAGS_OWNED_SHARD;
       shards::decRef(blk);
     } else {
       throw shards::SHException("removeShard: shard not found!");
@@ -1080,8 +1078,6 @@ public:
   std::unordered_map<std::string_view, int64_t> ObjectTypesRegisterByName;
   std::unordered_map<int64_t, SHEnumInfo> EnumTypesRegister;
   std::unordered_map<std::string_view, int64_t> EnumTypesRegisterByName;
-
-  std::unordered_map<std::string, std::shared_ptr<SHWire>> GlobalWires;
 
   std::list<std::weak_ptr<RuntimeObserver>> Observers;
 

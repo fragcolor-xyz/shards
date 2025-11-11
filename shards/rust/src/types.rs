@@ -5089,14 +5089,13 @@ impl ShardsVar {
       }
     } else if let Ok(s) = ShardRef::try_from(&self.param.0) {
       self.shards.push(s);
-    } else if value.is_none() {
-      // we allow none
-      return Ok(());
-    } else {
+    } else if !value.is_none() {
       return Err("Expected sequence or shard variable, but casting failed.");
     }
+    // else: value.is_none() is allowed, we just have an empty array
 
-    // Add NULL terminator for NULL-terminated array iteration
+    // ALWAYS add NULL terminator for NULL-terminated array iteration
+    // Even for empty arrays, this ensures native_shards.elements is never nullptr
     self.shards.push(ShardRef(std::ptr::null_mut()));
 
     self.native_shards = Shards {
@@ -5121,11 +5120,7 @@ impl ShardsVar {
       self.compose_result = None;
     }
 
-    if self.param.0.is_none() {
-      self.compose_result = Some(Default::default());
-      return Ok(self.compose_result.as_ref().unwrap());
-    }
-
+    // native_shards is ALWAYS valid, even for empty arrays (they have [nullptr])
     let result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
@@ -5139,10 +5134,8 @@ impl ShardsVar {
 
   #[inline(always)]
   pub fn activate(&self, context: &Context, input: &Var, output: &mut Var) -> WireState {
-    if self.param.0.is_none() {
-      return WireState::Continue;
-    }
-
+    // native_shards.elements is ALWAYS valid (never nullptr)
+    // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
     unsafe {
       (*Core).runShards.unwrap_unchecked()(
         self.native_shards.elements,
@@ -5161,10 +5154,8 @@ impl ShardsVar {
     input: &Var,
     output: &mut Var,
   ) -> WireState {
-    if self.param.0.is_none() {
-      return WireState::Continue;
-    }
-
+    // native_shards.elements is ALWAYS valid (never nullptr)
+    // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
     unsafe {
       (*Core).runShards2.unwrap_unchecked()(
         self.native_shards.elements,

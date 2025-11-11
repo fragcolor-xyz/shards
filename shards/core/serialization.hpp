@@ -361,13 +361,6 @@ struct Serialization {
         destroyVar(tmp);
       }
 
-      if (blk->setState) {
-        SHVar state{};
-        deserialize(read, state);
-        blk->setState(blk, &state);
-        destroyVar(state);
-      }
-
       if (private_internal) {
         // also get line and column
         read((uint8_t *)&blk->line, sizeof(uint32_t));
@@ -375,7 +368,7 @@ struct Serialization {
         read((uint8_t *)&blk->file, sizeof(uint32_t));
 
         // read shard id
-        read((uint8_t *)&blk->id, sizeof(uint64_t));
+        read((uint8_t *)&blk->id, sizeof(uint32_t));
       }
 
       incRef(blk);
@@ -663,12 +656,6 @@ struct Serialization {
         total += serialize(pval, write);
       }
 
-      // optional state
-      if (blk->getState) {
-        auto state = blk->getState(blk);
-        total += serialize(state, write);
-      }
-
       if (private_internal) {
         // line and column
         write((const uint8_t *)&blk->line, sizeof(uint32_t));
@@ -678,8 +665,8 @@ struct Serialization {
         write((const uint8_t *)&blk->file, sizeof(uint32_t));
         total += sizeof(uint32_t);
         // serialize shard id
-        write((const uint8_t *)&blk->id, sizeof(uint64_t));
-        total += sizeof(uint64_t);
+        write((const uint8_t *)&blk->id, sizeof(uint32_t));
+        total += sizeof(uint32_t);
       }
       break;
     }

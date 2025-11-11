@@ -525,13 +525,12 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
+      flags: 0,
       nameLength: 0,
       line: 0,
       column: 0,
       file: 0,
       id: 0,
-      debuggerId: 0,
       name: Some(legacy_shard_name::<T>),
       hash: Some(legacy_shard_hash::<T>),
       help: Some(legacy_shard_help::<T>),
@@ -556,31 +555,6 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
       warmup: Some(legacy_shard_warmup::<T>),
       activate: Some(legacy_shard_activate::<T>),
       cleanup: Some(legacy_shard_cleanup::<T>),
-      mutate: if T::hasMutate() {
-        Some(legacy_shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::hasCrossover() {
-        Some(legacy_shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::hasState() {
-        Some(legacy_shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::hasState() {
-        Some(legacy_shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::hasState() {
-        Some(legacy_shard_resetState::<T>)
-      } else {
-        None
-      },
       metadata: core::ptr::null_mut(),
     },
     shard: T::default(),
@@ -870,13 +844,12 @@ pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() 
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
+      flags: 0,
       nameLength: 0,
       line: 0,
       column: 0,
       file: 0,
       id: 0,
-      debuggerId: 0,
       name: Some(shard_name::<T>),
       hash: Some(shard_hash::<T>),
       help: Some(shard_help::<T>),
@@ -905,31 +878,6 @@ pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() 
       },
       activate: Some(shard_activate::<T>),
       cleanup: Some(shard_cleanup::<T>),
-      mutate: if T::has_mutate() {
-        Some(shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::has_crossover() {
-        Some(shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::has_get_state() {
-        Some(shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::has_set_state() {
-        Some(shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::has_reset_state() {
-        Some(shard_resetState::<T>)
-      } else {
-        None
-      },
       metadata: core::ptr::null_mut(),
     },
     shard: T::default(),

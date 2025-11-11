@@ -133,8 +133,6 @@ struct CoreInfo {
 
   static inline Types IntIntSeqOrNone{{IntType, IntSeqType, NoneType}};
 
-  static inline Types ShardSeqOrNone{{ShardRefSeqType, NoneType}};
-
   static inline Types Shards{{ShardRefType, ShardRefSeqType}};
 
   static inline Types ShardsOrNone{Shards, {NoneType}};

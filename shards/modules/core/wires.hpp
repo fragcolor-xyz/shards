@@ -19,7 +19,7 @@ struct WireBase {
                  "Execution mode for running wires. Specifies whether to run inline, asynchronously, or in a stepped manner.",
                  'runc');
 
-  static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::StringType, CoreInfo::NoneType}};
+  static inline Types WireTypes{{CoreInfo::WireType, CoreInfo::NoneType}};
 
   static inline Types WireVarTypes{WireTypes, {CoreInfo::WireVarType}};
 
@@ -82,33 +82,11 @@ struct WireBase {
     }
   }
 
-  // Use state to mark the dependency for serialization as well!
-
-  SHVar getState() {
-    if (wire) {
-      return Var(wire);
-    } else {
-      // SHLOG_TRACE("getState no wire was avail");
-      return Var::Empty;
-    }
-  }
-
-  void setState(SHVar state) {
-    if (state.valueType == SHType::Wire) {
-      wire = SHWire::sharedFromRef(state.payload.wireValue);
-    }
-  }
-
   void ensureWire() {
     if (unlikely(wireref.isVariable())) {
       auto vwire = wireref.get();
       if (vwire.valueType == SHType::Wire) {
         wire = SHWire::sharedFromRef(vwire.payload.wireValue);
-      } else if (vwire.valueType == SHType::String) {
-        auto sv = SHSTRVIEW(vwire);
-        std::string s(sv);
-        SHLOG_DEBUG("Wait: Resolving wire {}", sv);
-        wire = GetGlobals().GlobalWires[s];
       } else {
         wire = nullptr;
       }

@@ -2652,7 +2652,7 @@ fn shard_with_id_ex(shard: AutoShardRef, e: &mut EvalEnv, x: DebugPtr) -> AutoSh
     id
   });
   if let Some(id) = id {
-    unsafe { (*shard.0 .0).id = id };
+    unsafe { (*shard.0 .0).id = id as u32 };
   }
   shard
 }

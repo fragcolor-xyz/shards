@@ -221,11 +221,6 @@ template <typename TDigest> inline void HashState<TDigest>::updateHash(const SHV
       auto pval = blk->getParam(blk, int(i));
       updateHash(pval, state);
     }
-
-    if (blk->getState) {
-      auto bstate = blk->getState(blk);
-      updateHash(bstate, state);
-    }
   } break;
   case SHType::Wire: {
     auto wire = SHWire::sharedFromRef(var.payload.wireValue);
