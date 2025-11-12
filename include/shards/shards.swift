@@ -1177,6 +1177,17 @@ class ShardsVar {
     private var requiredVariables = ExposedTypes()
     private var exposedVariables = ExposedTypes()
 
+    init() {
+        // Initialize with nil terminator to guarantee nativeShards.elements is ALWAYS valid
+        // Even if setParam is never called, activate() can safely be called (will do nothing)
+        shardsPtrs.append(nil)
+        withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
+            nativeShards.elements = ptr
+        }
+        nativeShards.len = 0
+        nativeShards.cap = 0
+    }
+
     private func reset() {
         // Free all shards (skip NULL terminator if present)
         let shardsToDestroy = shardsPtrs.last != nil && shardsPtrs.last! == nil

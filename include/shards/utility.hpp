@@ -320,7 +320,13 @@ private:
   }
 
 public:
-  TShardsVar() = default;
+  TShardsVar() {
+    // Initialize with nullptr terminator to guarantee _shards.elements is ALWAYS valid
+    // Even if setParam is never called, activate() can safely be called (will do nothing)
+    _shardsArray.push_back(nullptr);
+    _shards.elements = &_shardsArray[0];
+    _shards.len = 0;
+  }
   TShardsVar(const SHVar &v) { *this = v; }
   ~TShardsVar() {
     destroy();

@@ -4998,12 +4998,33 @@ impl Drop for ParamVar {
 
 // ShardsVar
 
-#[derive(Default)]
 pub struct ShardsVar {
   param: ClonedVar,
   shards: Vec<ShardRef>,
   compose_result: Option<SHComposeResult>,
   native_shards: Shards,
+}
+
+impl Default for ShardsVar {
+  fn default() -> Self {
+    // Initialize with nullptr terminator to guarantee native_shards.elements is ALWAYS valid
+    // Even if set_param is never called, activate() can safely be called (will do nothing)
+    let mut shards = Vec::new();
+    shards.push(ShardRef(std::ptr::null_mut()));
+
+    let native_shards = Shards {
+      elements: shards.as_mut_ptr() as *mut *mut _,
+      len: 0,
+      cap: 0,
+    };
+
+    ShardsVar {
+      param: ClonedVar::default(),
+      shards,
+      compose_result: None,
+      native_shards,
+    }
+  }
 }
 
 impl Drop for ShardsVar {
