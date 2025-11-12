@@ -133,18 +133,6 @@ pub trait Shard {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str>;
-
-  fn mutate(&mut self, _options: Table) {}
-
-  fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
-
-  fn get_state(&mut self) -> Var {
-    Var::default()
-  }
-
-  fn set_state(&mut self, _state: &Var) {}
-
-  fn reset_state(&mut self) {}
 }
 
 pub trait LegacyShard {
@@ -221,38 +209,6 @@ pub trait LegacyShard {
   fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
-
-  fn hasMutate() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-
-  fn mutate(&mut self, _options: Table) {}
-
-  fn hasCrossover() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-
-  fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
-
-  fn hasState() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-  fn getState(&mut self) -> Var {
-    Var::default()
-  }
-
-  fn setState(&mut self, _state: &Var) {}
-
-  fn resetState(&mut self) {}
 }
 
 #[repr(C, align(16))] // ensure alignment is 16 bytes
@@ -389,11 +345,6 @@ unsafe extern "C" fn legacy_shard_activate<T: LegacyShard>(
   }
 }
 
-unsafe extern "C" fn legacy_shard_mutate<T: LegacyShard>(arg1: *mut CShard, arg2: SHTable) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.mutate(arg2.into());
-}
-
 unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
@@ -494,30 +445,6 @@ unsafe extern "C" fn legacy_shard_setParam<T: LegacyShard>(
       code: 1,
     },
   }
-}
-
-unsafe extern "C" fn legacy_shard_crossover<T: LegacyShard>(
-  arg1: *mut CShard,
-  s0: *const Var,
-  s1: *const Var,
-) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.crossover(&*s0, &*s1);
-}
-
-unsafe extern "C" fn legacy_shard_getState<T: LegacyShard>(arg1: *mut CShard) -> Var {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.getState()
-}
-
-unsafe extern "C" fn legacy_shard_setState<T: LegacyShard>(arg1: *mut CShard, state: *const Var) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.setState(&*state);
-}
-
-unsafe extern "C" fn legacy_shard_resetState<T: LegacyShard>(arg1: *mut CShard) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.resetState();
 }
 
 pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
@@ -746,14 +673,6 @@ unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated + ShardGeneratedOv
   }
 }
 
-unsafe extern "C" fn shard_mutate<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  arg2: SHTable,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.mutate(arg2.into());
-}
-
 unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
@@ -806,37 +725,6 @@ unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated + ShardGeneratedOve
       result: SHTypeInfo::default(),
     },
   }
-}
-
-unsafe extern "C" fn shard_crossover<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  s0: *const Var,
-  s1: *const Var,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.crossover(&*s0, &*s1);
-}
-
-unsafe extern "C" fn shard_getState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) -> Var {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.get_state()
-}
-
-unsafe extern "C" fn shard_setState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  state: *const Var,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.set_state(&*state);
-}
-
-unsafe extern "C" fn shard_resetState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.reset_state();
 }
 
 pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() -> ShardWrapper<T> {
