@@ -4998,12 +4998,35 @@ impl Drop for ParamVar {
 
 // ShardsVar
 
-#[derive(Default)]
 pub struct ShardsVar {
   param: ClonedVar,
   shards: Vec<ShardRef>,
   compose_result: Option<SHComposeResult>,
   native_shards: Shards,
+}
+
+impl Default for ShardsVar {
+  fn default() -> Self {
+    // Initialize with nullptr terminator to guarantee native_shards.elements is ALWAYS valid
+    // Even if set_param is never called, activate() can safely be called (will do nothing)
+    let mut shards = Vec::new();
+    shards.push(ShardRef(std::ptr::null_mut()));
+
+    let mut result = ShardsVar {
+      param: ClonedVar::default(),
+      shards,
+      compose_result: None,
+      native_shards: Shards {
+        elements: std::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      },
+    };
+
+    // Update pointer AFTER move to ensure it points to the Vec's final location
+    result.native_shards.elements = result.shards.as_mut_ptr() as *mut *mut _;
+    result
+  }
 }
 
 impl Drop for ShardsVar {
@@ -5089,14 +5112,13 @@ impl ShardsVar {
       }
     } else if let Ok(s) = ShardRef::try_from(&self.param.0) {
       self.shards.push(s);
-    } else if value.is_none() {
-      // we allow none
-      return Ok(());
-    } else {
+    } else if !value.is_none() {
       return Err("Expected sequence or shard variable, but casting failed.");
     }
+    // else: value.is_none() is allowed, we just have an empty array
 
-    // Add NULL terminator for NULL-terminated array iteration
+    // ALWAYS add NULL terminator for NULL-terminated array iteration
+    // Even for empty arrays, this ensures native_shards.elements is never nullptr
     self.shards.push(ShardRef(std::ptr::null_mut()));
 
     self.native_shards = Shards {
@@ -5121,11 +5143,7 @@ impl ShardsVar {
       self.compose_result = None;
     }
 
-    if self.param.0.is_none() {
-      self.compose_result = Some(Default::default());
-      return Ok(self.compose_result.as_ref().unwrap());
-    }
-
+    // native_shards is ALWAYS valid, even for empty arrays (they have [nullptr])
     let result = unsafe { (*Core).composeShards.unwrap_unchecked()(self.native_shards, *data) };
 
     if result.failed {
@@ -5139,10 +5157,8 @@ impl ShardsVar {
 
   #[inline(always)]
   pub fn activate(&self, context: &Context, input: &Var, output: &mut Var) -> WireState {
-    if self.param.0.is_none() {
-      return WireState::Continue;
-    }
-
+    // native_shards.elements is ALWAYS valid (never nullptr)
+    // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
     unsafe {
       (*Core).runShards.unwrap_unchecked()(
         self.native_shards.elements,
@@ -5161,10 +5177,8 @@ impl ShardsVar {
     input: &Var,
     output: &mut Var,
   ) -> WireState {
-    if self.param.0.is_none() {
-      return WireState::Continue;
-    }
-
+    // native_shards.elements is ALWAYS valid (never nullptr)
+    // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
     unsafe {
       (*Core).runShards2.unwrap_unchecked()(
         self.native_shards.elements,

@@ -133,18 +133,6 @@ pub trait Shard {
   }
 
   fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str>;
-
-  fn mutate(&mut self, _options: Table) {}
-
-  fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
-
-  fn get_state(&mut self) -> Var {
-    Var::default()
-  }
-
-  fn set_state(&mut self, _state: &Var) {}
-
-  fn reset_state(&mut self) {}
 }
 
 pub trait LegacyShard {
@@ -221,38 +209,6 @@ pub trait LegacyShard {
   fn cleanup(&mut self, _ctx: Option<&Context>) -> Result<(), &str> {
     Ok(())
   }
-
-  fn hasMutate() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-
-  fn mutate(&mut self, _options: Table) {}
-
-  fn hasCrossover() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-
-  fn crossover(&mut self, _state0: &Var, _state1: &Var) {}
-
-  fn hasState() -> bool
-  where
-    Self: Sized,
-  {
-    false
-  }
-  fn getState(&mut self) -> Var {
-    Var::default()
-  }
-
-  fn setState(&mut self, _state: &Var) {}
-
-  fn resetState(&mut self) {}
 }
 
 #[repr(C, align(16))] // ensure alignment is 16 bytes
@@ -389,11 +345,6 @@ unsafe extern "C" fn legacy_shard_activate<T: LegacyShard>(
   }
 }
 
-unsafe extern "C" fn legacy_shard_mutate<T: LegacyShard>(arg1: *mut CShard, arg2: SHTable) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.mutate(arg2.into());
-}
-
 unsafe extern "C" fn legacy_shard_cleanup<T: LegacyShard>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
@@ -496,42 +447,17 @@ unsafe extern "C" fn legacy_shard_setParam<T: LegacyShard>(
   }
 }
 
-unsafe extern "C" fn legacy_shard_crossover<T: LegacyShard>(
-  arg1: *mut CShard,
-  s0: *const Var,
-  s1: *const Var,
-) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.crossover(&*s0, &*s1);
-}
-
-unsafe extern "C" fn legacy_shard_getState<T: LegacyShard>(arg1: *mut CShard) -> Var {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.getState()
-}
-
-unsafe extern "C" fn legacy_shard_setState<T: LegacyShard>(arg1: *mut CShard, state: *const Var) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.setState(&*state);
-}
-
-unsafe extern "C" fn legacy_shard_resetState<T: LegacyShard>(arg1: *mut CShard) {
-  let blk = arg1 as *mut LegacyShardWrapper<T>;
-  (*blk).shard.resetState();
-}
-
 pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
   let mut shard = LegacyShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
+      flags: 0,
       nameLength: 0,
       line: 0,
       column: 0,
       file: 0,
       id: 0,
-      debuggerId: 0,
       name: Some(legacy_shard_name::<T>),
       hash: Some(legacy_shard_hash::<T>),
       help: Some(legacy_shard_help::<T>),
@@ -556,31 +482,6 @@ pub fn create<T: Default + LegacyShard>() -> LegacyShardWrapper<T> {
       warmup: Some(legacy_shard_warmup::<T>),
       activate: Some(legacy_shard_activate::<T>),
       cleanup: Some(legacy_shard_cleanup::<T>),
-      mutate: if T::hasMutate() {
-        Some(legacy_shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::hasCrossover() {
-        Some(legacy_shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::hasState() {
-        Some(legacy_shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::hasState() {
-        Some(legacy_shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::hasState() {
-        Some(legacy_shard_resetState::<T>)
-      } else {
-        None
-      },
       metadata: core::ptr::null_mut(),
     },
     shard: T::default(),
@@ -772,14 +673,6 @@ unsafe extern "C" fn shard_activate<T: Shard + ShardGenerated + ShardGeneratedOv
   }
 }
 
-unsafe extern "C" fn shard_mutate<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  arg2: SHTable,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.mutate(arg2.into());
-}
-
 unsafe extern "C" fn shard_cleanup<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
   arg1: *mut CShard,
   arg2: *mut SHContext,
@@ -834,49 +727,17 @@ unsafe extern "C" fn shard_compose<T: Shard + ShardGenerated + ShardGeneratedOve
   }
 }
 
-unsafe extern "C" fn shard_crossover<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  s0: *const Var,
-  s1: *const Var,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.crossover(&*s0, &*s1);
-}
-
-unsafe extern "C" fn shard_getState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) -> Var {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.get_state()
-}
-
-unsafe extern "C" fn shard_setState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-  state: *const Var,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.set_state(&*state);
-}
-
-unsafe extern "C" fn shard_resetState<T: Shard + ShardGenerated + ShardGeneratedOverloads>(
-  arg1: *mut CShard,
-) {
-  let blk = arg1 as *mut ShardWrapper<T>;
-  (*blk).shard.reset_state();
-}
-
 pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() -> ShardWrapper<T> {
   let mut shard = ShardWrapper::<T> {
     header: CShard {
       inlineShardId: 0,
       refCount: 0,
-      owned: false,
+      flags: 0,
       nameLength: 0,
       line: 0,
       column: 0,
       file: 0,
       id: 0,
-      debuggerId: 0,
       name: Some(shard_name::<T>),
       hash: Some(shard_hash::<T>),
       help: Some(shard_help::<T>),
@@ -905,31 +766,6 @@ pub fn create2<T: Default + Shard + ShardGenerated + ShardGeneratedOverloads>() 
       },
       activate: Some(shard_activate::<T>),
       cleanup: Some(shard_cleanup::<T>),
-      mutate: if T::has_mutate() {
-        Some(shard_mutate::<T>)
-      } else {
-        None
-      },
-      crossover: if T::has_crossover() {
-        Some(shard_crossover::<T>)
-      } else {
-        None
-      },
-      getState: if T::has_get_state() {
-        Some(shard_getState::<T>)
-      } else {
-        None
-      },
-      setState: if T::has_set_state() {
-        Some(shard_setState::<T>)
-      } else {
-        None
-      },
-      resetState: if T::has_reset_state() {
-        Some(shard_resetState::<T>)
-      } else {
-        None
-      },
       metadata: core::ptr::null_mut(),
     },
     shard: T::default(),

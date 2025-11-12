@@ -78,11 +78,6 @@ void WireBase::resolveWire() {
   if (!wire) {
     if (wireref->valueType == SHType::Wire) {
       wire = SHWire::sharedFromRef(wireref->payload.wireValue);
-    } else if (wireref->valueType == SHType::String) {
-      auto sv = SHSTRVIEW((*wireref));
-      std::string s(sv);
-      SHLOG_DEBUG("WireBase: Resolving wire {}", sv);
-      wire = GetGlobals().GlobalWires[s];
     } else {
       wire = IntoWire{} //
                  .defaultWireName("inline-shards")

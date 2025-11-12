@@ -172,11 +172,6 @@ void to_json(json &j, const SHVar &var) {
       json param_obj = {{"name", desc.name}, {"value", value}};
       params.push_back(param_obj);
     }
-    if (blk->getState) {
-      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}, {"state", blk->getState(blk)}};
-    } else {
-      j = json{{"type", valType}, {"name", blk->name(blk)}, {"params", params}};
-    }
     break;
   }
   case SHType::Wire: {
@@ -431,12 +426,6 @@ void from_json(const json &j, SHVar &var) {
       }
       // Assume shard copied memory internally so we can clean up here!!!
       shards::destroyVar(value);
-    }
-
-    if (blk->setState) {
-      auto state = j.at("state").get<SHVar>();
-      blk->setState(blk, &state);
-      shards::destroyVar(state);
     }
     break;
   }

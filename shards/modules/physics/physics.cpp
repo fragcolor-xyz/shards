@@ -116,7 +116,7 @@ struct WithContextShard {
   static SHTypesInfo outputTypes() { return shards::CoreInfo::AnyType; }
   static SHOptionalString help() { return SHCCSTR(""); }
 
-  PARAM(ShardsVar, _contents, "Contents", "The contents to run with the context in scope", {shards::CoreInfo::ShardSeqOrNone});
+  PARAM(ShardsVar, _contents, "Contents", "The contents to run with the context in scope", {shards::CoreInfo::Shards});
   PARAM_PARAMVAR(_context, "Context", "The context", {ShardsContext::VarType});
   PARAM_IMPL(PARAM_IMPL_FOR(_contents), PARAM_IMPL_FOR(_context));
 
@@ -195,8 +195,8 @@ struct CollisionsShard {
                    "contact is detected or when a contact is removed.");
   }
 
-  PARAM(ShardsVar, _enter, "Enter", "The code to execute when a new contact is detected.", {shards::CoreInfo::ShardSeqOrNone});
-  PARAM(ShardsVar, _leave_, "Leave", "The code to execute when a contact is removed.", {shards::CoreInfo::ShardSeqOrNone});
+  PARAM(ShardsVar, _enter, "Enter", "The code to execute when a new contact is detected.", {shards::CoreInfo::ShardsOrNone});
+  PARAM(ShardsVar, _leave_, "Leave", "The code to execute when a contact is removed.", {shards::CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_enter), PARAM_IMPL_FOR(_leave_));
 
   struct PeristentBodyCollision {

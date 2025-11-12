@@ -320,7 +320,13 @@ private:
   }
 
 public:
-  TShardsVar() = default;
+  TShardsVar() {
+    // Initialize with nullptr terminator to guarantee _shards.elements is ALWAYS valid
+    // Even if setParam is never called, activate() can safely be called (will do nothing)
+    _shardsArray.push_back(nullptr);
+    _shards.elements = &_shardsArray[0];
+    _shards.len = 0;
+  }
   TShardsVar(const SHVar &v) { *this = v; }
   ~TShardsVar() {
     destroy();
@@ -366,14 +372,14 @@ public:
     SH_CORE::cloneVar(_shardsParam, value);
 
     if (_shardsParam.valueType == SHType::ShardRef) {
-      assert(!_shardsParam.payload.shardValue->owned);
-      _shardsParam.payload.shardValue->owned = true;
+      assert(!(_shardsParam.payload.shardValue->flags & SHARD_FLAGS_OWNED_SHARD));
+      _shardsParam.payload.shardValue->flags |= SHARD_FLAGS_OWNED_SHARD;
       _shardsArray.push_back(_shardsParam.payload.shardValue);
     } else {
       for (uint32_t i = 0; i < _shardsParam.payload.seqValue.len; i++) {
         auto blk = _shardsParam.payload.seqValue.elements[i].payload.shardValue;
-        assert(!blk->owned);
-        blk->owned = true;
+        assert(!(blk->flags & SHARD_FLAGS_OWNED_SHARD));
+        blk->flags |= SHARD_FLAGS_OWNED_SHARD;
         _shardsArray.push_back(blk);
       }
     }
@@ -384,7 +390,9 @@ public:
 
     _shardsArray.push_back(nullptr); // add null shards terminator BEFORE setting pointer to avoid reallocation
 
-    _shards.elements = nshards > 0 ? &_shardsArray[0] : nullptr;
+    // _shards.elements is ALWAYS valid after push_back(nullptr)
+    // Even with 0 shards, the array contains [nullptr], which the VM loop handles correctly
+    _shards.elements = &_shardsArray[0];
     _shards.len = uint32_t(nshards);
 
     return _shardsParam;
@@ -403,6 +411,8 @@ public:
 
   template <bool CALLER_HANDLES_RETURN = false>
   SHWireState activate(SHContext *context, const SHVar &input, SHVar &output) const {
+    // _shards.elements is ALWAYS valid (never nullptr)
+    // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
     if constexpr (CALLER_HANDLES_RETURN)
       return SH_CORE::runShards2(_shards.elements, context, input, output);
     else

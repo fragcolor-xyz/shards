@@ -1177,6 +1177,17 @@ class ShardsVar {
     private var requiredVariables = ExposedTypes()
     private var exposedVariables = ExposedTypes()
 
+    init() {
+        // Initialize with nil terminator to guarantee nativeShards.elements is ALWAYS valid
+        // Even if setParam is never called, activate() can safely be called (will do nothing)
+        shardsPtrs.append(nil)
+        withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
+            nativeShards.elements = ptr
+        }
+        nativeShards.len = 0
+        nativeShards.cap = 0
+    }
+
     private func reset() {
         // Free all shards (skip NULL terminator if present)
         let shardsToDestroy = shardsPtrs.last != nil && shardsPtrs.last! == nil
@@ -1254,13 +1265,15 @@ class ShardsVar {
                     }
                 }
             }
-        } else {
+        } else if value.valueType != VarType.NoValue.asSHType() {
             return .failure(ShardError(message: "Expected ShardRef or Seq<ShardRef>"))
         }
+        // else: value.valueType == None is allowed, we just have an empty array
 
         paramValue = .init(cloning: value)
 
-        // Add NULL terminator for NULL-terminated array iteration
+        // ALWAYS add NULL terminator for NULL-terminated array iteration
+        // Even for empty arrays, this ensures nativeShards.elements is never nullptr
         shardsPtrs.append(nil)
 
         withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
@@ -1277,11 +1290,7 @@ class ShardsVar {
     }
 
     func compose(data: SHInstanceData) -> Result<SHComposeResult, ShardError> {
-        if shardsPtrs.isEmpty {
-            return .success(composeResult)
-        }
-
-        // Compose the shards
+        // nativeShards is ALWAYS valid, even for empty arrays (they have [nullptr])
         composeResult = G.Core.pointee.composeShards(nativeShards, data)
         if composeResult.failed {
             return .failure(ShardError(message: composeResult.error.toString() ?? "", errorStackTrace: composeResult.errorStackTrace.toString() ?? ""))
@@ -1296,10 +1305,8 @@ class ShardsVar {
     }
 
     func activate(context: Context, input: SHVar, output: inout SHVar) -> SHWireState {
-        if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0) // continue
-        }
-
+        // nativeShards.elements is ALWAYS valid (never nullptr)
+        // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
             withUnsafeMutablePointer(to: &output) { ptr in
@@ -1312,10 +1319,8 @@ class ShardsVar {
     func activateHandlingReturn(
         context: OpaquePointer?, input: SHVar, output: UnsafeMutablePointer<SHVar>
     ) -> SHWireState {
-        if shardsPtrs.isEmpty {
-            return SHWireState(rawValue: 0) // continue
-        }
-
+        // nativeShards.elements is ALWAYS valid (never nullptr)
+        // Even empty shards arrays have [nullptr] terminator, which VM loop handles correctly
         var inputCopy = input
         let state = withUnsafePointer(to: &inputCopy) { input in
             G.Core.pointee.runShards2(nativeShards.elements, context, input, output)

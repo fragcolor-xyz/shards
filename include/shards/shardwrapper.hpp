@@ -279,52 +279,6 @@ template <class T> struct ShardWrapper {
       result->cleanup = static_cast<SHCleanupProc>([](Shard *b, SHContext *) { return SHError::Success; });
     }
 
-    // mutate
-    if constexpr (has_mutate<T>::value) {
-      result->mutate = static_cast<SHMutateProc>(
-          [](Shard *b, SHTable options) { reinterpret_cast<ShardWrapper<T> *>(b)->shard.mutate(options); });
-    } else {
-      // mutate is optional!
-      result->mutate = nullptr;
-    }
-
-    // crossover
-    if constexpr (has_crossover<T>::value) {
-      result->crossover = static_cast<SHCrossoverProc>([](Shard *b, const SHVar *state0, const SHVar *state1) {
-        reinterpret_cast<ShardWrapper<T> *>(b)->shard.crossover(*state0, *state1);
-      });
-    } else {
-      // crossover is optional!
-      result->crossover = nullptr;
-    }
-
-    // getState
-    if constexpr (has_getState<T>::value) {
-      result->getState =
-          static_cast<SHGetStateProc>([](Shard *b) { return reinterpret_cast<ShardWrapper<T> *>(b)->shard.getState(); });
-    } else {
-      // getState is optional!
-      result->getState = nullptr;
-    }
-
-    // setState
-    if constexpr (has_setState<T>::value) {
-      result->setState = static_cast<SHSetStateProc>(
-          [](Shard *b, const SHVar *state) { reinterpret_cast<ShardWrapper<T> *>(b)->shard.setState(*state); });
-    } else {
-      // setState is optional!
-      result->setState = nullptr;
-    }
-
-    // resetState
-    if constexpr (has_resetState<T>::value) {
-      result->resetState =
-          static_cast<SHResetStateProc>([](Shard *b) { reinterpret_cast<ShardWrapper<T> *>(b)->shard.resetState(); });
-    } else {
-      // resetState is optional!
-      result->resetState = nullptr;
-    }
-
     return result;
   }
 };

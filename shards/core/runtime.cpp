@@ -307,9 +307,6 @@ Shard *createShard(std::string_view name) {
 
   shard->nameLength = uint32_t(name.length());
 
-  static std::atomic_uint64_t idCounter;
-  shard->debuggerId = idCounter++;
-
 #ifndef NDEBUG
   auto props = shard->properties(shard);
   if (props) {
@@ -438,18 +435,6 @@ int64_t findEnumId(std::string_view name) {
     return it->second;
   }
   return 0;
-}
-
-void registerWire(SHWire *wire) {
-  std::shared_ptr<SHWire> sc(wire);
-  shards::GetGlobals().GlobalWires[wire->name] = sc;
-}
-
-void unregisterWire(SHWire *wire) {
-  auto findIt = shards::GetGlobals().GlobalWires.find(wire->name);
-  if (findIt != shards::GetGlobals().GlobalWires.end()) {
-    shards::GetGlobals().GlobalWires.erase(findIt);
-  }
 }
 
 void imageIncRef(SHImage *ptr) {
@@ -719,15 +704,11 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 }
 
 template <bool HANDLES_RETURN>
-ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput,
-                                           SHVar *outHash = nullptr) noexcept {
+ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput,
+                                           SHVar &finalOutput) noexcept {
 // check for stack overflow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
   if (unlikely(!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit()))) {
-    uintptr_t current_sp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
-    uintptr_t start_address = reinterpret_cast<uintptr_t>(context->stackStart);
-    SHLOG_ERROR("Stack overflow detected, wire: {} current sp: {} start address: {} stack size: {}", context->currentWire()->name,
-                current_sp, start_address, current_sp - start_address);
     context->cancelFlow("Stack overflow detected");
     return SHWireState::Error;
   }
@@ -736,12 +717,6 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
   // store initial input, as pointer, otherwise we risk corruption if the input changes while we are processing
   auto *input = &initialInput;
   const auto *output = &finalOutput;
-
-  // Guard against null shards pointer
-  if (unlikely(shards == nullptr)) {
-    finalOutput = initialInput;
-    return SHWireState::Continue;
-  }
 
 #if SHARDS_DEBUGGER
   // For debugger, we need to calculate length by iterating to nullptr
@@ -774,7 +749,7 @@ ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context,
 #endif
 
       output = activateShardInline(blk, context, *input);
-      shassert(output && "activateShardInline returned nullptr");
+      assert(output && "activateShardInline returned nullptr");
     }
 
     // Deal with aftermath of activation
@@ -2708,7 +2683,6 @@ void shInit() {
   shInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
   shInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
   shInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
-  shInterface.set("getGlobalWire", emscripten::val(reinterpret_cast<uintptr_t>(iface->getGlobalWire)));
   emscripten_get_now(); // force emscripten to link this call
 #endif
 }
@@ -3077,29 +3051,6 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
 
   result->destroyWire = [](SHWireRef wire) noexcept { SHWire::deleteRef(wire); };
-
-  result->getGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, size_t(name.len));
-    auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
-    if (it != shards::GetGlobals().GlobalWires.end()) {
-      return SHWire::weakRef(it->second);
-    } else {
-      return (SHWireRef) nullptr;
-    }
-  };
-
-  result->setGlobalWire = [](SHStringWithLen name, SHWireRef wire) noexcept {
-    std::string sv(name.string, size_t(name.len));
-    shards::GetGlobals().GlobalWires[std::move(sv)] = SHWire::sharedFromRef(wire);
-  };
-
-  result->unsetGlobalWire = [](SHStringWithLen name) noexcept {
-    std::string sv(name.string, size_t(name.len));
-    auto it = shards::GetGlobals().GlobalWires.find(std::move(sv));
-    if (it != shards::GetGlobals().GlobalWires.end()) {
-      shards::GetGlobals().GlobalWires.erase(it);
-    }
-  };
 
   result->createMesh = []() noexcept {
     auto mesh = SHMesh::makePtr();
