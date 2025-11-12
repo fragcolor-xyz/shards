@@ -704,7 +704,8 @@ NO_INLINE void handleActivationError(SHContext *context, Shard *blk) {
 }
 
 template <bool HANDLES_RETURN>
-ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput, SHVar &finalOutput) noexcept {
+ALWAYS_INLINE SHWireState shardsActivation(ShardPtr *shards, SHContext *context, const SHVar &initialInput,
+                                           SHVar &finalOutput) noexcept {
 // check for stack overflow
 #if !SH_USE_THREAD_FIBER && !SH_EMSCRIPTEN
   if (unlikely(!context->onWorkerThread && !is_stack_within_limit(context->stackStart, context->main->stackLimit()))) {

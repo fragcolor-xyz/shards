@@ -808,11 +808,11 @@ struct Shard {
   SHInlineShards inlineShardId; // uint32_t - accessed FIRST in VM loop!
   uint32_t refCount;            // used to manage the lifetime of this shard
 
-  SHActivateProc activate;      // hot path execution
+  SHActivateProc activate; // hot path execution
 
-  SHNameProc name;              // Returns the name of the shard, do not free the string,
-                                // generally const
-  uint32_t nameLength;          // name length, used for profiling and more
+  SHNameProc name;     // Returns the name of the shard, do not free the string,
+                       // generally const
+  uint32_t nameLength; // name length, used for profiling and more
 
   // Debug/error logging info (accessed when logging errors)
   uint32_t line;
@@ -820,23 +820,23 @@ struct Shard {
   uint32_t file;
 
   // Less frequently accessed
-  uint32_t id;                  // internal use only, to optionally identify the shard
-  uint32_t flags;               // Shard flags (SHARD_FLAGS_OWNED_SHARD, etc.)
+  uint32_t id;    // internal use only, to optionally identify the shard
+  uint32_t flags; // Shard flags (SHARD_FLAGS_OWNED_SHARD, etc.) - notice we DO NOT serialize those, nor hash
 
   // Still in first cache line - commonly used function pointers
-  SHHashProc hash;              // Returns the hash of the shard, useful for serialization
-  SHWarmupProc warmup;          // Called before running the wire, once
+  SHHashProc hash;     // Returns the hash of the shard, useful for serialization
+  SHWarmupProc warmup; // Called before running the wire, once
 
   // \-- The interface to fill --/
 
-  SHHelpProc help;              // Returns the help text of the shard
-  SHHelpProc inputHelp;         // optional help text for the input
-  SHHelpProc outputHelp;        // optional help text for the output
-  SHPropertiesProc properties;  // optional properties
+  SHHelpProc help;             // Returns the help text of the shard
+  SHHelpProc inputHelp;        // optional help text for the input
+  SHHelpProc outputHelp;       // optional help text for the output
+  SHPropertiesProc properties; // optional properties
 
-  SHSetupProc setup;            // A one time constructor setup for the shard
-  SHDestroyProc destroy;        // A one time finalizer for the shard, shards should
-                                // also free all the memory in here!
+  SHSetupProc setup;     // A one time constructor setup for the shard
+  SHDestroyProc destroy; // A one time finalizer for the shard, shards should
+                         // also free all the memory in here!
 
   SHInputTypesProc inputTypes;
   SHOutputTypesProc outputTypes;
