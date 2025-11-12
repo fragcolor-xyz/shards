@@ -5012,18 +5012,20 @@ impl Default for ShardsVar {
     let mut shards = Vec::new();
     shards.push(ShardRef(std::ptr::null_mut()));
 
-    let native_shards = Shards {
-      elements: shards.as_mut_ptr() as *mut *mut _,
-      len: 0,
-      cap: 0,
-    };
-
-    ShardsVar {
+    let mut result = ShardsVar {
       param: ClonedVar::default(),
       shards,
       compose_result: None,
-      native_shards,
-    }
+      native_shards: Shards {
+        elements: std::ptr::null_mut(),
+        len: 0,
+        cap: 0,
+      },
+    };
+
+    // Update pointer AFTER move to ensure it points to the Vec's final location
+    result.native_shards.elements = result.shards.as_mut_ptr() as *mut *mut _;
+    result
   }
 }
 
