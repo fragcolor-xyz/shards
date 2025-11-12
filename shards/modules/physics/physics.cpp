@@ -195,8 +195,8 @@ struct CollisionsShard {
                    "contact is detected or when a contact is removed.");
   }
 
-  PARAM(ShardsVar, _enter, "Enter", "The code to execute when a new contact is detected.", {shards::CoreInfo::Shards});
-  PARAM(ShardsVar, _leave_, "Leave", "The code to execute when a contact is removed.", {shards::CoreInfo::Shards});
+  PARAM(ShardsVar, _enter, "Enter", "The code to execute when a new contact is detected.", {shards::CoreInfo::ShardsOrNone});
+  PARAM(ShardsVar, _leave_, "Leave", "The code to execute when a contact is removed.", {shards::CoreInfo::ShardsOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_enter), PARAM_IMPL_FOR(_leave_));
 
   struct PeristentBodyCollision {

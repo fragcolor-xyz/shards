@@ -1254,7 +1254,7 @@ class ShardsVar {
                     }
                 }
             }
-        } else if value.valueType != VarType.None.asSHType() {
+        } else if value.valueType != VarType.NoValue.asSHType() {
             return .failure(ShardError(message: "Expected ShardRef or Seq<ShardRef>"))
         }
         // else: value.valueType == None is allowed, we just have an empty array
