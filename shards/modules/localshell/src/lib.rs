@@ -189,8 +189,25 @@ fn check_buffer_for_prompt(
     // Check if buffer was truncated by looking for truncation message at the start
     // If truncated, absolute positions (from_position, up_to_position) are invalid
     // HOWEVER, we can still check if the current buffer (after truncation message)
-    // contains a prompt. This is critical - otherwise commands with large output
-    // would hang forever after truncation.
+    // contains a prompt. This is SAFE because:
+    //
+    // 1. Execute CLEARS the buffer before each command (see line ~716)
+    // 2. The buffer only contains output from the CURRENT command
+    // 3. truncate_to_tail() keeps the most recent 93% of output (tail)
+    // 4. Shell prompts appear at the END of command output
+    // 5. Therefore, if a prompt exists, it will be in the kept tail
+    //
+    // This violates the "check only NEW data" contract, but it's acceptable because:
+    // - After truncation, position-based checking is impossible anyway
+    // - The tail is guaranteed to be from the current command (buffer cleared per-command)
+    // - Prompts are always at the end (so they'll be in the tail if present)
+    // - Without this, commands with >64KB output would hang forever
+    //
+    // For SendInput specifically:
+    // - The buffer might contain both old interactive prompt + new output
+    // - But the tail will contain the MOST RECENT output
+    // - If command completed, the final prompt will be in the tail
+    // - If still waiting, the interactive prompt will be in the tail
     if shared_buffer.starts_with(b"[... output truncated ...]") {
         shlog_debug!("Buffer was truncated, positions invalid, checking current buffer state instead");
 

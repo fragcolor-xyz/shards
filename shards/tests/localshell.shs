@@ -68,6 +68,14 @@ fail-result:status | Assert.Is("completed")
 fail-result:output | ExpectString | Log("Error output")
 "Command failure handled" | Log
 
+; Test grep with no matches (the original bug this PR fixes)
+; This command produces no output and should complete, not hang
+"Testing grep with no matches (original bug)" | Log
+"echo 'test' | grep 'nomatch'" | LocalShell.Execute(Session: shell-session) >= grep-result
+grep-result:status | Assert.Is("completed")
+grep-result:output | ExpectString | Log("Grep no match output")
+"Grep with no matches completed successfully" | Log
+
 ; Test session alive check
 "Testing session alive check" | Log
 shell-session | LocalShell.IsAlive | Assert.Is(true)
