@@ -45,10 +45,14 @@ const INITIAL_PROMPT_MAX_RETRIES: usize = 10;
 const READER_THREAD_TIMEOUT_MS: u64 = 50;
 const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
 const COMMAND_MAX_ITERATIONS: usize = 50;
+// Interactive detection timeout: 3 seconds is a balance between responsiveness and false positives.
+// This may be insufficient for systems under heavy load, slow I/O, or commands with slow startup.
+// Consider making this configurable via a parameter in future iterations.
 const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const ITERATION_SLEEP_MS: u64 = 100;
 const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
 const SENDINPUT_MAX_ITERATIONS: usize = 30;
+const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds of no data before checking for prompt
 const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
 const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
 
@@ -156,6 +160,9 @@ lazy_static! {
 // Helper function to check shared buffer for prompt in a specific range
 // This prevents race conditions where the reader thread adds more data after we stop reading,
 // and ensures we only check NEW output received after SendInput was called (not old data)
+//
+// IMPORTANT: If buffer truncation occurs, positions become invalid. This function detects
+// truncation and returns false to avoid checking invalid ranges.
 fn check_buffer_for_prompt(
     local_shell: &LocalShellSession,
     from_position: usize,
@@ -164,6 +171,13 @@ fn check_buffer_for_prompt(
     let shared_buffer = local_shell.output_buffer.lock()
         .map_err(|_| "Buffer lock poisoned")?;
 
+    // Check if buffer was truncated by looking for truncation message at the start
+    // If truncated, positions are invalid, so return false
+    if shared_buffer.starts_with(b"[... output truncated ...]") {
+        shlog_trace!("Buffer was truncated, positions invalid, skipping shared buffer check");
+        return Ok(false);
+    }
+
     // Clamp positions to buffer size
     let safe_from = from_position.min(shared_buffer.len());
     let safe_to = up_to_position.min(shared_buffer.len());
@@ -171,6 +185,14 @@ fn check_buffer_for_prompt(
     // Only check the relevant range (data received since from_position)
     if safe_to <= safe_from {
         return Ok(false); // No new data to check
+    }
+
+    // Additional safety: if positions indicate a large range that exceeds MAX_BUFFER_BYTES,
+    // truncation likely occurred, invalidating positions
+    if up_to_position - from_position > MAX_BUFFER_BYTES {
+        shlog_trace!("Position range too large ({}..{}), likely truncated, skipping check",
+            from_position, up_to_position);
+        return Ok(false);
     }
 
     let relevant_output = &shared_buffer[safe_from..safe_to];
@@ -1072,7 +1094,6 @@ impl BlockingShard for SendInputShard {
         let mut last_buffer_size = start_buffer_size;
         let mut was_truncated = false;
         let mut no_data_count = 0;
-        let no_data_threshold = 20; // 20 iterations = 2 seconds of no data
 
         for iteration in 0..max_iterations {
             // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
@@ -1126,10 +1147,10 @@ impl BlockingShard for SendInputShard {
                 // Early exit: if no data for a while, check buffer range for prompt
                 // Check from start_buffer_size to last_buffer_size (only NEW data)
                 // This avoids detecting prompts from before SendInput was called
-                if no_data_count >= no_data_threshold {
+                if no_data_count >= SENDINPUT_NO_DATA_THRESHOLD {
                     if check_buffer_for_prompt(local_shell, start_buffer_size, last_buffer_size)? {
                         shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer range [{}..{}], exiting early",
-                            no_data_count * ITERATION_SLEEP_MS / 1000,
+                            (SENDINPUT_NO_DATA_THRESHOLD as u64 * ITERATION_SLEEP_MS) / 1000,
                             start_buffer_size,
                             last_buffer_size);
                         break;
