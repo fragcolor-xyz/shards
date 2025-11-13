@@ -45,7 +45,7 @@ const INITIAL_PROMPT_MAX_RETRIES: usize = 10;
 const READER_THREAD_TIMEOUT_MS: u64 = 50;
 const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
 const COMMAND_MAX_ITERATIONS: usize = 50;
-const INTERACTIVE_DETECTION_ITERATIONS: usize = 50; // 50 * 100ms = 5 seconds
+const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const ITERATION_SLEEP_MS: u64 = 100;
 const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
 const SENDINPUT_MAX_ITERATIONS: usize = 30;
@@ -151,6 +151,19 @@ lazy_static! {
     static ref LOCAL_SHELL_TYPE_VEC: Vec<Type> = vec![*LOCAL_SHELL_TYPE];
     static ref LOCAL_SHELL_VAR_TYPE: Type = Type::context_variable(&LOCAL_SHELL_TYPE_VEC);
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
+}
+
+// Helper function to check shared buffer for prompt up to a specific position
+// This prevents race conditions where the reader thread adds more data after we stop reading
+fn check_buffer_for_prompt(
+    local_shell: &LocalShellSession,
+    up_to_position: usize
+) -> Result<bool, &'static str> {
+    let shared_buffer = local_shell.output_buffer.lock()
+        .map_err(|_| "Buffer lock poisoned")?;
+    let relevant_output = &shared_buffer[..up_to_position.min(shared_buffer.len())];
+    let output_str = String::from_utf8_lossy(relevant_output);
+    Ok(is_prompt(&output_str))
 }
 
 // Helper function to detect shell prompts (NOT interactive program prompts)
@@ -802,15 +815,15 @@ impl BlockingShard for ExecuteShard {
                 // We detect a command as interactive if it stops producing output but doesn't return to shell prompt.
                 //
                 // Conditions explained:
-                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (50 iterations = 5 seconds):
+                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (30 iterations = 3 seconds):
                 //    - Gives command enough time to complete output before assuming it's waiting for input
-                //    - 5 seconds balances between false positives (slow commands) and responsiveness
+                //    - 3 seconds balances between false positives (slow commands) and responsiveness
                 //
                 // 2. !output_buffer.is_empty():
                 //    - Command must have produced SOME output (avoids detecting hung commands as interactive)
                 //    - Interactive prompts typically display text before waiting
                 //
-                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥25 iterations = ≥2.5 seconds):
+                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥15 iterations = ≥1.5 seconds):
                 //    - Prevents premature detection during command startup
                 //    - Allows time for fast commands to complete normally
                 //
@@ -1099,13 +1112,12 @@ impl BlockingShard for SendInputShard {
                     iteration, output_buffer.len(), no_data_count);
 
                 // Early exit: if no data for a while, check full buffer for prompt
+                // Use last_buffer_size to avoid race condition with reader thread
                 if no_data_count >= no_data_threshold {
-                    let shared_buffer = local_shell.output_buffer.lock()
-                        .map_err(|_| "Buffer lock poisoned")?;
-                    let full_output = String::from_utf8_lossy(&shared_buffer);
-                    if is_prompt(&full_output) {
-                        shlog_trace!("SendInput: No new data for {}s and prompt detected in full buffer, exiting early",
-                            no_data_count * ITERATION_SLEEP_MS / 1000);
+                    if check_buffer_for_prompt(local_shell, last_buffer_size)? {
+                        shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer up to position {}, exiting early",
+                            no_data_count * ITERATION_SLEEP_MS / 1000,
+                            last_buffer_size);
                         break;
                     }
                 }
@@ -1113,21 +1125,23 @@ impl BlockingShard for SendInputShard {
             std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        shlog_trace!("SendInput: Finished reading, total output: {} bytes", output_buffer.len());
+        // Capture final buffer position to avoid race condition with reader thread
+        let final_buffer_size = last_buffer_size;
+        shlog_trace!("SendInput: Finished reading, total output: {} bytes, final buffer position: {}",
+            output_buffer.len(), final_buffer_size);
 
         // Check for prompt in the new output
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
         let mut prompt_detected = is_prompt(&output_str);
 
-        // If no prompt detected in new output, check the entire shared buffer
+        // If no prompt detected in new output, check the shared buffer up to our final position
         // This handles the case where the command completed and the prompt was written
-        // to the buffer before SendInput was called
+        // to the buffer before SendInput was called. We only check up to final_buffer_size
+        // to avoid race conditions where the reader thread appends data from subsequent commands
         if !prompt_detected {
-            let shared_buffer = local_shell.output_buffer.lock()
-                .map_err(|_| "Buffer lock poisoned")?;
-            let full_output = String::from_utf8_lossy(&shared_buffer);
-            prompt_detected = is_prompt(&full_output);
-            shlog_trace!("SendInput: Checked full buffer for prompt, detected: {}", prompt_detected);
+            prompt_detected = check_buffer_for_prompt(local_shell, final_buffer_size)?;
+            shlog_trace!("SendInput: Checked buffer up to position {} for prompt, detected: {}",
+                final_buffer_size, prompt_detected);
         }
 
         // Clean output
