@@ -153,15 +153,27 @@ lazy_static! {
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
 }
 
-// Helper function to check shared buffer for prompt up to a specific position
-// This prevents race conditions where the reader thread adds more data after we stop reading
+// Helper function to check shared buffer for prompt in a specific range
+// This prevents race conditions where the reader thread adds more data after we stop reading,
+// and ensures we only check NEW output received after SendInput was called (not old data)
 fn check_buffer_for_prompt(
     local_shell: &LocalShellSession,
+    from_position: usize,
     up_to_position: usize
 ) -> Result<bool, &'static str> {
     let shared_buffer = local_shell.output_buffer.lock()
         .map_err(|_| "Buffer lock poisoned")?;
-    let relevant_output = &shared_buffer[..up_to_position.min(shared_buffer.len())];
+
+    // Clamp positions to buffer size
+    let safe_from = from_position.min(shared_buffer.len());
+    let safe_to = up_to_position.min(shared_buffer.len());
+
+    // Only check the relevant range (data received since from_position)
+    if safe_to <= safe_from {
+        return Ok(false); // No new data to check
+    }
+
+    let relevant_output = &shared_buffer[safe_from..safe_to];
     let output_str = String::from_utf8_lossy(relevant_output);
     Ok(is_prompt(&output_str))
 }
@@ -1111,12 +1123,14 @@ impl BlockingShard for SendInputShard {
                 shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}, no_data_count: {}",
                     iteration, output_buffer.len(), no_data_count);
 
-                // Early exit: if no data for a while, check full buffer for prompt
-                // Use last_buffer_size to avoid race condition with reader thread
+                // Early exit: if no data for a while, check buffer range for prompt
+                // Check from start_buffer_size to last_buffer_size (only NEW data)
+                // This avoids detecting prompts from before SendInput was called
                 if no_data_count >= no_data_threshold {
-                    if check_buffer_for_prompt(local_shell, last_buffer_size)? {
-                        shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer up to position {}, exiting early",
+                    if check_buffer_for_prompt(local_shell, start_buffer_size, last_buffer_size)? {
+                        shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer range [{}..{}], exiting early",
                             no_data_count * ITERATION_SLEEP_MS / 1000,
+                            start_buffer_size,
                             last_buffer_size);
                         break;
                     }
@@ -1134,14 +1148,14 @@ impl BlockingShard for SendInputShard {
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
         let mut prompt_detected = is_prompt(&output_str);
 
-        // If no prompt detected in new output, check the shared buffer up to our final position
+        // If no prompt detected in new output, check the shared buffer range
         // This handles the case where the command completed and the prompt was written
-        // to the buffer before SendInput was called. We only check up to final_buffer_size
-        // to avoid race conditions where the reader thread appends data from subsequent commands
+        // to the buffer before the reading loop could see it. We check from start_buffer_size
+        // to final_buffer_size to only examine NEW data, avoiding race conditions
         if !prompt_detected {
-            prompt_detected = check_buffer_for_prompt(local_shell, final_buffer_size)?;
-            shlog_trace!("SendInput: Checked buffer up to position {} for prompt, detected: {}",
-                final_buffer_size, prompt_detected);
+            prompt_detected = check_buffer_for_prompt(local_shell, start_buffer_size, final_buffer_size)?;
+            shlog_trace!("SendInput: Checked buffer range [{}..{}] for prompt, detected: {}",
+                start_buffer_size, final_buffer_size, prompt_detected);
         }
 
         // Clean output
