@@ -52,7 +52,12 @@ const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const ITERATION_SLEEP_MS: u64 = 100;
 const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
 const SENDINPUT_MAX_ITERATIONS: usize = 30;
-const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds of no data before checking for prompt
+// SendInput early-exit threshold: 2 seconds of no new data before checking shared buffer
+// This is intentionally shorter than INTERACTIVE_DETECTION_ITERATIONS (3s) because:
+// - SendInput typically deals with interactive prompts that respond quickly
+// - Execute needs longer timeout to avoid false positives with slow commands
+// - Early exit in SendInput improves responsiveness for "peek" operations
+const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds
 const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
 const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
 
@@ -182,9 +187,25 @@ fn check_buffer_for_prompt(
     }
 
     // Check if buffer was truncated by looking for truncation message at the start
-    // If truncated, positions are invalid, so return false
+    // If truncated, absolute positions (from_position, up_to_position) are invalid
+    // HOWEVER, we can still check if the current buffer (after truncation message)
+    // contains a prompt. This is critical - otherwise commands with large output
+    // would hang forever after truncation.
     if shared_buffer.starts_with(b"[... output truncated ...]") {
-        shlog_debug!("Buffer was truncated, positions invalid, skipping shared buffer check");
+        shlog_debug!("Buffer was truncated, positions invalid, checking current buffer state instead");
+
+        // Skip truncation message and check the tail that was kept
+        // truncate_to_tail() prepends "[... output truncated ...]\n" then the tail
+        let truncation_msg_len = b"[... output truncated ...]\n".len();
+        if shared_buffer.len() > truncation_msg_len {
+            let current_tail = &shared_buffer[truncation_msg_len..];
+            let output_str = String::from_utf8_lossy(current_tail);
+            let has_prompt = is_prompt(&output_str);
+            shlog_debug!("Truncated buffer tail check: prompt detected = {}", has_prompt);
+            return Ok(has_prompt);
+        }
+
+        // Truncation message exists but no tail data yet
         return Ok(false);
     }
 
@@ -199,14 +220,28 @@ fn check_buffer_for_prompt(
     }
 
     // Clamp positions to current buffer size
+    // NOTE: After all the checks above (range validation, truncation, buffer length),
+    // positions should be valid. This clamping is defensive - if positions exceed
+    // buffer length here, it indicates a bug in earlier logic or a race condition.
+    // We clamp instead of panicking to avoid crashes, but log if this happens.
     let safe_from = from_position.min(current_buffer_len);
     let safe_to = up_to_position.min(current_buffer_len);
+
+    if from_position > current_buffer_len || up_to_position > current_buffer_len {
+        shlog_warn!("Positions exceed buffer length after validation: from={}, to={}, buffer_len={}. This indicates a bug or race condition.",
+            from_position, up_to_position, current_buffer_len);
+    }
 
     // Only check the relevant range (data received since from_position)
     if safe_to <= safe_from {
         return Ok(false); // No new data to check
     }
 
+    // RACE WINDOW LIMITATION: There's still a small window between the buffer length
+    // check above and this slice operation where the reader thread could modify the
+    // buffer. Rust's bounds checking prevents crashes, but we might read partial data.
+    // The alternative (holding lock for entire function) would block the reader thread
+    // and hurt concurrency. This is an acceptable trade-off for performance.
     let relevant_output = &shared_buffer[safe_from..safe_to];
     let output_str = String::from_utf8_lossy(relevant_output);
     Ok(is_prompt(&output_str))
