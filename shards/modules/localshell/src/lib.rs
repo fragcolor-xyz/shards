@@ -55,7 +55,6 @@ const SENDINPUT_MAX_ITERATIONS: usize = 30;
 const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds of no data before checking for prompt
 const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
 const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
-const MS_PER_SECOND: u64 = 1000; // Milliseconds per second conversion factor
 
 // LocalShell session object wrapper
 mod local_shell {
@@ -173,8 +172,14 @@ fn check_buffer_for_prompt(
         .map_err(|_| "Buffer lock poisoned")?;
 
     // Capture buffer length FIRST to prevent TOCTOU race with reader thread
-    // Between checking truncation and slicing, the reader could append more data
-    let buffer_len = shared_buffer.len();
+    let initial_buffer_len = shared_buffer.len();
+
+    // Check for invalid position range (prevents integer underflow)
+    // This can happen if from_position > up_to_position after buffer truncation
+    if from_position > up_to_position {
+        shlog_debug!("Invalid position range: from {} > to {}, skipping check", from_position, up_to_position);
+        return Ok(false);
+    }
 
     // Check if buffer was truncated by looking for truncation message at the start
     // If truncated, positions are invalid, so return false
@@ -183,17 +188,19 @@ fn check_buffer_for_prompt(
         return Ok(false);
     }
 
-    // Check if positions indicate truncation occurred (range exceeds buffer capacity)
-    // This must happen BEFORE clamping, otherwise it's dead code
-    if up_to_position - from_position > MAX_BUFFER_BYTES {
-        shlog_debug!("Position range ({}..{}) exceeds MAX_BUFFER_BYTES, likely truncated",
-            from_position, up_to_position);
+    // CRITICAL: Re-check buffer length after truncation check to prevent TOCTOU race
+    // The reader thread could have truncated the buffer between the initial length
+    // capture and now, invalidating our positions
+    let current_buffer_len = shared_buffer.len();
+    if current_buffer_len != initial_buffer_len {
+        shlog_debug!("Buffer length changed ({} -> {}), positions may be invalid, skipping check",
+            initial_buffer_len, current_buffer_len);
         return Ok(false);
     }
 
-    // Clamp positions to captured buffer size
-    let safe_from = from_position.min(buffer_len);
-    let safe_to = up_to_position.min(buffer_len);
+    // Clamp positions to current buffer size
+    let safe_from = from_position.min(current_buffer_len);
+    let safe_to = up_to_position.min(current_buffer_len);
 
     // Only check the relevant range (data received since from_position)
     if safe_to <= safe_from {
@@ -1155,7 +1162,7 @@ impl BlockingShard for SendInputShard {
                 if no_data_count >= SENDINPUT_NO_DATA_THRESHOLD {
                     if check_buffer_for_prompt(local_shell, start_buffer_size, last_buffer_size)? {
                         shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer range [{}..{}], exiting early",
-                            (SENDINPUT_NO_DATA_THRESHOLD as u64 * ITERATION_SLEEP_MS) / MS_PER_SECOND,
+                            (SENDINPUT_NO_DATA_THRESHOLD as u64 * ITERATION_SLEEP_MS) / 1000,
                             start_buffer_size,
                             last_buffer_size);
                         break;
