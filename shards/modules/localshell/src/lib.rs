@@ -45,10 +45,19 @@ const INITIAL_PROMPT_MAX_RETRIES: usize = 10;
 const READER_THREAD_TIMEOUT_MS: u64 = 50;
 const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
 const COMMAND_MAX_ITERATIONS: usize = 50;
-const INTERACTIVE_DETECTION_ITERATIONS: usize = 20; // 20 * 100ms = 2 seconds
+// Interactive detection timeout: 3 seconds is a balance between responsiveness and false positives.
+// This may be insufficient for systems under heavy load, slow I/O, or commands with slow startup.
+// Consider making this configurable via a parameter in future iterations.
+const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const ITERATION_SLEEP_MS: u64 = 100;
 const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
 const SENDINPUT_MAX_ITERATIONS: usize = 30;
+// SendInput early-exit threshold: 2 seconds of no new data before checking shared buffer
+// This is intentionally shorter than INTERACTIVE_DETECTION_ITERATIONS (3s) because:
+// - SendInput typically deals with interactive prompts that respond quickly
+// - Execute needs longer timeout to avoid false positives with slow commands
+// - Early exit in SendInput improves responsiveness for "peek" operations
+const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds
 const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
 const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
 
@@ -151,6 +160,108 @@ lazy_static! {
     static ref LOCAL_SHELL_TYPE_VEC: Vec<Type> = vec![*LOCAL_SHELL_TYPE];
     static ref LOCAL_SHELL_VAR_TYPE: Type = Type::context_variable(&LOCAL_SHELL_TYPE_VEC);
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
+}
+
+// Helper function to check shared buffer for prompt in a specific range
+// This prevents race conditions where the reader thread adds more data after we stop reading,
+// and ensures we only check NEW output received after SendInput was called (not old data)
+//
+// IMPORTANT: If buffer truncation occurs, positions become invalid. This function detects
+// truncation and returns false to avoid checking invalid ranges.
+fn check_buffer_for_prompt(
+    local_shell: &LocalShellSession,
+    from_position: usize,
+    up_to_position: usize
+) -> Result<bool, &'static str> {
+    let shared_buffer = local_shell.output_buffer.lock()
+        .map_err(|_| "Buffer lock poisoned")?;
+
+    // Capture buffer length FIRST to prevent TOCTOU race with reader thread
+    let initial_buffer_len = shared_buffer.len();
+
+    // Check for invalid position range (prevents integer underflow)
+    // This can happen if from_position > up_to_position after buffer truncation
+    if from_position > up_to_position {
+        shlog_debug!("Invalid position range: from {} > to {}, skipping check", from_position, up_to_position);
+        return Ok(false);
+    }
+
+    // Check if buffer was truncated by looking for truncation message at the start
+    // If truncated, absolute positions (from_position, up_to_position) are invalid
+    // HOWEVER, we can still check if the current buffer (after truncation message)
+    // contains a prompt. This is SAFE because:
+    //
+    // 1. Execute CLEARS the buffer before each command (see line ~716)
+    // 2. The buffer only contains output from the CURRENT command
+    // 3. truncate_to_tail() keeps the most recent 93% of output (tail)
+    // 4. Shell prompts appear at the END of command output
+    // 5. Therefore, if a prompt exists, it will be in the kept tail
+    //
+    // This violates the "check only NEW data" contract, but it's acceptable because:
+    // - After truncation, position-based checking is impossible anyway
+    // - The tail is guaranteed to be from the current command (buffer cleared per-command)
+    // - Prompts are always at the end (so they'll be in the tail if present)
+    // - Without this, commands with >64KB output would hang forever
+    //
+    // For SendInput specifically:
+    // - The buffer might contain both old interactive prompt + new output
+    // - But the tail will contain the MOST RECENT output
+    // - If command completed, the final prompt will be in the tail
+    // - If still waiting, the interactive prompt will be in the tail
+    if shared_buffer.starts_with(b"[... output truncated ...]") {
+        shlog_debug!("Buffer was truncated, positions invalid, checking current buffer state instead");
+
+        // Skip truncation message and check the tail that was kept
+        // truncate_to_tail() prepends "[... output truncated ...]\n" then the tail
+        let truncation_msg_len = b"[... output truncated ...]\n".len();
+        if shared_buffer.len() > truncation_msg_len {
+            let current_tail = &shared_buffer[truncation_msg_len..];
+            let output_str = String::from_utf8_lossy(current_tail);
+            let has_prompt = is_prompt(&output_str);
+            shlog_debug!("Truncated buffer tail check: prompt detected = {}", has_prompt);
+            return Ok(has_prompt);
+        }
+
+        // Truncation message exists but no tail data yet
+        return Ok(false);
+    }
+
+    // CRITICAL: Re-check buffer length after truncation check to prevent TOCTOU race
+    // The reader thread could have truncated the buffer between the initial length
+    // capture and now, invalidating our positions
+    let current_buffer_len = shared_buffer.len();
+    if current_buffer_len != initial_buffer_len {
+        shlog_debug!("Buffer length changed ({} -> {}), positions may be invalid, skipping check",
+            initial_buffer_len, current_buffer_len);
+        return Ok(false);
+    }
+
+    // Clamp positions to current buffer size
+    // NOTE: After all the checks above (range validation, truncation, buffer length),
+    // positions should be valid. This clamping is defensive - if positions exceed
+    // buffer length here, it indicates a bug in earlier logic or a race condition.
+    // We clamp instead of panicking to avoid crashes, but log if this happens.
+    let safe_from = from_position.min(current_buffer_len);
+    let safe_to = up_to_position.min(current_buffer_len);
+
+    if from_position > current_buffer_len || up_to_position > current_buffer_len {
+        shlog_warn!("Positions exceed buffer length after validation: from={}, to={}, buffer_len={}. This indicates a bug or race condition.",
+            from_position, up_to_position, current_buffer_len);
+    }
+
+    // Only check the relevant range (data received since from_position)
+    if safe_to <= safe_from {
+        return Ok(false); // No new data to check
+    }
+
+    // RACE WINDOW LIMITATION: There's still a small window between the buffer length
+    // check above and this slice operation where the reader thread could modify the
+    // buffer. Rust's bounds checking prevents crashes, but we might read partial data.
+    // The alternative (holding lock for entire function) would block the reader thread
+    // and hurt concurrency. This is an acceptable trade-off for performance.
+    let relevant_output = &shared_buffer[safe_from..safe_to];
+    let output_str = String::from_utf8_lossy(relevant_output);
+    Ok(is_prompt(&output_str))
 }
 
 // Helper function to detect shell prompts (NOT interactive program prompts)
@@ -802,15 +913,15 @@ impl BlockingShard for ExecuteShard {
                 // We detect a command as interactive if it stops producing output but doesn't return to shell prompt.
                 //
                 // Conditions explained:
-                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (20 iterations = 2 seconds):
+                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (30 iterations = 3 seconds):
                 //    - Gives command enough time to complete output before assuming it's waiting for input
-                //    - 2 seconds balances between false positives (slow commands) and responsiveness
+                //    - 3 seconds balances between false positives (slow commands) and responsiveness
                 //
                 // 2. !output_buffer.is_empty():
                 //    - Command must have produced SOME output (avoids detecting hung commands as interactive)
                 //    - Interactive prompts typically display text before waiting
                 //
-                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥10 iterations = ≥1 second):
+                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥15 iterations = ≥1.5 seconds):
                 //    - Prevents premature detection during command startup
                 //    - Allows time for fast commands to complete normally
                 //
@@ -1046,6 +1157,7 @@ impl BlockingShard for SendInputShard {
         let mut output_buffer = Vec::new();
         let mut last_buffer_size = start_buffer_size;
         let mut was_truncated = false;
+        let mut no_data_count = 0;
 
         for iteration in 0..max_iterations {
             // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
@@ -1082,17 +1194,54 @@ impl BlockingShard for SendInputShard {
                     output_buffer.len(),
                     output_str
                 );
+
+                // Reset no-data counter
+                no_data_count = 0;
+
+                // Check if we got a prompt in the new data - if so, we're done
+                if is_prompt(&output_str) {
+                    shlog_trace!("SendInput: Prompt detected in new output, exiting early");
+                    break;
+                }
             } else {
-                shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}", iteration, output_buffer.len());
+                no_data_count += 1;
+                shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}, no_data_count: {}",
+                    iteration, output_buffer.len(), no_data_count);
+
+                // Early exit: if no data for a while, check buffer range for prompt
+                // Check from start_buffer_size to last_buffer_size (only NEW data)
+                // This avoids detecting prompts from before SendInput was called
+                if no_data_count >= SENDINPUT_NO_DATA_THRESHOLD {
+                    if check_buffer_for_prompt(local_shell, start_buffer_size, last_buffer_size)? {
+                        shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer range [{}..{}], exiting early",
+                            (SENDINPUT_NO_DATA_THRESHOLD as u64 * ITERATION_SLEEP_MS) / 1000,
+                            start_buffer_size,
+                            last_buffer_size);
+                        break;
+                    }
+                }
             }
             std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        shlog_trace!("SendInput: Finished reading, total output: {} bytes", output_buffer.len());
+        // Capture final buffer position to avoid race condition with reader thread
+        let final_buffer_size = last_buffer_size;
+        shlog_trace!("SendInput: Finished reading, total output: {} bytes, final buffer position: {}",
+            output_buffer.len(), final_buffer_size);
 
-        // Check for prompt
+        // Check for prompt in the new output
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
-        let prompt_detected = is_prompt(&output_str);
+        let mut prompt_detected = is_prompt(&output_str);
+
+        // If no prompt detected in new output, check the shared buffer range
+        // This handles the case where the command completed and the prompt was written
+        // to the buffer before the reading loop could see it. We check from start_buffer_size
+        // to final_buffer_size to only examine NEW data, avoiding race conditions
+        if !prompt_detected {
+            prompt_detected = check_buffer_for_prompt(local_shell, start_buffer_size, final_buffer_size)?;
+            shlog_trace!("SendInput: Checked buffer range [{}..{}] for prompt, detected: {}",
+                start_buffer_size, final_buffer_size, prompt_detected);
+        }
 
         // Clean output
         let stripped_bytes = strip_ansi_escapes::strip(&output_str);
