@@ -321,8 +321,11 @@ struct GrepShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("File", "File path to search in", [common_type::string, common_type::string_var])]
+  #[shard_param("File", "File path to search in", [common_type::none, common_type::string, common_type::string_var])]
   file: ParamVar,
+
+  #[shard_param("String", "Pure text string to search in (alternative to File)", [common_type::none, common_type::string, common_type::string_var])]
+  string: ParamVar,
 
   #[shard_param("WorkDir", "Working directory for resolving relative paths", [common_type::none, common_type::string, common_type::string_var])]
   work_dir: ParamVar,
@@ -356,6 +359,7 @@ impl Default for GrepShard {
     Self {
       required: ExposedTypes::new(),
       file: ParamVar::default(),
+      string: ParamVar::default(),
       work_dir: ParamVar::default(),
       case_insensitive: ParamVar::new(false.into()),
       line_numbers: ParamVar::new(true.into()),
@@ -392,34 +396,61 @@ impl Shard for GrepShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
+
+    // Validate that either File or String is provided
+    let has_file = !self.file.get().as_ref().is_none();
+    let has_string = !self.string.get().as_ref().is_none();
+
+    if !has_file && !has_string {
+      return Err("Either File or String parameter must be provided");
+    }
+
+    if has_file && has_string {
+      return Err("Cannot specify both File and String parameters - use only one");
+    }
+
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let pattern: &str = input.try_into()?;
 
-    // Get file path
-    let file_path_str: &str = self.file.get().as_ref().try_into().map_err(|_| {
-      shlog_error!("File parameter must be a string");
-      "File parameter must be a string"
-    })?;
+    // Determine if using File or String mode
+    let use_file = !self.file.get().as_ref().is_none();
 
-    // Get working directory
-    let work_dir = if self.work_dir.get().as_ref().is_none() {
-      env::current_dir().map_err(|e| {
-        shlog_error!("Failed to get current directory: {}", e);
-        "Failed to get current directory"
-      })?
-    } else {
-      let work_dir_str: &str = self.work_dir.get().as_ref().try_into().map_err(|_| {
-        shlog_error!("WorkDir parameter must be a string");
-        "WorkDir parameter must be a string"
+    // Get file path or string content
+    let (file_path, string_content, source_name) = if use_file {
+      // File mode
+      let file_path_str: &str = self.file.get().as_ref().try_into().map_err(|_| {
+        shlog_error!("File parameter must be a string");
+        "File parameter must be a string"
       })?;
-      PathBuf::from(work_dir_str)
-    };
 
-    // Resolve file path
-    let file_path = resolve_path(file_path_str, &work_dir);
+      // Get working directory
+      let work_dir = if self.work_dir.get().as_ref().is_none() {
+        env::current_dir().map_err(|e| {
+          shlog_error!("Failed to get current directory: {}", e);
+          "Failed to get current directory"
+        })?
+      } else {
+        let work_dir_str: &str = self.work_dir.get().as_ref().try_into().map_err(|_| {
+          shlog_error!("WorkDir parameter must be a string");
+          "WorkDir parameter must be a string"
+        })?;
+        PathBuf::from(work_dir_str)
+      };
+
+      // Resolve file path
+      let file_path = resolve_path(file_path_str, &work_dir);
+      (Some(file_path.clone()), None, file_path.display().to_string())
+    } else {
+      // String mode
+      let string_content_str: &str = self.string.get().as_ref().try_into().map_err(|_| {
+        shlog_error!("String parameter must be a string");
+        "String parameter must be a string"
+      })?;
+      (None, Some(string_content_str.to_string()), "<string>".to_string())
+    };
 
     // Get parameters
     let case_insensitive: bool = self.case_insensitive.get().as_ref().try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
@@ -523,14 +554,20 @@ impl Shard for GrepShard {
     let max = if max_matches == 0 { i64::MAX } else { max_matches };
     let mut sink = GrepSinkImpl {
       output: AutoSeqVar::new(),
-      file_path: file_path.display().to_string(),
+      file_path: source_name,
       line_numbers,
       match_count: 0,
       max_matches: max,
     };
 
-    // Search the file
-    let result = searcher.search_path(&matcher, &file_path, &mut sink);
+    // Search either file or string
+    let result = if let Some(ref path) = file_path {
+      searcher.search_path(&matcher, path, &mut sink)
+    } else if let Some(ref content) = string_content {
+      searcher.search_slice(&matcher, content.as_bytes(), &mut sink)
+    } else {
+      unreachable!("Either file_path or string_content must be set");
+    };
 
     // Handle search errors
     if let Err(e) = result {
