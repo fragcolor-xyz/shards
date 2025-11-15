@@ -396,8 +396,13 @@ impl Shard for GrepShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
 
-    // Validate that either File or String is provided
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let pattern: &str = input.try_into()?;
+
+    // Validate that either File or String is provided (but not both)
     let has_file = !self.file.get().as_ref().is_none();
     let has_string = !self.string.get().as_ref().is_none();
 
@@ -408,12 +413,6 @@ impl Shard for GrepShard {
     if has_file && has_string {
       return Err("Cannot specify both File and String parameters - use only one");
     }
-
-    Ok(self.output_types()[0])
-  }
-
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let pattern: &str = input.try_into()?;
 
     // Get parameters
     let case_insensitive: bool = self.case_insensitive.get().as_ref().try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
