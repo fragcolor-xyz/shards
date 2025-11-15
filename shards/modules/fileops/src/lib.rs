@@ -415,43 +415,6 @@ impl Shard for GrepShard {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let pattern: &str = input.try_into()?;
 
-    // Determine if using File or String mode
-    let use_file = !self.file.get().as_ref().is_none();
-
-    // Get file path or string content
-    let (file_path, string_content, source_name) = if use_file {
-      // File mode
-      let file_path_str: &str = self.file.get().as_ref().try_into().map_err(|_| {
-        shlog_error!("File parameter must be a string");
-        "File parameter must be a string"
-      })?;
-
-      // Get working directory
-      let work_dir = if self.work_dir.get().as_ref().is_none() {
-        env::current_dir().map_err(|e| {
-          shlog_error!("Failed to get current directory: {}", e);
-          "Failed to get current directory"
-        })?
-      } else {
-        let work_dir_str: &str = self.work_dir.get().as_ref().try_into().map_err(|_| {
-          shlog_error!("WorkDir parameter must be a string");
-          "WorkDir parameter must be a string"
-        })?;
-        PathBuf::from(work_dir_str)
-      };
-
-      // Resolve file path
-      let file_path = resolve_path(file_path_str, &work_dir);
-      (Some(file_path.clone()), None, file_path.display().to_string())
-    } else {
-      // String mode
-      let string_content_str: &str = self.string.get().as_ref().try_into().map_err(|_| {
-        shlog_error!("String parameter must be a string");
-        "String parameter must be a string"
-      })?;
-      (None, Some(string_content_str.to_string()), "<string>".to_string())
-    };
-
     // Get parameters
     let case_insensitive: bool = self.case_insensitive.get().as_ref().try_into().map_err(|_| "CaseInsensitive must be a boolean")?;
     let line_numbers: bool = self.line_numbers.get().as_ref().try_into().map_err(|_| "LineNumbers must be a boolean")?;
@@ -497,7 +460,7 @@ impl Shard for GrepShard {
     // Custom sink to properly count only matches, not context lines
     struct GrepSinkImpl {
       output: AutoSeqVar,
-      file_path: String,
+      source_name: String,
       line_numbers: bool,
       match_count: i64,
       max_matches: i64,
@@ -521,7 +484,7 @@ impl Shard for GrepShard {
         }
 
         match_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
-        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.source_name));
         match_table.0.insert_fast_static("is_match", &true.into());
 
         self.output.0.push(&match_table.0.0);
@@ -542,7 +505,7 @@ impl Shard for GrepShard {
         }
 
         context_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
-        context_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.file_path));
+        context_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.source_name));
         context_table.0.insert_fast_static("is_match", &false.into());
 
         self.output.0.push(&context_table.0.0);
@@ -551,22 +514,65 @@ impl Shard for GrepShard {
       }
     }
 
-    let max = if max_matches == 0 { i64::MAX } else { max_matches };
-    let mut sink = GrepSinkImpl {
-      output: AutoSeqVar::new(),
-      file_path: source_name,
-      line_numbers,
-      match_count: 0,
-      max_matches: max,
-    };
+    // Determine if using File or String mode and perform search
+    let use_file = !self.file.get().as_ref().is_none();
 
-    // Search either file or string
-    let result = if let Some(ref path) = file_path {
-      searcher.search_path(&matcher, path, &mut sink)
-    } else if let Some(ref content) = string_content {
-      searcher.search_slice(&matcher, content.as_bytes(), &mut sink)
+    let max = if max_matches == 0 { i64::MAX } else { max_matches };
+
+    let result = if use_file {
+      // File mode
+      let file_path_str: &str = self.file.get().as_ref().try_into().map_err(|_| {
+        shlog_error!("File parameter must be a string");
+        "File parameter must be a string"
+      })?;
+
+      // Get working directory
+      let work_dir = if self.work_dir.get().as_ref().is_none() {
+        env::current_dir().map_err(|e| {
+          shlog_error!("Failed to get current directory: {}", e);
+          "Failed to get current directory"
+        })?
+      } else {
+        let work_dir_str: &str = self.work_dir.get().as_ref().try_into().map_err(|_| {
+          shlog_error!("WorkDir parameter must be a string");
+          "WorkDir parameter must be a string"
+        })?;
+        PathBuf::from(work_dir_str)
+      };
+
+      // Resolve file path
+      let file_path = resolve_path(file_path_str, &work_dir);
+      let source_name = file_path.display().to_string();
+
+      let mut sink = GrepSinkImpl {
+        output: AutoSeqVar::new(),
+        source_name,
+        line_numbers,
+        match_count: 0,
+        max_matches: max,
+      };
+
+      let result = searcher.search_path(&matcher, &file_path, &mut sink);
+      self.output = sink.output;
+      result
     } else {
-      unreachable!("Either file_path or string_content must be set");
+      // String mode
+      let string_content: &str = self.string.get().as_ref().try_into().map_err(|_| {
+        shlog_error!("String parameter must be a string");
+        "String parameter must be a string"
+      })?;
+
+      let mut sink = GrepSinkImpl {
+        output: AutoSeqVar::new(),
+        source_name: "<string>".to_string(),
+        line_numbers,
+        match_count: 0,
+        max_matches: max,
+      };
+
+      let result = searcher.search_slice(&matcher, string_content.as_bytes(), &mut sink);
+      self.output = sink.output;
+      result
     };
 
     // Handle search errors
@@ -574,9 +580,6 @@ impl Shard for GrepShard {
       shlog_error!("Grep search failed: {}", e);
       return Err("Grep search failed");
     }
-
-    // Transfer results to self.output
-    self.output = sink.output;
 
     Ok(Some(self.output.0.0))
   }
