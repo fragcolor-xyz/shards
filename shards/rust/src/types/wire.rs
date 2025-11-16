@@ -204,3 +204,6 @@ impl From<SHWireState> for WireState {
     }
   }
 }
+
+// Safety: WireRef can be safely shared between threads
+unsafe impl Sync for WireRef {}

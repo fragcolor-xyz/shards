@@ -389,9 +389,7 @@ pub struct WrappedVar(pub Var); // used in DSL macro, ignore it
 unsafe impl Send for Var {}
 unsafe impl Send for Context {}
 unsafe impl Send for Shard {}
-unsafe impl Send for SHTable {}
 unsafe impl Sync for Var {}
-unsafe impl Sync for SHTable {}
 unsafe impl Sync for SHOptionalString {}
 unsafe impl Sync for ClonedVar {}
 unsafe impl Sync for ExternalVar {}

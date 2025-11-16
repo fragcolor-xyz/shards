@@ -1012,3 +1012,7 @@ impl std::fmt::Display for Var {
     }
   }
 }
+
+// Safety: Table can be safely sent between threads
+unsafe impl Send for Table {}
+unsafe impl Sync for Table {}

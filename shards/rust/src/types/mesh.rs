@@ -113,3 +113,6 @@ impl MeshVar {
     }
   }
 }
+
+// Safety: Mesh can be safely shared between threads
+unsafe impl Sync for Mesh {}
