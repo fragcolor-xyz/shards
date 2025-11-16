@@ -37,29 +37,6 @@ impl Drop for DerivedType {
   }
 }
 
-#[derive(PartialEq, Eq)]
-pub enum WireState {
-  Continue,
-  Return,
-  Rebase,
-  Restart,
-  Stop,
-  Error,
-}
-
-impl From<SHWireState> for WireState {
-  fn from(state: SHWireState) -> Self {
-    match state {
-      SHWireState_Continue => WireState::Continue,
-      SHWireState_Return => WireState::Return,
-      SHWireState_Rebase => WireState::Rebase,
-      SHWireState_Restart => WireState::Restart,
-      SHWireState_Stop => WireState::Stop,
-      SHWireState_Error => WireState::Error,
-      _ => unreachable!(),
-    }
-  }
-}
 
 // Todo SHTypeInfo proper wrapper Type with helpers
 
