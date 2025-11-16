@@ -1181,21 +1181,29 @@ class ShardsVar {
         // Initialize with nil terminator to guarantee nativeShards.elements is ALWAYS valid
         // Even if setParam is never called, activate() can safely be called (will do nothing)
         shardsPtrs.append(nil)
-        withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
-            nativeShards.elements = ptr
-        }
+        // Get persistent pointer to array's buffer (valid until array is reallocated)
+        nativeShards.elements = shardsPtrs.withUnsafeMutableBufferPointer { $0.baseAddress }
         nativeShards.len = 0
         nativeShards.cap = 0
     }
 
     private func reset() {
-        // Free all shards (skip NULL terminator if present)
-        let shardsToDestroy = shardsPtrs.last != nil && shardsPtrs.last! == nil
+        // Cleanup all shards (skip NULL terminator if present)
+        let shardsToCleanup = shardsPtrs.last != nil && shardsPtrs.last! == nil
             ? shardsPtrs.dropLast()
             : shardsPtrs[...]
 
-        for shard in shardsToDestroy {
-            shard!.pointee.destroy(shard!)
+        // Cleanup in REVERSE order (like C++ implementation)
+        // NOTE: Call cleanup, NOT destroy! The shards are freed when paramValue is destroyed
+        // (because they have SHARD_FLAGS_OWNED_SHARD set). Calling destroy here causes double-free!
+        for shard in shardsToCleanup.reversed() {
+            let error = shard!.pointee.cleanup(shard!, nil)
+            if error.code != 0 {
+                // Log error but continue cleanup
+                if let msg = error.message.toString() {
+                    print("Error during shard cleanup in reset: \(msg)")
+                }
+            }
         }
         shardsPtrs.removeAll()
 
@@ -1207,6 +1215,8 @@ class ShardsVar {
         }
 
         composeResult = SHComposeResult()
+        
+        paramValue = .init()
 
         requiredVariables = ExposedTypes()
         exposedVariables = ExposedTypes()
@@ -1219,7 +1229,8 @@ class ShardsVar {
             ? shardsPtrs.dropLast()
             : shardsPtrs[...]
 
-        for shard in shardsToCleanup {
+        // Cleanup in REVERSE order (like C++ and Rust implementations)
+        for shard in shardsToCleanup.reversed() {
             error = shard!.pointee.cleanup(shard!, context.context)
             if error.code != 0 {
                 return .failure(ShardError(message: error.message.toString()!))
@@ -1236,9 +1247,12 @@ class ShardsVar {
             : shardsPtrs[...]
 
         for shard in shardsToWarmup {
-            error = shard!.pointee.warmup(shard!, context.context)
-            if error.code != 0 {
-                return .failure(ShardError(message: error.message.toString()!))
+            // warmup is optional - check before calling (like C++ implementation)
+            if let warmupFn = shard!.pointee.warmup {
+                error = warmupFn(shard!, context.context)
+                if error.code != 0 {
+                    return .failure(ShardError(message: error.message.toString()!))
+                }
             }
         }
         return .success(())
@@ -1276,9 +1290,8 @@ class ShardsVar {
         // Even for empty arrays, this ensures nativeShards.elements is never nullptr
         shardsPtrs.append(nil)
 
-        withUnsafeMutablePointer(to: &shardsPtrs[0]) { ptr in
-            nativeShards.elements = ptr
-        }
+        // Get persistent pointer to array's buffer (valid until array is reallocated)
+        nativeShards.elements = shardsPtrs.withUnsafeMutableBufferPointer { $0.baseAddress }
         nativeShards.len = UInt32(shardsPtrs.count - 1) // Don't count the NULL terminator in length
         nativeShards.cap = UInt32(0)
 
