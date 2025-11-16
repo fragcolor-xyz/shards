@@ -275,6 +275,137 @@ This file is accessed using a relative path.""" = relative-content
 "test-fileops/relative-test.txt" | FileOps.ViewFile | Log("Verify relative path edit")
 
 // ============================================================================
+// Test 16: Grep with String parameter - Basic search
+// ============================================================================
+"""The quick brown fox jumps over the lazy dog.
+The QUICK brown FOX jumps again.
+Lorem ipsum dolor sit amet.
+Another line with FOX in it.
+Quick thinking saves the day.
+This is line six.
+This is line seven.
+Final line with nothing special.""" = string-grep-content
+
+// Basic pattern search in string
+"fox" | Grep(String: string-grep-content) = string-matches
+string-matches | Log("Grep String: basic search for 'fox'")
+
+// Verify it found the match
+string-matches | Count | Assert.Is(1 true)
+
+// ============================================================================
+// Test 17: Grep with String parameter - Case insensitive search
+// ============================================================================
+"fox" | Grep(
+  String: string-grep-content
+  CaseInsensitive: true
+) = case-insensitive-matches
+case-insensitive-matches | Log("Grep String: case insensitive 'fox'")
+
+// Should find 3 matches (fox, FOX, FOX)
+case-insensitive-matches | Count | Assert.Is(3 true)
+
+// ============================================================================
+// Test 18: Grep with String parameter - With context lines
+// ============================================================================
+"Lorem" | Grep(
+  String: string-grep-content
+  BeforeContext: 1
+  AfterContext: 1
+) = context-matches
+context-matches | Log("Grep String: 'Lorem' with context")
+
+// Should return 3 lines (1 match + 1 before + 1 after)
+context-matches | Count | Assert.Is(3 true)
+
+// ============================================================================
+// Test 19: Grep with String parameter - Max matches limit
+// ============================================================================
+"line|quick" | Grep(
+  String: string-grep-content
+  CaseInsensitive: true
+  MaxMatches: 2
+) = limited-matches
+limited-matches | Log("Grep String: limited to 2 matches")
+
+// Should only return 2 matches even though more exist
+limited-matches | Count | Assert.Is(2 true)
+
+// ============================================================================
+// Test 20: Grep with String parameter - Multi-line search
+// ============================================================================
+"""This is a test
+with multiple lines
+that spans across
+several rows""" = multiline-content
+
+// Search for pattern across lines
+"test\nwith" | Grep(
+  String: multiline-content
+  MultiLine: true
+) = multiline-matches
+multiline-matches | Log("Grep String: multi-line pattern")
+
+// ============================================================================
+// Test 21: Grep with String parameter - Invert match
+// ============================================================================
+"fox|FOX" | Grep(
+  String: string-grep-content
+  InvertMatch: true
+) = inverted-matches
+inverted-matches | Log("Grep String: lines without fox/FOX")
+
+// Should return 5 lines (8 total - 3 with fox/FOX)
+inverted-matches | Count | Assert.Is(5 true)
+
+// ============================================================================
+// Test 22: Grep with String parameter - Line numbers disabled
+// ============================================================================
+"quick" | Grep(
+  String: string-grep-content
+  CaseInsensitive: true
+  LineNumbers: false
+) = no-linenum-matches
+no-linenum-matches | Log("Grep String: without line numbers")
+
+// ============================================================================
+// Test 23: Grep with String parameter - Complex regex pattern
+// ============================================================================
+"[Qq]uick.*[a-z]+" | Grep(
+  String: string-grep-content
+) = regex-matches
+regex-matches | Log("Grep String: complex regex pattern")
+
+// Should find 2 matches
+regex-matches | Count | Assert.Is(2 true)
+
+// ============================================================================
+// Test 24: Grep with String parameter - Empty string content
+// ============================================================================
+"" = empty-string
+
+"anything" | Grep(
+  String: empty-string
+) = empty-matches
+empty-matches | Log("Grep String: search in empty string")
+
+// Should return no matches
+empty-matches | Count | Assert.Is(0 true)
+
+// ============================================================================
+// Test 25: Grep with String parameter - Single line content
+// ============================================================================
+"Just one line with some words" = single-line
+
+"words" | Grep(
+  String: single-line
+) = single-line-matches
+single-line-matches | Log("Grep String: single line search")
+
+// Should find 1 match
+single-line-matches | Count | Assert.Is(1 true)
+
+// ============================================================================
 // Cleanup
 // ============================================================================
 "test-fileops" | FS.RemoveAll
