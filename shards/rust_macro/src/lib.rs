@@ -995,12 +995,12 @@ pub fn shard_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
 // Simple Shard Macro - Simplified shard definition via function attributes
 // ============================================================================
 
-struct SimplShardAttrArgs {
+struct SimpleShardAttrArgs {
   name: LitStr,
   help: LitStr,
 }
 
-impl syn::parse::Parse for SimplShardAttrArgs {
+impl syn::parse::Parse for SimpleShardAttrArgs {
   fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
     let name: LitStr = input.parse()?;
     input.parse::<syn::Token![,]>()?;
@@ -1051,7 +1051,7 @@ impl syn::parse::Parse for SimpleParamAttr {
   }
 }
 
-fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<TokenStream, Error> {
+fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result<TokenStream, Error> {
   let shard_name = args.name.value();
   let shard_help = args.help.value();
 
@@ -1066,6 +1066,7 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
   // Parse function signature
   let mut input_type: Option<syn::Type> = None;
   let mut input_name: Option<syn::Ident> = None;
+  let mut is_unit_input = false;
   let mut params: Vec<SimpleParamInfo> = Vec::new();
 
   for (i, arg) in func.sig.inputs.iter().enumerate() {
@@ -1073,19 +1074,39 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
       return Err("Expected typed argument".into());
     };
 
-    let syn::Pat::Ident(pat_ident) = pat_type.pat.as_ref() else {
-      return Err("Expected identifier pattern".into());
-    };
-
-    let arg_name = pat_ident.ident.clone();
     let arg_type = pat_type.ty.as_ref().clone();
 
     // First arg is input
     if i == 0 {
+      // Check if input type is unit ()
+      if let syn::Type::Tuple(tuple) = &arg_type {
+        if tuple.elems.is_empty() {
+          is_unit_input = true;
+          input_type = Some(arg_type);
+          // Use a dummy name for unit input
+          input_name = Some(Ident::new("_input", Span::call_site()));
+          continue;
+        }
+      }
+
+      // Handle both ident patterns and wildcard patterns
+      let arg_name = match pat_type.pat.as_ref() {
+        syn::Pat::Ident(pat_ident) => pat_ident.ident.clone(),
+        syn::Pat::Wild(_) => Ident::new("_input", Span::call_site()),
+        _ => return Err("Expected identifier or wildcard pattern".into()),
+      };
+
       input_type = Some(arg_type);
       input_name = Some(arg_name);
       continue;
     }
+
+    // Rest are parameters - need ident pattern
+    let syn::Pat::Ident(pat_ident) = pat_type.pat.as_ref() else {
+      return Err("Expected identifier pattern for parameter".into());
+    };
+
+    let arg_name = pat_ident.ident.clone();
 
     // Rest are parameters - parse #[param(...)] or #[param_var(...)] attribute
     let mut param_name = arg_name.to_string();
@@ -1123,6 +1144,7 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
   let input_name = input_name.ok_or("Function must have at least one argument (input)")?;
 
   // Get output type from return type
+  let mut returns_result = false;
   let output_type = match &func.sig.output {
     syn::ReturnType::Type(_, ty) => {
       // Handle Result<T, _> wrapper
@@ -1134,6 +1156,7 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
           .map(|s| s.ident == "Result")
           .unwrap_or(false)
         {
+          returns_result = true;
           // Extract T from Result<T, E>
           if let syn::PathArguments::AngleBracketed(args) =
             &path.path.segments.last().unwrap().arguments
@@ -1341,6 +1364,24 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
     quote! {}
   };
 
+  // Generate activate call - differs for unit input vs normal input, and Result vs plain return
+  let activate_call = match (is_unit_input, returns_result) {
+    (true, true) => quote! { #func_name((), #(#param_rust_names),*)? },
+    (true, false) => quote! { #func_name((), #(#param_rust_names),*) },
+    (false, true) => quote! {
+      {
+        let #input_name: #input_type = input.try_into()?;
+        #func_name(#input_name, #(#param_rust_names),*)?
+      }
+    },
+    (false, false) => quote! {
+      {
+        let #input_name: #input_type = input.try_into()?;
+        #func_name(#input_name, #(#param_rust_names),*)
+      }
+    },
+  };
+
   // Generate compose calls for param_var parameters
   let has_var_params = params.iter().any(|p| p.is_var);
   let param_var_composes: Vec<_> = params
@@ -1368,12 +1409,27 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
     })
     .collect();
 
+  // Generate the inner function signature based on whether it returns Result or plain type
+  let inner_function = if returns_result {
+    quote! {
+      #[inline]
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> std::result::Result<#output_type, &'static str> {
+        #func_body
+      }
+    }
+  } else {
+    quote! {
+      #[inline]
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> #output_type {
+        #func_body
+      }
+    }
+  };
+
   // Generate the full shard implementation
   let output = quote! {
     // The inner function with the actual logic
-    fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> std::result::Result<#output_type, &'static str> {
-      #func_body
-    }
+    #inner_function
 
     pub struct #struct_id {
       required: shards::types::ExposedTypes,
@@ -1458,10 +1514,9 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
       }
 
       fn activate(&mut self, _context: &shards::types::Context, input: &shards::types::Var) -> std::result::Result<std::option::Option<shards::types::Var>, &str> {
-        let #input_name: #input_type = input.try_into()?;
         #(#param_extractions)*
 
-        let result = #func_name(#input_name, #(#param_rust_names),*)?;
+        let result = #activate_call;
         self.output = result.into();
         Ok(Some(self.output.0))
       }
@@ -1492,7 +1547,7 @@ fn generate_simple_shard(args: SimplShardAttrArgs, func: syn::ItemFn) -> Result<
 /// trait implementations.
 #[proc_macro_attribute]
 pub fn simple_shard(attr: TokenStream, item: TokenStream) -> TokenStream {
-  let args = syn::parse_macro_input!(attr as SimplShardAttrArgs);
+  let args = syn::parse_macro_input!(attr as SimpleShardAttrArgs);
   let func = syn::parse_macro_input!(item as syn::ItemFn);
 
   match generate_simple_shard(args, func) {

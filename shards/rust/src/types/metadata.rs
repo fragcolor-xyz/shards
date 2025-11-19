@@ -1233,15 +1233,19 @@ impl From<Vec<Var>> for ClonedVar {
 
 impl From<std::string::String> for ClonedVar {
   fn from(v: std::string::String) -> Self {
-    let cstr = CString::new(v).unwrap();
-    let tmp = Var::from(&cstr);
-    let res = ClonedVar(Var::default());
-    unsafe {
-      let rv = &res.0 as *const SHVar as *mut SHVar;
-      let sv = &tmp as *const SHVar;
-      (*Core).cloneVar.unwrap_unchecked()(rv, sv);
-    }
-    res
+    Var::ephemeral_string(&v).into()
+  }
+}
+
+impl From<Vec<u8>> for ClonedVar {
+  fn from(v: Vec<u8>) -> Self {
+    Var::from(&v[..]).into()
+  }
+}
+
+impl From<[u8; 16]> for ClonedVar {
+  fn from(v: [u8; 16]) -> Self {
+    Var::from(&v).into()
   }
 }
 
@@ -1621,6 +1625,7 @@ impl From<&[u8; 16]> for Var {
     }
   }
 }
+
 
 impl TryFrom<&Var> for SHAudio {
   type Error = &'static str;
@@ -2016,3 +2021,4 @@ impl From<&[u8]> for Var {
     }
   }
 }
+

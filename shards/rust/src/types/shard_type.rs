@@ -66,7 +66,7 @@ impl<'a> ShardType for &'a str {
     fn shards_var_type() -> Type { common_type::string_var }
 }
 
-// Vector types
+// Vector types - int
 impl ShardType for (i64, i64) {
     fn shards_type() -> Type { common_type::int2 }
     fn shards_types() -> &'static Types { &INT2_TYPES }
@@ -79,12 +79,25 @@ impl ShardType for (i32, i32, i32) {
     fn shards_var_type() -> Type { common_type::int3_var }
 }
 
+impl ShardType for (i64, i64, i64) {
+    fn shards_type() -> Type { common_type::int3 }
+    fn shards_types() -> &'static Types { &INT3_TYPES }
+    fn shards_var_type() -> Type { common_type::int3_var }
+}
+
 impl ShardType for (i32, i32, i32, i32) {
     fn shards_type() -> Type { common_type::int4 }
     fn shards_types() -> &'static Types { &INT4_TYPES }
     fn shards_var_type() -> Type { common_type::int4_var }
 }
 
+impl ShardType for (i64, i64, i64, i64) {
+    fn shards_type() -> Type { common_type::int4 }
+    fn shards_types() -> &'static Types { &INT4_TYPES }
+    fn shards_var_type() -> Type { common_type::int4_var }
+}
+
+// Vector types - float
 impl ShardType for (f64, f64) {
     fn shards_type() -> Type { common_type::float2 }
     fn shards_types() -> &'static Types { &FLOAT2_TYPES }
@@ -97,7 +110,19 @@ impl ShardType for (f32, f32, f32) {
     fn shards_var_type() -> Type { common_type::float3_var }
 }
 
+impl ShardType for (f64, f64, f64) {
+    fn shards_type() -> Type { common_type::float3 }
+    fn shards_types() -> &'static Types { &FLOAT3_TYPES }
+    fn shards_var_type() -> Type { common_type::float3_var }
+}
+
 impl ShardType for (f32, f32, f32, f32) {
+    fn shards_type() -> Type { common_type::float4 }
+    fn shards_types() -> &'static Types { &FLOAT4_TYPES }
+    fn shards_var_type() -> Type { common_type::float4_var }
+}
+
+impl ShardType for (f64, f64, f64, f64) {
     fn shards_type() -> Type { common_type::float4 }
     fn shards_types() -> &'static Types { &FLOAT4_TYPES }
     fn shards_var_type() -> Type { common_type::float4_var }
@@ -114,6 +139,13 @@ impl ShardType for Vec<u8> {
     fn shards_type() -> Type { common_type::bytes }
     fn shards_types() -> &'static Types { &BYTES_TYPES }
     fn shards_var_type() -> Type { common_type::bytes_var }
+}
+
+// Fixed-size byte arrays (Int16 = 16 bytes)
+impl ShardType for [u8; 16] {
+    fn shards_type() -> Type { common_type::int16 }
+    fn shards_types() -> &'static Types { &INT16_TYPES }
+    fn shards_var_type() -> Type { common_type::int16_var }
 }
 
 // None/Unit type
