@@ -41,7 +41,10 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 add_subdirectory(${SHARDS_DIR}/deps deps)
 
 # Build tools (bin2c is needed for bundling binary files)
-add_subdirectory(${SHARDS_DIR}/shards/tools/bin2c tools/bin2c)
+# Only build as part of main project for native builds
+if(NOT CMAKE_CROSSCOMPILING)
+  add_subdirectory(${SHARDS_DIR}/shards/tools/bin2c tools/bin2c)
+endif()
 
 # Standalone libraries
 add_subdirectory(${SHARDS_DIR}/shards/fast_string src/fast_string)
