@@ -990,3 +990,583 @@ pub fn shard_impl(_attr: TokenStream, item: TokenStream) -> TokenStream {
     Err(err) => err.to_compile_error(),
   }
 }
+
+// ============================================================================
+// Simple Shard Macro - Simplified shard definition via function attributes
+// ============================================================================
+
+struct SimpleShardAttrArgs {
+  name: LitStr,
+  help: LitStr,
+}
+
+impl syn::parse::Parse for SimpleShardAttrArgs {
+  fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    let name: LitStr = input.parse()?;
+    input.parse::<syn::Token![,]>()?;
+    let help: LitStr = input.parse()?;
+    Ok(Self { name, help })
+  }
+}
+
+struct SimpleParamInfo {
+  name: String,
+  rust_name: syn::Ident,
+  rust_type: syn::Type,
+  description: String,
+  default: Option<syn::Expr>,
+  is_var: bool, // true for ParamVar (context variables)
+}
+
+// Helper struct to parse #[param("Name", "Desc")] or #[param("Name", "Desc", default = value)]
+struct SimpleParamAttr {
+  name: String,
+  description: String,
+  default: Option<syn::Expr>,
+}
+
+impl syn::parse::Parse for SimpleParamAttr {
+  fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    let name: LitStr = input.parse()?;
+    input.parse::<syn::Token![,]>()?;
+    let description: LitStr = input.parse()?;
+
+    let default = if input.peek(syn::Token![,]) {
+      input.parse::<syn::Token![,]>()?;
+      let ident: syn::Ident = input.parse()?;
+      if ident != "default" {
+        return Err(syn::Error::new(ident.span(), "Expected 'default'"));
+      }
+      input.parse::<syn::Token![=]>()?;
+      Some(input.parse()?)
+    } else {
+      None
+    };
+
+    Ok(Self {
+      name: name.value(),
+      description: description.value(),
+      default,
+    })
+  }
+}
+
+fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result<TokenStream, Error> {
+  let shard_name = args.name.value();
+  let shard_help = args.help.value();
+
+  // Generate struct name from shard name (e.g., "Math.Scale" -> "MathScaleShard")
+  let struct_name = shard_name.replace(".", "");
+  let struct_id = Ident::new(&format!("{}Shard", struct_name), Span::call_site());
+  let params_static_id = Ident::new(
+    &format!("{}_PARAMETERS", struct_name.to_uppercase()),
+    Span::call_site(),
+  );
+
+  // Parse function signature
+  let mut input_type: Option<syn::Type> = None;
+  let mut input_name: Option<syn::Ident> = None;
+  let mut is_unit_input = false;
+  let mut params: Vec<SimpleParamInfo> = Vec::new();
+
+  for (i, arg) in func.sig.inputs.iter().enumerate() {
+    let syn::FnArg::Typed(pat_type) = arg else {
+      return Err("Expected typed argument".into());
+    };
+
+    let arg_type = pat_type.ty.as_ref().clone();
+
+    // First arg is input
+    if i == 0 {
+      // Check if input type is unit ()
+      if let syn::Type::Tuple(tuple) = &arg_type {
+        if tuple.elems.is_empty() {
+          is_unit_input = true;
+          input_type = Some(arg_type);
+          // Use a dummy name for unit input
+          input_name = Some(Ident::new("_input", Span::call_site()));
+          continue;
+        }
+      }
+
+      // Handle both ident patterns and wildcard patterns
+      let arg_name = match pat_type.pat.as_ref() {
+        syn::Pat::Ident(pat_ident) => pat_ident.ident.clone(),
+        syn::Pat::Wild(_) => Ident::new("_input", Span::call_site()),
+        _ => return Err("Expected identifier or wildcard pattern".into()),
+      };
+
+      input_type = Some(arg_type);
+      input_name = Some(arg_name);
+      continue;
+    }
+
+    // Rest are parameters - need ident pattern
+    let syn::Pat::Ident(pat_ident) = pat_type.pat.as_ref() else {
+      return Err("Expected identifier pattern for parameter".into());
+    };
+
+    let arg_name = pat_ident.ident.clone();
+
+    // Rest are parameters - parse #[param(...)] or #[param_var(...)] attribute
+    let mut param_name = arg_name.to_string();
+    let mut param_desc = String::new();
+    let mut param_default: Option<syn::Expr> = None;
+    let mut is_var = false;
+
+    for attr in &pat_type.attrs {
+      if attr.path().is_ident("param") {
+        let parsed: SimpleParamAttr = attr.parse_args()?;
+        param_name = parsed.name;
+        param_desc = parsed.description;
+        param_default = parsed.default;
+      } else if attr.path().is_ident("param_var") {
+        // For context variable parameters
+        let parsed: SimpleParamAttr = attr.parse_args()?;
+        param_name = parsed.name;
+        param_desc = parsed.description;
+        param_default = parsed.default;
+        is_var = true;
+      }
+    }
+
+    params.push(SimpleParamInfo {
+      name: param_name,
+      rust_name: arg_name,
+      rust_type: arg_type,
+      description: param_desc,
+      default: param_default,
+      is_var,
+    });
+  }
+
+  let input_type = input_type.ok_or("Function must have at least one argument (input)")?;
+  let input_name = input_name.ok_or("Function must have at least one argument (input)")?;
+
+  // Get output type from return type
+  let mut returns_result = false;
+  let mut returns_typed_out = false; // BytesOut, StringOut, etc.
+  let output_type = match &func.sig.output {
+    syn::ReturnType::Type(_, ty) => {
+      // Handle Result<T, _> wrapper
+      if let syn::Type::Path(path) = ty.as_ref() {
+        let type_name = path.path.segments.last().map(|s| s.ident.to_string());
+
+        if type_name.as_deref() == Some("Result") {
+          returns_result = true;
+          // Extract T from Result<T, E>
+          if let syn::PathArguments::AngleBracketed(args) =
+            &path.path.segments.last().unwrap().arguments
+          {
+            if let Some(syn::GenericArgument::Type(t)) = args.args.first() {
+              // Check if inner type is BytesOut/StringOut
+              if let syn::Type::Path(inner_path) = t {
+                let inner_name = inner_path.path.segments.last().map(|s| s.ident.to_string());
+                if matches!(inner_name.as_deref(), Some("BytesOut") | Some("StringOut")) {
+                  returns_typed_out = true;
+                }
+              }
+              t.clone()
+            } else {
+              return Err("Invalid Result type".into());
+            }
+          } else {
+            return Err("Invalid Result type".into());
+          }
+        } else if matches!(type_name.as_deref(), Some("BytesOut") | Some("StringOut")) {
+          returns_typed_out = true;
+          ty.as_ref().clone()
+        } else {
+          ty.as_ref().clone()
+        }
+      } else {
+        ty.as_ref().clone()
+      }
+    }
+    syn::ReturnType::Default => return Err("Function must have return type".into()),
+  };
+
+  // Generate struct fields
+  let param_fields: Vec<_> = params
+    .iter()
+    .map(|p| {
+      let name = &p.rust_name;
+      if p.is_var {
+        quote! { #name: shards::types::ParamVar }
+      } else {
+        quote! { #name: shards::types::ClonedVar }
+      }
+    })
+    .collect();
+
+  // Generate default values
+  let param_defaults: Vec<_> = params
+    .iter()
+    .map(|p| {
+      let name = &p.rust_name;
+      let default_val = p
+        .default
+        .as_ref()
+        .map(|d| quote! { (#d).into() })
+        .unwrap_or_else(|| quote! { Default::default() });
+
+      if p.is_var {
+        quote! { #name: shards::types::ParamVar::new(#default_val) }
+      } else {
+        quote! { #name: #default_val }
+      }
+    })
+    .collect();
+
+  // Generate parameter info
+  let param_names: Vec<_> = params
+    .iter()
+    .map(|p| LitStr::new(&p.name, Span::call_site()))
+    .collect();
+  let param_descs: Vec<_> = params
+    .iter()
+    .map(|p| LitStr::new(&p.description, Span::call_site()))
+    .collect();
+  let param_rust_names: Vec<_> = params.iter().map(|p| &p.rust_name).collect();
+  let param_types: Vec<_> = params.iter().map(|p| &p.rust_type).collect();
+  let param_indices: Vec<_> = (0..params.len())
+    .map(|i| LitInt::new(&format!("{}", i), Span::call_site()))
+    .collect();
+
+  // Generate parameter extraction in activate
+  let param_extractions: Vec<_> = params
+    .iter()
+    .map(|p| {
+      let name = &p.rust_name;
+      let ty = &p.rust_type;
+      if p.is_var {
+        quote! {
+          let #name: #ty = self.#name.get().as_ref().try_into()?;
+        }
+      } else {
+        quote! {
+          let #name: #ty = self.#name.0.as_ref().try_into()?;
+        }
+      }
+    })
+    .collect();
+
+  // Generate warmup/cleanup calls for ParamVar
+  let param_warmups: Vec<_> = params
+    .iter()
+    .filter(|p| p.is_var)
+    .map(|p| {
+      let name = &p.rust_name;
+      quote! { self.#name.warmup(context); }
+    })
+    .collect();
+
+  let param_cleanups: Vec<_> = params
+    .iter()
+    .filter(|p| p.is_var)
+    .map(|p| {
+      let name = &p.rust_name;
+      quote! { self.#name.cleanup(context); }
+    })
+    .collect();
+
+  // The original function body
+  let func_body = &func.block;
+  let func_name = &func.sig.ident;
+
+  // CRC for shard hash
+  let crc = crc32(format!("{}-rust-0x20250822", shard_name));
+
+  // Determine if we have params
+  let has_params = !params.is_empty();
+
+  let parameters_impl = if has_params {
+    quote! {
+      fn parameters(&mut self) -> Option<&shards::types::Parameters> {
+        Some(&#params_static_id)
+      }
+    }
+  } else {
+    quote! {
+      fn parameters(&mut self) -> Option<&shards::types::Parameters> {
+        None
+      }
+    }
+  };
+
+  let set_get_param_impl = if has_params {
+    quote! {
+      fn set_param(&mut self, index: i32, value: &shards::types::Var) -> std::result::Result<(), &'static str> {
+        match index {
+          #(
+            #param_indices => self.#param_rust_names.set_param(value),
+          )*
+          _ => Err("Invalid parameter index"),
+        }
+      }
+
+      fn get_param(&mut self, index: i32) -> shards::types::Var {
+        match index {
+          #(
+            #param_indices => (&self.#param_rust_names).into(),
+          )*
+          _ => shards::types::Var::default(),
+        }
+      }
+    }
+  } else {
+    quote! {
+      fn set_param(&mut self, _index: i32, _value: &shards::types::Var) -> std::result::Result<(), &'static str> {
+        Err("No parameters")
+      }
+
+      fn get_param(&mut self, _index: i32) -> shards::types::Var {
+        shards::types::Var::default()
+      }
+    }
+  };
+
+  // Generate parameter type arrays that include both base type and var type
+  let param_type_array_ids: Vec<_> = params
+    .iter()
+    .enumerate()
+    .map(|(i, _)| {
+      Ident::new(
+        &format!("{}_PARAM_{}_TYPES", struct_name.to_uppercase(), i),
+        Span::call_site(),
+      )
+    })
+    .collect();
+
+  let params_static_def = if has_params {
+    let param_type_arrays: Vec<_> = params
+      .iter()
+      .zip(param_type_array_ids.iter())
+      .map(|(p, id)| {
+        let ty = &p.rust_type;
+        quote! {
+          static ref #id: shards::types::Types = vec![
+            <#ty as shards::types::ShardType>::shards_type(),
+            <#ty as shards::types::ShardType>::shards_var_type()
+          ];
+        }
+      })
+      .collect();
+
+    quote! {
+      lazy_static::lazy_static! {
+        #(#param_type_arrays)*
+        static ref #params_static_id: shards::types::Parameters = vec![
+          #(
+            (
+              shards::cstr!(#param_names),
+              shards::shccstr!(#param_descs),
+              #param_type_array_ids.as_slice()
+            ).into()
+          ),*
+        ];
+      }
+    }
+  } else {
+    quote! {}
+  };
+
+  // Generate activate call - differs for unit input vs normal input, and Result vs plain return
+  let activate_call = match (is_unit_input, returns_result) {
+    (true, true) => quote! { #func_name((), #(#param_rust_names),*)? },
+    (true, false) => quote! { #func_name((), #(#param_rust_names),*) },
+    (false, true) => quote! {
+      {
+        let #input_name: #input_type = input.try_into()?;
+        #func_name(#input_name, #(#param_rust_names),*)?
+      }
+    },
+    (false, false) => quote! {
+      {
+        let #input_name: #input_type = input.try_into()?;
+        #func_name(#input_name, #(#param_rust_names),*)
+      }
+    },
+  };
+
+  // Generate output assignment - typed outputs (BytesOut, StringOut) are already ClonedVar wrappers
+  let output_assignment = if returns_typed_out {
+    quote! { self.output = result.0; }
+  } else {
+    quote! { self.output = result.into(); }
+  };
+
+  // Generate compose calls for param_var parameters
+  let has_var_params = params.iter().any(|p| p.is_var);
+  let param_var_composes: Vec<_> = params
+    .iter()
+    .filter(|p| p.is_var)
+    .map(|p| {
+      let name = &p.rust_name;
+      let param_name = &p.name;
+      let ty = &p.rust_type;
+      quote! {
+        {
+          let param_types: shards::types::Types = vec![
+            <#ty as shards::types::ShardType>::shards_type(),
+            <#ty as shards::types::ShardType>::shards_var_type()
+          ];
+          shards::util::collect_required_variables_typed(
+            data,
+            &mut self.required,
+            (&self.#name).into(),
+            &param_types[..],
+            #param_name
+          )?;
+        }
+      }
+    })
+    .collect();
+
+  // Generate the inner function signature based on whether it returns Result or plain type
+  let inner_function = if returns_result {
+    quote! {
+      #[inline]
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> std::result::Result<#output_type, &'static str> {
+        #func_body
+      }
+    }
+  } else {
+    quote! {
+      #[inline]
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> #output_type {
+        #func_body
+      }
+    }
+  };
+
+  // Generate the full shard implementation
+  let output = quote! {
+    // The inner function with the actual logic
+    #inner_function
+
+    pub struct #struct_id {
+      required: shards::types::ExposedTypes,
+      #(#param_fields,)*
+      output: shards::types::ClonedVar,
+    }
+
+    impl Default for #struct_id {
+      fn default() -> Self {
+        Self {
+          required: shards::types::ExposedTypes::new(),
+          #(#param_defaults,)*
+          output: shards::types::ClonedVar::default(),
+        }
+      }
+    }
+
+    #params_static_def
+
+    impl shards::shard::ShardGenerated for #struct_id {
+      fn register_name() -> &'static str {
+        shards::cstr!(#shard_name)
+      }
+
+      fn name(&mut self) -> &str {
+        #shard_name
+      }
+
+      fn hash() -> u32 {
+        #crc
+      }
+
+      fn help(&mut self) -> shards::types::OptionalString {
+        shards::types::OptionalString(shards::shccstr!(#shard_help))
+      }
+
+      #parameters_impl
+
+      #set_get_param_impl
+
+      fn required_variables(&mut self) -> Option<&shards::types::ExposedTypes> {
+        Some(&self.required)
+      }
+    }
+
+    impl shards::shard::ShardGeneratedOverloads for #struct_id {
+      fn has_compose() -> bool { #has_var_params }
+      fn has_warmup() -> bool { true }
+      fn has_mutate() -> bool { false }
+      fn has_crossover() -> bool { false }
+      fn has_get_state() -> bool { false }
+      fn has_set_state() -> bool { false }
+      fn has_reset_state() -> bool { false }
+    }
+
+    impl shards::shard::Shard for #struct_id {
+      fn input_types(&mut self) -> &shards::types::Types {
+        <#input_type as shards::types::ShardType>::shards_types()
+      }
+
+      fn output_types(&mut self) -> &shards::types::Types {
+        <#output_type as shards::types::ShardType>::shards_types()
+      }
+
+      fn warmup(&mut self, context: &shards::types::Context) -> std::result::Result<(), &str> {
+        #(#param_warmups)*
+        Ok(())
+      }
+
+      fn cleanup(&mut self, context: std::option::Option<&shards::types::Context>) -> std::result::Result<(), &str> {
+        #(#param_cleanups)*
+        self.output = shards::types::ClonedVar::default();
+        Ok(())
+      }
+
+      fn compose(&mut self, data: &shards::types::InstanceData) -> std::result::Result<shards::types::Type, &str> {
+        self.required.clear();
+        #(#param_var_composes)*
+        Ok(<#output_type as shards::types::ShardType>::shards_type())
+      }
+
+      fn activate(&mut self, _context: &shards::types::Context, input: &shards::types::Var) -> std::result::Result<std::option::Option<shards::types::Var>, &str> {
+        #(#param_extractions)*
+
+        let result = #activate_call;
+        #output_assignment
+        Ok(Some(self.output.0))
+      }
+    }
+  };
+
+  Ok(output.into())
+}
+
+/// Simple shard definition via function attribute.
+///
+/// This macro allows defining shards with a simple function syntax,
+/// automatically generating all the boilerplate code.
+///
+/// # Example
+/// ```rust,ignore
+/// #[simple_shard("Math.Scale", "Scales input by factor")]
+/// fn scale(
+///     input: i64,
+///     #[param("Factor", "Scale factor", default = 2)]
+///     factor: i64,
+/// ) -> Result<i64, &'static str> {
+///     Ok(input * factor)
+/// }
+/// ```
+///
+/// This will generate a `MathScaleShard` struct with all necessary
+/// trait implementations.
+#[proc_macro_attribute]
+pub fn simple_shard(attr: TokenStream, item: TokenStream) -> TokenStream {
+  let args = syn::parse_macro_input!(attr as SimpleShardAttrArgs);
+  let func = syn::parse_macro_input!(item as syn::ItemFn);
+
+  match generate_simple_shard(args, func) {
+    Ok(result) => {
+      // eprintln!("simple_shard:\n{}", result);
+      result
+    }
+    Err(err) => err.to_compile_error(),
+  }
+}

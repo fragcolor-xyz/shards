@@ -43,6 +43,7 @@ pub use shards_macro::param_set;
 pub use shards_macro::shard;
 pub use shards_macro::shard_impl;
 pub use shards_macro::shards_enum;
+pub use shards_macro::simple_shard;
 
 use crate::core::Core;
 pub use crate::shardsc::*;

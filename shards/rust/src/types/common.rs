@@ -212,6 +212,54 @@ pub type RawString = SHString;
 #[derive(Default, Serialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ClonedVar(pub Var);
 
+/// Typed wrapper for bytes output - avoids extra allocations
+#[repr(transparent)]
+#[derive(Default)]
+pub struct BytesOut(pub ClonedVar);
+
+/// Typed wrapper for string output - avoids extra allocations
+#[repr(transparent)]
+#[derive(Default)]
+pub struct StringOut(pub ClonedVar);
+
+impl BytesOut {
+  pub fn new(data: &[u8]) -> Self {
+    BytesOut(Var::from(data).into())
+  }
+}
+
+impl From<&[u8]> for BytesOut {
+  fn from(v: &[u8]) -> Self {
+    BytesOut::new(v)
+  }
+}
+
+impl std::ops::Deref for BytesOut {
+  type Target = ClonedVar;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
+impl StringOut {
+  pub fn new(s: &str) -> Self {
+    StringOut(Var::ephemeral_string(s).into())
+  }
+}
+
+impl From<&str> for StringOut {
+  fn from(v: &str) -> Self {
+    StringOut::new(v)
+  }
+}
+
+impl std::ops::Deref for StringOut {
+  type Target = ClonedVar;
+  fn deref(&self) -> &Self::Target {
+    &self.0
+  }
+}
+
 impl Ord for Var {
   fn cmp(&self, other: &Self) -> std::cmp::Ordering {
     unsafe {
