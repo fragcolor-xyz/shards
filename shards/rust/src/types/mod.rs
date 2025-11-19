@@ -25,6 +25,7 @@ pub mod param;
 pub mod strings;
 pub mod seq;
 pub mod table;
+pub mod shard_type;
 
 // Re-export common types that are used everywhere
 pub use common::*;
@@ -66,3 +67,6 @@ pub use table::{
     STRING_OR_NONE_SLICE, STRINGS_OR_NONE_SLICE, STRING_VAR_OR_NONE_SLICE,
     ANY_TABLE_VAR_NONE_SLICE,
 };
+
+// Re-export ShardType trait for simple_shard macro
+pub use shard_type::ShardType;
