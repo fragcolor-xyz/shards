@@ -63,7 +63,6 @@ endmacro()
 # Fixed-order modules (should be here if they have dependencies)
 add_module(gfx)
 add_module(egui)
-add_module(spatial)
 
 message(STATUS "ADDED_MODULES = ${ADDED_MODULES}")
 
