@@ -7,11 +7,13 @@ use shards::shard::LegacyShard;
 use shards::shard::Shard;
 use shards::simple_shard;
 
+use shards::types::BytesOut;
 use shards::types::ClonedVar;
 use shards::types::Context;
 use shards::types::ExposedTypes;
 use shards::types::InstanceData;
 use shards::types::OptionalString;
+use shards::types::StringOut;
 use shards::types::BYTES_OR_STRING_TYPES;
 use shards::types::INT_TYPES;
 
@@ -38,18 +40,18 @@ fn uuid_to_string(
   input: [u8; 16],
   #[param("Hyphenated", "Whether to use hyphens in the output.", default = false)]
   hyphenated: bool,
-) -> String {
+) -> StringOut {
   let uuid = uuid::Uuid::from_bytes(input);
   if hyphenated {
-    uuid.hyphenated().to_string()
+    uuid.hyphenated().to_string().as_str().into()
   } else {
-    uuid.simple().to_string()
+    uuid.simple().to_string().as_str().into()
   }
 }
 
 #[simple_shard("UUID.ToBytes", "Reads a UUID and formats it into bytes.")]
-fn uuid_to_bytes(input: [u8; 16]) -> Vec<u8> {
-  input.to_vec()
+fn uuid_to_bytes(input: [u8; 16]) -> BytesOut {
+  input.as_slice().into()
 }
 
 #[simple_shard("NanoID", "Creates a random NanoID.")]
@@ -57,9 +59,9 @@ fn nanoid_create(
   _: (),
   #[param("Size", "The output string length of the created NanoID.", default = 21i64)]
   size: i64,
-) -> String {
+) -> StringOut {
   let size = size as usize;
-  nanoid::nanoid!(size)
+  nanoid::nanoid!(size).as_str().into()
 }
 
 // Legacy shard for UUID.Convert (handles multiple input types)

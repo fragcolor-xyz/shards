@@ -161,3 +161,16 @@ impl ShardType for SHColor {
     fn shards_types() -> &'static Types { &COLOR_TYPES }
     fn shards_var_type() -> Type { common_type::color_var }
 }
+
+// Typed output wrappers
+impl ShardType for super::BytesOut {
+    fn shards_type() -> Type { common_type::bytes }
+    fn shards_types() -> &'static Types { &BYTES_TYPES }
+    fn shards_var_type() -> Type { common_type::bytes_var }
+}
+
+impl ShardType for super::StringOut {
+    fn shards_type() -> Type { common_type::string }
+    fn shards_types() -> &'static Types { &STRING_TYPES }
+    fn shards_var_type() -> Type { common_type::string_var }
+}

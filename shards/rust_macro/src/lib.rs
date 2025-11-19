@@ -1145,23 +1145,27 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
 
   // Get output type from return type
   let mut returns_result = false;
+  let mut returns_typed_out = false; // BytesOut, StringOut, etc.
   let output_type = match &func.sig.output {
     syn::ReturnType::Type(_, ty) => {
       // Handle Result<T, _> wrapper
       if let syn::Type::Path(path) = ty.as_ref() {
-        if path
-          .path
-          .segments
-          .last()
-          .map(|s| s.ident == "Result")
-          .unwrap_or(false)
-        {
+        let type_name = path.path.segments.last().map(|s| s.ident.to_string());
+
+        if type_name.as_deref() == Some("Result") {
           returns_result = true;
           // Extract T from Result<T, E>
           if let syn::PathArguments::AngleBracketed(args) =
             &path.path.segments.last().unwrap().arguments
           {
             if let Some(syn::GenericArgument::Type(t)) = args.args.first() {
+              // Check if inner type is BytesOut/StringOut
+              if let syn::Type::Path(inner_path) = t {
+                let inner_name = inner_path.path.segments.last().map(|s| s.ident.to_string());
+                if matches!(inner_name.as_deref(), Some("BytesOut") | Some("StringOut")) {
+                  returns_typed_out = true;
+                }
+              }
               t.clone()
             } else {
               return Err("Invalid Result type".into());
@@ -1169,6 +1173,9 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
           } else {
             return Err("Invalid Result type".into());
           }
+        } else if matches!(type_name.as_deref(), Some("BytesOut") | Some("StringOut")) {
+          returns_typed_out = true;
+          ty.as_ref().clone()
         } else {
           ty.as_ref().clone()
         }
@@ -1259,7 +1266,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     .filter(|p| p.is_var)
     .map(|p| {
       let name = &p.rust_name;
-      quote! { self.#name.cleanup(Some(context)); }
+      quote! { self.#name.cleanup(context); }
     })
     .collect();
 
@@ -1382,6 +1389,13 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     },
   };
 
+  // Generate output assignment - typed outputs (BytesOut, StringOut) are already ClonedVar wrappers
+  let output_assignment = if returns_typed_out {
+    quote! { self.output = result.0; }
+  } else {
+    quote! { self.output = result.into(); }
+  };
+
   // Generate compose calls for param_var parameters
   let has_var_params = params.iter().any(|p| p.is_var);
   let param_var_composes: Vec<_> = params
@@ -1500,9 +1514,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
       }
 
       fn cleanup(&mut self, context: std::option::Option<&shards::types::Context>) -> std::result::Result<(), &str> {
-        if let Some(context) = context {
-          #(#param_cleanups)*
-        }
+        #(#param_cleanups)*
         self.output = shards::types::ClonedVar::default();
         Ok(())
       }
@@ -1517,7 +1529,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
         #(#param_extractions)*
 
         let result = #activate_call;
-        self.output = result.into();
+        #output_assignment
         Ok(Some(self.output.0))
       }
     }
