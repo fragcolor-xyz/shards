@@ -1,5 +1,7 @@
-set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/shards/tools/build/bin)
-find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
+# bin2c is now built as part of the main build
+# The target is added in Root.cmake after deps are available
+# Use generator expression so it resolves at build time
+set(BIN2C_EXE $<TARGET_FILE:bin2c>)
 
 # Used to add files
 # This functions strips all the folder names and genrates include paths as follows:
@@ -104,6 +106,7 @@ function(target_bundle_files BUNDLED_TARGET)
     message(DEBUG "bundle ${IN_ABS_PATH} => ${OUT_ABS_PATH} as ${VAR_NAME}")
     add_custom_command(OUTPUT ${OUT_PATH} ${GENERATED_C_FILE_PATH}
       MAIN_DEPENDENCY ${IN_ABS_PATH}
+      DEPENDS bin2c
       COMMENT "Bundling binary file ${IN_PATH} => ${OUT_PATH}"
       COMMAND ${BIN2C_EXE} -in ${IN_ABS_PATH} -out ${OUT_ABS_PATH} -varName "${VAR_NAME}"
       USES_TERMINAL

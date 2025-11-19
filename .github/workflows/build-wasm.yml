@@ -35,8 +35,7 @@ jobs:
         run: |
           sudo apt -y update
           sudo apt -y install build-essential git cmake wget ninja-build clang
-          
-          ./bootstrap
+
           export RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN

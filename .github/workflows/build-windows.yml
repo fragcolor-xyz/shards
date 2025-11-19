@@ -121,7 +121,6 @@ jobs:
           RUST_BACKTRACE: full
         shell: bash
         run: |
-          ./bootstrap
           mkdir build
           cd build
           cmake -G Ninja \

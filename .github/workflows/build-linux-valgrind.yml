@@ -25,7 +25,6 @@ jobs:
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
-          ./bootstrap
       - name: Build and Test
         run: |
           mkdir build

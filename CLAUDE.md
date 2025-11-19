@@ -5,7 +5,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and Development Commands
 
 ### Essential Commands
-- **Bootstrap**: `./bootstrap` - Initialize dependencies and tools (run first)
 - **Build**: `just build` - Build shards, binary will be found at `build/Debug/shards`
 - **Format**: `just format` - Format C++ code with clang-format
 - **Tests**: `just tests` - Run Shards language test suite (note: tests take time)
@@ -54,9 +53,8 @@ Shards is a flow-based programming language with a unique data flow paradigm. Co
 ## Development Workflow
 
 ### Initial Setup
-1. `./bootstrap` - Sets up all dependencies and tools
-2. `just build` - Creates initial debug build
-3. `just tests` - Verify installation works
+1. `just build` - Creates initial debug build (tools are built automatically)
+2. `just tests` - Verify installation works
 
 ### Regular Development
 1. Make code changes
