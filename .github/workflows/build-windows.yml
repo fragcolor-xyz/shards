@@ -283,10 +283,6 @@ jobs:
           ./shards new ../shards/tests/crdts.shs
           echo "Running crdt-benchmarks"
           ./shards new ../shards/tests/crdt-benchmarks.shs
-          echo "Running tui"
-          ./shards new ../shards/tests/tui.shs
-          echo "Running tui1"
-          ./shards new ../shards/tests/tui1.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

@@ -113,6 +113,3 @@
 [submodule "deps/opus"]
 	path = deps/opus
 	url = https://github.com/xiph/opus.git
-[submodule "deps/FTXUI"]
-	path = deps/FTXUI
-	url = https://github.com/ArthurSonzogni/FTXUI.git

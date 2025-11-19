@@ -49,7 +49,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-gfx       Skip graphics tests (gfx*.shs)"
             echo "  --skip-ui        Skip UI tests (ui-*.shs, egui-*.shs, input.shs)"
             echo "  --skip-audio     Skip audio tests"
-            echo "  --skip-misc      Skip miscellaneous tests (ml, physics, crdts, tui, etc.)"
+            echo "  --skip-misc      Skip miscellaneous tests (ml, physics, crdts, etc.)"
             echo "  --skip-samples   Skip sample tests"
             echo "  --shards-bin     Path to shards binary (default: shards)"
             echo "  --verbose, -v    Show full commands being run"
@@ -189,7 +189,6 @@ if [ "$SKIP_MISC" = false ]; then
         "shards/tests/hot-reload.shs||"
         "shards/tests/crdts.shs||"
         "shards/tests/crdt-benchmarks.shs||"
-        "shards/tests/tui.shs||"
         "shards/tests/tui1.shs||"
         "shards/tests/physics.shs||"
     )
