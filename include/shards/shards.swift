@@ -230,7 +230,85 @@ public enum VarType: UInt8, CustomStringConvertible, CaseIterable {
 
 extension SHVar: CustomStringConvertible, Hashable, Equatable {
     public var description: String {
-        typename
+        switch type {
+        case .NoValue:
+            return "None"
+        case .AnyValue:
+            return "Any"
+        case .Bool:
+            return "Bool(\(Bool(payload.boolValue)))"
+        case .Int:
+            return "Int(\(Int(payload.intValue)))"
+        case .Int2:
+            let v = payload.int2Value
+            return "Int2(\(v.x), \(v.y))"
+        case .Int3:
+            let v = payload.int3Value
+            return "Int3(\(v.x), \(v.y), \(v.z))"
+        case .Int4:
+            let v = payload.int4Value
+            return "Int4(\(v.x), \(v.y), \(v.z), \(v.w))"
+        case .Int8:
+            let v = payload.int8Value
+            return "Int8(\(v[0]), \(v[1]), \(v[2]), \(v[3]), \(v[4]), \(v[5]), \(v[6]), \(v[7]))"
+        case .Int16:
+            let v = payload.int16Value
+            return "Int16(\(v[0]), \(v[1]), \(v[2]), \(v[3]), \(v[4]), \(v[5]), \(v[6]), \(v[7]), \(v[8]), \(v[9]), \(v[10]), \(v[11]), \(v[12]), \(v[13]), \(v[14]), \(v[15]))"
+        case .Float:
+            return "Float(\(Double(payload.floatValue)))"
+        case .Float2:
+            let v = payload.float2Value
+            return "Float2(\(v.x), \(v.y))"
+        case .Float3:
+            let v = payload.float3Value
+            return "Float3(\(v.x), \(v.y), \(v.z))"
+        case .Float4:
+            let v = payload.float4Value
+            return "Float4(\(v.x), \(v.y), \(v.z), \(v.w))"
+        case .Color:
+            let c = payload.colorValue
+            return "Color(r:\(c.r), g:\(c.g), b:\(c.b), a:\(c.a))"
+        case .Bytes:
+            return "Bytes(\(payload.bytesSize) bytes)"
+        case .String:
+            return "String(\"\(string)\")"
+        case .Path:
+            return "Path(\"\(string)\")"
+        case .ContextVar:
+            return "ContextVar(\"\(string)\")"
+        case .Image:
+            if let img = payload.imageValue {
+                return "Image(\(img.pointee.width)x\(img.pointee.height), channels:\(img.pointee.channels), flags:\(img.pointee.flags))"
+            }
+            return "Image(nil)"
+        case .Seq:
+            return "Seq(\(payload.seqValue.len) items)"
+        case .Table:
+            return "Table"
+        case .Wire:
+            return "Wire"
+        case .ShardRef:
+            if let shard = payload.shardValue {
+                if let nameFunc = shard.pointee.name {
+                    if let name = nameFunc(shard) {
+                        return "ShardRef(\(String(cString: name)))"
+                    }
+                }
+            }
+            return "ShardRef"
+        case .Object:
+            return "Object(vendor:\(payload.objectVendorId), type:\(payload.objectTypeId))"
+        case .Enum:
+            return "Enum(vendor:\(payload.enumVendorId), type:\(payload.enumTypeId), value:\(payload.enumValue))"
+        case .Audio:
+            return "Audio(\(payload.audioValue.nsamples) samples, channels:\(payload.audioValue.channels), rate:\(payload.audioValue.sampleRate))"
+        case .TypeInfo:
+            return "TypeInfo"
+        case .Trait:
+            return "Trait"
+        case .EndOfBlittableTypes:
+            return "EndOfBlittableTypes"
+        }
     }
 
     public var typename: String {
