@@ -721,28 +721,6 @@ fn precision_conversion() {
   test_to_from_vec4!(i16, i16::MIN, "[i16,4] conversion failed");
   test_to_from_vec4!(u16, u16::MAX, "[u16,4] conversion failed");
   test_to_from_vec4!(u16, u16::MIN, "[u16,4] conversion failed");
-  test_to_from_vec4!(
-    half::f16,
-    half::f16::ZERO,
-    "[half::f16,4] conversion failed"
-  );
-  test_to_from_vec4!(half::f16, half::f16::MAX, "[half::f16,4] conversion failed");
-  test_to_from_vec4!(half::f16, half::f16::MIN, "[half::f16,4] conversion failed");
-  test_to_from_vec4!(
-    half::f16,
-    half::f16::MIN_POSITIVE,
-    "[half::f16,4] conversion failed"
-  );
-  test_to_from_vec4!(
-    half::f16,
-    half::f16::EPSILON,
-    "[half::f16,4] conversion failed"
-  );
-  test_to_from_vec4!(
-    half::f16,
-    half::f16::INFINITY,
-    "[half::f16,4] conversion failed"
-  );
 }
 
 impl std::fmt::Display for Var {
