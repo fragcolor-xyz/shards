@@ -92,6 +92,9 @@ jobs:
           else
             echo "artifact=libshards-win64" >> $GITHUB_OUTPUT
           fi
+      - name: Enable long paths
+        shell: bash
+        run: git config --system core.longpaths true
       - name: Checkout shards
         uses: actions/checkout@v3
         with:
