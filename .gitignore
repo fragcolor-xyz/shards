@@ -103,3 +103,4 @@ shards/tests/.edits_backup
 
 local/
 .claude/
+shards/rust_macro/Cargo.lock
