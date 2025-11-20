@@ -1557,12 +1557,15 @@ fn create_take_table_chain(
   if let Some(replacement) = find_replacement(var_name, e) {
     match replacement {
       Value::TakeTable(base_name, base_path) => {
+        // Clone the data to drop the immutable borrow before making mutable calls
+        let base_name = base_name.clone();
+        let base_path = base_path.clone();
         // First, get the base variable and apply the base path
-        add_get_shard(base_name, line, e)?;
+        add_get_shard(&base_name, line, e)?;
         add_expect_table_shard(line, e)?;
-        for base_part in base_path {
+        for base_part in &base_path {
           let s = Var::ephemeral_string(base_part.as_str());
-          add_take_shard(base_name, &s, line, e)?;
+          add_take_shard(&base_name, &s, line, e)?;
         }
         // Then apply the additional path from this TakeTable
         for path_part in path {
@@ -1572,11 +1575,14 @@ fn create_take_table_chain(
         return Ok(());
       }
       Value::TakeSeq(base_name, base_path) => {
+        // Clone the data to drop the immutable borrow before making mutable calls
+        let base_name = base_name.clone();
+        let base_path = base_path.clone();
         // First, get the base variable and apply the base indices
-        add_get_shard(base_name, line, e)?;
-        for idx in base_path {
+        add_get_shard(&base_name, line, e)?;
+        for idx in &base_path {
           let idx_var: Var = (*idx).try_into().unwrap();
-          add_take_shard(base_name, &idx_var, line, e)?;
+          add_take_shard(&base_name, &idx_var, line, e)?;
         }
         // Then apply the additional path from this TakeTable (treating as table keys)
         add_expect_table_shard(line, e)?;
@@ -1613,12 +1619,15 @@ fn create_take_seq_chain(
   if let Some(replacement) = find_replacement(var_name, e) {
     match replacement {
       Value::TakeTable(base_name, base_path) => {
+        // Clone the data to drop the immutable borrow before making mutable calls
+        let base_name = base_name.clone();
+        let base_path = base_path.clone();
         // First, get the base variable and apply the base path
-        add_get_shard(base_name, line, e)?;
+        add_get_shard(&base_name, line, e)?;
         add_expect_table_shard(line, e)?;
-        for base_part in base_path {
+        for base_part in &base_path {
           let s = Var::ephemeral_string(base_part.as_str());
-          add_take_shard(base_name, &s, line, e)?;
+          add_take_shard(&base_name, &s, line, e)?;
         }
         // Then apply the additional indices from this TakeSeq
         for path_part in path {
@@ -1628,11 +1637,14 @@ fn create_take_seq_chain(
         return Ok(());
       }
       Value::TakeSeq(base_name, base_path) => {
+        // Clone the data to drop the immutable borrow before making mutable calls
+        let base_name = base_name.clone();
+        let base_path = base_path.clone();
         // First, get the base variable and apply the base indices
-        add_get_shard(base_name, line, e)?;
-        for idx in base_path {
+        add_get_shard(&base_name, line, e)?;
+        for idx in &base_path {
           let idx_var: Var = (*idx).try_into().unwrap();
-          add_take_shard(base_name, &idx_var, line, e)?;
+          add_take_shard(&base_name, &idx_var, line, e)?;
         }
         // Then apply the additional indices from this TakeSeq
         for path_part in path {
