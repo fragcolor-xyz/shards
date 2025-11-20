@@ -14,6 +14,7 @@
 
 #include <shards/shards.hpp>
 #include "ops_internal.hpp"
+#include "platform.hpp"
 
 #include "spdlog/spdlog.h"
 #include "type_matcher.hpp"
@@ -416,7 +417,7 @@ private:
   void initFrom(const SHExposedTypeInfo &other) {
     _innerInfo.exposedType = cloneTypeInfo(other.exposedType);
     if (other.name) {
-      _innerInfo.name = strdup(other.name);
+      _innerInfo.name = shards_strdup(other.name);
     } else {
       _innerInfo.name = nullptr;
     }
@@ -431,7 +432,7 @@ private:
 
   void clean() {
     if (_innerInfo.name) {
-      free((void *)_innerInfo.name);
+      delete[] _innerInfo.name;
       _innerInfo.name = nullptr;
     }
     freeTypeInfo(_innerInfo.exposedType);

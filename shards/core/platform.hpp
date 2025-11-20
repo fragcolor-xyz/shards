@@ -54,4 +54,15 @@
 #define SH_EMSCRIPTEN 0
 #endif
 
+// Portable string duplication using C++ new/delete
+// Use delete[] to free the returned string
+#include <cstring>
+inline char* shards_strdup(const char* s) {
+  if (!s) return nullptr;
+  size_t len = std::strlen(s) + 1;
+  char* result = new char[len];
+  std::memcpy(result, s, len);
+  return result;
+}
+
 #endif /* B2D0468B_F6FA_4CE8_A77E_096DE94923C2 */

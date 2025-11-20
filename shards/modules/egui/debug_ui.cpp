@@ -6,15 +6,16 @@
 #include <shards/input/master.hpp>
 #include <shards/common_types.hpp>
 #include <shards/core/module.hpp>
+#include <shards/core/platform.hpp>
 
 extern "C" {
 const char *shards_input_eventToString(shards::input::debug::OpaqueEvent opaque) {
   auto &evt = *(shards::input::ConsumableEvent *)opaque;
   auto str = shards::input::debugFormat(evt.event);
-  auto result = strdup(str.c_str());
+  auto result = shards_strdup(str.c_str());
   return result;
 }
-void shards_input_freeString(const char *str) { free((void *)str); }
+void shards_input_freeString(const char *str) { delete[] str; }
 bool shards_input_eventIsConsumed(shards::input::debug::OpaqueEvent opaque) {
   auto &evt = *(shards::input::ConsumableEvent *)opaque;
   return (bool)evt.consumed;
@@ -35,9 +36,9 @@ size_t shards_input_eventType(shards::input::debug::OpaqueEvent opaque) {
 const char *shards_input_layerName(shards::input::debug::OpaqueLayer opaque) {
   auto layer = dynamic_cast<shards::input::debug::IDebug *>((shards::input::IInputHandler *)opaque);
   if (layer) {
-    return strdup(layer->getDebugName());
+    return shards_strdup(layer->getDebugName());
   } else {
-    return strdup("unknown");
+    return shards_strdup("unknown");
   }
 }
 }

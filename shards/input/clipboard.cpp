@@ -39,12 +39,12 @@ Clipboard getClipboard() {
   return Clipboard(recvPtr);
 }
 void setClipboard(const char *data) {
-  char *dataCopy = strdup(data);
+  char *dataCopy = shards_strdup(data);
   gfxClipboardSet(dataCopy);
 }
 Clipboard::~Clipboard() {
   if (data) {
-    free(data);
+    delete[] (char *)data;
     // delete (std::string *)data;
   }
 }
