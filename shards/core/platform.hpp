@@ -57,10 +57,11 @@
 // Portable string duplication using C++ new/delete
 // Use delete[] to free the returned string
 #include <cstring>
-inline char* shards_strdup(const char* s) {
-  if (!s) return nullptr;
+inline char *shards_strdup(const char *s) {
+  if (!s)
+    return nullptr;
   size_t len = std::strlen(s) + 1;
-  char* result = new char[len];
+  char *result = new char[len];
   std::memcpy(result, s, len);
   return result;
 }

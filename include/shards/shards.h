@@ -961,15 +961,6 @@ typedef SHWireState(__cdecl *SHRunShards)(ShardPtr *shards, struct SHContext *co
                                           struct SHVar *output);
 #endif
 
-#if defined(__cplusplus) || defined(SH_USE_ENUMS)
-typedef SH_ENUM_DECL SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context,
-                                                             const struct SHVar *input, struct SHVar *output,
-                                                             struct SHVar *outHash);
-#else
-typedef SHWireState(__cdecl *SHRunShardsHashed)(ShardPtr *shards, struct SHContext *context, const struct SHVar *input,
-                                                struct SHVar *output, struct SHVar *outHash);
-#endif
-
 typedef void(__cdecl *SHLog)(struct SHStringWithLen msg);
 typedef void(__cdecl *SHLogLevel)(int level, struct SHStringWithLen msg);
 typedef void(__cdecl *SHLogLogger)(struct SHStringWithLen cat, int level, struct SHStringWithLen message);
@@ -1185,6 +1176,9 @@ typedef void(__cdecl *SHSetWireDebugId)(SHWireRef wire, uint64_t id);
 typedef struct SHVar(__cdecl *SHSerializeVar)(const struct SHVar *var);
 typedef struct SHVar(__cdecl *SHDeserializeVar)(const struct SHVar *bytesBufferVar);
 
+typedef struct SHContext *(__cdecl *SHCreateContext)(SHWireRef starter);
+typedef void(__cdecl *SHDestroyContext)(struct SHContext *context);
+
 typedef struct _SHCore {
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 
@@ -1205,10 +1199,6 @@ typedef struct _SHCore {
   SHRunShards runShards;
   // caller handles return state
   SHRunShards runShards2;
-  // caller not handling return state
-  SHRunShardsHashed runShardsHashed;
-  // caller handles return state
-  SHRunShardsHashed runShardsHashed2;
 
   // Logging
   SHLog log;
@@ -1419,6 +1409,9 @@ typedef struct _SHCore {
   SHFreeComposeResult freeComposeResult;
 
   SHPushError pushError;
+
+  SHCreateContext createContext;
+  SHDestroyContext destroyContext;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

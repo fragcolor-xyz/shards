@@ -199,8 +199,8 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
     // For matrix multiplication A*B, columns of A must equal rows of B
     if (inputCols != operandRows) {
       throw ActivationError(fmt::format("MatMul: incompatible matrix dimensions. "
-                            "First matrix has {} columns but second matrix has {} rows.",
-                            inputCols, operandRows));
+                                        "First matrix has {} columns but second matrix has {} rows.",
+                                        inputCols, operandRows));
     }
 
     // Also verify that both matrices are square (required for the current implementation)
@@ -208,8 +208,8 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
 
     if (inputRows != inputCols || operandRows != operandCols) {
       throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
-                            "Got {}x{} and {}x{} matrices.",
-                            inputRows, inputCols, operandRows, operandCols));
+                                        "Got {}x{} and {}x{} matrices.",
+                                        inputRows, inputCols, operandRows, operandCols));
     }
 
 #define MATMUL_OP(_v1_, _v2_, _n_)                                          \
@@ -252,14 +252,14 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
 
     if (matrixCols != vectorSize) {
       throw ActivationError(fmt::format("MatMul: incompatible dimensions. "
-                            "Matrix has {} columns but vector has {} elements.",
-                            matrixCols, vectorSize));
+                                        "Matrix has {} columns but vector has {} elements.",
+                                        matrixCols, vectorSize));
     }
 
     if (matrixRows != matrixCols) {
       throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
-                            "Got {}x{} matrix.",
-                            matrixRows, matrixCols));
+                                        "Got {}x{} matrix.",
+                                        matrixRows, matrixCols));
     }
 
 #define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                           \

@@ -2931,6 +2931,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->freeComposeResult = [](SHComposeResult *result) noexcept { shards::freeComposeResult(*result); };
 
+  result->createContext = [](SHWireRef wire) noexcept {
+    auto sc = SHWire::sharedFromRef(wire);
+    return new SHContext(nullptr, sc.get());
+  };
+
+  result->destroyContext = [](SHContext *ctx) { delete ctx; };
+
   result->runWire = [](SHWireRef wire, SHContext *context, const SHVar *input) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     return shards::runSubWire(sc.get(), context, *input);
