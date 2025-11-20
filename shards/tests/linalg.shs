@@ -179,7 +179,46 @@
   // Test MatMul with valid dimensions (4x4 * 4x4)
   Const(@identity) |
   Math.MatMul(@mat1) |
+  Assert.Is(@mat1 true) |
   Log("4x4 identity * 4x4 mat1")
+
+  // Test 2x2 matrix multiplication
+  @define(mat2x2a [@f2(1 2) @f2(3 4)])
+  @define(mat2x2b [@f2(5 6) @f2(7 8)])
+  @define(mat2x2result [@f2(19 22) @f2(43 50)])
+  Const(@mat2x2a) |
+  Math.MatMul(@mat2x2b) |
+  Assert.Is(@mat2x2result true) |
+  Log("2x2 * 2x2 matrix multiplication")
+
+  // Test 3x3 matrix multiplication
+  @define(mat3x3a [@f3(1 0 0) @f3(0 1 0) @f3(0 0 1)])
+  @define(mat3x3b [@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)])
+  Const(@mat3x3a) |
+  Math.MatMul(@mat3x3b) |
+  Assert.Is(@mat3x3b true) |
+  Log("3x3 identity * 3x3 matrix multiplication")
+
+  // Test matrix-vector multiplication with incompatible dimensions
+  Maybe({
+    [@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)] | Math.MatMul(@f4(1 2 3 4))
+    "Expected MatMul with incompatible matrix-vector dimensions to fail" | Fail
+  })
+
+  // Test valid matrix-vector multiplication (3x3 * 3-vector)
+  @define(vec3test @f3(1 2 3))
+  Const(@mat3x3a) |
+  Math.MatMul(@vec3test) |
+  Assert.Is(@vec3test true) |
+  Log("3x3 identity * 3-vector")
+
+  // Test 2x2 matrix * 2-vector
+  @define(vec2test @f2(1 2))
+  @define(mat2x2identity [@f2(1 0) @f2(0 1)])
+  Const(@mat2x2identity) |
+  Math.MatMul(@vec2test) |
+  Assert.Is(@vec2test true) |
+  Log("2x2 identity * 2-vector")
 
   Msg("Done!")
 })

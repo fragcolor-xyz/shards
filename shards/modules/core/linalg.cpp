@@ -8,6 +8,7 @@
 #include <shards/math_ops.hpp>
 #include <linalg.h>
 #include <shards/gfx/linalg.hpp>
+#include <spdlog/fmt/fmt.h>
 
 // Ok...
 #ifdef near
@@ -66,6 +67,20 @@ void DotOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
   } break;
   default:
     break;
+  }
+}
+
+// Helper function to get the size of a float vector type
+static size_t getFloatVectorSize(SHType type, const char *context) {
+  switch (type) {
+  case SHType::Float2:
+    return 2;
+  case SHType::Float3:
+    return 3;
+  case SHType::Float4:
+    return 4;
+  default:
+    throw ActivationError(fmt::format("MatMul: invalid {} type (expected Float2, Float3, or Float4)", context));
   }
 }
 
@@ -167,49 +182,34 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   if (_opType == SeqSeq) {
     // Validate matrix dimensions: columns of first matrix must equal rows of second matrix
     // For square matrices, this means both matrices must have the same dimensions
-    auto inputRows = input.payload.seqValue.len;
-    auto operandRows = operand.payload.seqValue.len;
+    size_t inputRows = input.payload.seqValue.len;
+    size_t operandRows = operand.payload.seqValue.len;
+
+    // Check for empty matrices
+    if (inputRows == 0) {
+      throw ActivationError("MatMul: input matrix cannot be empty");
+    }
+    if (operandRows == 0) {
+      throw ActivationError("MatMul: operand matrix cannot be empty");
+    }
 
     // Get the column count (vector size) of first matrix
-    size_t inputCols = 0;
-    switch (input.payload.seqValue.elements[0].valueType) {
-    case SHType::Float2:
-      inputCols = 2;
-      break;
-    case SHType::Float3:
-      inputCols = 3;
-      break;
-    case SHType::Float4:
-      inputCols = 4;
-      break;
-    default:
-      throw ActivationError("Invalid value type for MatMul");
-    }
+    size_t inputCols = getFloatVectorSize(input.payload.seqValue.elements[0].valueType, "input matrix row");
 
     // For matrix multiplication A*B, columns of A must equal rows of B
     if (inputCols != operandRows) {
-      throw ActivationError("MatMul: incompatible matrix dimensions. "
-                            "Number of columns in first matrix must equal number of rows in second matrix.");
+      throw ActivationError(fmt::format("MatMul: incompatible matrix dimensions. "
+                            "First matrix has {} columns but second matrix has {} rows.",
+                            inputCols, operandRows));
     }
 
     // Also verify that both matrices are square (required for the current implementation)
-    size_t operandCols = 0;
-    switch (operand.payload.seqValue.elements[0].valueType) {
-    case SHType::Float2:
-      operandCols = 2;
-      break;
-    case SHType::Float3:
-      operandCols = 3;
-      break;
-    case SHType::Float4:
-      operandCols = 4;
-      break;
-    default:
-      throw ActivationError("Invalid value type for MatMul operand");
-    }
+    size_t operandCols = getFloatVectorSize(operand.payload.seqValue.elements[0].valueType, "operand matrix row");
 
     if (inputRows != inputCols || operandRows != operandCols) {
-      throw ActivationError("MatMul: only square matrices are supported (2x2, 3x3, or 4x4).");
+      throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
+                            "Got {}x{} and {}x{} matrices.",
+                            inputRows, inputCols, operandRows, operandCols));
     }
 
 #define MATMUL_OP(_v1_, _v2_, _n_)                                          \
@@ -240,44 +240,26 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   } else if (_opType == Seq1) {
     // Validate matrix-vector multiplication dimensions
     // Columns of matrix must equal size of vector
-    auto matrixRows = input.payload.seqValue.len;
-    size_t matrixCols = 0;
-    switch (input.payload.seqValue.elements[0].valueType) {
-    case SHType::Float2:
-      matrixCols = 2;
-      break;
-    case SHType::Float3:
-      matrixCols = 3;
-      break;
-    case SHType::Float4:
-      matrixCols = 4;
-      break;
-    default:
-      throw ActivationError("Invalid value type for MatMul matrix");
+    size_t matrixRows = input.payload.seqValue.len;
+
+    // Check for empty matrix
+    if (matrixRows == 0) {
+      throw ActivationError("MatMul: input matrix cannot be empty");
     }
 
-    size_t vectorSize = 0;
-    switch (operand.valueType) {
-    case SHType::Float2:
-      vectorSize = 2;
-      break;
-    case SHType::Float3:
-      vectorSize = 3;
-      break;
-    case SHType::Float4:
-      vectorSize = 4;
-      break;
-    default:
-      throw ActivationError("Invalid value type for MatMul vector operand");
-    }
+    size_t matrixCols = getFloatVectorSize(input.payload.seqValue.elements[0].valueType, "matrix row");
+    size_t vectorSize = getFloatVectorSize(operand.valueType, "vector operand");
 
     if (matrixCols != vectorSize) {
-      throw ActivationError("MatMul: incompatible dimensions. "
-                            "Number of columns in matrix must equal size of vector.");
+      throw ActivationError(fmt::format("MatMul: incompatible dimensions. "
+                            "Matrix has {} columns but vector has {} elements.",
+                            matrixCols, vectorSize));
     }
 
     if (matrixRows != matrixCols) {
-      throw ActivationError("MatMul: only square matrices are supported (2x2, 3x3, or 4x4).");
+      throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
+                            "Got {}x{} matrix.",
+                            matrixRows, matrixCols));
     }
 
 #define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                           \
