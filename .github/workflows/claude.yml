@@ -43,10 +43,29 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
+      - name: Maximize disk space
+        uses: shards-lang/maximize-build-space@master
+        with:
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
+          remove-codeql: true
+          remove-docker-images: true
+          root-reserve-mb: 10000
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
 
       - name: Run Claude Code
         id: claude
