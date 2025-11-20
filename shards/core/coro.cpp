@@ -7,7 +7,7 @@
 #include <memory>
 
 #if SH_DEBUG_CONSISTENT_RESUMER
-#include <SDL3/SDL_stdinc.h>
+#include <cstdlib>
 #endif
 
 // Enable for verbose fiber logging
@@ -111,7 +111,7 @@ ThreadFiber::operator bool() const { return !finished; }
 #if SH_DEBUG_CONSISTENT_RESUMER
 static bool checkForConsistentResumer() {
   static bool check = []() {
-    if (SDL_getenv("SH_IGNORE_CONSISTENT_RESUMER"))
+    if (std::getenv("SH_IGNORE_CONSISTENT_RESUMER"))
       return false;
     return true;
   }();

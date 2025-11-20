@@ -7,9 +7,7 @@
 #include <iterator>
 #include <spdlog/spdlog.h>
 #include <vector>
-#if SHARDS_LOG_SDL
-#include <SDL3/SDL_stdinc.h>
-#endif
+#include <cstdlib>
 #include <magic_enum.hpp>
 #include <shared_mutex>
 #include <boost/filesystem.hpp>
@@ -78,10 +76,9 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
   std::string varName;
   const char *val{};
 
-#if SHARDS_LOG_SDL
   auto tryReadEnvVar = [&]() {
     varName = inName;
-    val = SDL_getenv(varName.c_str());
+    val = std::getenv(varName.c_str());
   };
 
   tryReadEnvVar();
@@ -96,7 +93,6 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
     boost::algorithm::to_upper(inName);
     tryReadEnvVar();
   }
-#endif
 
   if (val) {
     return magic_enum::enum_cast<spdlog::level::level_enum>(val);
@@ -105,12 +101,10 @@ std::optional<spdlog::level::level_enum> getLogLevelFromEnvVar(std::string inNam
 }
 
 static std::optional<spdlog::level::level_enum> getFlushLogLevel() {
-#if SHARDS_LOG_SDL
-  auto val = SDL_getenv("LOG_FLUSH_ON");
+  auto val = std::getenv("LOG_FLUSH_ON");
   if (val) {
     return magic_enum::enum_cast<spdlog::level::level_enum>(val);
   }
-#endif
   return std::nullopt;
 }
 
@@ -342,20 +336,14 @@ void initLogFormat(Logger logger) {
   auto formatter = std::make_unique<spdlog::pattern_formatter>();
   formatter->add_flag<ProcessTimeFlag>('P', getProcessTimeKeeper());
 
-#if SHARDS_LOG_SDL
-  if (const char *val = SDL_getenv(varName.c_str())) {
+  if (const char *val = std::getenv(varName.c_str())) {
     formatter->set_pattern(val);
-  } else
-#endif
-  {
+  } else {
     std::string logPattern;
-// Use global log format
-#if SHARDS_LOG_SDL
-    if (const char *val = SDL_getenv("LOG_FORMAT")) {
+    // Use global log format
+    if (const char *val = std::getenv("LOG_FORMAT")) {
       logPattern = val;
-    } else
-#endif
-    {
+    } else {
 #ifdef __ANDROID
       // Logcat already countains timestamps & log level
       logPattern = "[T-%t][%n][%s::%#] %v";
