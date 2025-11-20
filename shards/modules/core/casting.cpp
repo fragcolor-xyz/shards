@@ -248,13 +248,22 @@ template <SHType FROMTYPE> struct ToImage {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
+      if (value.payload.intValue < 1 || value.payload.intValue > UINT16_MAX) {
+        throw SHException("Width must be between 1 and 65535.");
+      }
       _width = uint16_t(value.payload.intValue);
       break;
     case 1:
+      if (value.payload.intValue < 1 || value.payload.intValue > UINT16_MAX) {
+        throw SHException("Height must be between 1 and 65535.");
+      }
       _height = uint16_t(value.payload.intValue);
       break;
     case 2:
-      _channels = uint8_t(std::min(SHInt(4), std::max(SHInt(1), value.payload.intValue)));
+      if (value.payload.intValue < 1 || value.payload.intValue > 4) {
+        throw SHException("Channels must be between 1 and 4.");
+      }
+      _channels = uint8_t(value.payload.intValue);
       break;
     }
   }
