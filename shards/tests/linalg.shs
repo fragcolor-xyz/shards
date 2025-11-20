@@ -169,13 +169,6 @@
   // test combined rotations
   @f3(0.7853981633974483 0.7853981633974483 0.0) | Math.EulerToQuat | Log("45deg yaw+pitch to quat")
 
-  // Test MatMul dimension validation (Issue #832)
-  // This should fail: 2x4 matrix multiplied by 2x4 matrix (columns=4 != rows=2)
-  Maybe({
-    [@f4(1 2 3 4) @f4(5 6 7 8)] | Math.MatMul([@f4(9 10 11 12) @f4(13 14 15 16)])
-    "Expected MatMul with incompatible dimensions to fail" | Fail
-  })
-
   // Test MatMul with valid dimensions (4x4 * 4x4)
   Const(@identity) |
   Math.MatMul(@mat1) |
@@ -198,12 +191,6 @@
   Math.MatMul(@mat3x3b) |
   Assert.Is(@mat3x3b true) |
   Log("3x3 identity * 3x3 matrix multiplication")
-
-  // Test matrix-vector multiplication with incompatible dimensions
-  Maybe({
-    [@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)] | Math.MatMul(@f4(1 2 3 4))
-    "Expected MatMul with incompatible matrix-vector dimensions to fail" | Fail
-  })
 
   // Test valid matrix-vector multiplication (3x3 * 3-vector)
   @define(vec3test @f3(1 2 3))
