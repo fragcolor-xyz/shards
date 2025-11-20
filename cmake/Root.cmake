@@ -40,11 +40,7 @@ set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
 
 add_subdirectory(${SHARDS_DIR}/deps deps)
 
-# Build tools (bin2c is needed for bundling binary files)
-# Only build as part of main project for native builds
-if(NOT CMAKE_CROSSCOMPILING)
-  add_subdirectory(${SHARDS_DIR}/shards/tools/bin2c tools/bin2c)
-endif()
+# Note: bin2c tool is now built in Rust at configure time (see cmake/Tools.cmake)
 
 # Standalone libraries
 add_subdirectory(${SHARDS_DIR}/shards/fast_string src/fast_string)

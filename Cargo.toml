@@ -58,6 +58,8 @@ exclude = [
     "deps/sqlite/cr-sqlite/core/rs/integration_check",
     "deps/sqlite/cr-sqlite/core/rs/bundle_static",
     "deps/sqlite/sqlite-vec",
+    # Build tools (built separately for host during cross-compilation)
+    "shards/tools/bin2c-rs",
 ]
 
 [workspace.package]

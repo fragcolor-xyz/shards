@@ -1,15 +1,32 @@
-# bin2c setup - handles both native and cross-compilation builds
-if(CMAKE_CROSSCOMPILING)
-  # For cross-compilation, we need a pre-built native bin2c
-  # Build it first with: ./shards/tools/bootstrap
-  set(SHARDS_TOOLS_PATH ${SHARDS_DIR}/shards/tools/build/bin)
-  find_program(BIN2C_EXE NAMES "bin2c" PATHS ${SHARDS_TOOLS_PATH} REQUIRED NO_DEFAULT_PATH NO_SYSTEM_ENVIRONMENT_PATH)
-  set(BIN2C_DEPENDS "")
-else()
-  # For native builds, bin2c is built as part of the main build
-  set(BIN2C_EXE $<TARGET_FILE:bin2c>)
-  set(BIN2C_DEPENDS bin2c)
+# bin2c setup - build Rust version which works for both native and cross-compilation
+set(BIN2C_RS_DIR ${SHARDS_DIR}/shards/tools/bin2c-rs)
+set(BIN2C_TARGET_DIR ${CMAKE_BINARY_DIR}/bin2c-rs-build)
+
+# Build bin2c using cargo (always builds for host, even when cross-compiling)
+execute_process(
+  COMMAND cargo build --manifest-path ${BIN2C_RS_DIR}/Cargo.toml --release --target-dir ${BIN2C_TARGET_DIR}
+  RESULT_VARIABLE BIN2C_BUILD_RESULT
+  OUTPUT_VARIABLE BIN2C_BUILD_OUTPUT
+  ERROR_VARIABLE BIN2C_BUILD_ERROR
+)
+
+if(NOT BIN2C_BUILD_RESULT EQUAL 0)
+  message(FATAL_ERROR "Failed to build bin2c: ${BIN2C_BUILD_ERROR}")
 endif()
+
+# Find the built binary
+if(WIN32)
+  set(BIN2C_EXE ${BIN2C_TARGET_DIR}/release/bin2c.exe)
+else()
+  set(BIN2C_EXE ${BIN2C_TARGET_DIR}/release/bin2c)
+endif()
+
+if(NOT EXISTS ${BIN2C_EXE})
+  message(FATAL_ERROR "bin2c binary not found at ${BIN2C_EXE}")
+endif()
+
+# No target dependency needed since it's built at configure time
+set(BIN2C_DEPENDS "")
 
 # Used to add files
 # This functions strips all the folder names and genrates include paths as follows:

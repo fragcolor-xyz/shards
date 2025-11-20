@@ -36,8 +36,6 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install clang-format
-          # Build native tools for cross-compilation
-          ./shards/tools/bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
@@ -71,8 +69,6 @@ jobs:
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
           brew install clang-format
-          # Build native tools for cross-compilation
-          ./shards/tools/bootstrap
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
