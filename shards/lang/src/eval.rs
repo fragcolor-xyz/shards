@@ -1551,6 +1551,48 @@ fn create_take_table_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
+  // Check if var_name has a replacement that is a TakeTable or TakeSeq
+  // This allows templates to use x:key syntax where x is a template parameter
+  // that could be another TakeTable like outer:inner
+  if let Some(replacement) = find_replacement(var_name, e) {
+    match replacement {
+      Value::TakeTable(base_name, base_path) => {
+        // First, get the base variable and apply the base path
+        add_get_shard(base_name, line, e)?;
+        add_expect_table_shard(line, e)?;
+        for base_part in base_path {
+          let s = Var::ephemeral_string(base_part.as_str());
+          add_take_shard(base_name, &s, line, e)?;
+        }
+        // Then apply the additional path from this TakeTable
+        for path_part in path {
+          let s = Var::ephemeral_string(path_part.as_str());
+          add_take_shard(var_name, &s, line, e)?;
+        }
+        return Ok(());
+      }
+      Value::TakeSeq(base_name, base_path) => {
+        // First, get the base variable and apply the base indices
+        add_get_shard(base_name, line, e)?;
+        for idx in base_path {
+          let idx_var: Var = (*idx).try_into().unwrap();
+          add_take_shard(base_name, &idx_var, line, e)?;
+        }
+        // Then apply the additional path from this TakeTable (treating as table keys)
+        add_expect_table_shard(line, e)?;
+        for path_part in path {
+          let s = Var::ephemeral_string(path_part.as_str());
+          add_take_shard(var_name, &s, line, e)?;
+        }
+        return Ok(());
+      }
+      _ => {
+        // For other replacements (including Identifier), fall through to default handling
+      }
+    }
+  }
+
+  // Default handling - var_name is either not a replacement or is an Identifier replacement
   add_get_shard(var_name, line, e)?;
   add_expect_table_shard(line, e)?;
   for path_part in path {
@@ -1566,6 +1608,46 @@ fn create_take_seq_chain(
   line: LineInfo,
   e: &mut EvalEnv,
 ) -> Result<(), ShardsError> {
+  // Check if var_name has a replacement that is a TakeTable or TakeSeq
+  // This allows templates to use x:0 syntax where x is a template parameter
+  if let Some(replacement) = find_replacement(var_name, e) {
+    match replacement {
+      Value::TakeTable(base_name, base_path) => {
+        // First, get the base variable and apply the base path
+        add_get_shard(base_name, line, e)?;
+        add_expect_table_shard(line, e)?;
+        for base_part in base_path {
+          let s = Var::ephemeral_string(base_part.as_str());
+          add_take_shard(base_name, &s, line, e)?;
+        }
+        // Then apply the additional indices from this TakeSeq
+        for path_part in path {
+          let idx: Var = (*path_part).try_into().unwrap();
+          add_take_shard(var_name, &idx, line, e)?;
+        }
+        return Ok(());
+      }
+      Value::TakeSeq(base_name, base_path) => {
+        // First, get the base variable and apply the base indices
+        add_get_shard(base_name, line, e)?;
+        for idx in base_path {
+          let idx_var: Var = (*idx).try_into().unwrap();
+          add_take_shard(base_name, &idx_var, line, e)?;
+        }
+        // Then apply the additional indices from this TakeSeq
+        for path_part in path {
+          let idx: Var = (*path_part).try_into().unwrap();
+          add_take_shard(var_name, &idx, line, e)?;
+        }
+        return Ok(());
+      }
+      _ => {
+        // For other replacements (including Identifier), fall through to default handling
+      }
+    }
+  }
+
+  // Default handling
   add_get_shard(var_name, line, e)?;
   for path_part in path {
     let idx = (*path_part).try_into().unwrap(); // read should have caught this

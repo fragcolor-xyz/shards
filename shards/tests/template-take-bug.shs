@@ -1,0 +1,66 @@
+; Test for issue #778: Semicolon ":" Take alias bug in template
+; This test verifies that the colon syntax works correctly inside templates
+
+; Setup test data
+{key1: 10 key2: 20 key3: {nested: 30}} | Set(outer-table)
+[[1 2 3] [4 5 6] [7 8 9]] | Set(outer-seq)
+
+; Test 1: Basic colon syntax outside of template (should work)
+outer-table:key1 | Assert.Is(10)
+
+; Test 2: Using explicit Take inside template (should work)
+@template(take-explicit [t] {
+  t | Take("key1") | Log("Explicit Take")
+})
+@take-explicit(outer-table)
+
+; Test 3: Using colon syntax inside template with simple identifier (this should already work)
+@template(take-colon [t] {
+  t:key1 | Log("Colon syntax") | Assert.Is(10)
+})
+@take-colon(outer-table)
+
+; Test 4: Nested colon access
+@template(take-nested [t] {
+  t:key3:nested | Log("Nested") | Assert.Is(30)
+})
+@take-nested(outer-table)
+
+; Test 5: Multiple uses of the same parameter with colon
+@template(take-multiple [t] {
+  t:key1 | Log("First")
+  t:key2 | Log("Second") | Assert.Is(20)
+})
+@take-multiple(outer-table)
+
+; Test 6: Template parameter is a TakeTable - this is the main bug scenario
+; When you pass outer-table:key3 as a parameter, and then use :nested inside template
+@template(take-chained-table [t] {
+  t:nested | Log("Chained table") | Assert.Is(30)
+})
+@take-chained-table(outer-table:key3)
+
+; Test 7: Template parameter is a TakeSeq, then use table key inside template
+@template(take-seq-then-table [t] {
+  ; After taking index 0, we get [1 2 3], which is a sequence
+  ; This test verifies TakeSeq replacement followed by index access
+  t:1 | Log("Seq then index") | Assert.Is(5)
+})
+@take-seq-then-table(outer-seq:1)
+
+; Test 8: Nested templates with TakeTable parameters
+@template(outer-template [t] {
+  @template(inner-template [x] {
+    x:key1 | Log("Inner template")
+  })
+  @inner-template(t)
+})
+@outer-template(outer-table)
+
+; Test 9: TakeSeq syntax with template parameter
+@template(take-seq-syntax [s] {
+  s:0 | Log("Seq index") | Assert.Is(1)
+})
+@take-seq-syntax(outer-seq:0)
+
+Msg("All template-take tests passed!")
