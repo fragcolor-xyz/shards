@@ -165,6 +165,53 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   auto &operand = _operand.get();
   // expect SeqSeq as in 2x 2D arrays or SHType::Seq1 Mat @ Vec
   if (_opType == SeqSeq) {
+    // Validate matrix dimensions: columns of first matrix must equal rows of second matrix
+    // For square matrices, this means both matrices must have the same dimensions
+    auto inputRows = input.payload.seqValue.len;
+    auto operandRows = operand.payload.seqValue.len;
+
+    // Get the column count (vector size) of first matrix
+    size_t inputCols = 0;
+    switch (input.payload.seqValue.elements[0].valueType) {
+    case SHType::Float2:
+      inputCols = 2;
+      break;
+    case SHType::Float3:
+      inputCols = 3;
+      break;
+    case SHType::Float4:
+      inputCols = 4;
+      break;
+    default:
+      throw ActivationError("Invalid value type for MatMul");
+    }
+
+    // For matrix multiplication A*B, columns of A must equal rows of B
+    if (inputCols != operandRows) {
+      throw ActivationError("MatMul: incompatible matrix dimensions. "
+                            "Number of columns in first matrix must equal number of rows in second matrix.");
+    }
+
+    // Also verify that both matrices are square (required for the current implementation)
+    size_t operandCols = 0;
+    switch (operand.payload.seqValue.elements[0].valueType) {
+    case SHType::Float2:
+      operandCols = 2;
+      break;
+    case SHType::Float3:
+      operandCols = 3;
+      break;
+    case SHType::Float4:
+      operandCols = 4;
+      break;
+    default:
+      throw ActivationError("Invalid value type for MatMul operand");
+    }
+
+    if (inputRows != inputCols || operandRows != operandCols) {
+      throw ActivationError("MatMul: only square matrices are supported (2x2, 3x3, or 4x4).");
+    }
+
 #define MATMUL_OP(_v1_, _v2_, _n_)                                          \
   shards::arrayResize(_result.payload.seqValue, _n_);                       \
   auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]);   \
@@ -191,6 +238,48 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
 #undef MATMUL_OP
     return _result;
   } else if (_opType == Seq1) {
+    // Validate matrix-vector multiplication dimensions
+    // Columns of matrix must equal size of vector
+    auto matrixRows = input.payload.seqValue.len;
+    size_t matrixCols = 0;
+    switch (input.payload.seqValue.elements[0].valueType) {
+    case SHType::Float2:
+      matrixCols = 2;
+      break;
+    case SHType::Float3:
+      matrixCols = 3;
+      break;
+    case SHType::Float4:
+      matrixCols = 4;
+      break;
+    default:
+      throw ActivationError("Invalid value type for MatMul matrix");
+    }
+
+    size_t vectorSize = 0;
+    switch (operand.valueType) {
+    case SHType::Float2:
+      vectorSize = 2;
+      break;
+    case SHType::Float3:
+      vectorSize = 3;
+      break;
+    case SHType::Float4:
+      vectorSize = 4;
+      break;
+    default:
+      throw ActivationError("Invalid value type for MatMul vector operand");
+    }
+
+    if (matrixCols != vectorSize) {
+      throw ActivationError("MatMul: incompatible dimensions. "
+                            "Number of columns in matrix must equal size of vector.");
+    }
+
+    if (matrixRows != matrixCols) {
+      throw ActivationError("MatMul: only square matrices are supported (2x2, 3x3, or 4x4).");
+    }
+
 #define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                           \
   auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]); \
   auto &b = reinterpret_cast<_v3_ &>(operand.payload._v3v_);              \
