@@ -248,9 +248,15 @@ template <SHType FROMTYPE> struct ToImage {
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
+      if (value.payload.intValue < 1) {
+        throw SHException("Width must be at least 1.");
+      }
       _width = uint16_t(value.payload.intValue);
       break;
     case 1:
+      if (value.payload.intValue < 1) {
+        throw SHException("Height must be at least 1.");
+      }
       _height = uint16_t(value.payload.intValue);
       break;
     case 2:
