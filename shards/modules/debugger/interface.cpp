@@ -6,7 +6,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/assert.hpp>
 #include <shards/utility.hpp>
-#include <SDL3/SDL_stdinc.h>
+#include <cstdlib>
 
 namespace shards::dbg {
 
@@ -146,7 +146,7 @@ struct State {
 
   State() : breakSema(1) {
 
-    if (const char *wait = SDL_getenv("SHARDS_DEBUGGER_WAIT")) {
+    if (const char *wait = std::getenv("SHARDS_DEBUGGER_WAIT")) {
       debuggerWaitMode = atoi(wait);
       if (debuggerWaitMode > 0) {
         // Break on startup
