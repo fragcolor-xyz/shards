@@ -8,6 +8,7 @@
 #include <shards/math_ops.hpp>
 #include <linalg.h>
 #include <shards/gfx/linalg.hpp>
+#include <spdlog/fmt/fmt.h>
 
 // Ok...
 #ifdef near
@@ -66,6 +67,20 @@ void DotOp::apply(SHVar &output, const SHVar &input, const SHVar &operand) {
   } break;
   default:
     break;
+  }
+}
+
+// Helper function to get the size of a float vector type
+static size_t getFloatVectorSize(SHType type, const char *context) {
+  switch (type) {
+  case SHType::Float2:
+    return 2;
+  case SHType::Float3:
+    return 3;
+  case SHType::Float4:
+    return 4;
+  default:
+    throw ActivationError(fmt::format("MatMul: invalid {} type (expected Float2, Float3, or Float4)", context));
   }
 }
 
@@ -165,6 +180,38 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
   auto &operand = _operand.get();
   // expect SeqSeq as in 2x 2D arrays or SHType::Seq1 Mat @ Vec
   if (_opType == SeqSeq) {
+    // Validate matrix dimensions: columns of first matrix must equal rows of second matrix
+    // For square matrices, this means both matrices must have the same dimensions
+    size_t inputRows = input.payload.seqValue.len;
+    size_t operandRows = operand.payload.seqValue.len;
+
+    // Check for empty matrices
+    if (inputRows == 0) {
+      throw ActivationError("MatMul: input matrix cannot be empty");
+    }
+    if (operandRows == 0) {
+      throw ActivationError("MatMul: operand matrix cannot be empty");
+    }
+
+    // Get the column count (vector size) of first matrix
+    size_t inputCols = getFloatVectorSize(input.payload.seqValue.elements[0].valueType, "input matrix row");
+
+    // For matrix multiplication A*B, columns of A must equal rows of B
+    if (inputCols != operandRows) {
+      throw ActivationError(fmt::format("MatMul: incompatible matrix dimensions. "
+                            "First matrix has {} columns but second matrix has {} rows.",
+                            inputCols, operandRows));
+    }
+
+    // Also verify that both matrices are square (required for the current implementation)
+    size_t operandCols = getFloatVectorSize(operand.payload.seqValue.elements[0].valueType, "operand matrix row");
+
+    if (inputRows != inputCols || operandRows != operandCols) {
+      throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
+                            "Got {}x{} and {}x{} matrices.",
+                            inputRows, inputCols, operandRows, operandCols));
+    }
+
 #define MATMUL_OP(_v1_, _v2_, _n_)                                          \
   shards::arrayResize(_result.payload.seqValue, _n_);                       \
   auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]);   \
@@ -191,6 +238,30 @@ SHVar MatMul::activate(SHContext *context, const SHVar &input) {
 #undef MATMUL_OP
     return _result;
   } else if (_opType == Seq1) {
+    // Validate matrix-vector multiplication dimensions
+    // Columns of matrix must equal size of vector
+    size_t matrixRows = input.payload.seqValue.len;
+
+    // Check for empty matrix
+    if (matrixRows == 0) {
+      throw ActivationError("MatMul: input matrix cannot be empty");
+    }
+
+    size_t matrixCols = getFloatVectorSize(input.payload.seqValue.elements[0].valueType, "matrix row");
+    size_t vectorSize = getFloatVectorSize(operand.valueType, "vector operand");
+
+    if (matrixCols != vectorSize) {
+      throw ActivationError(fmt::format("MatMul: incompatible dimensions. "
+                            "Matrix has {} columns but vector has {} elements.",
+                            matrixCols, vectorSize));
+    }
+
+    if (matrixRows != matrixCols) {
+      throw ActivationError(fmt::format("MatMul: only square matrices are supported (2x2, 3x3, or 4x4). "
+                            "Got {}x{} matrix.",
+                            matrixRows, matrixCols));
+    }
+
 #define MATMUL_OP(_v1_, _v2_, _n_, _v3_, _v3v_)                           \
   auto &a = reinterpret_cast<_v1_ &>(input.payload.seqValue.elements[0]); \
   auto &b = reinterpret_cast<_v3_ &>(operand.payload._v3v_);              \
