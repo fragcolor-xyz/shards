@@ -350,6 +350,9 @@ function(add_rust_library)
 
   set(_RUST_ENVIRONMENT ${RUST_ENVIRONMENT})
 
+  # Pass CMAKE_BINARY_DIR so Rust build scripts can find CPM dependencies
+  list(APPEND _RUST_ENVIRONMENT "CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}")
+
   if(APPLE)
     if(IOS)
       list(APPEND _RUST_ENVIRONMENT "IPHONEOS_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
