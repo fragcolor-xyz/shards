@@ -673,7 +673,11 @@ struct LoadImage {
     _output.reset();
     _output = makeImage();
 
+#ifdef STBI_THREAD_LOCAL
     stbi_set_flip_vertically_on_load_thread(0);
+#else
+    stbi_set_flip_vertically_on_load(0);
+#endif
 
     uint8_t *bytesValue;
     uint32_t bytesSize;
