@@ -219,17 +219,19 @@ CPMAddPackage(
 add_library(tinygltf INTERFACE)
 target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
-# Draco is needed by tinygltf on all platforms
-set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
-CPMAddPackage(
-  NAME draco
-  GITHUB_REPOSITORY shards-lang/draco
-  GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
-)
-add_library(draco-wrapper INTERFACE)
-target_link_libraries(draco-wrapper INTERFACE draco::draco)
-target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
-target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
+  # Draco doesn't expose include paths directly, add them here using a wrapper
+  set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
+  CPMAddPackage(
+    NAME draco
+    GITHUB_REPOSITORY shards-lang/draco
+    GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
+  )
+  add_library(draco-wrapper INTERFACE)
+  target_link_libraries(draco-wrapper INTERFACE draco::draco)
+  target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
+  target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+endif()
 
 set(TF_BUILD_TESTS OFF CACHE BOOL "")
 set(TF_BUILD_EXAMPLES OFF CACHE BOOL "")
