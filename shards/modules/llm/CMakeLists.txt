@@ -1,5 +1,6 @@
 # LLM module requires llama.cpp and whisper.cpp, only available on desktop platforms
-if(NOT EMSCRIPTEN AND NOT WATCHOS)
+is_module_enabled(LLM_ENABLED llm)
+if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   set(SOURCES
     embedd.cpp
     chat.cpp
