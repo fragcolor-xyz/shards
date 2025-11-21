@@ -220,31 +220,17 @@ if(NOT SHARDS_NO_SDL)
   add_library(tinygltf INTERFACE)
   target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
-  # Draco - download for all platforms (tinygltf needs headers), but only build for non-emscripten/non-watchos
+  # Draco - build for all platforms including emscripten
   set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
-  if(EMSCRIPTEN OR WATCHOS)
-    # Download headers only for emscripten and watchOS
-    CPMAddPackage(
-      NAME draco
-      GITHUB_REPOSITORY shards-lang/draco
-      GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
-      DOWNLOAD_ONLY YES
-    )
-    # Create interface library for headers
-    add_library(draco-wrapper INTERFACE)
-    target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
-  else()
-    # Build draco for other platforms
-    CPMAddPackage(
-      NAME draco
-      GITHUB_REPOSITORY shards-lang/draco
-      GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
-    )
-    add_library(draco-wrapper INTERFACE)
-    target_link_libraries(draco-wrapper INTERFACE draco::draco)
-    target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
-    target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
-  endif()
+  CPMAddPackage(
+    NAME draco
+    GITHUB_REPOSITORY shards-lang/draco
+    GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
+  )
+  add_library(draco-wrapper INTERFACE)
+  target_link_libraries(draco-wrapper INTERFACE draco::draco)
+  target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
+  target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
 endif()
 
 set(TF_BUILD_TESTS OFF CACHE BOOL "")
