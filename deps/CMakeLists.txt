@@ -462,9 +462,19 @@ if(EMSCRIPTEN)
 endif()
 
 # mozjpeg - only needed when imaging module is enabled
-# Note: mozjpeg doesn't support add_subdirectory, so we must use sh_add_external_project
+# Note: mozjpeg doesn't support add_subdirectory, so we use CPM to download
+# and sh_add_external_project to build with ExternalProject_Add
 is_module_enabled(IMAGING_ENABLED imaging)
 if(IMAGING_ENABLED)
+  # Download mozjpeg using CPM
+  CPMAddPackage(
+    NAME mozjpeg
+    GITHUB_REPOSITORY shards-lang/mozjpeg
+    GIT_TAG 9b8d11f05e3ae4541ce5251f0e5c20c4cb8733b7
+    DOWNLOAD_ONLY YES
+  )
+
+  # Build using ExternalProject_Add via sh_add_external_project
   sh_add_external_project(
     NAME mozjpeg_a
     LIB_NAMES ${JPEG_LIB_NAMES}
@@ -472,7 +482,7 @@ if(IMAGING_ENABLED)
     RELATIVE_INCLUDE_PATHS .
     RELATIVE_BINARY_INCLUDE_PATHS .
     CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
-    REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/mozjpeg)
+    REPO_ARGS URL ${mozjpeg_SOURCE_DIR})
 endif()
 
 # crdt-lite - only needed when crdts module is enabled

@@ -45,6 +45,3 @@
 [submodule "deps/sqlite/sqlite-vec"]
 	path = deps/sqlite/sqlite-vec
 	url = https://github.com/shards-lang/sqlite-vec.git
-[submodule "deps/mozjpeg"]
-	path = deps/mozjpeg
-	url = https://github.com/shards-lang/mozjpeg.git
