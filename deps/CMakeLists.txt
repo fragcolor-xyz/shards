@@ -239,14 +239,8 @@ CPMAddPackage(
   GIT_TAG e6a834c8bf4015cd62c71e829e48d715a60bdb7d
 )
 
-CPMAddPackage(
-  NAME xxHash
-  GITHUB_REPOSITORY Cyan4973/xxHash
-  GIT_TAG 35b0373c697b5f160d3db26b1cbb45a0d5ba788c
-  DOWNLOAD_ONLY YES
-)
 add_library(xxHash INTERFACE)
-target_include_directories(xxHash INTERFACE ${xxHash_SOURCE_DIR})
+target_include_directories(xxHash INTERFACE xxHash)
 
 CPMAddPackage(
   NAME linalg
