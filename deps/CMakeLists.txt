@@ -167,6 +167,9 @@ if(NOT SHARDS_NO_SDL)
       GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
       DOWNLOAD_ONLY YES
     )
+    # Create interface library for headers
+    add_library(SDL3-headers INTERFACE)
+    target_include_directories(SDL3-headers INTERFACE ${SDL3_SOURCE_DIR}/include)
   else()
     # Build SDL3 for other platforms
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
