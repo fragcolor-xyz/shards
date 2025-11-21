@@ -173,6 +173,8 @@ target_compile_options(shards-core
 )
 
 if(EMSCRIPTEN)
+  # Disable xxHash SIMD for emscripten to avoid ARM NEON header conflicts
+  target_compile_definitions(shards-core PUBLIC XXH_VECTOR=0)
   target_compile_options(shards-core PUBLIC)
   target_link_options(shards-core PUBLIC "-sLLD_REPORT_UNDEFINED")
 
