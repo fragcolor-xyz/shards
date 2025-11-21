@@ -357,7 +357,10 @@ CPMAddPackage(
 
 # Create symlinks for CPM-downloaded libraries that need directory-prefixed includes
 # This allows includes like <linalg/linalg.h> to work with CPM's -src suffix naming
-set(CPM_SYMLINK_LIBS linalg tinygltf utf8.h entt)
+set(CPM_SYMLINK_LIBS linalg utf8.h entt)
+if(NOT SHARDS_NO_SDL)
+  list(APPEND CPM_SYMLINK_LIBS tinygltf)
+endif()
 if(AUDIO_ENABLED)
   list(APPEND CPM_SYMLINK_LIBS miniaudio)
 endif()
