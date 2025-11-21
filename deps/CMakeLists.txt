@@ -306,7 +306,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 add_library(linalg INTERFACE)
-target_include_directories(linalg INTERFACE ${linalg_SOURCE_DIR} ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_BINARY_DIR}/_deps)
+target_include_directories(linalg INTERFACE ${linalg_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
 # miniaudio - only needed when audio module is enabled
 is_module_enabled(AUDIO_ENABLED audio)
@@ -364,7 +364,8 @@ endif()
 foreach(LIB ${CPM_SYMLINK_LIBS})
   set(SYMLINK_TARGET ${CMAKE_BINARY_DIR}/_deps/${LIB})
   if(NOT EXISTS ${SYMLINK_TARGET})
-    file(CREATE_LINK ${CMAKE_BINARY_DIR}/_deps/${LIB}-src ${SYMLINK_TARGET} SYMBOLIC)
+    # Use CPM's SOURCE_DIR variable which works with both local and global cache
+    file(CREATE_LINK ${${LIB}_SOURCE_DIR} ${SYMLINK_TARGET} SYMBOLIC)
   endif()
 endforeach()
 

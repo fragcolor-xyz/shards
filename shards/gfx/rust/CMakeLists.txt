@@ -26,6 +26,9 @@ if(GFX_WGPU_TRACE_PATH)
   list(APPEND FEATURES trace)
 endif()
 
+# Add SDL3 include path for cbindgen via CPLUS_INCLUDE_PATH
+list(APPEND RUST_ENV "CPLUS_INCLUDE_PATH=${SDL3_SOURCE_DIR}/include")
+
 set(GFX_BINDINGS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/gfx/bindings.hpp)
 set_source_files_properties(${GFX_BINDINGS_FILE} PROPERTIES GENERATED TRUE)
 
