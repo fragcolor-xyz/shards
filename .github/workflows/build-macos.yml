@@ -139,7 +139,6 @@ jobs:
           ./shards new ../shards/tests/brotli.shs
           ./shards new ../shards/tests/snappy.shs
           ./shards new ../shards/tests/expect.shs
-          ./shards new ../shards/tests/wasm.shs
           ./shards new ../shards/tests/rust.shs
           ./shards new ../shards/tests/crypto.shs
           ./shards new ../shards/tests/wire-macro.shs

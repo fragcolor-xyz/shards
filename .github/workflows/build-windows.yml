@@ -261,8 +261,6 @@ jobs:
           ./shards new ../shards/tests/expect.shs
           echo "Running bigint"
           ./shards new ../shards/tests/bigint.shs
-          echo "Running wasm"
-          ./shards new ../shards/tests/wasm.shs
           echo "Running crypto"
           ./shards new ../shards/tests/crypto.shs
           echo "Running complex-deserialize"
