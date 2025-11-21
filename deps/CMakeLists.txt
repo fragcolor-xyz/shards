@@ -206,16 +206,17 @@ sh_add_external_project(
   RELATIVE_INCLUDE_PATHS .
   REPO_ARGS URL ${SHARDS_DIR}/deps/kissfft)
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
-  CPMAddPackage(
-    NAME tinygltf
-    GITHUB_REPOSITORY shards-lang/tinygltf
-    GIT_TAG 967c98dd90406cb9d25df0d95909deae7771e997
-    DOWNLOAD_ONLY YES
-  )
-  add_library(tinygltf INTERFACE)
-  target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
+# tinygltf is needed by gfx module pch.cpp on all platforms
+CPMAddPackage(
+  NAME tinygltf
+  GITHUB_REPOSITORY shards-lang/tinygltf
+  GIT_TAG 967c98dd90406cb9d25df0d95909deae7771e997
+  DOWNLOAD_ONLY YES
+)
+add_library(tinygltf INTERFACE)
+target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
+if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
   # Draco doesn't expose include paths directly, add them here using a wrapper
   set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
   CPMAddPackage(
