@@ -6,6 +6,7 @@
 #include <set>
 #include <unordered_map>
 
+// XXH_VECTOR is defined via compiler flag for emscripten (see CMakeLists.txt)
 #define XXH_INLINE_ALL
 #include <xxhash.h>
 

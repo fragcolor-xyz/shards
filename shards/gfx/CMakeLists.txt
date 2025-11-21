@@ -145,8 +145,9 @@ if(EMSCRIPTEN)
   em_link_js_library(gfx-core-obj gfx_wgpu.js)
   em_link_js_library(gfx-core-obj gfx_events.js)
 
-  target_include_directories(gfx-core-obj PUBLIC ${SHARDS_DIR}/deps/SDL3/include)
-  target_include_directories(gfx-headers INTERFACE ${SHARDS_DIR}/deps/SDL3/include)
+  # Use CPM-downloaded SDL3 headers
+  target_link_libraries(gfx-core-obj SDL3-headers)
+  target_link_libraries(gfx-headers INTERFACE SDL3-headers)
 else()
   target_link_libraries(gfx-core-obj SDL3-static)
 

@@ -173,7 +173,6 @@ target_compile_options(shards-core
 )
 
 if(EMSCRIPTEN)
-  target_compile_options(shards-core PUBLIC)
   target_link_options(shards-core PUBLIC "-sLLD_REPORT_UNDEFINED")
 
   if(NOT SHARDS_THREAD_FIBER)

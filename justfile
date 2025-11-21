@@ -22,9 +22,17 @@ check-ci:
 configure:
   cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug > /dev/null
 
+# configure cmake in build/Release
+configure-rel:
+  cmake -GNinja -B build/Release -DCMAKE_BUILD_TYPE=Release > /dev/null
+
 # build shards (configures first if needed)
 build: configure
   cmake --build build/Debug --target shards
+
+# build shards (configures first if needed)
+build-rel: configure-rel
+  cmake --build build/Release --target shards
 
 # build shards with filtered output (shows only errors and critical warnings)
 build-quiet: configure

@@ -106,7 +106,6 @@ jobs:
             queue_test brotli.shs
             queue_test snappy.shs
             queue_test expect.shs
-            queue_test wasm.shs
             queue_test rust.shs
             queue_test crypto.shs
             queue_test wire-macro.shs

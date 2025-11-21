@@ -17,7 +17,7 @@ target_link_libraries(shards-module-physics
 )
 
 target_include_directories(shards-module-physics
-  PUBLIC ${SHARDS_DIR}/deps/JoltPhysics/TestFramework
-  PUBLIC ${SHARDS_DIR}/deps/JoltPhysics/Samples
-  PRIVATE ${SHARDS_DIR}/deps/JoltPhysics/Samples
+  PUBLIC ${JoltPhysics_SOURCE_DIR}/TestFramework
+  PUBLIC ${JoltPhysics_SOURCE_DIR}/Samples
+  PRIVATE ${JoltPhysics_SOURCE_DIR}/Samples
 )

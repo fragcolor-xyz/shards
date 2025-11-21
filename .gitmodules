@@ -1,77 +1,27 @@
-[submodule "deps/stb"]
-	path = deps/stb
-	url = https://github.com/shards-lang/stb.git
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/shards-lang/json.git
-[submodule "kcp"]
-	path = deps/kcp
-	url = https://github.com/shards-lang/kcp.git
 [submodule "magic_enum"]
 	path = deps/magic_enum
 	url = https://github.com/shards-lang/magic_enum.git
-[submodule "cpp-taskflow"]
-	path = deps/cpp-taskflow
-	url = https://github.com/shards-lang/cpp-taskflow.git
 [submodule "deps/nameof"]
 	path = deps/nameof
 	url = https://github.com/shards-lang/nameof.git
-[submodule "deps/pdqsort"]
-	path = deps/pdqsort
-	url = https://github.com/shards-lang/pdqsort.git
-[submodule "deps/SDL3"]
-	path = deps/SDL3
-	url = https://github.com/shards-lang/SDL-org.git
 [submodule "deps/filesystem"]
 	path = deps/filesystem
 	url = https://github.com/shards-lang/filesystem.git
 [submodule "deps/libbacktrace"]
 	path = deps/libbacktrace
 	url = https://github.com/shards-lang/libbacktrace.git
-[submodule "deps/wasm3"]
-	path = deps/wasm3
-	url = https://github.com/shards-lang/wasm3.git
-[submodule "deps/xxHash"]
-	path = deps/xxHash
-	url = https://github.com/shards-lang/xxHash.git
 [submodule "deps/Catch2"]
 	path = deps/Catch2
 	url = https://github.com/shards-lang/Catch2.git
-[submodule "deps/linalg"]
-	path = deps/linalg
-	url = https://github.com/shards-lang/linalg.git
-[submodule "deps/tinygltf"]
-	path = deps/tinygltf
-	url = https://github.com/shards-lang/tinygltf.git
-[submodule "deps/miniaudio"]
-	path = deps/miniaudio
-	url = https://github.com/shards-lang/miniaudio.git
-[submodule "deps/utf8.h"]
-	path = deps/utf8.h
-	url = https://github.com/shards-lang/utf8.h.git
+[submodule "deps/xxHash"]
+	path = deps/xxHash
+	url = https://github.com/shards-lang/xxHash.git
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/shards-lang/spdlog.git
-[submodule "deps/kissfft"]
-	path = deps/kissfft
-	url = https://github.com/shards-lang/kissfft.git
-[submodule "deps/brotli"]
-	path = deps/brotli
-	url = https://github.com/shards-lang/brotli.git
-	branch = shards-1.1.0
-[submodule "deps/snappy"]
-	path = deps/snappy
-	url = https://github.com/shards-lang/snappy.git
-	branch = shards-1.2.2
-[submodule "deps/tracy"]
-	path = deps/tracy
-	url = https://github.com/shards-lang/tracy.git
-[submodule "deps/entt"]
-	path = deps/entt
-	url = https://github.com/shards-lang/entt.git
-[submodule "deps/draco"]
-	path = deps/draco
-	url = https://github.com/shards-lang/draco.git
 [submodule "shards/gfx/wgpu-native"]
 	path = shards/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
@@ -95,21 +45,3 @@
 [submodule "deps/sqlite/sqlite-vec"]
 	path = deps/sqlite/sqlite-vec
 	url = https://github.com/shards-lang/sqlite-vec.git
-[submodule "deps/JoltPhysics"]
-	path = deps/JoltPhysics
-	url = https://github.com/shards-lang/JoltPhysics.git
-[submodule "deps/crdt-lite"]
-	path = deps/crdt-lite
-	url = https://github.com/sinkingsugar/crdt-lite.git
-[submodule "deps/llama.cpp"]
-	path = deps/llama.cpp
-	url = https://github.com/shards-lang/llama.cpp.git
-[submodule "deps/mozjpeg"]
-	path = deps/mozjpeg
-	url = https://github.com/shards-lang/mozjpeg.git
-[submodule "deps/whisper.cpp"]
-	path = deps/whisper.cpp
-	url = https://github.com/ggml-org/whisper.cpp.git
-[submodule "deps/opus"]
-	path = deps/opus
-	url = https://github.com/xiph/opus.git

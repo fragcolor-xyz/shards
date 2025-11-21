@@ -7,14 +7,23 @@ set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH OFF)
 
 include(SHExternalProject)
 include(FetchContent)
+include(CPM)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
 
-add_subdirectory(kcp)
-add_library(kcp-wrapper INTERFACE)
-target_link_libraries(kcp-wrapper INTERFACE kcp)
-target_include_directories(kcp-wrapper INTERFACE kcp)
+# kcp - only needed when network module is enabled
+is_module_enabled(NETWORK_ENABLED network)
+if(NETWORK_ENABLED)
+  CPMAddPackage(
+    NAME kcp
+    GITHUB_REPOSITORY shards-lang/kcp
+    GIT_TAG 8d6374afed86c212e62a82cfc44234a54bf8b8f6
+  )
+  add_library(kcp-wrapper INTERFACE)
+  target_link_libraries(kcp-wrapper INTERFACE kcp)
+  target_include_directories(kcp-wrapper INTERFACE ${kcp_SOURCE_DIR})
+endif()
 
 add_subdirectory(magic_enum)
 add_subdirectory(nameof)
@@ -37,14 +46,22 @@ endif()
 # This triggers warnings+errors on valgrind build
 option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
 
-# Required by Jolt to build with WASM SIMD
-option(USE_WASM_SIMD "Enable WASM SIMD" ON)
+# JoltPhysics - only needed when physics module is enabled
+is_module_enabled(PHYSICS_ENABLED physics)
+if(PHYSICS_ENABLED)
+  # Required by Jolt to build with WASM SIMD
+  option(USE_WASM_SIMD "Enable WASM SIMD" ON)
 
-if(EMSCRIPTEN)
-  add_compile_definitions(JPH_NO_FORCE_INLINE)
-  add_subdirectory(JoltPhysics/Build)
-else()
-  add_subdirectory(JoltPhysics/Build)
+  if(EMSCRIPTEN)
+    add_compile_definitions(JPH_NO_FORCE_INLINE)
+  endif()
+
+  CPMAddPackage(
+    NAME JoltPhysics
+    GITHUB_REPOSITORY shards-lang/JoltPhysics
+    GIT_TAG 018df332c9dbc7e2fff9502799e77c2e2494809d
+    SOURCE_SUBDIR Build
+  )
 endif()
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
@@ -155,100 +172,241 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
-  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+# SDL3 - download for all platforms, but only build for non-emscripten/non-watchOS
+# Emscripten needs SDL3 headers for structures and enums even though it doesn't use the library
+if(NOT SHARDS_NO_SDL)
+  if(EMSCRIPTEN OR WATCHOS)
+    # Download headers only for emscripten and watchOS
+    CPMAddPackage(
+      NAME SDL3
+      GITHUB_REPOSITORY shards-lang/SDL-org
+      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      DOWNLOAD_ONLY YES
+    )
+    # Create interface library for headers
+    add_library(SDL3-headers INTERFACE)
+    target_include_directories(SDL3-headers INTERFACE ${SDL3_SOURCE_DIR}/include)
+  else()
+    # Build SDL3 for other platforms
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
 
-  if(LINUX)
-    # disable pipewire as it has some build issues with GCC 15
-    set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
-    set(SDL_X11 ON CACHE BOOL "" FORCE)
-    set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
-    set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+    if(LINUX)
+      # disable pipewire as it has some build issues with GCC 15
+      set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
+      set(SDL_X11 ON CACHE BOOL "" FORCE)
+      set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
+      set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+    endif()
+
+    CPMAddPackage(
+      NAME SDL3
+      GITHUB_REPOSITORY shards-lang/SDL-org
+      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+    )
   endif()
-
-  add_subdirectory(SDL3)
 endif()
 
-sh_add_external_project(
-  NAME wasm3_a
-  TARGETS m3
-  LIB_RELATIVE_DIRS source/
-  CMAKE_ARGS -DBUILD_NATIVE=0 -DLIBUV_BUILD_SHARED=OFF
-  RELATIVE_INCLUDE_PATHS source
-  REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/wasm3)
+# snappy - only needed when snappy module is enabled
+is_module_enabled(SNAPPY_ENABLED snappy)
+if(SNAPPY_ENABLED)
+  CPMAddPackage(
+    NAME snappy
+    GITHUB_REPOSITORY shards-lang/snappy
+    GIT_TAG a4476e4764ed3c254cf52a9e23ae159bc9a43a7c
+    OPTIONS
+      "SNAPPY_BUILD_TESTS OFF"
+      "SNAPPY_BUILD_BENCHMARKS OFF"
+  )
+endif()
 
-set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(SNAPPY_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(snappy)
-
-set(BROTLI_DISABLE_TESTS ON)
-add_subdirectory(brotli)
+# brotli - only needed when brotli module is enabled
+is_module_enabled(BROTLI_ENABLED brotli)
+if(BROTLI_ENABLED)
+  CPMAddPackage(
+    NAME brotli
+    GITHUB_REPOSITORY shards-lang/brotli
+    GIT_TAG ed738e842d2fbdf2d6459e39267a633c4a9b2f5d
+    OPTIONS
+      "BROTLI_DISABLE_TESTS ON"
+  )
+endif()
 
 add_subdirectory(Catch2)
 
-sh_add_external_project(
-  NAME kissfft_a
-  TARGETS kissfft
-  LIB_SUFFIX -float
-  CMAKE_ARGS -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
-  RELATIVE_INCLUDE_PATHS .
-  REPO_ARGS URL ${SHARDS_DIR}/deps/kissfft)
+# kissfft and opus - only needed when audio module is enabled
+is_module_enabled(AUDIO_ENABLED audio)
+if(AUDIO_ENABLED)
+  # kissfft configuration
+  set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
+  set(KISSFFT_STATIC ON CACHE BOOL "" FORCE)
+  set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
+  set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
 
-add_library(tinygltf INTERFACE)
-target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+  CPMAddPackage(
+    NAME kissfft
+    GITHUB_REPOSITORY shards-lang/kissfft
+    GIT_TAG 8f47a67f595a6641c566087bf5277034be64f24d
+  )
 
-# Draco doesn't expose include paths directly, add them here using a wrapper
-set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
-add_subdirectory(draco)
-add_library(draco-wrapper INTERFACE)
-target_link_libraries(draco-wrapper INTERFACE draco::draco)
-target_include_directories(draco-wrapper INTERFACE draco/src)
-target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+  # opus configuration
+  set(OPUS_CUSTOM_MODES ON CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_FRAMEWORK OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(OPUS_ENABLE_FLOAT_API ON CACHE BOOL "" FORCE)
+
+  CPMAddPackage(
+    NAME opus
+    GITHUB_REPOSITORY xiph/opus
+    GIT_TAG 08bcc6e46227fca01aa3de3f3512f8b692d8d36b
+  )
+endif()
+
+if(NOT SHARDS_NO_SDL)
+  # tinygltf is needed by gfx module pch.cpp
+  CPMAddPackage(
+    NAME tinygltf
+    GITHUB_REPOSITORY shards-lang/tinygltf
+    GIT_TAG 967c98dd90406cb9d25df0d95909deae7771e997
+    DOWNLOAD_ONLY YES
+  )
+  add_library(tinygltf INTERFACE)
+  target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
+
+  # Draco - build for all platforms including emscripten
+  set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
+  CPMAddPackage(
+    NAME draco
+    GITHUB_REPOSITORY shards-lang/draco
+    GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
+  )
+  add_library(draco-wrapper INTERFACE)
+  target_link_libraries(draco-wrapper INTERFACE draco::draco)
+  target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
+  target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+endif()
 
 set(TF_BUILD_TESTS OFF CACHE BOOL "")
 set(TF_BUILD_EXAMPLES OFF CACHE BOOL "")
-add_subdirectory(cpp-taskflow)
+CPMAddPackage(
+  NAME cpp-taskflow
+  GITHUB_REPOSITORY shards-lang/cpp-taskflow
+  GIT_TAG e6a834c8bf4015cd62c71e829e48d715a60bdb7d
+)
 
 add_library(xxHash INTERFACE)
 target_include_directories(xxHash INTERFACE xxHash)
 
+CPMAddPackage(
+  NAME linalg
+  GITHUB_REPOSITORY shards-lang/linalg
+  GIT_TAG 4a73b3ecfadcb64e5f9bc59c8f4f14a32d953e0a
+  DOWNLOAD_ONLY YES
+)
 add_library(linalg INTERFACE)
-target_include_directories(linalg INTERFACE linalg ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(linalg INTERFACE ${linalg_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
-add_library(miniaudio INTERFACE)
-target_include_directories(miniaudio INTERFACE miniaudio)
+# miniaudio - only needed when audio module is enabled
+is_module_enabled(AUDIO_ENABLED audio)
+if(AUDIO_ENABLED)
+  CPMAddPackage(
+    NAME miniaudio
+    GITHUB_REPOSITORY shards-lang/miniaudio
+    GIT_TAG 67cbfbd11d09769584f311d73becb54d3e91156b
+    DOWNLOAD_ONLY YES
+  )
+  add_library(miniaudio INTERFACE)
+  target_include_directories(miniaudio INTERFACE ${miniaudio_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
+endif()
 
+CPMAddPackage(
+  NAME stb
+  GITHUB_REPOSITORY shards-lang/stb
+  GIT_TAG 8ad9b97ecb537c0aedcce58af47d40bf3cdb3ede
+  DOWNLOAD_ONLY YES
+)
 add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE stb)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+CPMAddPackage(
+  NAME utf8.h
+  GITHUB_REPOSITORY shards-lang/utf8.h
+  GIT_TAG ee5a7d4beb7755da13e4d4ec3eccfb65a0530456
+  DOWNLOAD_ONLY YES
+)
 add_library(utf8.h INTERFACE)
-target_include_directories(utf8.h INTERFACE utf8.h)
+target_include_directories(utf8.h INTERFACE ${utf8.h_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
+CPMAddPackage(
+  NAME pdqsort
+  GITHUB_REPOSITORY shards-lang/pdqsort
+  GIT_TAG 978bc36a9bd4143a54b2551cfd9ce8a6afd6d04c
+  DOWNLOAD_ONLY YES
+)
 add_library(pdqsort INTERFACE)
-target_include_directories(pdqsort INTERFACE pdqsort)
+target_include_directories(pdqsort INTERFACE ${pdqsort_SOURCE_DIR})
+
+CPMAddPackage(
+  NAME entt
+  GITHUB_REPOSITORY shards-lang/entt
+  GIT_TAG 4a2d1a8541228a90e02a873dba6a980506c42c03
+  DOWNLOAD_ONLY YES
+)
+
+# Create symlinks for CPM-downloaded libraries that need directory-prefixed includes
+# This allows includes like <linalg/linalg.h> to work with CPM's -src suffix naming
+set(CPM_SYMLINK_LIBS linalg utf8.h entt)
+if(NOT SHARDS_NO_SDL)
+  list(APPEND CPM_SYMLINK_LIBS tinygltf)
+endif()
+if(AUDIO_ENABLED)
+  list(APPEND CPM_SYMLINK_LIBS miniaudio)
+endif()
+foreach(LIB ${CPM_SYMLINK_LIBS})
+  set(SYMLINK_TARGET ${CMAKE_BINARY_DIR}/_deps/${LIB})
+  if(NOT EXISTS ${SYMLINK_TARGET})
+    # Use CPM's SOURCE_DIR variable which works with both local and global cache
+    file(CREATE_LINK ${${LIB}_SOURCE_DIR} ${SYMLINK_TARGET} SYMBOLIC)
+  endif()
+endforeach()
 
 add_library(entt INTERFACE)
-target_include_directories(entt INTERFACE entt/src)
+target_include_directories(entt INTERFACE ${entt_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/_deps)
 
 # Tracy profiler, default off
 option(TRACY_ENABLE "Enable profiling" OFF)
 
-# Enable fibers support by default
-option(TRACY_FIBERS "Enable fibers support" ON)
-option(TRACY_CALLSTACK_SIZE "Tracy callstack size" 8)
+if(TRACY_ENABLE)
+  # Enable fibers support by default
+  option(TRACY_FIBERS "Enable fibers support" ON)
+  option(TRACY_CALLSTACK_SIZE "Tracy callstack size" 8)
 
-# These settings are required to make tracy from C++ work together with rust's tracy-client
-set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
-set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
-add_subdirectory(tracy)
+  # These settings are required to make tracy from C++ work together with rust's tracy-client
+  set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
+  set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
 
-# Add the wrapper include path that contains tracy/Wrapper.hpp that defines the correct TRACY_CALLSTACK based on the stack size configuration
-target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
-target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
+  CPMAddPackage(
+    NAME tracy
+    GITHUB_REPOSITORY shards-lang/tracy
+    GIT_TAG 82143d48a827e8b25c79505570e290bd3be7191a
+  )
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_LLAMA)
+  # Add the wrapper include path that contains tracy/Wrapper.hpp that defines the correct TRACY_CALLSTACK based on the stack size configuration
+  target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
+  target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
+else()
+  # Create stub TracyClient library when profiling is disabled
+  add_library(TracyClient INTERFACE)
+  add_library(Tracy::TracyClient ALIAS TracyClient)
+  target_include_directories(TracyClient INTERFACE ${CMAKE_CURRENT_LIST_DIR}/tracy_stub)
+endif()
+
+# Check if llm module is enabled (provides llama.cpp and whisper.cpp functionality)
+is_module_enabled(LLM_ENABLED llm)
+if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
+  # llama.cpp configuration
   # TODO vulkan build support
   if(WIN32 OR LINUX)
     # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
@@ -278,7 +436,21 @@ if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_LLAMA)
     set(MATH_LIBRARY "" CACHE FILEPATH "" FORCE)
   endif()
 
-  add_subdirectory(llama.cpp)
+  CPMAddPackage(
+    NAME llama.cpp
+    GITHUB_REPOSITORY shards-lang/llama.cpp
+    GIT_TAG 226f295f4dd92ad714533adc5497afed5fa88bb8
+  )
+
+  # whisper.cpp configuration
+  set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+  CPMAddPackage(
+    NAME whisper.cpp
+    GITHUB_REPOSITORY ggml-org/whisper.cpp
+    GIT_TAG 322c2adb753a9506f0becee134a7f75e2a6b5687
+  )
 endif()
 
 if(WIN32)
@@ -293,22 +465,39 @@ if(EMSCRIPTEN)
   list(APPEND MOZ_OPTIONS -DREQUIRE_SIMD=OFF -DWITH_SIMD=OFF)
 endif()
 
-sh_add_external_project(
-  NAME mozjpeg_a
-  LIB_NAMES ${JPEG_LIB_NAMES}
-  TARGETS jpeg-static
-  RELATIVE_INCLUDE_PATHS .
-  RELATIVE_BINARY_INCLUDE_PATHS .
-  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
-  REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/mozjpeg)
+# mozjpeg - only needed when imaging module is enabled
+# Note: mozjpeg doesn't support add_subdirectory, so we use CPM to download
+# and sh_add_external_project to build with ExternalProject_Add
+is_module_enabled(IMAGING_ENABLED imaging)
+if(IMAGING_ENABLED)
+  # Download mozjpeg using CPM
+  CPMAddPackage(
+    NAME mozjpeg
+    GITHUB_REPOSITORY shards-lang/mozjpeg
+    GIT_TAG 9b8d11f05e3ae4541ce5251f0e5c20c4cb8733b7
+    DOWNLOAD_ONLY YES
+  )
 
-set(OPUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(OPUS_ENABLE_FLOAT_API ON CACHE BOOL "" FORCE)
-set(OPUS_CUSTOM_MODES ON CACHE BOOL "" FORCE)
-set(OPUS_BUILD_FRAMEWORK OFF CACHE BOOL "" FORCE)
-set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
-set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-add_subdirectory(opus)
+  # Build using ExternalProject_Add via sh_add_external_project
+  sh_add_external_project(
+    NAME mozjpeg_a
+    LIB_NAMES ${JPEG_LIB_NAMES}
+    TARGETS jpeg-static
+    RELATIVE_INCLUDE_PATHS .
+    RELATIVE_BINARY_INCLUDE_PATHS .
+    CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
+    REPO_ARGS URL ${mozjpeg_SOURCE_DIR})
+endif()
 
-add_library(crdt_lite INTERFACE)
-target_include_directories(crdt_lite INTERFACE crdt-lite)
+# crdt-lite - only needed when crdts module is enabled
+is_module_enabled(CRDTS_ENABLED crdts)
+if(CRDTS_ENABLED)
+  CPMAddPackage(
+    NAME crdt-lite
+    GITHUB_REPOSITORY sinkingsugar/crdt-lite
+    GIT_TAG 1182f85df7a8b371d174a6b3875d54ab496b4c28
+    DOWNLOAD_ONLY YES
+  )
+  add_library(crdt_lite INTERFACE)
+  target_include_directories(crdt_lite INTERFACE ${crdt-lite_SOURCE_DIR})
+endif()

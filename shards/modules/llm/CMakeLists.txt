@@ -1,25 +1,30 @@
-if(NOT EMSCRIPTEN AND NOT SHARDS_NO_LLAMA)
+# LLM module requires llama.cpp and whisper.cpp, only available on desktop platforms
+is_module_enabled(LLM_ENABLED llm)
+if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   set(SOURCES
     embedd.cpp
     chat.cpp
     sh_whisper.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/common.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/sampling.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common/log.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/clip.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/mtmd.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/tools/mtmd/mtmd-audio.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/whisper.cpp/src/whisper.cpp
+    ${llama.cpp_SOURCE_DIR}/common/common.cpp
+    ${llama.cpp_SOURCE_DIR}/common/sampling.cpp
+    ${llama.cpp_SOURCE_DIR}/common/log.cpp
+    ${llama.cpp_SOURCE_DIR}/tools/mtmd/clip.cpp
+    ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd.cpp
+    ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-audio.cpp
+    ${whisper.cpp_SOURCE_DIR}/src/whisper.cpp
   )
 
   add_shards_module(llm SOURCES ${SOURCES}
     REGISTER_SHARDS llm llm_chat whisper)
 
-  target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/whisper.cpp/include)
+  target_include_directories(shards-module-llm PRIVATE ${whisper.cpp_SOURCE_DIR}/include)
   target_link_libraries(shards-module-llm llama)
   target_compile_definitions(shards-module-llm PRIVATE WHISPER_VERSION="shards-whisper-0.1")
-  
-  # Make sure clip.h is in the include path
-  target_include_directories(shards-module-llm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/examples/llava ${CMAKE_CURRENT_SOURCE_DIR}/../../../deps/llama.cpp/common)
+
+  # Make sure clip.h and llama headers are in the include path
+  target_include_directories(shards-module-llm PRIVATE
+    ${llama.cpp_SOURCE_DIR}
+    ${llama.cpp_SOURCE_DIR}/examples/llava
+    ${llama.cpp_SOURCE_DIR}/common)
   target_compile_definitions(shards-module-llm PRIVATE SKIP_STB_IMAGE_IMPLEMENTATION LLAVA_LOG_OFF)
 endif()
