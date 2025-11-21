@@ -156,23 +156,36 @@ else()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
 endif()
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
-  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+# SDL3 - download for all platforms, but only build for non-emscripten/non-watchOS
+# Emscripten needs SDL3 headers for structures and enums even though it doesn't use the library
+if(NOT SHARDS_NO_SDL)
+  if(EMSCRIPTEN OR WATCHOS)
+    # Download headers only for emscripten and watchOS
+    CPMAddPackage(
+      NAME SDL3
+      GITHUB_REPOSITORY shards-lang/SDL-org
+      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      DOWNLOAD_ONLY YES
+    )
+  else()
+    # Build SDL3 for other platforms
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
 
-  if(LINUX)
-    # disable pipewire as it has some build issues with GCC 15
-    set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
-    set(SDL_X11 ON CACHE BOOL "" FORCE)
-    set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
-    set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+    if(LINUX)
+      # disable pipewire as it has some build issues with GCC 15
+      set(SDL_PIPEWIRE OFF CACHE BOOL "" FORCE)
+      set(SDL_X11 ON CACHE BOOL "" FORCE)
+      set(SDL_WAYLAND ON CACHE BOOL "" FORCE)
+      set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+    endif()
+
+    CPMAddPackage(
+      NAME SDL3
+      GITHUB_REPOSITORY shards-lang/SDL-org
+      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+    )
   endif()
-
-  CPMAddPackage(
-    NAME SDL3
-    GITHUB_REPOSITORY shards-lang/SDL-org
-    GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
-  )
 endif()
 
 sh_add_external_project(

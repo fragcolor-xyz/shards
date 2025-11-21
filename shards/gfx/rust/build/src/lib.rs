@@ -55,23 +55,19 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
   if let Some(ref cpm_deps) = cpm_deps_path {
     builder = builder
       .clang_arg(format!("-I{}", cpm_deps))
-      .clang_arg(format!("-I{}/linalg-src", cpm_deps));
+      .clang_arg(format!("-I{}/linalg-src", cpm_deps))
+      .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps));
 
-    // SDL3 is not available for wasm32 targets
+    // SDL3 build directory only exists for non-wasm32 targets (where SDL3 is actually built)
     if target_arch != "wasm32" {
       builder = builder
-        .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps))
         .clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
     }
   } else {
     // Fall back to old submodule locations
     builder = builder
-      .clang_arg(format!("-I{}/linalg", deps_path));
-
-    if target_arch != "wasm32" {
-      builder = builder
-        .clang_arg(format!("-I{}/SDL3/include", deps_path));
-    }
+      .clang_arg(format!("-I{}/linalg", deps_path))
+      .clang_arg(format!("-I{}/SDL3/include", deps_path));
   }
 
   // Common dependencies (always in deps/)
