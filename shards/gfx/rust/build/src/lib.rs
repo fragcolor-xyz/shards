@@ -54,7 +54,8 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     builder = builder
       .clang_arg(format!("-I{}", cpm_deps))
       .clang_arg(format!("-I{}/linalg-src", cpm_deps))
-      .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps));
+      .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps))
+      .clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
   } else {
     // Fall back to old submodule locations
     builder = builder
