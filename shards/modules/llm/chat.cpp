@@ -1,7 +1,7 @@
 #include "shared.hpp"
 
-#include "../../../deps/llama.cpp/tools/mtmd/mtmd.h"
-#include "../../../deps/llama.cpp/common/sampling.h"
+#include "tools/mtmd/mtmd.h"
+#include "sampling.h"
 
 #include <string>
 #include <vector>

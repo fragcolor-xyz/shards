@@ -7,6 +7,7 @@ set(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH OFF)
 
 include(SHExternalProject)
 include(FetchContent)
+include(CPM)
 
 add_subdirectory(filesystem)
 add_subdirectory(json)
@@ -167,7 +168,11 @@ if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
     set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
   endif()
 
-  add_subdirectory(SDL3)
+  CPMAddPackage(
+    NAME SDL3
+    GITHUB_REPOSITORY shards-lang/SDL-org
+    GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+  )
 endif()
 
 sh_add_external_project(
@@ -196,59 +201,150 @@ sh_add_external_project(
   RELATIVE_INCLUDE_PATHS .
   REPO_ARGS URL ${SHARDS_DIR}/deps/kissfft)
 
-add_library(tinygltf INTERFACE)
-target_include_directories(tinygltf INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_SDL)
+  CPMAddPackage(
+    NAME tinygltf
+    GITHUB_REPOSITORY shards-lang/tinygltf
+    GIT_TAG 967c98dd90406cb9d25df0d95909deae7771e997
+    DOWNLOAD_ONLY YES
+  )
+  add_library(tinygltf INTERFACE)
+  target_include_directories(tinygltf INTERFACE ${tinygltf_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
-# Draco doesn't expose include paths directly, add them here using a wrapper
-set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
-add_subdirectory(draco)
-add_library(draco-wrapper INTERFACE)
-target_link_libraries(draco-wrapper INTERFACE draco::draco)
-target_include_directories(draco-wrapper INTERFACE draco/src)
-target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+  # Draco doesn't expose include paths directly, add them here using a wrapper
+  set(DRACO_JS_GLUE OFF CACHE BOOL "" FORCE)
+  CPMAddPackage(
+    NAME draco
+    GITHUB_REPOSITORY shards-lang/draco
+    GIT_TAG b698ce9b18032a073de66d8b96c91fbde1f8a38b
+  )
+  add_library(draco-wrapper INTERFACE)
+  target_link_libraries(draco-wrapper INTERFACE draco::draco)
+  target_include_directories(draco-wrapper INTERFACE ${draco_SOURCE_DIR}/src)
+  target_include_directories(draco-wrapper INTERFACE ${CMAKE_BINARY_DIR})
+endif()
 
 set(TF_BUILD_TESTS OFF CACHE BOOL "")
 set(TF_BUILD_EXAMPLES OFF CACHE BOOL "")
-add_subdirectory(cpp-taskflow)
+CPMAddPackage(
+  NAME cpp-taskflow
+  GITHUB_REPOSITORY shards-lang/cpp-taskflow
+  GIT_TAG e6a834c8bf4015cd62c71e829e48d715a60bdb7d
+)
 
+CPMAddPackage(
+  NAME xxHash
+  GITHUB_REPOSITORY Cyan4973/xxHash
+  GIT_TAG 136cc1f8fe4d5ea62a7c16c8424d4fa5158f6d68
+  DOWNLOAD_ONLY YES
+)
 add_library(xxHash INTERFACE)
-target_include_directories(xxHash INTERFACE xxHash)
+target_include_directories(xxHash INTERFACE ${xxHash_SOURCE_DIR})
 
+CPMAddPackage(
+  NAME linalg
+  GITHUB_REPOSITORY shards-lang/linalg
+  GIT_TAG 4a73b3ecfadcb64e5f9bc59c8f4f14a32d953e0a
+  DOWNLOAD_ONLY YES
+)
 add_library(linalg INTERFACE)
-target_include_directories(linalg INTERFACE linalg ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(linalg INTERFACE ${linalg_SOURCE_DIR} ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
-add_library(miniaudio INTERFACE)
-target_include_directories(miniaudio INTERFACE miniaudio)
+# miniaudio - only needed when audio module is enabled
+is_module_enabled(AUDIO_ENABLED audio)
+if(AUDIO_ENABLED)
+  CPMAddPackage(
+    NAME miniaudio
+    GITHUB_REPOSITORY shards-lang/miniaudio
+    GIT_TAG 67cbfbd11d09769584f311d73becb54d3e91156b
+    DOWNLOAD_ONLY YES
+  )
+  add_library(miniaudio INTERFACE)
+  target_include_directories(miniaudio INTERFACE ${miniaudio_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
+endif()
 
+CPMAddPackage(
+  NAME stb
+  GITHUB_REPOSITORY shards-lang/stb
+  GIT_TAG 8ad9b97ecb537c0aedcce58af47d40bf3cdb3ede
+  DOWNLOAD_ONLY YES
+)
 add_library(stb INTERFACE)
-target_include_directories(stb INTERFACE stb)
+target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 
+CPMAddPackage(
+  NAME utf8.h
+  GITHUB_REPOSITORY shards-lang/utf8.h
+  GIT_TAG ee5a7d4beb7755da13e4d4ec3eccfb65a0530456
+  DOWNLOAD_ONLY YES
+)
 add_library(utf8.h INTERFACE)
-target_include_directories(utf8.h INTERFACE utf8.h)
+target_include_directories(utf8.h INTERFACE ${utf8.h_SOURCE_DIR} ${CMAKE_BINARY_DIR}/_deps)
 
+CPMAddPackage(
+  NAME pdqsort
+  GITHUB_REPOSITORY shards-lang/pdqsort
+  GIT_TAG 978bc36a9bd4143a54b2551cfd9ce8a6afd6d04c
+  DOWNLOAD_ONLY YES
+)
 add_library(pdqsort INTERFACE)
-target_include_directories(pdqsort INTERFACE pdqsort)
+target_include_directories(pdqsort INTERFACE ${pdqsort_SOURCE_DIR})
+
+CPMAddPackage(
+  NAME entt
+  GITHUB_REPOSITORY shards-lang/entt
+  GIT_TAG 4a2d1a8541228a90e02a873dba6a980506c42c03
+  DOWNLOAD_ONLY YES
+)
+
+# Create symlinks for CPM-downloaded libraries that need directory-prefixed includes
+# This allows includes like <linalg/linalg.h> to work with CPM's -src suffix naming
+set(CPM_SYMLINK_LIBS linalg tinygltf utf8.h entt)
+if(AUDIO_ENABLED)
+  list(APPEND CPM_SYMLINK_LIBS miniaudio)
+endif()
+foreach(LIB ${CPM_SYMLINK_LIBS})
+  set(SYMLINK_TARGET ${CMAKE_BINARY_DIR}/_deps/${LIB})
+  if(NOT EXISTS ${SYMLINK_TARGET})
+    file(CREATE_LINK ${CMAKE_BINARY_DIR}/_deps/${LIB}-src ${SYMLINK_TARGET} SYMBOLIC)
+  endif()
+endforeach()
 
 add_library(entt INTERFACE)
-target_include_directories(entt INTERFACE entt/src)
+target_include_directories(entt INTERFACE ${entt_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/_deps)
 
 # Tracy profiler, default off
 option(TRACY_ENABLE "Enable profiling" OFF)
 
-# Enable fibers support by default
-option(TRACY_FIBERS "Enable fibers support" ON)
-option(TRACY_CALLSTACK_SIZE "Tracy callstack size" 8)
+if(TRACY_ENABLE)
+  # Enable fibers support by default
+  option(TRACY_FIBERS "Enable fibers support" ON)
+  option(TRACY_CALLSTACK_SIZE "Tracy callstack size" 8)
 
-# These settings are required to make tracy from C++ work together with rust's tracy-client
-set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
-set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
-add_subdirectory(tracy)
+  # These settings are required to make tracy from C++ work together with rust's tracy-client
+  set(TRACY_MANUAL_LIFETIME ON CACHE BOOL "" FORCE)
+  set(TRACY_DELAYED_INIT ON CACHE BOOL "" FORCE)
 
-# Add the wrapper include path that contains tracy/Wrapper.hpp that defines the correct TRACY_CALLSTACK based on the stack size configuration
-target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
-target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
+  CPMAddPackage(
+    NAME tracy
+    GITHUB_REPOSITORY shards-lang/tracy
+    GIT_TAG 82143d48a827e8b25c79505570e290bd3be7191a
+  )
 
-if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_LLAMA)
+  # Add the wrapper include path that contains tracy/Wrapper.hpp that defines the correct TRACY_CALLSTACK based on the stack size configuration
+  target_include_directories(TracyClient PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/tracy_wrapper>)
+  target_compile_definitions(TracyClient PUBLIC TRACY_CALLSTACK_SIZE=${TRACY_CALLSTACK_SIZE})
+else()
+  # Create stub TracyClient library when profiling is disabled
+  add_library(TracyClient INTERFACE)
+  add_library(Tracy::TracyClient ALIAS TracyClient)
+  target_include_directories(TracyClient INTERFACE ${CMAKE_CURRENT_LIST_DIR}/tracy_stub)
+endif()
+
+# Check if llm module is enabled (provides llama.cpp and whisper.cpp functionality)
+is_module_enabled(LLM_ENABLED llm)
+if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
+  # llama.cpp configuration
   # TODO vulkan build support
   if(WIN32 OR LINUX)
     # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
@@ -278,7 +374,21 @@ if(NOT EMSCRIPTEN AND NOT WATCHOS AND NOT SHARDS_NO_LLAMA)
     set(MATH_LIBRARY "" CACHE FILEPATH "" FORCE)
   endif()
 
-  add_subdirectory(llama.cpp)
+  CPMAddPackage(
+    NAME llama.cpp
+    GITHUB_REPOSITORY shards-lang/llama.cpp
+    GIT_TAG 226f295f4dd92ad714533adc5497afed5fa88bb8
+  )
+
+  # whisper.cpp configuration
+  set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+  CPMAddPackage(
+    NAME whisper.cpp
+    GITHUB_REPOSITORY ggml-org/whisper.cpp
+    GIT_TAG 322c2adb753a9506f0becee134a7f75e2a6b5687
+  )
 endif()
 
 if(WIN32)
@@ -310,5 +420,15 @@ set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
 set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
 add_subdirectory(opus)
 
-add_library(crdt_lite INTERFACE)
-target_include_directories(crdt_lite INTERFACE crdt-lite)
+# crdt-lite - only needed when crdts module is enabled
+is_module_enabled(CRDTS_ENABLED crdts)
+if(CRDTS_ENABLED)
+  CPMAddPackage(
+    NAME crdt-lite
+    GITHUB_REPOSITORY sinkingsugar/crdt-lite
+    GIT_TAG 1182f85df7a8b371d174a6b3875d54ab496b4c28
+    DOWNLOAD_ONLY YES
+  )
+  add_library(crdt_lite INTERFACE)
+  target_include_directories(crdt_lite INTERFACE ${crdt-lite_SOURCE_DIR})
+endif()
