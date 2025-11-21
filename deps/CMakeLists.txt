@@ -248,7 +248,7 @@ CPMAddPackage(
 CPMAddPackage(
   NAME xxHash
   GITHUB_REPOSITORY Cyan4973/xxHash
-  GIT_TAG 136cc1f8fe4d5ea62a7c16c8424d4fa5158f6d68
+  GIT_TAG 35b0373c697b5f160d3db26b1cbb45a0d5ba788c
   DOWNLOAD_ONLY YES
 )
 add_library(xxHash INTERFACE)
