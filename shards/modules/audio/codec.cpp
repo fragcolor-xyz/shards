@@ -6,8 +6,8 @@
 #include <shards/core/params.hpp>
 #include <shards/core/platform.hpp>
 #include <shards/log/log.hpp>
-#include <opus/include/opus.h>
-#include <opus/include/opus_multistream.h>
+#include <opus.h>
+#include <opus_multistream.h>
 #include <vector>
 #include <cstring>
 

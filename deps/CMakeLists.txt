@@ -12,10 +12,18 @@ include(CPM)
 add_subdirectory(filesystem)
 add_subdirectory(json)
 
-add_subdirectory(kcp)
-add_library(kcp-wrapper INTERFACE)
-target_link_libraries(kcp-wrapper INTERFACE kcp)
-target_include_directories(kcp-wrapper INTERFACE kcp)
+# kcp - only needed when network module is enabled
+is_module_enabled(NETWORK_ENABLED network)
+if(NETWORK_ENABLED)
+  CPMAddPackage(
+    NAME kcp
+    GITHUB_REPOSITORY shards-lang/kcp
+    GIT_TAG 8d6374afed86c212e62a82cfc44234a54bf8b8f6
+  )
+  add_library(kcp-wrapper INTERFACE)
+  target_link_libraries(kcp-wrapper INTERFACE kcp)
+  target_include_directories(kcp-wrapper INTERFACE ${kcp_SOURCE_DIR})
+endif()
 
 add_subdirectory(magic_enum)
 add_subdirectory(nameof)
@@ -38,14 +46,22 @@ endif()
 # This triggers warnings+errors on valgrind build
 option(ENABLE_ALL_WARNINGS "Enable all warnings" OFF)
 
-# Required by Jolt to build with WASM SIMD
-option(USE_WASM_SIMD "Enable WASM SIMD" ON)
+# JoltPhysics - only needed when physics module is enabled
+is_module_enabled(PHYSICS_ENABLED physics)
+if(PHYSICS_ENABLED)
+  # Required by Jolt to build with WASM SIMD
+  option(USE_WASM_SIMD "Enable WASM SIMD" ON)
 
-if(EMSCRIPTEN)
-  add_compile_definitions(JPH_NO_FORCE_INLINE)
-  add_subdirectory(JoltPhysics/Build)
-else()
-  add_subdirectory(JoltPhysics/Build)
+  if(EMSCRIPTEN)
+    add_compile_definitions(JPH_NO_FORCE_INLINE)
+  endif()
+
+  CPMAddPackage(
+    NAME JoltPhysics
+    GITHUB_REPOSITORY shards-lang/JoltPhysics
+    GIT_TAG 018df332c9dbc7e2fff9502799e77c2e2494809d
+    SOURCE_SUBDIR Build
+  )
 endif()
 
 if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
@@ -191,23 +207,62 @@ if(NOT SHARDS_NO_SDL)
   endif()
 endif()
 
-set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(SNAPPY_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(snappy)
+# snappy - only needed when snappy module is enabled
+is_module_enabled(SNAPPY_ENABLED snappy)
+if(SNAPPY_ENABLED)
+  CPMAddPackage(
+    NAME snappy
+    GITHUB_REPOSITORY shards-lang/snappy
+    GIT_TAG a4476e4764ed3c254cf52a9e23ae159bc9a43a7c
+    OPTIONS
+      "SNAPPY_BUILD_TESTS OFF"
+      "SNAPPY_BUILD_BENCHMARKS OFF"
+  )
+endif()
 
-set(BROTLI_DISABLE_TESTS ON)
-add_subdirectory(brotli)
+# brotli - only needed when brotli module is enabled
+is_module_enabled(BROTLI_ENABLED brotli)
+if(BROTLI_ENABLED)
+  CPMAddPackage(
+    NAME brotli
+    GITHUB_REPOSITORY shards-lang/brotli
+    GIT_TAG ed738e842d2fbdf2d6459e39267a633c4a9b2f5d
+    OPTIONS
+      "BROTLI_DISABLE_TESTS ON"
+  )
+endif()
 
 add_subdirectory(Catch2)
 
-sh_add_external_project(
-  NAME kissfft_a
-  TARGETS kissfft
-  LIB_SUFFIX -float
-  CMAKE_ARGS -DKISSFFT_PKGCONFIG=0 -DKISSFFT_STATIC=1 -DKISSFFT_TEST=0 -DKISSFFT_TOOLS=0
-  RELATIVE_INCLUDE_PATHS .
-  REPO_ARGS URL ${SHARDS_DIR}/deps/kissfft)
+# kissfft and opus - only needed when audio module is enabled
+is_module_enabled(AUDIO_ENABLED audio)
+if(AUDIO_ENABLED)
+  # kissfft configuration
+  set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
+  set(KISSFFT_STATIC ON CACHE BOOL "" FORCE)
+  set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
+  set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
+
+  CPMAddPackage(
+    NAME kissfft
+    GITHUB_REPOSITORY shards-lang/kissfft
+    GIT_TAG 8f47a67f595a6641c566087bf5277034be64f24d
+  )
+
+  # opus configuration
+  set(OPUS_CUSTOM_MODES ON CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_FRAMEWORK OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+  set(OPUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(OPUS_ENABLE_FLOAT_API ON CACHE BOOL "" FORCE)
+
+  CPMAddPackage(
+    NAME opus
+    GITHUB_REPOSITORY xiph/opus
+    GIT_TAG 08bcc6e46227fca01aa3de3f3512f8b692d8d36b
+  )
+endif()
 
 if(NOT SHARDS_NO_SDL)
   # tinygltf is needed by gfx module pch.cpp
@@ -406,22 +461,19 @@ if(EMSCRIPTEN)
   list(APPEND MOZ_OPTIONS -DREQUIRE_SIMD=OFF -DWITH_SIMD=OFF)
 endif()
 
-sh_add_external_project(
-  NAME mozjpeg_a
-  LIB_NAMES ${JPEG_LIB_NAMES}
-  TARGETS jpeg-static
-  RELATIVE_INCLUDE_PATHS .
-  RELATIVE_BINARY_INCLUDE_PATHS .
-  CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
-  REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/mozjpeg)
-
-set(OPUS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(OPUS_ENABLE_FLOAT_API ON CACHE BOOL "" FORCE)
-set(OPUS_CUSTOM_MODES ON CACHE BOOL "" FORCE)
-set(OPUS_BUILD_FRAMEWORK OFF CACHE BOOL "" FORCE)
-set(OPUS_BUILD_SHARED_LIBRARY OFF CACHE BOOL "" FORCE)
-set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-add_subdirectory(opus)
+# mozjpeg - only needed when imaging module is enabled
+# Note: mozjpeg doesn't support add_subdirectory, so we must use sh_add_external_project
+is_module_enabled(IMAGING_ENABLED imaging)
+if(IMAGING_ENABLED)
+  sh_add_external_project(
+    NAME mozjpeg_a
+    LIB_NAMES ${JPEG_LIB_NAMES}
+    TARGETS jpeg-static
+    RELATIVE_INCLUDE_PATHS .
+    RELATIVE_BINARY_INCLUDE_PATHS .
+    CMAKE_ARGS -DBUILD_SHARED_LIBS=OFF -DPNG_SUPPORTED=OFF ${MOZ_OPTIONS}
+    REPO_ARGS URL ${CMAKE_CURRENT_SOURCE_DIR}/mozjpeg)
+endif()
 
 # crdt-lite - only needed when crdts module is enabled
 is_module_enabled(CRDTS_ENABLED crdts)

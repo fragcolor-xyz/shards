@@ -1,9 +1,6 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/shards-lang/json.git
-[submodule "kcp"]
-	path = deps/kcp
-	url = https://github.com/shards-lang/kcp.git
 [submodule "magic_enum"]
 	path = deps/magic_enum
 	url = https://github.com/shards-lang/magic_enum.git
@@ -25,17 +22,6 @@
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/shards-lang/spdlog.git
-[submodule "deps/kissfft"]
-	path = deps/kissfft
-	url = https://github.com/shards-lang/kissfft.git
-[submodule "deps/brotli"]
-	path = deps/brotli
-	url = https://github.com/shards-lang/brotli.git
-	branch = shards-1.1.0
-[submodule "deps/snappy"]
-	path = deps/snappy
-	url = https://github.com/shards-lang/snappy.git
-	branch = shards-1.2.2
 [submodule "shards/gfx/wgpu-native"]
 	path = shards/gfx/rust/wgpu-native
 	url = https://github.com/shards-lang/wgpu-native.git
@@ -59,12 +45,6 @@
 [submodule "deps/sqlite/sqlite-vec"]
 	path = deps/sqlite/sqlite-vec
 	url = https://github.com/shards-lang/sqlite-vec.git
-[submodule "deps/JoltPhysics"]
-	path = deps/JoltPhysics
-	url = https://github.com/shards-lang/JoltPhysics.git
 [submodule "deps/mozjpeg"]
 	path = deps/mozjpeg
 	url = https://github.com/shards-lang/mozjpeg.git
-[submodule "deps/opus"]
-	path = deps/opus
-	url = https://github.com/xiph/opus.git
