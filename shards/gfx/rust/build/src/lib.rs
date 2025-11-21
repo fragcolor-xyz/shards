@@ -49,18 +49,29 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     .clang_arg(format!("-I{}/..", gfx_path))
     .clang_arg(format!("-I{}", deps_path));
 
+  let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+
   // Add CPM dependencies if available
   if let Some(ref cpm_deps) = cpm_deps_path {
     builder = builder
       .clang_arg(format!("-I{}", cpm_deps))
-      .clang_arg(format!("-I{}/linalg-src", cpm_deps))
-      .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps))
-      .clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
+      .clang_arg(format!("-I{}/linalg-src", cpm_deps));
+
+    // SDL3 is not available for wasm32 targets
+    if target_arch != "wasm32" {
+      builder = builder
+        .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps))
+        .clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
+    }
   } else {
     // Fall back to old submodule locations
     builder = builder
-      .clang_arg(format!("-I{}/linalg", deps_path))
-      .clang_arg(format!("-I{}/SDL3/include", deps_path));
+      .clang_arg(format!("-I{}/linalg", deps_path));
+
+    if target_arch != "wasm32" {
+      builder = builder
+        .clang_arg(format!("-I{}/SDL3/include", deps_path));
+    }
   }
 
   // Common dependencies (always in deps/)
@@ -73,8 +84,7 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
     .rust_target(bindgen::RustTarget::Nightly) // Required for thiscall on x86 windows
     .size_t_is_usize(true);
 
-  let target_env = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-  if target_env != "wasm32" {
+  if target_arch != "wasm32" {
     builder = builder.clang_arg(format!("-DWEBGPU_NATIVE=1"));
   }
 
