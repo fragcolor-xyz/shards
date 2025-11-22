@@ -853,6 +853,138 @@ fn process_take_seq(
   Ok((identifier, indices))
 }
 
+/// Shared helper to convert a parsed block rule into a Block struct.
+/// Used by both process_pipeline and process_pipe_value to avoid duplication.
+fn process_block(
+  inner_pair: Pair<Rule>,
+  env: &mut ReadEnv,
+  is_pipeline_context: bool,
+) -> Result<Block, ShardsError> {
+  let line_info = env.make_line_info_from_pair(&inner_pair);
+  let rule = inner_pair.as_rule();
+  let context_name = if is_pipeline_context {
+    "Pipeline"
+  } else {
+    "PipeValue"
+  };
+
+  let block = match rule {
+    Rule::EvalExpr => Block {
+      content: BlockContent::EvalExpr(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected an eval time expression in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Expr => Block {
+      content: BlockContent::Expr(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected an expression in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Shard => {
+      match process_function(inner_pair.clone(), env)? {
+        FunctionValue::Const(value) => Block {
+          content: BlockContent::Const(value),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Function(func) => Block {
+          content: BlockContent::Shard(func),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Program(program) => Block {
+          content: BlockContent::Program(program),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+      }
+    }
+    Rule::Func => match process_function(inner_pair.clone(), env)? {
+      FunctionValue::Const(value) => Block {
+        content: BlockContent::Const(value),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      FunctionValue::Function(func) => Block {
+        content: BlockContent::Func(func),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      FunctionValue::Program(program) => Block {
+        content: BlockContent::Program(program),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+    },
+    Rule::TakeTable => Block {
+      content: {
+        let pair_result = process_take_table(inner_pair, env)?;
+        BlockContent::TakeTable(pair_result.0, pair_result.1)
+      },
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::TakeSeq => Block {
+      content: {
+        let pair_result = process_take_seq(inner_pair, env)?;
+        BlockContent::TakeSeq(pair_result.0, pair_result.1)
+      },
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::ConstValue => Block {
+      content: BlockContent::Const(process_value(inner_pair, env)?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Enum => Block {
+      content: BlockContent::Const(process_value(inner_pair, env)?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Shards => Block {
+      content: BlockContent::Shards(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected a sequence in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    _ => {
+      return errr(
+        env,
+        &format!("Unexpected rule ({:?}) in {}", rule, context_name),
+        &inner_pair,
+      )
+    }
+  };
+
+  Ok(block)
+}
+
 fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
   if pair.as_rule() != Rule::Pipeline {
     return errr(
@@ -862,122 +994,11 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
     );
   }
 
-  let mut blocks = Vec::new();
+  let blocks = pair
+    .into_inner()
+    .map(|inner_pair| process_block(inner_pair, env, true))
+    .collect::<Result<Vec<_>, _>>()?;
 
-  for inner_pair in pair.into_inner() {
-    let line_info = env.make_line_info_from_pair(&inner_pair);
-    let rule = inner_pair.as_rule();
-    match rule {
-      Rule::EvalExpr => blocks.push(Block {
-        content: BlockContent::EvalExpr(process_sequence(
-          inner_pair.clone().into_inner().next().ok_or_else(|| {
-            err(
-              env,
-              "Expected an eval time expression, but found none.",
-              &inner_pair,
-            )
-          })?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Expr => blocks.push(Block {
-        content: BlockContent::Expr(process_sequence(
-          inner_pair
-            .clone()
-            .into_inner()
-            .next()
-            .ok_or_else(|| err(env, "Expected an expression, but found none.", &inner_pair))?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Shard => {
-        match process_function(inner_pair, env)? {
-          FunctionValue::Const(value) => blocks.push(Block {
-            content: BlockContent::Const(value),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-          FunctionValue::Function(func) => blocks.push(Block {
-            content: BlockContent::Shard(func),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-          FunctionValue::Program(program) => blocks.push(Block {
-            content: BlockContent::Program(program),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-        }
-      }
-      Rule::Func => match process_function(inner_pair, env)? {
-        FunctionValue::Const(value) => blocks.push(Block {
-          content: BlockContent::Const(value),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Function(func) => blocks.push(Block {
-          content: BlockContent::Func(func),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Program(program) => blocks.push(Block {
-          content: BlockContent::Program(program),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-      },
-      Rule::TakeTable => blocks.push(Block {
-        content: {
-          let pair_result = process_take_table(inner_pair, env)?;
-          BlockContent::TakeTable(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::TakeSeq => blocks.push(Block {
-        content: {
-          let pair_result = process_take_seq(inner_pair, env)?;
-          BlockContent::TakeSeq(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::ConstValue => blocks.push(Block {
-        // this is an indirection, process_value will handle the case of a ConstValue
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Enum => blocks.push(Block {
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Shards => blocks.push(Block {
-        content: BlockContent::Shards(process_sequence(
-          inner_pair
-            .clone()
-            .into_inner()
-            .next()
-            .ok_or_else(|| err(env, "Expected an expression, but found none.", &inner_pair))?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      _ => {
-        return errr(
-          env,
-          &format!("Unexpected rule ({:?}) in Pipeline.", rule),
-          &inner_pair,
-        )
-      }
-    }
-  }
   Ok(Pipeline { blocks })
 }
 
@@ -1234,117 +1255,25 @@ fn process_pipe_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, Shar
     return errr(env, "Expected a PipeValue rule", &pair);
   }
 
-  let mut blocks = Vec::new();
-  for inner_pair in pair.clone().into_inner() {
-    let line_info = env.make_line_info_from_pair(&inner_pair);
-    let rule = inner_pair.as_rule();
-    let block = match rule {
-      Rule::EvalExpr => Block {
-        content: BlockContent::EvalExpr(process_sequence(
-          inner_pair.clone().into_inner().next().ok_or_else(|| {
-            err(env, "Expected an eval time expression in PipeValue", &inner_pair)
-          })?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::Expr => Block {
-        content: BlockContent::Expr(process_sequence(
-          inner_pair.clone().into_inner().next().ok_or_else(|| {
-            err(env, "Expected an expression in PipeValue", &inner_pair)
-          })?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::Shard => {
-        match process_function(inner_pair.clone(), env)? {
-          FunctionValue::Const(value) => Block {
-            content: BlockContent::Const(value),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          },
-          FunctionValue::Function(func) => Block {
-            content: BlockContent::Shard(func),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          },
-          FunctionValue::Program(program) => Block {
-            content: BlockContent::Program(program),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          },
-        }
-      }
-      Rule::Func => match process_function(inner_pair.clone(), env)? {
-        FunctionValue::Const(value) => Block {
-          content: BlockContent::Const(value),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        },
-        FunctionValue::Function(func) => Block {
-          content: BlockContent::Func(func),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        },
-        FunctionValue::Program(program) => Block {
-          content: BlockContent::Program(program),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        },
-      },
-      Rule::TakeTable => Block {
-        content: {
-          let pair_result = process_take_table(inner_pair, env)?;
-          BlockContent::TakeTable(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::TakeSeq => Block {
-        content: {
-          let pair_result = process_take_seq(inner_pair, env)?;
-          BlockContent::TakeSeq(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::ConstValue => Block {
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::Enum => Block {
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      Rule::Shards => Block {
-        content: BlockContent::Shards(process_sequence(
-          inner_pair.clone().into_inner().next().ok_or_else(|| {
-            err(env, "Expected a sequence in PipeValue", &inner_pair)
-          })?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      },
-      _ => {
-        return errr(
-          env,
-          &format!("Unexpected rule ({:?}) in PipeValue", rule),
-          &inner_pair,
-        )
-      }
-    };
-    blocks.push(block);
+  // Use shared block processing helper to avoid code duplication
+  let blocks = pair
+    .clone()
+    .into_inner()
+    .map(|inner_pair| process_block(inner_pair, env, false))
+    .collect::<Result<Vec<_>, _>>()?;
+
+  // Defensive check: PipeValue grammar requires at least one block
+  if blocks.is_empty() {
+    return errr(
+      env,
+      "PipeValue must contain at least one block",
+      &pair,
+    );
   }
 
   if blocks.len() == 1 {
     // Single block - convert directly to Value
-    let block = blocks.remove(0);
+    let block = blocks.into_iter().next().unwrap();
     match block.content {
       BlockContent::Const(v) => Ok(v),
       BlockContent::Shard(f) => Ok(Value::Shard(f)),

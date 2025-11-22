@@ -863,12 +863,17 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     // For multi-block pipe values, set up to emit "|" between blocks
     // After the first block is processed, pipe_value_remaining will be decremented
     // and emit_pipe_before_next_block will be set to emit "|" before subsequent blocks
+    //
+    // Note: We manually save/restore state instead of using a guard pattern because:
+    // 1. A guard holding &mut self conflicts with passing &mut self to inner()
+    // 2. If inner() panics, the entire formatting operation fails anyway
+    // 3. State leakage only matters if we catch panics and continue (which we don't)
     if num_blocks > 1 {
       let old_remaining = self.pipe_value_remaining;
       let old_emit = self.emit_pipe_before_next_block;
 
       self.pipe_value_remaining = num_blocks - 1; // Number of pipes to emit
-      self.emit_pipe_before_next_block = false;   // Don't emit before first block
+      self.emit_pipe_before_next_block = false; // Don't emit before first block
 
       inner(self);
 
@@ -1111,4 +1116,32 @@ fn test_pipe_value_formatting() {
   let pipe_with_comma = "Func(1, 2 | Add(3), 4)\n";
   let formatted = format_str(pipe_with_comma).unwrap();
   assert_eq!(formatted, "Func(1, 2 | Add(3), 4)\n", "Pipe with commas should be preserved");
+}
+
+#[test]
+fn test_comma_edge_cases() {
+  // Test commas with leading newline before first param - commas on same line preserved
+  let leading_newline = "Func(\n  1, 2, 3\n)\n";
+  let formatted = format_str(leading_newline).unwrap();
+  assert_eq!(formatted, "Func(\n  1, 2, 3\n)\n", "Commas with leading newline should be preserved");
+
+  // Test commas followed by newlines - commas are normalized away (newlines are enough separation)
+  let newlines_between = "Func(\n  1,\n  2,\n  3\n)\n";
+  let formatted = format_str(newlines_between).unwrap();
+  assert_eq!(formatted, "Func(\n  1\n  2\n  3\n)\n", "Commas before newlines should be normalized away");
+
+  // Test mixed: commas on same line preserved, commas before newlines normalized
+  let mixed_newlines = "Func(\n  1, 2,\n  3, 4\n)\n";
+  let formatted = format_str(mixed_newlines).unwrap();
+  assert_eq!(formatted, "Func(\n  1, 2\n  3, 4\n)\n", "Mixed: same-line commas preserved, newline commas normalized");
+
+  // Test seq with leading newline and commas on same line
+  let seq_leading_newline = "[\n  1, 2, 3\n]\n";
+  let formatted = format_str(seq_leading_newline).unwrap();
+  assert_eq!(formatted, "[\n  1, 2, 3\n]\n", "Seq commas with leading newline should be preserved");
+
+  // Test table with leading newline and commas on same line
+  let table_leading_newline = "{\n  a: 1, b: 2\n}\n";
+  let formatted = format_str(table_leading_newline).unwrap();
+  assert_eq!(formatted, "{\n  a: 1, b: 2\n}\n", "Table commas with leading newline should be preserved");
 }
