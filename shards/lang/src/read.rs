@@ -1115,17 +1115,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     Rule::Seq => {
       let values = pair
         .into_inner()
-        .map(|value| {
-          let pos = value.as_span().start_pos();
-          process_value(
-            value
-              .clone()
-              .into_inner()
-              .next()
-              .ok_or_else(|| err(env, "Expected a Value in the sequence", &value))?,
-            env,
-          )
-        })
+        .map(|pipe_value| process_pipe_value(pipe_value, env))
         .collect::<Result<Vec<_>, _>>()?;
       Ok(Value::Seq(values))
     }
@@ -1159,18 +1149,10 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             }
           };
 
-          let value = inner
+          let pipe_value = inner
             .next()
             .ok_or_else(|| err(env, "Expected a value in TableEntry", &pair))?;
-          let pos = value.as_span().start_pos();
-          let value = process_value(
-            value
-              .clone()
-              .into_inner()
-              .next()
-              .ok_or_else(|| err(env, "Expected a value in TableEntry", &value))?,
-            env,
-          )?;
+          let value = process_pipe_value(pipe_value, env)?;
           Ok((key, value))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -2093,6 +2075,135 @@ fn test_pipe_in_params_structure() {
       }
     } else {
       panic!("Expected Shard block content");
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
+}
+
+#[test]
+fn test_pipe_in_seq() {
+  // Test pipes in sequence literals: [1 2 | Add(3) 4]
+  let code = r#"
+    // Basic pipe in sequence
+    [1 2 | Add(3) 4]
+
+    // Multiple pipes in sequence
+    [x | Transform y | Process z]
+
+    // Simple sequence (should still work)
+    [1 2 3 4 5]
+
+    // Mixed values and pipes
+    ["hello" 1 | Add(2) @f3(1 2 3)]
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  assert!(program.is_ok(), "Failed to parse pipe-in-seq: {:?}", program.err());
+}
+
+#[test]
+fn test_pipe_in_seq_structure() {
+  // Verify that "[1 2 | Add(3) 4]" produces 3 elements
+  let code = "[1 2 | Add(3) 4]";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    if let BlockContent::Const(Value::Seq(elements)) = &pipeline.blocks[0].content {
+      assert_eq!(elements.len(), 3, "Expected 3 elements: 1, (2 | Add(3)), 4");
+
+      // First element should be 1
+      if let Value::Number(Number::Integer(n)) = &elements[0] {
+        assert_eq!(*n, 1, "First element should be 1");
+      } else {
+        panic!("First element should be Number::Integer(1), got {:?}", elements[0]);
+      }
+
+      // Second element should be an Expr (the pipe)
+      assert!(matches!(&elements[1], Value::Expr(_)),
+        "Second element should be Expr (pipeline), got {:?}", elements[1]);
+
+      // Third element should be 4
+      if let Value::Number(Number::Integer(n)) = &elements[2] {
+        assert_eq!(*n, 4, "Third element should be 4");
+      } else {
+        panic!("Third element should be Number::Integer(4), got {:?}", elements[2]);
+      }
+    } else {
+      panic!("Expected Const(Seq) block content, got {:?}", pipeline.blocks[0].content);
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
+}
+
+#[test]
+fn test_pipe_in_table() {
+  // Test pipes in table literals: {a: 1 b: 1 | Add(3)}
+  let code = r#"
+    // Basic pipe in table value
+    {a: 1 b: 1 | Add(3)}
+
+    // Multiple entries with pipes
+    {x: val | Transform y: other | Process z: 42}
+
+    // Simple table (should still work)
+    {name: "test" value: 123}
+
+    // Mixed values
+    {static: 1 dynamic: x | Compute}
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  assert!(program.is_ok(), "Failed to parse pipe-in-table: {:?}", program.err());
+}
+
+#[test]
+fn test_pipe_in_table_structure() {
+  // Verify that "{a: 1 b: 2 | Add(3)}" has correct structure
+  let code = "{a: 1 b: 2 | Add(3)}";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    if let BlockContent::Const(Value::Table(pairs)) = &pipeline.blocks[0].content {
+      assert_eq!(pairs.len(), 2, "Expected 2 table entries");
+
+      // First entry: a: 1
+      if let Value::String(key) = &pairs[0].0 {
+        assert_eq!(key.as_str(), "a");
+      } else {
+        panic!("First key should be 'a'");
+      }
+      if let Value::Number(Number::Integer(n)) = &pairs[0].1 {
+        assert_eq!(*n, 1, "First value should be 1");
+      } else {
+        panic!("First value should be Number::Integer(1), got {:?}", pairs[0].1);
+      }
+
+      // Second entry: b: (2 | Add(3))
+      if let Value::String(key) = &pairs[1].0 {
+        assert_eq!(key.as_str(), "b");
+      } else {
+        panic!("Second key should be 'b'");
+      }
+      assert!(matches!(&pairs[1].1, Value::Expr(_)),
+        "Second value should be Expr (pipeline), got {:?}", pairs[1].1);
+    } else {
+      panic!("Expected Const(Table) block content, got {:?}", pipeline.blocks[0].content);
     }
   } else {
     panic!("Expected Pipeline statement");
