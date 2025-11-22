@@ -50,6 +50,8 @@ struct InlineTemplate {
 }
 
 pub type FileRegistryHandle = u8;
+
+#[cfg(not(test))]
 extern "C" {
   pub fn shlang_fr_static() -> *const FileRegistryHandle;
   pub fn shlang_fr_get_file_id(
@@ -58,6 +60,7 @@ extern "C" {
   ) -> u32;
 }
 
+#[cfg(not(test))]
 fn get_debug_file_id(path: &str) -> Option<u32> {
   unsafe {
     let handle = shlang_fr_static();
@@ -68,6 +71,12 @@ fn get_debug_file_id(path: &str) -> Option<u32> {
       return Some(id);
     }
   }
+}
+
+// Test stub - returns None (no debug file tracking in tests)
+#[cfg(test)]
+fn get_debug_file_id(_path: &str) -> Option<u32> {
+  None
 }
 
 impl ReadEnv {
@@ -1238,6 +1247,151 @@ fn process_number(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Number, ShardsE
   }
 }
 
+/// Process a PipeValue rule which contains one or more blocks separated by pipes.
+/// If there's a single block, converts it directly to a Value.
+/// If there are multiple blocks, wraps them in a Pipeline → Sequence → Value::Expr.
+fn process_pipe_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
+  if pair.as_rule() != Rule::PipeValue {
+    return errr(env, "Expected a PipeValue rule", &pair);
+  }
+
+  let mut blocks = Vec::new();
+  for inner_pair in pair.clone().into_inner() {
+    let line_info = env.make_line_info_from_pair(&inner_pair);
+    let rule = inner_pair.as_rule();
+    let block = match rule {
+      Rule::EvalExpr => Block {
+        content: BlockContent::EvalExpr(process_sequence(
+          inner_pair.clone().into_inner().next().ok_or_else(|| {
+            err(env, "Expected an eval time expression in PipeValue", &inner_pair)
+          })?,
+          env,
+        )?),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::Expr => Block {
+        content: BlockContent::Expr(process_sequence(
+          inner_pair.clone().into_inner().next().ok_or_else(|| {
+            err(env, "Expected an expression in PipeValue", &inner_pair)
+          })?,
+          env,
+        )?),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::Shard => {
+        match process_function(inner_pair.clone(), env)? {
+          FunctionValue::Const(value) => Block {
+            content: BlockContent::Const(value),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          },
+          FunctionValue::Function(func) => Block {
+            content: BlockContent::Shard(func),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          },
+          FunctionValue::Program(program) => Block {
+            content: BlockContent::Program(program),
+            line_info: Some(line_info),
+            custom_state: CustomStateContainer::new(),
+          },
+        }
+      }
+      Rule::Func => match process_function(inner_pair.clone(), env)? {
+        FunctionValue::Const(value) => Block {
+          content: BlockContent::Const(value),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Function(func) => Block {
+          content: BlockContent::Func(func),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Program(program) => Block {
+          content: BlockContent::Program(program),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+      },
+      Rule::TakeTable => Block {
+        content: {
+          let pair_result = process_take_table(inner_pair, env)?;
+          BlockContent::TakeTable(pair_result.0, pair_result.1)
+        },
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::TakeSeq => Block {
+        content: {
+          let pair_result = process_take_seq(inner_pair, env)?;
+          BlockContent::TakeSeq(pair_result.0, pair_result.1)
+        },
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::ConstValue => Block {
+        content: BlockContent::Const(process_value(inner_pair, env)?),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::Enum => Block {
+        content: BlockContent::Const(process_value(inner_pair, env)?),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      Rule::Shards => Block {
+        content: BlockContent::Shards(process_sequence(
+          inner_pair.clone().into_inner().next().ok_or_else(|| {
+            err(env, "Expected a sequence in PipeValue", &inner_pair)
+          })?,
+          env,
+        )?),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      _ => {
+        return errr(
+          env,
+          &format!("Unexpected rule ({:?}) in PipeValue", rule),
+          &inner_pair,
+        )
+      }
+    };
+    blocks.push(block);
+  }
+
+  if blocks.len() == 1 {
+    // Single block - convert directly to Value
+    let block = blocks.remove(0);
+    match block.content {
+      BlockContent::Const(v) => Ok(v),
+      BlockContent::Shard(f) => Ok(Value::Shard(f)),
+      BlockContent::Func(f) => Ok(Value::Func(f)),
+      BlockContent::Expr(s) => Ok(Value::Expr(s)),
+      BlockContent::EvalExpr(s) => Ok(Value::EvalExpr(s)),
+      BlockContent::Shards(s) => Ok(Value::Shards(s)),
+      BlockContent::TakeTable(id, keys) => Ok(Value::TakeTable(id, keys)),
+      BlockContent::TakeSeq(id, indices) => Ok(Value::TakeSeq(id, indices)),
+      BlockContent::Program(prog) => {
+        // Flatten program into its sequence as Expr
+        Ok(Value::Expr(prog.sequence))
+      }
+      BlockContent::Empty => Ok(Value::None(())),
+    }
+  } else {
+    // Multiple blocks - wrap in Pipeline → Sequence → Value::Expr
+    let pipeline = Pipeline { blocks };
+    let sequence = Sequence {
+      statements: vec![Statement::Pipeline(pipeline)],
+      custom_state: CustomStateContainer::new(),
+    };
+    Ok(Value::Expr(sequence))
+  }
+}
+
 fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsError> {
   if pair.as_rule() != Rule::Param {
     return errr(env, "Expected a Param rule", &pair);
@@ -1246,32 +1400,18 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
   let mut inner = pair.clone().into_inner();
   let first = inner
     .next()
-    .ok_or_else(|| err(env, "Expected a ParamName or Value in Param", &pair))?;
-  let pos = first.as_span().start_pos();
+    .ok_or_else(|| err(env, "Expected a ParamName or PipeValue in Param", &pair))?;
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
     let name = first.as_str().to_owned();
     let name = name[0..name.len() - 1].to_owned().into();
-    let value = process_value(
-      inner
-        .next()
-        .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?
-        .into_inner()
-        .next()
-        .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?,
-      env,
-    )?;
+    let pipe_value = inner
+      .next()
+      .ok_or_else(|| err(env, "Expected a PipeValue in Param", &pair))?;
+    let value = process_pipe_value(pipe_value, env)?;
     (Some(name), value)
   } else {
-    (
-      None,
-      process_value(
-        first
-          .into_inner()
-          .next()
-          .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?,
-        env,
-      )?,
-    )
+    // first is the PipeValue itself
+    (None, process_pipe_value(first, env)?)
   };
 
   Ok(Param {
@@ -1780,6 +1920,36 @@ impl ShardsErrorsShard {
   }
 }
 
+// Test stubs for external C functions that are normally provided by the C++ runtime
+#[cfg(test)]
+mod test_stubs {
+  use std::os::raw::{c_char, c_int};
+
+  #[no_mangle]
+  pub extern "C" fn shards_log(
+    _level: c_int,
+    _msg: shards::shardsc::SHStringWithLen,
+    _file: *const c_char,
+    _function: *const c_char,
+    _line: c_int,
+  ) {
+    // No-op stub for tests
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shlang_fr_static() -> *const u8 {
+    std::ptr::null()
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shlang_fr_get_file_id(
+    _handle: *const u8,
+    _path: shards::shardsc::SHStringWithLen,
+  ) -> u32 {
+    0 // Return 0 to indicate no file ID
+  }
+}
+
 #[test]
 fn test_parsing1() {
   // use std::num::NonZeroUsize;
@@ -1837,6 +2007,96 @@ fn test_parsing2() {
 
   let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
+}
+
+#[test]
+fn test_pipe_in_params() {
+  // Test the new pipe-in-params syntax: Add(3 | Mul(4)) instead of Add((3 | Mul(4)))
+  let code = r#"
+    // Basic pipe in params - should work without extra parens
+    2 | Add(3 | Mul(4))
+
+    // Multiple params with pipes (comma is whitespace, params separated by natural boundaries)
+    Func(1 | Add(2) 3 | Mul(4))
+
+    // Named params with pipes
+    Shard(X: 1 | Add(2) Y: 3 | Mul(4))
+
+    // Nested pipes
+    Outer(Inner(1 | Add(2)) | Process)
+
+    // Single value params (should still work)
+    Simple(42)
+    Simple(x)
+    Simple("string")
+
+    // Mixed: single values and pipes as separate params
+    // This should be 3 params: 1, (2 | Add(3)), 4
+    Mixed(1 2 | Add(3) 4)
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  // Should parse successfully without errors
+  assert!(program.is_ok(), "Failed to parse pipe-in-params: {:?}", program.err());
+
+  let seq = program.unwrap().sequence;
+
+  // Verify we have statements (not checking exact structure, just that it parses)
+  assert!(!seq.statements.is_empty(), "Expected statements in parsed program");
+
+  // Serialize and deserialize to verify AST structure is valid
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
+
+  let encoded_json = serde_json::to_string(&seq).unwrap();
+  let encoded_json2 = serde_json::to_string(&decoded_bin).unwrap();
+  assert_eq!(encoded_json, encoded_json2);
+}
+
+#[test]
+fn test_pipe_in_params_structure() {
+  // Verify that "Mixed(1 2 | Add(3) 4)" produces 3 separate params
+  let code = "Mixed(1 2 | Add(3) 4)";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  // Get the first statement which should be a Pipeline containing the Mixed shard
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    assert_eq!(pipeline.blocks.len(), 1, "Expected 1 block in pipeline");
+    if let BlockContent::Shard(func) = &pipeline.blocks[0].content {
+      assert_eq!(func.name.name.as_str(), "Mixed");
+      let params = func.params.as_ref().expect("Expected params");
+      assert_eq!(params.len(), 3, "Expected 3 params: 1, (2 | Add(3)), 4");
+
+      // First param should be a simple number 1
+      if let Value::Number(Number::Integer(n)) = &params[0].value {
+        assert_eq!(*n, 1, "First param should be 1");
+      } else {
+        panic!("First param should be Number::Integer(1), got {:?}", params[0].value);
+      }
+
+      // Second param should be an Expr (the pipe creates a sub-expression)
+      assert!(matches!(&params[1].value, Value::Expr(_)),
+        "Second param should be Expr (pipeline), got {:?}", params[1].value);
+
+      // Third param should be a simple number 4
+      if let Value::Number(Number::Integer(n)) = &params[2].value {
+        assert_eq!(*n, 4, "Third param should be 4");
+      } else {
+        panic!("Third param should be Number::Integer(4), got {:?}", params[2].value);
+      }
+    } else {
+      panic!("Expected Shard block content");
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
 }
 
 // Shards.Docs shard for getting documentation for shards and enums
