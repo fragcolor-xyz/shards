@@ -446,6 +446,28 @@ items | ForEach(item | Transform | Process)
 value | Math.Add((other | Math.Mul(2)))
 ```
 
+**Pipes inside table literal values:**
+
+```shards
+// Compute values inline in table definitions
+{
+  a: 1 | Add(1 | Add(1))
+  b: 2 | Mul(1 | Add(1) | Add(1))
+} | Assert.Is({a: 3 b: 6})
+
+// Nested pipe chains work anywhere
+{result: input | Transform | Process | Finalize} = computed-table
+```
+
+**Dot access in sequences (for String.Format):**
+
+```shards
+{name: "Hello"} = tt
+[0 1] = tn
+// Use .key for tables, .index for sequences
+["`" tt.name " (" tn.1 ")`"] | String.Format | Assert.Is("`Hello (1)`")
+```
+
 When to still use parentheses `(...)`:
 
 - To create an expression that evaluates ahead and produces a value
@@ -527,22 +549,6 @@ Concurrency & scheduling:
 @run(root FPS: 30)
 ```
 
-Grouping operations:
-
-```shards
-@wire(grouping-demo {
-  10 | Add((5 | Mul(2))) | Log("Result")   // 10+(5*2)=20
-  10 | Add(5) | Mul(2) | Log("Result")     // (10+5)*2=30
-
-  1.0 | Set(base)
-  2.0 | Set(exponent)
-  0.5 | Set(scale)
-
-  base | Math.Pow((exponent | Mul(scale))) | Log("Correct")
-  (base | Math.Pow(exponent)) | Mul(scale) | Log("Different")
-})
-```
-
 ## Mathematical Operations in Shards
 
 - Data flows left to right, use `|` and proper grouping. No traditional infix.
@@ -550,5 +556,5 @@ Grouping operations:
 Example:
 
 ```shards
-radius | Mul((Math.Sin(theta))) | Mul((Math.Cos(phi))) = x
+radius | Mul(theta | Math.Sin) | Mul(phi | Math.Cos) = x
 ```
