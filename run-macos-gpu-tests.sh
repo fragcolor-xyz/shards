@@ -9,6 +9,8 @@ SKIP_UI=false
 SKIP_AUDIO=false
 SKIP_MISC=false
 SKIP_SAMPLES=false
+SKIP_PYTHON=false
+WITH_CPU=false
 VERBOSE=false
 SHARDS_BIN="shards"
 
@@ -34,6 +36,14 @@ while [[ $# -gt 0 ]]; do
             SKIP_SAMPLES=true
             shift
             ;;
+        --skip-python)
+            SKIP_PYTHON=true
+            shift
+            ;;
+        --with-cpu)
+            WITH_CPU=true
+            shift
+            ;;
         --verbose|-v)
             VERBOSE=true
             shift
@@ -51,12 +61,15 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-audio     Skip audio tests"
             echo "  --skip-misc      Skip miscellaneous tests (ml, physics, crdts, etc.)"
             echo "  --skip-samples   Skip sample tests"
+            echo "  --skip-python    Skip Python/RustPython tests (py-embed.shs)"
+            echo "  --with-cpu       Include CPU-only tests from CI (general, strings, network, etc.)"
             echo "  --shards-bin     Path to shards binary (default: shards)"
             echo "  --verbose, -v    Show full commands being run"
             echo "  --help, -h       Show this help message"
             echo ""
             echo "Example: $0 --skip-audio --skip-samples"
             echo "Example: $0 --shards-bin build/Debug/shards"
+            echo "Example: $0 --with-cpu   # Run all CI tests including CPU-only"
             exit 0
             ;;
         *)
@@ -189,8 +202,74 @@ if [ "$SKIP_MISC" = false ]; then
         "shards/tests/hot-reload.shs||"
         "shards/tests/crdts.shs||"
         "shards/tests/crdt-benchmarks.shs||"
-        "shards/tests/tui1.shs||"
         "shards/tests/physics.shs||"
+    )
+fi
+
+# Python/RustPython tests (requires ENABLE_RUSTPYTHON_EMBEDDED build option)
+if [ "$SKIP_PYTHON" = false ]; then
+    TESTS+=(
+        "shards/tests/py-embed.shs||"
+    )
+fi
+
+# CPU-only tests (from CI build-linux.yml and build-macos.yml)
+if [ "$WITH_CPU" = true ]; then
+    TESTS+=(
+        # Core language tests
+        "shards/tests/hello.shs||"
+        "shards/tests/general.shs||"
+        "shards/tests/zip-map.shs||"
+        "shards/tests/strings.shs||"
+        "shards/tests/table-compose.shs||"
+        "shards/tests/variables.shs||"
+        "shards/tests/subwires.shs||"
+        "shards/tests/linalg.shs||"
+        "shards/tests/builtins.shs||"
+        "shards/tests/struct.shs||"
+        "shards/tests/flows.shs||"
+        "shards/tests/channels.shs||"
+        "shards/tests/expect.shs||"
+        "shards/tests/failures.shs||"
+        "shards/tests/wire-macro.shs||"
+        "shards/tests/const-vars.shs||"
+        "shards/tests/branch.shs||"
+        "shards/tests/take.shs||"
+        "shards/tests/casting-numbers.shs||"
+        "shards/tests/pure.shs||"
+        "shards/tests/events.shs||"
+        "shards/tests/tablecase.shs||"
+        "shards/tests/types.shs||"
+        "shards/tests/return.shs||"
+        "shards/tests/table-seq-push.shs||"
+        "shards/tests/traits.shs||"
+        "shards/tests/shards.shs||"
+        "shards/tests/table-recurse.shs||"
+        "shards/tests/whendone.shs||"
+        "shards/tests/help.shs||"
+        "shards/tests/suspend-resume.shs||"
+        "shards/tests/complex-deserialize.shs||"
+        # Network and I/O tests
+        "shards/tests/network.shs||"
+        "shards/tests/network-ws.shs||"
+        "shards/tests/fs-security.shs||"
+        "shards/tests/fileops.shs||"
+        "shards/tests/http.shs||"
+        "shards/tests/imaging.shs||"
+        "shards/tests/localshell.shs||"
+        # Compression and encoding tests
+        "shards/tests/bigint.shs||"
+        "shards/tests/brotli.shs||"
+        "shards/tests/snappy.shs||"
+        "shards/tests/crypto.shs||"
+        "shards/tests/rust.shs||"
+        # Database tests
+        "shards/tests/db.shs|with-sqlite-vec:true|"
+        "shards/tests/db-paths.shs||"
+        # Misc tests
+        "shards/tests/markdown.shs||"
+        "shards/tests/jinja.shs||"
+        "shards/tests/llm.shs||"
     )
 fi
 

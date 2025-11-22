@@ -190,7 +190,7 @@ Fold(Math.Add($0) Initial: [0 0 0])
 Assert.Is([6 9 12]) | Log
 
 @template(table-user [table table-1234] {
-  table:key1 | Log
+  table.key1 | Log
   
   100 | Set(table "key3")
   100 | Set(table-1234 "key3")
@@ -269,7 +269,7 @@ sorted-table-test | Last | ExpectSeq | Assert.Is([["E"] 6])
 true | SetFlag("test-flag") | Log("Flag was") | Assert.Is(false)
 GetFlag("test-flag") | Log | Assert.Is(true)
 
-IncCounter("test-counter" 2) | Log | Assert.Is(2)
+IncCounter("test-counter" 2) | Log | Assert.Is(1 | Add(1))
 GetCounter("test-counter") | Log | Assert.Is(2)
 DecCounter("test-counter" 1) | Log | Assert.Is(1)
 GetCounter("test-counter") | Log | Assert.Is(1)
@@ -328,5 +328,19 @@ trigger-1-count | Assert.Is(2)
   b: 2
 } | ToJson | FromJson >= any-value
 ; test speculative destructure (will inject ExpectTable)
-any-value:a | Assert.Is(1)
-any-value:b | Assert.Is(2)
+any-value.a | Assert.Is(1)
+any-value.b | Assert.Is(2)
+
+{
+  a: 1 | Add(1 | Add(1))
+  b: 2 | Mul(1 | Add(1) | Add(1))
+} | Assert.Is(
+  {
+    a: 3
+    b: 6
+  }
+)
+
+{name: "Hello"} = tt
+[0 1] = tn
+["`" tt.name " (" tn.1 ")`"] | String.Format | Log | Assert.Is("`Hello (1)`")

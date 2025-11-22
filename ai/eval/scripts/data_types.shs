@@ -53,7 +53,7 @@ numbers | Log("After removing index 2")
 
 // Tables
 {name: "Alice" age: 30 city: "NY"} >= person
-person:name | Log("Table access :key")
+person.name | Log("Table access :key")
 person | Take("age") | Log("Table access Take")
 
 // Modify table

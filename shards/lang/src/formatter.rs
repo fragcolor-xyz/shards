@@ -88,6 +88,12 @@ pub struct FormatterVisitor<'a> {
   last_char: usize,
   context_stack: Vec<Context>,
   pub newline_style: NewlineStyle,
+  // Track if there's a pending comma to emit before the next atom
+  pending_comma: bool,
+  // Emit pipe before next block in a multi-block pipe value
+  emit_pipe_before_next_block: bool,
+  // Remaining blocks in current pipe value (excluding current)
+  pipe_value_remaining: usize,
 
   input: String,
 }
@@ -101,6 +107,8 @@ enum UserLine {
 #[derive(Default)]
 struct UserStyling {
   lines: Vec<UserLine>,
+  // Track if there was a comma in the whitespace between tokens
+  has_comma: bool,
 }
 
 struct QuoteState {
@@ -121,6 +129,9 @@ impl<'a> FormatterVisitor<'a> {
       last_char: 0,
       context_stack: vec![Context::Unknown],
       newline_style: NewlineStyle::LF,
+      pending_comma: false,
+      emit_pipe_before_next_block: false,
+      pipe_value_remaining: 0,
     }
   }
 
@@ -232,6 +243,11 @@ impl<'a> FormatterVisitor<'a> {
         }
       }
 
+      // Detect comma (only when not in comments)
+      if c == ',' && line_comment_start.is_none() {
+        us.has_comma = true;
+      }
+
       i += 1;
     }
 
@@ -247,7 +263,7 @@ impl<'a> FormatterVisitor<'a> {
       us.lines.push(UserLine::BlockComment(comment.into()));
     }
 
-    if !us.lines.is_empty() {
+    if !us.lines.is_empty() || us.has_comma {
       return Some(us);
     }
     None
@@ -265,6 +281,10 @@ impl<'a> FormatterVisitor<'a> {
 
   fn interpolate_at_pos_ext(&mut self, ptr: usize, strip_final_newline: bool) {
     if let Some(us) = self.extract_styling(ptr) {
+      // Track comma for later use in write_pre_space
+      if us.has_comma {
+        self.pending_comma = true;
+      }
       for (i, line) in us.lines.iter().enumerate() {
         match line {
           UserLine::Newline => {
@@ -272,6 +292,8 @@ impl<'a> FormatterVisitor<'a> {
               continue;
             }
             self.newline();
+            // Clear pending comma on newline - newlines are enough separation
+            self.pending_comma = false;
           }
           UserLine::LineComment(line) => {
             self.write(&format!("//{}", line), FormatterTop::Comment);
@@ -351,15 +373,26 @@ impl<'a> FormatterVisitor<'a> {
 
   fn write_pre_space(&mut self) {
     match self.top {
-      FormatterTop::None => {}
+      FormatterTop::None => {
+        // If we have a pending comma but no previous atom, just clear it
+        self.pending_comma = false;
+      }
       FormatterTop::Atom => {
-        self.write_raw(" ");
+        // Emit comma if user had one, otherwise just space
+        if self.pending_comma {
+          self.write_raw(", ");
+          self.pending_comma = false;
+        } else {
+          self.write_raw(" ");
+        }
       }
       FormatterTop::Comment => {
         self.newline();
+        self.pending_comma = false;
       }
       FormatterTop::LineFunc => {
         self.newline();
+        self.pending_comma = false;
       }
     }
     self.top = FormatterTop::None;
@@ -600,6 +633,12 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     self.interpolate(&pair);
     self.update_collection_first_item();
 
+    // Check if we need to emit "|" before this block (for multi-block pipe values)
+    if self.emit_pipe_before_next_block {
+      self.emit_pipe_before_next_block = false;
+      self.write_atom("|");
+    }
+
     let ctx = self.get_context();
     if self.top == FormatterTop::Atom {
       if let Context::Pipeline = ctx {
@@ -615,6 +654,13 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     } else {
       self.write_atom(pair.as_str());
       self.set_last_char(pair.as_span().end());
+    }
+
+    // After processing this block, if there are more blocks in the pipe value,
+    // set up to emit "|" before the next one
+    if self.pipe_value_remaining > 0 {
+      self.pipe_value_remaining -= 1;
+      self.emit_pipe_before_next_block = true;
     }
   }
   fn v_assign<T: FnOnce(&mut Self)>(
@@ -634,6 +680,12 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     let ctx = self.get_context();
     self.with_context(Context::Unknown, |_self| {
       _self.interpolate_at_pos(pair.as_span().start());
+
+      // Check if we need to emit "|" before this block (for multi-block pipe values)
+      if _self.emit_pipe_before_next_block {
+        _self.emit_pipe_before_next_block = false;
+        _self.write_atom("|");
+      }
 
       if _self.top == FormatterTop::Atom {
         if let Context::Pipeline = ctx {
@@ -678,6 +730,13 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
         last
       };
       _self.set_last_char(last.as_span().end());
+
+      // After processing this block, if there are more blocks in the pipe value,
+      // set up to emit "|" before the next one
+      if _self.pipe_value_remaining > 0 {
+        _self.pipe_value_remaining -= 1;
+        _self.emit_pipe_before_next_block = true;
+      }
     });
   }
 
@@ -796,6 +855,38 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
   fn v_take_table(&mut self, pair: Pair<Rule>) {
     let str = self.filter(pair.as_str());
     self.write_atom(&str);
+  }
+  fn v_pipe_value<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, num_blocks: usize, inner: T) {
+    self.interpolate(&pair);
+    self.update_collection_first_item();
+
+    // For multi-block pipe values, set up to emit "|" between blocks
+    // After the first block is processed, pipe_value_remaining will be decremented
+    // and emit_pipe_before_next_block will be set to emit "|" before subsequent blocks
+    //
+    // Note: We manually save/restore state instead of using a guard pattern because:
+    // 1. A guard holding &mut self conflicts with passing &mut self to inner()
+    // 2. If inner() panics, the entire formatting operation fails anyway
+    // 3. State leakage only matters if we catch panics and continue (which we don't)
+    if num_blocks > 1 {
+      let old_remaining = self.pipe_value_remaining;
+      let old_emit = self.emit_pipe_before_next_block;
+
+      self.pipe_value_remaining = num_blocks - 1; // Number of pipes to emit
+      self.emit_pipe_before_next_block = false; // Don't emit before first block
+
+      inner(self);
+
+      // Restore previous state (for nested pipe values)
+      self.pipe_value_remaining = old_remaining;
+      self.emit_pipe_before_next_block = old_emit;
+
+      // Verify state was properly restored in debug builds
+      debug_assert_eq!(self.pipe_value_remaining, old_remaining);
+      debug_assert_eq!(self.emit_pipe_before_next_block, old_emit);
+    } else {
+      inner(self);
+    }
   }
   fn v_end(&mut self, _pair: Pair<Rule>) {
     // Manually done to measure final newline
@@ -968,4 +1059,147 @@ pub fn run_tests() -> Result<(), crate::error::Error> {
   } else {
     Ok(())
   }
+}
+
+#[test]
+fn test_comma_preservation() {
+  // Test that commas are preserved when present
+  let with_commas = "Func(1, 2, 3)\n";
+  let formatted = format_str(with_commas).unwrap();
+  assert_eq!(formatted, "Func(1, 2, 3)\n", "Commas should be preserved");
+
+  // Test that no commas are added when not present
+  let no_commas = "Func(1 2 3)\n";
+  let formatted = format_str(no_commas).unwrap();
+  assert_eq!(formatted, "Func(1 2 3)\n", "No commas should be added");
+
+  // Test seq with commas
+  let seq_commas = "[1, 2, 3]\n";
+  let formatted = format_str(seq_commas).unwrap();
+  assert_eq!(formatted, "[1, 2, 3]\n", "Seq commas should be preserved");
+
+  // Test table with commas
+  let table_commas = "{a: 1, b: 2}\n";
+  let formatted = format_str(table_commas).unwrap();
+  assert_eq!(formatted, "{a: 1, b: 2}\n", "Table commas should be preserved");
+
+  // Test mixed - some with commas, some without
+  let mixed = "Func(1, 2 3, 4)\n";
+  let formatted = format_str(mixed).unwrap();
+  assert_eq!(formatted, "Func(1, 2 3, 4)\n", "Mixed commas should be preserved as-is");
+}
+
+#[test]
+fn test_pipe_value_formatting() {
+  // Test pipe in function parameter - the main use case
+  let pipe_in_param = "Func(1 | Add(2))\n";
+  let formatted = format_str(pipe_in_param).unwrap();
+  assert_eq!(formatted, "Func(1 | Add(2))\n", "Pipe in param should be preserved");
+
+  // Test pipe with named parameter
+  let pipe_named = "Func(Value: 1 | Add(2))\n";
+  let formatted = format_str(pipe_named).unwrap();
+  assert_eq!(formatted, "Func(Value: 1 | Add(2))\n", "Pipe in named param should be preserved");
+
+  // Test pipe in sequence
+  let pipe_in_seq = "[1 | Add(2) 3 4]\n";
+  let formatted = format_str(pipe_in_seq).unwrap();
+  assert_eq!(formatted, "[1 | Add(2) 3 4]\n", "Pipe in seq should be preserved");
+
+  // Test pipe in table value
+  let pipe_in_table = "{a: 1 | Add(2) b: 3}\n";
+  let formatted = format_str(pipe_in_table).unwrap();
+  assert_eq!(formatted, "{a: 1 | Add(2) b: 3}\n", "Pipe in table should be preserved");
+
+  // Test multiple pipes in chain
+  let multi_pipe = "Func(1 | Add(2) | Mul(3))\n";
+  let formatted = format_str(multi_pipe).unwrap();
+  assert_eq!(formatted, "Func(1 | Add(2) | Mul(3))\n", "Multiple pipes should be preserved");
+
+  // Test pipe with commas preserved
+  let pipe_with_comma = "Func(1, 2 | Add(3), 4)\n";
+  let formatted = format_str(pipe_with_comma).unwrap();
+  assert_eq!(formatted, "Func(1, 2 | Add(3), 4)\n", "Pipe with commas should be preserved");
+}
+
+#[test]
+fn test_comma_edge_cases() {
+  // Test commas with leading newline before first param - commas on same line preserved
+  let leading_newline = "Func(\n  1, 2, 3\n)\n";
+  let formatted = format_str(leading_newline).unwrap();
+  assert_eq!(formatted, "Func(\n  1, 2, 3\n)\n", "Commas with leading newline should be preserved");
+
+  // Test commas followed by newlines - commas are normalized away (newlines are enough separation)
+  let newlines_between = "Func(\n  1,\n  2,\n  3\n)\n";
+  let formatted = format_str(newlines_between).unwrap();
+  assert_eq!(formatted, "Func(\n  1\n  2\n  3\n)\n", "Commas before newlines should be normalized away");
+
+  // Test mixed: commas on same line preserved, commas before newlines normalized
+  let mixed_newlines = "Func(\n  1, 2,\n  3, 4\n)\n";
+  let formatted = format_str(mixed_newlines).unwrap();
+  assert_eq!(formatted, "Func(\n  1, 2\n  3, 4\n)\n", "Mixed: same-line commas preserved, newline commas normalized");
+
+  // Test seq with leading newline and commas on same line
+  let seq_leading_newline = "[\n  1, 2, 3\n]\n";
+  let formatted = format_str(seq_leading_newline).unwrap();
+  assert_eq!(formatted, "[\n  1, 2, 3\n]\n", "Seq commas with leading newline should be preserved");
+
+  // Test table with leading newline and commas on same line
+  let table_leading_newline = "{\n  a: 1, b: 2\n}\n";
+  let formatted = format_str(table_leading_newline).unwrap();
+  assert_eq!(formatted, "{\n  a: 1, b: 2\n}\n", "Table commas with leading newline should be preserved");
+}
+
+#[test]
+fn test_take_seq_preservation() {
+  // Test TakeSeq alone - uses '.' syntax
+  let take_seq_only = "shadow-uv.0\n";
+  let formatted = format_str(take_seq_only).unwrap();
+  assert_eq!(formatted, "shadow-uv.0\n", "TakeSeq dot should be preserved");
+
+  // TakeSeq in pipeline
+  let take_seq_in_pipe = "shadow-uv.0 | IsLess(0.0)\n";
+  let formatted = format_str(take_seq_in_pipe).unwrap();
+  assert_eq!(formatted, "shadow-uv.0 | IsLess(0.0)\n", "TakeSeq in pipe should preserve");
+
+  // TakeSeq as shard param
+  let take_seq_as_param = "Or shadow-uv.0\n";
+  let formatted = format_str(take_seq_as_param).unwrap();
+  assert_eq!(formatted, "Or shadow-uv.0\n", "TakeSeq as param should preserve");
+
+  // TakeSeq inside table values - now works correctly with '.' syntax!
+  // The ':' is only used for table key-value pairs
+  let take_seq_in_table = "{key: shadow-uv.0}\n";
+  let formatted = format_str(take_seq_in_table).unwrap();
+  assert_eq!(
+    formatted,
+    "{key: shadow-uv.0}\n",
+    "TakeSeq inside table value should now work"
+  );
+}
+
+#[test]
+fn test_deeply_nested_pipe_values() {
+  // Test deeply nested pipes to verify state restoration handles arbitrary nesting
+  let nested_2 = "Func(1 | A(2 | B(3)))\n";
+  let formatted = format_str(nested_2).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3)))\n", "2-level nesting");
+
+  let nested_3 = "Func(1 | A(2 | B(3 | C(4))))\n";
+  let formatted = format_str(nested_3).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3 | C(4))))\n", "3-level nesting");
+
+  let nested_4 = "Func(1 | A(2 | B(3 | C(4 | D(5)))))\n";
+  let formatted = format_str(nested_4).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3 | C(4 | D(5)))))\n", "4-level nesting");
+
+  // Test with multiple pipes at each level
+  let multi_pipe = "Func(1 | A | B(2 | C | D(3 | E | F)))\n";
+  let formatted = format_str(multi_pipe).unwrap();
+  assert_eq!(formatted, "Func(1 | A | B(2 | C | D(3 | E | F)))\n", "Multi-pipe nesting");
+
+  // Test nested in table values
+  let nested_in_table = "{a: 1 | Add(2 | Mul(3))}\n";
+  let formatted = format_str(nested_in_table).unwrap();
+  assert_eq!(formatted, "{a: 1 | Add(2 | Mul(3))}\n", "Nested in table");
 }

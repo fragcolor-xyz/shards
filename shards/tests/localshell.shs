@@ -15,65 +15,65 @@ shell-session | LocalShell.IsAlive | Assert.Is(true)
 ; Test basic command execution
 "Testing basic command execution" | Log
 "echo 'Hello from LocalShell!'" | LocalShell.Execute(Session: shell-session) >= result
-result:status | ExpectString | Assert.Is("completed")
-result:output | ExpectString | Log("Command output")
-result:output | ExpectString | String.Contains("Hello from LocalShell!") | Assert.Is(true)
+result.status | ExpectString | Assert.Is("completed")
+result.output | ExpectString | Log("Command output")
+result.output | ExpectString | String.Contains("Hello from LocalShell!") | Assert.Is(true)
 
 ; Test persistent environment variables
 "Testing persistent environment variables" | Log
 "export TEST_VAR=hello_world" | LocalShell.Execute(Session: shell-session) >= result1
-result1:status | Assert.Is("completed")
+result1.status | Assert.Is("completed")
 "echo $TEST_VAR" | LocalShell.Execute(Session: shell-session) >= result2
-result2:status | Assert.Is("completed")
-result2:output | ExpectString | String.Contains("hello_world") | Assert.Is(true)
+result2.status | Assert.Is("completed")
+result2.output | ExpectString | String.Contains("hello_world") | Assert.Is(true)
 "Environment variable persisted" | Log
 
 ; Test working directory persistence
 "Testing working directory persistence" | Log
 "cd /tmp" | LocalShell.Execute(Session: shell-session) >= result3
-result3:status | Assert.Is("completed")
+result3.status | Assert.Is("completed")
 "pwd" | LocalShell.Execute(Session: shell-session) >= result4
-result4:status | Assert.Is("completed")
-result4:output | ExpectString | String.Contains("/tmp") | Assert.Is(true)
+result4.status | Assert.Is("completed")
+result4.output | ExpectString | String.Contains("/tmp") | Assert.Is(true)
 "cd ~" | LocalShell.Execute(Session: shell-session)  ; change back
 "Working directory persisted" | Log
 
 ; Test multiline output
 "Testing multiline output" | Log
 "echo 'Line 1' && echo 'Line 2' && echo 'Line 3'" | LocalShell.Execute(Session: shell-session) >= result5
-result5:status | Assert.Is("completed")
-result5:output | ExpectString | String.Contains("Line 1") | Assert.Is(true)
-result5:output | ExpectString | String.Contains("Line 2") | Assert.Is(true)
-result5:output | ExpectString | String.Contains("Line 3") | Assert.Is(true)
+result5.status | Assert.Is("completed")
+result5.output | ExpectString | String.Contains("Line 1") | Assert.Is(true)
+result5.output | ExpectString | String.Contains("Line 2") | Assert.Is(true)
+result5.output | ExpectString | String.Contains("Line 3") | Assert.Is(true)
 "Multiline output works" | Log
 
 ; Test interactive command detection
 "Testing interactive command detection" | Log
 "read -p 'Enter your name: ' name && echo \"Hello $name\"" | LocalShell.Execute(Session: shell-session) >= interactive-result
-interactive-result:status | ExpectString | Assert.Is("requires_interaction")
-interactive-result:message | ExpectString | String.Contains("LocalShell.SendInput") | Assert.Is(true)
+interactive-result.status | ExpectString | Assert.Is("requires_interaction")
+interactive-result.message | ExpectString | String.Contains("LocalShell.SendInput") | Assert.Is(true)
 "Interactive detection works" | Log
 
 ; Test send input to interactive command
 "Testing send input" | Log
 "TestUser" | LocalShell.SendInput(Session: shell-session) >= input-result
-input-result:status | ExpectString | Assert.Is("completed")
-input-result:output | ExpectString | String.Contains("TestUser") | Assert.Is(true)
+input-result.status | ExpectString | Assert.Is("completed")
+input-result.output | ExpectString | String.Contains("TestUser") | Assert.Is(true)
 "Send input works" | Log
 
 ; Test command that fails
 "Testing command failure" | Log
 "this_command_does_not_exist_12345" | LocalShell.Execute(Session: shell-session) >= fail-result
-fail-result:status | Assert.Is("completed")
-fail-result:output | ExpectString | Log("Error output")
+fail-result.status | Assert.Is("completed")
+fail-result.output | ExpectString | Log("Error output")
 "Command failure handled" | Log
 
 ; Test grep with no matches (the original bug this PR fixes)
 ; This command produces no output and should complete, not hang
 "Testing grep with no matches (original bug)" | Log
 "echo 'test' | grep 'nomatch'" | LocalShell.Execute(Session: shell-session) >= grep-result
-grep-result:status | Assert.Is("completed")
-grep-result:output | ExpectString | Log("Grep no match output")
+grep-result.status | Assert.Is("completed")
+grep-result.output | ExpectString | Log("Grep no match output")
 "Grep with no matches completed successfully" | Log
 
 ; Test session alive check

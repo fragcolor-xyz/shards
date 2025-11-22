@@ -29,14 +29,14 @@ count | Assert.Is(3)
 // A Table
 {A: 1 b: 2 33: 3} = table // almost any value can be a key
 // easy access
-table:b | Assert.Is(2)
-1 | Math.Add(table:A) | Assert.Is(2)
+table.b | Assert.Is(2)
+1 | Math.Add(table.A) | Assert.Is(2)
 
 // A Sequence
 [1 2 3 "a" "b" 1.0 0x11] = seq1
 // easy access
-seq1:1 | Assert.Is(2)
-2 | Math.Add(seq1:0) | Assert.Is(3)
+seq1.1 | Assert.Is(2)
+2 | Math.Add(seq1.0) | Assert.Is(3)
 
 // we got also some built ins, prefixed by @
 // to create a wire:

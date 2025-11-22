@@ -35,11 +35,33 @@ pub trait RuleVisitor {
   fn v_take_table(&mut self, pair: Pair<Rule>);
   fn v_take_seq(&mut self, pair: Pair<Rule>);
   fn v_end(&mut self, pair: Pair<Rule>);
+  /// Visit a PipeValue node (Block ~ ("|" ~ Block)*). Called with the number of blocks.
+  /// The inner function processes each block in sequence.
+  fn v_pipe_value<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, num_blocks: usize, inner: T);
 }
 
 fn process_take_seq<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   v.v_take_seq(pair);
   Ok(())
+}
+
+/// Process a PipeValue node which contains Block ~ ("|" ~ Block)*
+/// This handles both single values and pipe chains
+fn process_pipe_value<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
+  let span = pair.as_span();
+  let inner: Vec<Pair<Rule>> = pair.clone().into_inner().collect();
+  let num_blocks = inner.len();
+
+  let mut result: Option<Result<(), Error>> = None;
+  v.v_pipe_value(pair, num_blocks, |v| {
+    result = Some((|| {
+      for block in inner {
+        process_value(block, v)?;
+      }
+      Ok(())
+    })());
+  });
+  result.ok_or_else(|| fmt_err("Visitor didn't call v_pipe_value inner", &span))?
 }
 
 fn process_param<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
@@ -57,28 +79,19 @@ fn process_param<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Erro
   if first.clone().as_rule() == Rule::ParamName {
     v.v_param(pair, Some(first), |v| {
       result = Some((|| {
-        process_value(
-          inner
-            .next()
-            .ok_or(fmt_err("Expected a Value in Param", &span))?
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected a Value in Param", &span))?,
-          v,
-        )?;
+        // first is ParamName, next is PipeValue
+        let pipe_value = inner
+          .next()
+          .ok_or(fmt_err("Expected a PipeValue in Param", &span))?;
+        process_pipe_value(pipe_value, v)?;
         Ok(())
       })());
     });
   } else {
+    // first is already PipeValue (no named parameter)
     v.v_param(pair, None, |v| {
       result = Some((|| {
-        process_value(
-          first
-            .into_inner()
-            .next()
-            .ok_or(fmt_err("Expected a Value in Param", &span))?,
-          v,
-        )?;
+        process_pipe_value(first, v)?;
         Ok(())
       })());
     });
@@ -145,20 +158,12 @@ fn process_function<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), E
 fn process_sequence<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Error> {
   let mut result: Option<Result<(), Error>> = None;
 
-  let span = pair.as_span();
   v.v_seq(pair.clone(), |v| {
     result = Some((|| {
+      // Seq contains PipeValue* - each element is a PipeValue
       pair
         .into_inner()
-        .map(|value| {
-          process_value(
-            value
-              .into_inner()
-              .next()
-              .ok_or(fmt_err("Expected a Value in the sequence", &span))?,
-            v,
-          )
-        })
+        .map(|pipe_value| process_pipe_value(pipe_value, v))
         .collect::<Result<Vec<_>, _>>()?;
       Ok(())
     })());
@@ -345,14 +350,9 @@ fn process_table<V: RuleVisitor>(pair: Pair<Rule>, v: &mut V) -> Result<(), Erro
               })());
             },
             |v| {
+              // value is PipeValue - process it with pipe support
               val_result = Some((|| {
-                process_value(
-                  value
-                    .into_inner()
-                    .next()
-                    .ok_or(fmt_err("Expected a value in TableEntry", &span))?,
-                  v,
-                )?;
+                process_pipe_value(value, v)?;
                 Ok(())
               })());
             },

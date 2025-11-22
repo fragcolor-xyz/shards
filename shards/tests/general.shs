@@ -766,14 +766,14 @@
   
   ref1 | Split(Size: 2) = ref1-splits
   Count | Assert.Is(8 true)
-  ref1-splits:0 | Assert.Is("He" true)
-  ref1-splits:1 | Assert.Is("ll" true)
-  ref1-splits:2 | Assert.Is("o " true)
-  ref1-splits:3 | Assert.Is("re" true)
-  ref1-splits:4 | Assert.Is("fe" true)
-  ref1-splits:5 | Assert.Is("re" true)
-  ref1-splits:6 | Assert.Is("nc" true)
-  ref1-splits:7 | Assert.Is("e" true)
+  ref1-splits.0 | Assert.Is("He" true)
+  ref1-splits.1 | Assert.Is("ll" true)
+  ref1-splits.2 | Assert.Is("o " true)
+  ref1-splits.3 | Assert.Is("re" true)
+  ref1-splits.4 | Assert.Is("fe" true)
+  ref1-splits.5 | Assert.Is("re" true)
+  ref1-splits.6 | Assert.Is("nc" true)
+  ref1-splits.7 | Assert.Is("e" true)
   
   Const([1 2 3 4 5])
   Set(pretest)

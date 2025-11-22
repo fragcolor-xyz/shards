@@ -113,8 +113,8 @@
   GFX.MainWindow(Title: "Text Demo" Width: 1280 Height: 720 Contents: {
     GFX.Viewport = vp
     [font-index vp font-size] | Memoize({
-      vp:2 | Sub((vp:0)) | ToFloat = width
-      vp:3 | Sub((vp:1)) | ToFloat = height
+      vp.2 | Sub((vp.0)) | ToFloat = width
+      vp.3 | Sub((vp.1)) | ToFloat = height
       
       width | Div((space-size-x | ToFloat)) | ToInt | Max(1) = dim-x
       Log("Dim X")
@@ -165,8 +165,8 @@
       {$1 = placement
         Take("color") = color
       }
-      coord:0 = coord-x
-      coord:1 = coord-y
+      coord.0 = coord-x
+      coord.1 = coord-y
       [placement] | GFX.DynDrawTextPlacement(
         Output: dmesh
         Offset: (@i3(coord-x coord-y 0) | ToFloat3 | Mul(space-size-f3))

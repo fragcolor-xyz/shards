@@ -26,7 +26,7 @@
 @wire(document-enum {
   = enum-id
   Shards.EnumTypeHelp >= help-2 
-  help-2:name | ExpectString = name
+  help-2.name | ExpectString = name
   name | Hash.XXH-64 | BytesToInts | Slice(0 4) | ToInt3 | Do(process-color) | Set(help-2 "color")
   [name help-2 enum-id]
 })

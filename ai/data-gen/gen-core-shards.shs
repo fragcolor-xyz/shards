@@ -33,11 +33,11 @@
 
 @template(format-type-field [type-field] {
   type-field | ExpectTable = tt
-  @resolve-type-id((tt:type)) = tn
+  @resolve-type-id((tt.type)) = tn
   If(IsNot("") {
-      ["`" (tt:name) " (" tn ")`"] | String.Format
+      ["`" (tt.name) " (" tn ")`"] | String.Format
     } {
-      ["`" (tt:name) "`"] | String.Format
+      ["`" (tt.name) "`"] | String.Format
     }
   )
 })
@@ -71,7 +71,7 @@ ForEach({
       $0
       Shards.Help = docs
       
-      docs:aliasOf | If(IsNotNone {
+      docs.aliasOf | If(IsNotNone {
           ExpectString
           If(IsNot($0) {
               = alias-of
@@ -88,7 +88,7 @@ ForEach({
       )
       
       // Add general help 
-      docs:help | If(IsNot("") {
+      docs.help | If(IsNot("") {
           = i
           [i "\n\n"] | String.Format | AppendTo(shard-doc-md)
         } {
@@ -98,21 +98,21 @@ ForEach({
       
       "In: " | AppendTo(shard-doc-md)
       
-      docs:inputHelp | When(IsNot("") {
+      docs.inputHelp | When(IsNot("") {
         ExpectString | AppendTo(shard-doc-md)
         " " | AppendTo(shard-doc-md)
       })
       
       // Get input types
-      docs:inputTypes | ExpectSeq = input-types
+      docs.inputTypes | ExpectSeq = input-types
       
       input-types | When(IsNot([]) {
         {"(" | AppendTo(shard-doc-md)}
         ForEach({
           $0 | ExpectTable = tt
-          @resolve-type-id((tt:type)) = tn
-          tt:name | When(IsNot("") {
-            [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
+          @resolve-type-id((tt.type)) = tn
+          tt.name | When(IsNot("") {
+            [(tt.name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
         shard-doc-md | Slice(To: -1) > shard-doc-md // remove trailing slash
@@ -122,21 +122,21 @@ ForEach({
       // Add arrow
       "\nOut: " | AppendTo(shard-doc-md)
       
-      docs:outputHelp | When(IsNot("") {
+      docs.outputHelp | When(IsNot("") {
         ExpectString | AppendTo(shard-doc-md)
         " " | AppendTo(shard-doc-md)
       })
       
       // Get output types
-      docs:outputTypes | ExpectSeq = output-types
+      docs.outputTypes | ExpectSeq = output-types
       
       output-types | When(IsNot([]) {
         {"(" | AppendTo(shard-doc-md)}
         ForEach({
           $0 | ExpectTable = tt
-          @resolve-type-id((tt:type)) = tn
-          tt:name | When(IsNot("") {
-            [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
+          @resolve-type-id((tt.type)) = tn
+          tt.name | When(IsNot("") {
+            [(tt.name) "/"] | String.Format | AppendTo(shard-doc-md)
           })
         })
         shard-doc-md | Slice(To: -1) > shard-doc-md // remove trailing slash
@@ -147,7 +147,7 @@ ForEach({
       "\n\n" | AppendTo(shard-doc-md)
       
       // Add parameters if available
-      docs:parameters | ExpectSeq = parameters
+      docs.parameters | ExpectSeq = parameters
       parameters | When(IsNot([]) {
         {"Params\n" | AppendTo(shard-doc-md)}
         ForEach({
@@ -169,9 +169,9 @@ ForEach({
             ExpectSeq | When(IsNot([]) {
               ForEach({
                 $0 | ExpectTable = tt
-                @resolve-type-id((tt:type)) = tn
-                tt:name | When(IsNot("") {
-                  [(tt:name) "/"] | String.Format | AppendTo(shard-doc-md)
+                @resolve-type-id((tt.type)) = tn
+                tt.name | When(IsNot("") {
+                  [(tt.name) "/"] | String.Format | AppendTo(shard-doc-md)
                 })
               })
             })
@@ -229,8 +229,8 @@ Shards.EnumTypes | ForEach({
       })
       
       Zip([labels descs] Keys: ["l" "d"]) | ForEach({
-        $0:l = label
-        $0:d = desc
+        $0.l = label
+        $0.d = desc
         
         ["### " enum-name "::" label "\n\n"] | String.Format | AppendTo(markdown-doc)
         desc | When({IsNotNone | And | IsNot("")} {

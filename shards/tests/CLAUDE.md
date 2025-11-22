@@ -119,7 +119,7 @@ numbers | Log("After multiple removals")
 ```
 
 - Tables: `{key: value key2: value2}`
-  - Access: `table:key` or `table | Take(key)`
+  - Access: `table.key` or `table | Take(key)`
   - Modify: `new-value | Update(table key)`
   - Remove: `Erase(key table)`
 
@@ -127,7 +127,7 @@ Example:
 
 ```shards
 {name: "Alice" age: 30 city: "NY"} >= person-data
-person-data:name | Log(Label: "Name")             // "Alice"
+person-data.name | Log(Label: "Name")             // "Alice"
 "Bob" | Update(person-data "name")                // update name
 31 | Update(person-data "age")                    // update age
 Erase("city" person-data)                         // remove city
@@ -238,7 +238,7 @@ Examples:
   // Can access and modify globals from anywhere
   shared-counter | Add(1) > shared-counter
   shared-value | Log(Label: "Value")
-  shared-state:status | Log(Label: "Status")
+  shared-state.status | Log(Label: "Status")
 })
 ```
 
@@ -334,7 +334,7 @@ Example:
 
 // Use the type
 {name: "Alice" age: 30 scores: [85 92 78]} | Expect(person-type) = person-data
-person-data:age | Assert.Is(30)
+person-data.age | Assert.Is(30)
 ```
 
 ## Concurrency
@@ -390,12 +390,16 @@ Maybe({
 
 ## Operation Grouping
 
-- Use parentheses to control evaluation order
-- `(time | Mul(0.5))` ensures that part runs first
+- Pipes work directly in shard parameters (pipe-in-params)
+- `time | Mul(0.5)` can be used directly without extra parentheses
 
 Example:
 
 ```shards
+// Pipe-in-params - cleaner syntax:
+orbit-angle | Add(time | Mul(0.5)) > orbit-angle
+
+// Parentheses still work for explicit grouping:
 orbit-angle | Add((time | Mul(0.5))) > orbit-angle
 ```
 
@@ -429,14 +433,26 @@ Example:
 greeting | Log(Label: "Greeting")
 ```
 
-## Operation Grouping & Evaluation Order
+## Operation Grouping & Pipe-in-Params
 
-- Use parentheses `(...)` to control evaluation order in pipe chains
-
-Example:
+Shards supports **pipe-in-params**: you can use `|` directly inside shard parameters without parentheses.
 
 ```shards
-// Need parentheses for nested pipe operations:
+// With pipe-in-params (preferred):
+value | Math.Add(other | Math.Mul(2))      // Cleaner!
+items | ForEach(item | Transform | Process)
+
+// Old style with explicit parentheses (still works):
+value | Math.Add((other | Math.Mul(2)))
+```
+
+When to still use parentheses `(...)`:
+
+- To create an expression that evaluates ahead and produces a value
+- When you need explicit grouping for complex nested operations
+
+```shards
+// Expression grouping still useful for complex cases:
 ToFloat | Div((32 | Div(3.1415926535))) >= x
 
 // Equivalent to:
@@ -445,8 +461,7 @@ ToFloat | Div(tmp) >= x
 ```
 
 - Parentheses create an implicit temporary variable
-- Required when you want to use the result of a pipe operation as an argument
-- Common in mathematical expressions and nested operations
+- Use pipe-in-params for cleaner code when possible
 
 ## Examples
 
@@ -485,7 +500,7 @@ Types & error:
 @define(person @type({name: Type::String age: Type::Int}))
 @wire(type-and-error-demo {
   {name: "Alice" age: 30} | Expect(@person) = person-table-ref
-  person-table-ref:age | Assert.Is(30)
+  person-table-ref.age | Assert.Is(30)
   Maybe({
     "10" | FromJson | Add(5) | Log("Success")
   } {

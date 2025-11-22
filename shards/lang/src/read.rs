@@ -19,7 +19,6 @@ use shards::{
 use std::borrow::Cow;
 use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::iter::Cloned;
 use std::mem::swap;
 use std::ops::Sub;
 use std::path::{Path, PathBuf};
@@ -50,6 +49,8 @@ struct InlineTemplate {
 }
 
 pub type FileRegistryHandle = u8;
+
+#[cfg(not(test))]
 extern "C" {
   pub fn shlang_fr_static() -> *const FileRegistryHandle;
   pub fn shlang_fr_get_file_id(
@@ -58,6 +59,7 @@ extern "C" {
   ) -> u32;
 }
 
+#[cfg(not(test))]
 fn get_debug_file_id(path: &str) -> Option<u32> {
   unsafe {
     let handle = shlang_fr_static();
@@ -68,6 +70,12 @@ fn get_debug_file_id(path: &str) -> Option<u32> {
       return Some(id);
     }
   }
+}
+
+// Test stub - returns None (no debug file tracking in tests)
+#[cfg(test)]
+fn get_debug_file_id(_path: &str) -> Option<u32> {
+  None
 }
 
 impl ReadEnv {
@@ -366,7 +374,6 @@ fn substitute_inline_template(
         let sw = (&iden).resolve();
         let src = sw.as_str();
         let dst = param.as_str();
-        eprintln!("Subst {} => {}", src, dst);
         str = str.replace(src, dst);
       } else {
         return errr(env, "Parameter should be an identifier", context_pair);
@@ -844,6 +851,138 @@ fn process_take_seq(
   Ok((identifier, indices))
 }
 
+/// Shared helper to convert a parsed block rule into a Block struct.
+/// Used by both process_pipeline and process_pipe_value to avoid duplication.
+fn process_block(
+  inner_pair: Pair<Rule>,
+  env: &mut ReadEnv,
+  is_pipeline_context: bool,
+) -> Result<Block, ShardsError> {
+  let line_info = env.make_line_info_from_pair(&inner_pair);
+  let rule = inner_pair.as_rule();
+  let context_name = if is_pipeline_context {
+    "Pipeline"
+  } else {
+    "PipeValue"
+  };
+
+  let block = match rule {
+    Rule::EvalExpr => Block {
+      content: BlockContent::EvalExpr(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected an eval time expression in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Expr => Block {
+      content: BlockContent::Expr(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected an expression in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Shard => {
+      match process_function(inner_pair.clone(), env)? {
+        FunctionValue::Const(value) => Block {
+          content: BlockContent::Const(value),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Function(func) => Block {
+          content: BlockContent::Shard(func),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+        FunctionValue::Program(program) => Block {
+          content: BlockContent::Program(program),
+          line_info: Some(line_info),
+          custom_state: CustomStateContainer::new(),
+        },
+      }
+    }
+    Rule::Func => match process_function(inner_pair.clone(), env)? {
+      FunctionValue::Const(value) => Block {
+        content: BlockContent::Const(value),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      FunctionValue::Function(func) => Block {
+        content: BlockContent::Func(func),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+      FunctionValue::Program(program) => Block {
+        content: BlockContent::Program(program),
+        line_info: Some(line_info),
+        custom_state: CustomStateContainer::new(),
+      },
+    },
+    Rule::TakeTable => Block {
+      content: {
+        let pair_result = process_take_table(inner_pair, env)?;
+        BlockContent::TakeTable(pair_result.0, pair_result.1)
+      },
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::TakeSeq => Block {
+      content: {
+        let pair_result = process_take_seq(inner_pair, env)?;
+        BlockContent::TakeSeq(pair_result.0, pair_result.1)
+      },
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::ConstValue => Block {
+      content: BlockContent::Const(process_value(inner_pair, env)?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Enum => Block {
+      content: BlockContent::Const(process_value(inner_pair, env)?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    Rule::Shards => Block {
+      content: BlockContent::Shards(process_sequence(
+        inner_pair.clone().into_inner().next().ok_or_else(|| {
+          err(
+            env,
+            &format!("Expected a sequence in {}", context_name),
+            &inner_pair,
+          )
+        })?,
+        env,
+      )?),
+      line_info: Some(line_info),
+      custom_state: CustomStateContainer::new(),
+    },
+    _ => {
+      return errr(
+        env,
+        &format!("Unexpected rule ({:?}) in {}", rule, context_name),
+        &inner_pair,
+      )
+    }
+  };
+
+  Ok(block)
+}
+
 fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, ShardsError> {
   if pair.as_rule() != Rule::Pipeline {
     return errr(
@@ -853,125 +992,11 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
     );
   }
 
-  let mut blocks = Vec::new();
+  let blocks = pair
+    .into_inner()
+    .map(|inner_pair| process_block(inner_pair, env, true))
+    .collect::<Result<Vec<_>, _>>()?;
 
-  for inner_pair in pair.into_inner() {
-    let line_info = env.make_line_info_from_pair(&inner_pair);
-    let rule = inner_pair.as_rule();
-    match rule {
-      Rule::EvalExpr => blocks.push(Block {
-        content: BlockContent::EvalExpr(process_sequence(
-          inner_pair.clone().into_inner().next().ok_or_else(|| {
-            err(
-              env,
-              "Expected an eval time expression, but found none.",
-              &inner_pair,
-            )
-          })?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Expr => blocks.push(Block {
-        content: BlockContent::Expr(process_sequence(
-          inner_pair
-            .clone()
-            .into_inner()
-            .next()
-            .ok_or_else(|| err(env, "Expected an expression, but found none.", &inner_pair))?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Shard => {
-        if line_info.line == 0 && line_info.column == 0 {
-          eprintln!("heee");
-        }
-        match process_function(inner_pair, env)? {
-          FunctionValue::Const(value) => blocks.push(Block {
-            content: BlockContent::Const(value),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-          FunctionValue::Function(func) => blocks.push(Block {
-            content: BlockContent::Shard(func),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-          FunctionValue::Program(program) => blocks.push(Block {
-            content: BlockContent::Program(program),
-            line_info: Some(line_info),
-            custom_state: CustomStateContainer::new(),
-          }),
-        }
-      }
-      Rule::Func => match process_function(inner_pair, env)? {
-        FunctionValue::Const(value) => blocks.push(Block {
-          content: BlockContent::Const(value),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Function(func) => blocks.push(Block {
-          content: BlockContent::Func(func),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-        FunctionValue::Program(program) => blocks.push(Block {
-          content: BlockContent::Program(program),
-          line_info: Some(line_info),
-          custom_state: CustomStateContainer::new(),
-        }),
-      },
-      Rule::TakeTable => blocks.push(Block {
-        content: {
-          let pair_result = process_take_table(inner_pair, env)?;
-          BlockContent::TakeTable(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::TakeSeq => blocks.push(Block {
-        content: {
-          let pair_result = process_take_seq(inner_pair, env)?;
-          BlockContent::TakeSeq(pair_result.0, pair_result.1)
-        },
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::ConstValue => blocks.push(Block {
-        // this is an indirection, process_value will handle the case of a ConstValue
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Enum => blocks.push(Block {
-        content: BlockContent::Const(process_value(inner_pair, env)?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      Rule::Shards => blocks.push(Block {
-        content: BlockContent::Shards(process_sequence(
-          inner_pair
-            .clone()
-            .into_inner()
-            .next()
-            .ok_or_else(|| err(env, "Expected an expression, but found none.", &inner_pair))?,
-          env,
-        )?),
-        line_info: Some(line_info),
-        custom_state: CustomStateContainer::new(),
-      }),
-      _ => {
-        return errr(
-          env,
-          &format!("Unexpected rule ({:?}) in Pipeline.", rule),
-          &inner_pair,
-        )
-      }
-    }
-  }
   Ok(Pipeline { blocks })
 }
 
@@ -1106,17 +1131,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
     Rule::Seq => {
       let values = pair
         .into_inner()
-        .map(|value| {
-          let pos = value.as_span().start_pos();
-          process_value(
-            value
-              .clone()
-              .into_inner()
-              .next()
-              .ok_or_else(|| err(env, "Expected a Value in the sequence", &value))?,
-            env,
-          )
-        })
+        .map(|pipe_value| process_pipe_value(pipe_value, env))
         .collect::<Result<Vec<_>, _>>()?;
       Ok(Value::Seq(values))
     }
@@ -1150,18 +1165,10 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             }
           };
 
-          let value = inner
+          let pipe_value = inner
             .next()
             .ok_or_else(|| err(env, "Expected a value in TableEntry", &pair))?;
-          let pos = value.as_span().start_pos();
-          let value = process_value(
-            value
-              .clone()
-              .into_inner()
-              .next()
-              .ok_or_else(|| err(env, "Expected a value in TableEntry", &value))?,
-            env,
-          )?;
+          let value = process_pipe_value(pipe_value, env)?;
           Ok((key, value))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -1238,6 +1245,57 @@ fn process_number(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Number, ShardsE
   }
 }
 
+/// Process a PipeValue rule which contains one or more blocks separated by pipes.
+/// If there's a single block, converts it directly to a Value.
+/// If there are multiple blocks, wraps them in a Pipeline → Sequence → Value::Expr.
+fn process_pipe_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsError> {
+  if pair.as_rule() != Rule::PipeValue {
+    return errr(env, "Expected a PipeValue rule", &pair);
+  }
+
+  // Use shared block processing helper to avoid code duplication
+  let blocks = pair
+    .clone()
+    .into_inner()
+    .map(|inner_pair| process_block(inner_pair, env, false))
+    .collect::<Result<Vec<_>, _>>()?;
+
+  // Grammar `PipeValue = { Block ~ ("|" ~ Block)* }` requires at least one block.
+  // This should be unreachable with valid parses, but handle gracefully in release.
+  let Some(_) = blocks.first() else {
+    return errr(env, "PipeValue must contain at least one block (grammar violation)", &pair);
+  };
+
+  if blocks.len() == 1 {
+    // Single block - convert directly to Value
+    // SAFETY: We just checked blocks.first() is Some, so this is safe
+    let block = blocks.into_iter().next().unwrap();
+    match block.content {
+      BlockContent::Const(v) => Ok(v),
+      BlockContent::Shard(f) => Ok(Value::Shard(f)),
+      BlockContent::Func(f) => Ok(Value::Func(f)),
+      BlockContent::Expr(s) => Ok(Value::Expr(s)),
+      BlockContent::EvalExpr(s) => Ok(Value::EvalExpr(s)),
+      BlockContent::Shards(s) => Ok(Value::Shards(s)),
+      BlockContent::TakeTable(id, keys) => Ok(Value::TakeTable(id, keys)),
+      BlockContent::TakeSeq(id, indices) => Ok(Value::TakeSeq(id, indices)),
+      BlockContent::Program(prog) => {
+        // Flatten program into its sequence as Expr
+        Ok(Value::Expr(prog.sequence))
+      }
+      BlockContent::Empty => Ok(Value::None(())),
+    }
+  } else {
+    // Multiple blocks - wrap in Pipeline → Sequence → Value::Expr
+    let pipeline = Pipeline { blocks };
+    let sequence = Sequence {
+      statements: vec![Statement::Pipeline(pipeline)],
+      custom_state: CustomStateContainer::new(),
+    };
+    Ok(Value::Expr(sequence))
+  }
+}
+
 fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsError> {
   if pair.as_rule() != Rule::Param {
     return errr(env, "Expected a Param rule", &pair);
@@ -1246,32 +1304,18 @@ fn process_param(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Param, ShardsErr
   let mut inner = pair.clone().into_inner();
   let first = inner
     .next()
-    .ok_or_else(|| err(env, "Expected a ParamName or Value in Param", &pair))?;
-  let pos = first.as_span().start_pos();
+    .ok_or_else(|| err(env, "Expected a ParamName or PipeValue in Param", &pair))?;
   let (param_name, param_value) = if first.as_rule() == Rule::ParamName {
     let name = first.as_str().to_owned();
     let name = name[0..name.len() - 1].to_owned().into();
-    let value = process_value(
-      inner
-        .next()
-        .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?
-        .into_inner()
-        .next()
-        .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?,
-      env,
-    )?;
+    let pipe_value = inner
+      .next()
+      .ok_or_else(|| err(env, "Expected a PipeValue in Param", &pair))?;
+    let value = process_pipe_value(pipe_value, env)?;
     (Some(name), value)
   } else {
-    (
-      None,
-      process_value(
-        first
-          .into_inner()
-          .next()
-          .ok_or_else(|| err(env, "Expected a Value in Param", &pair))?,
-        env,
-      )?,
-    )
+    // first is the PipeValue itself
+    (None, process_pipe_value(first, env)?)
   };
 
   Ok(Param {
@@ -1780,6 +1824,36 @@ impl ShardsErrorsShard {
   }
 }
 
+// Test stubs for external C functions that are normally provided by the C++ runtime
+#[cfg(test)]
+mod test_stubs {
+  use std::os::raw::{c_char, c_int};
+
+  #[no_mangle]
+  pub extern "C" fn shards_log(
+    _level: c_int,
+    _msg: shards::shardsc::SHStringWithLen,
+    _file: *const c_char,
+    _function: *const c_char,
+    _line: c_int,
+  ) {
+    // No-op stub for tests
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shlang_fr_static() -> *const u8 {
+    std::ptr::null()
+  }
+
+  #[no_mangle]
+  pub extern "C" fn shlang_fr_get_file_id(
+    _handle: *const u8,
+    _path: shards::shardsc::SHStringWithLen,
+  ) -> u32 {
+    0 // Return 0 to indicate no file ID
+  }
+}
+
 #[test]
 fn test_parsing1() {
   // use std::num::NonZeroUsize;
@@ -1837,6 +1911,274 @@ fn test_parsing2() {
 
   let encoded_bin2: Vec<u8> = flexbuffers::to_vec(&decoded_json).unwrap();
   assert_eq!(encoded_bin, encoded_bin2);
+}
+
+#[test]
+fn test_pipe_in_params() {
+  // Test the new pipe-in-params syntax: Add(3 | Mul(4)) instead of Add((3 | Mul(4)))
+  let code = r#"
+    // Basic pipe in params - should work without extra parens
+    2 | Add(3 | Mul(4))
+
+    // Multiple params with pipes (comma is whitespace, params separated by natural boundaries)
+    Func(1 | Add(2) 3 | Mul(4))
+
+    // Named params with pipes
+    Shard(X: 1 | Add(2) Y: 3 | Mul(4))
+
+    // Nested pipes
+    Outer(Inner(1 | Add(2)) | Process)
+
+    // Single value params (should still work)
+    Simple(42)
+    Simple(x)
+    Simple("string")
+
+    // Mixed: single values and pipes as separate params
+    // This should be 3 params: 1, (2 | Add(3)), 4
+    Mixed(1 2 | Add(3) 4)
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  // Should parse successfully without errors
+  assert!(program.is_ok(), "Failed to parse pipe-in-params: {:?}", program.err());
+
+  let seq = program.unwrap().sequence;
+
+  // Verify we have statements (not checking exact structure, just that it parses)
+  assert!(!seq.statements.is_empty(), "Expected statements in parsed program");
+
+  // Serialize and deserialize to verify AST structure is valid
+  let encoded_bin: Vec<u8> = flexbuffers::to_vec(&seq).unwrap();
+  let decoded_bin: Sequence = flexbuffers::from_slice(&encoded_bin).unwrap();
+
+  let encoded_json = serde_json::to_string(&seq).unwrap();
+  let encoded_json2 = serde_json::to_string(&decoded_bin).unwrap();
+  assert_eq!(encoded_json, encoded_json2);
+}
+
+#[test]
+fn test_pipe_in_params_structure() {
+  // Verify that "Mixed(1 2 | Add(3) 4)" produces 3 separate params
+  let code = "Mixed(1 2 | Add(3) 4)";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  // Get the first statement which should be a Pipeline containing the Mixed shard
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    assert_eq!(pipeline.blocks.len(), 1, "Expected 1 block in pipeline");
+    if let BlockContent::Shard(func) = &pipeline.blocks[0].content {
+      assert_eq!(func.name.name.as_str(), "Mixed");
+      let params = func.params.as_ref().expect("Expected params");
+      assert_eq!(params.len(), 3, "Expected 3 params: 1, (2 | Add(3)), 4");
+
+      // First param should be a simple number 1
+      if let Value::Number(Number::Integer(n)) = &params[0].value {
+        assert_eq!(*n, 1, "First param should be 1");
+      } else {
+        panic!("First param should be Number::Integer(1), got {:?}", params[0].value);
+      }
+
+      // Second param should be an Expr (the pipe creates a sub-expression)
+      assert!(matches!(&params[1].value, Value::Expr(_)),
+        "Second param should be Expr (pipeline), got {:?}", params[1].value);
+
+      // Third param should be a simple number 4
+      if let Value::Number(Number::Integer(n)) = &params[2].value {
+        assert_eq!(*n, 4, "Third param should be 4");
+      } else {
+        panic!("Third param should be Number::Integer(4), got {:?}", params[2].value);
+      }
+    } else {
+      panic!("Expected Shard block content");
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
+}
+
+#[test]
+fn test_pipe_in_seq() {
+  // Test pipes in sequence literals: [1 2 | Add(3) 4]
+  let code = r#"
+    // Basic pipe in sequence
+    [1 2 | Add(3) 4]
+
+    // Multiple pipes in sequence
+    [x | Transform y | Process z]
+
+    // Simple sequence (should still work)
+    [1 2 3 4 5]
+
+    // Mixed values and pipes
+    ["hello" 1 | Add(2) @f3(1 2 3)]
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  assert!(program.is_ok(), "Failed to parse pipe-in-seq: {:?}", program.err());
+}
+
+#[test]
+fn test_pipe_in_seq_structure() {
+  // Verify that "[1 2 | Add(3) 4]" produces 3 elements
+  let code = "[1 2 | Add(3) 4]";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    if let BlockContent::Const(Value::Seq(elements)) = &pipeline.blocks[0].content {
+      assert_eq!(elements.len(), 3, "Expected 3 elements: 1, (2 | Add(3)), 4");
+
+      // First element should be 1
+      if let Value::Number(Number::Integer(n)) = &elements[0] {
+        assert_eq!(*n, 1, "First element should be 1");
+      } else {
+        panic!("First element should be Number::Integer(1), got {:?}", elements[0]);
+      }
+
+      // Second element should be an Expr (the pipe)
+      assert!(matches!(&elements[1], Value::Expr(_)),
+        "Second element should be Expr (pipeline), got {:?}", elements[1]);
+
+      // Third element should be 4
+      if let Value::Number(Number::Integer(n)) = &elements[2] {
+        assert_eq!(*n, 4, "Third element should be 4");
+      } else {
+        panic!("Third element should be Number::Integer(4), got {:?}", elements[2]);
+      }
+    } else {
+      panic!("Expected Const(Seq) block content, got {:?}", pipeline.blocks[0].content);
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
+}
+
+#[test]
+fn test_pipe_in_table() {
+  // Test pipes in table literals: {a: 1 b: 1 | Add(3)}
+  let code = r#"
+    // Basic pipe in table value
+    {a: 1 b: 1 | Add(3)}
+
+    // Multiple entries with pipes
+    {x: val | Transform y: other | Process z: 42}
+
+    // Simple table (should still work)
+    {name: "test" value: 123}
+
+    // Mixed values
+    {static: 1 dynamic: x | Compute}
+  "#;
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env);
+
+  assert!(program.is_ok(), "Failed to parse pipe-in-table: {:?}", program.err());
+}
+
+#[test]
+fn test_pipe_in_table_structure() {
+  // Verify that "{a: 1 b: 2 | Add(3)}" has correct structure
+  let code = "{a: 1 b: 2 | Add(3)}";
+
+  let successful_parse = ShardsParser::parse(Rule::Program, code).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let program = process_program(successful_parse.into_iter().next().unwrap(), &mut env).unwrap();
+
+  let stmt = &program.sequence.statements[0];
+  if let Statement::Pipeline(pipeline) = stmt {
+    if let BlockContent::Const(Value::Table(pairs)) = &pipeline.blocks[0].content {
+      assert_eq!(pairs.len(), 2, "Expected 2 table entries");
+
+      // First entry: a: 1
+      if let Value::String(key) = &pairs[0].0 {
+        assert_eq!(key.as_str(), "a");
+      } else {
+        panic!("First key should be 'a'");
+      }
+      if let Value::Number(Number::Integer(n)) = &pairs[0].1 {
+        assert_eq!(*n, 1, "First value should be 1");
+      } else {
+        panic!("First value should be Number::Integer(1), got {:?}", pairs[0].1);
+      }
+
+      // Second entry: b: (2 | Add(3))
+      if let Value::String(key) = &pairs[1].0 {
+        assert_eq!(key.as_str(), "b");
+      } else {
+        panic!("Second key should be 'b'");
+      }
+      assert!(matches!(&pairs[1].1, Value::Expr(_)),
+        "Second value should be Expr (pipeline), got {:?}", pairs[1].1);
+    } else {
+      panic!("Expected Const(Table) block content, got {:?}", pipeline.blocks[0].content);
+    }
+  } else {
+    panic!("Expected Pipeline statement");
+  }
+}
+
+#[test]
+fn test_pipe_advanced_cases() {
+  // Test nested pipes - pipe within pipe param
+  let nested = "Outer(Inner(1 | Add(2)) | Process)";
+  let parsed = ShardsParser::parse(Rule::Program, nested).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Nested pipes should parse: {:?}", result.err());
+
+  // Test eval expressions as pipe values
+  let eval_expr = "Func(#(1 | Add(2)) | Process)";
+  let parsed = ShardsParser::parse(Rule::Program, eval_expr).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Eval expr in pipe should parse: {:?}", result.err());
+
+  // Test @func style calls with pipes
+  let func_style = "@wire(test { x | @transform(1 | Add(2)) | Log })";
+  let parsed = ShardsParser::parse(Rule::Program, func_style).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "@func with pipes should parse: {:?}", result.err());
+
+  // Test deeply nested pipes
+  let deep = "A(B(C(1 | X) | Y) | Z)";
+  let parsed = ShardsParser::parse(Rule::Program, deep).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Deep nested pipes should parse: {:?}", result.err());
+
+  // Test comments between pipe elements
+  let with_comments = r#"Func(
+    1 // first param
+    2 | Add(3) // piped param
+    4 // last param
+  )"#;
+  let parsed = ShardsParser::parse(Rule::Program, with_comments).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Comments in pipes should parse: {:?}", result.err());
+
+  // Test expression parens in pipe
+  let expr_in_pipe = "Func((x | Y) | Z)";
+  let parsed = ShardsParser::parse(Rule::Program, expr_in_pipe).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Expr parens in pipe should parse: {:?}", result.err());
 }
 
 // Shards.Docs shard for getting documentation for shards and enums

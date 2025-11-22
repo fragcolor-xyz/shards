@@ -145,7 +145,7 @@
       Math.Inc(idx)
     })
     
-    shard-doc:name | @get-filename(@shards-path ".md" true) = file
+    shard-doc.name | @get-filename(@shards-path ".md" true) = file
     {String.Contains("General/") = is-general-shard}
     [""] >= o
     
@@ -158,7 +158,7 @@
     
     // title
     "# " >> o
-    shard-doc:name >> o
+    shard-doc.name >> o
     "\n\n" >> o
     
     // ; Combined table showing the input/outpus and parameters
@@ -167,17 +167,17 @@
     "|------|---------------------|-------------|---------|------|\n" >> o
     
     "| `⬅️ Input` ||" >> o
-    shard-doc:input-help | @input-help-shards >> o
+    shard-doc.input-help | @input-help-shards >> o
     " | " >> o
     "| " >> o
-    shard-doc:input-types | ForEach(@print-type-info(o))
+    shard-doc.input-types | ForEach(@print-type-info(o))
     " |\n" >> o
     
     "| `Output ➡️` ||" >> o
-    shard-doc:output-help | @output-help-shards >> o
+    shard-doc.output-help | @output-help-shards >> o
     " | " >> o
     "| " >> o
-    shard-doc:output-types | ForEach(@print-type-info(o))
+    shard-doc.output-types | ForEach(@print-type-info(o))
     " |\n" >> o
     
     parameters-seq | ForEach({
@@ -222,29 +222,29 @@
     })
     
     // Help text
-    shard-doc:help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
+    shard-doc.help | If({IsNotNone} {ExpectString} {"ToDo"}) >> o
     "\n\n" >> o
     
     "" >= shard-details
-    shard-doc:name | @get-filename(@shards-details-path ".md" true) = details-file-name
+    shard-doc.name | @get-filename(@shards-details-path ".md" true) = details-file-name
     When({details-file-name | FS.IsFile} {
       "## Details\n\n" >> o
       "--8<-- \"" >> o
-      shard-doc:name | details-file-name >> o
+      shard-doc.name | details-file-name >> o
       "\"\n" >> o
       "\n\n" >> o
       details-file-name | FS.Read > shard-details
     })
     
-    shard-doc:name | @get-filename(@shards-sample-path "" true) = samples-dir
+    shard-doc.name | @get-filename(@shards-sample-path "" true) = samples-dir
     When({samples-dir | FS.IsDirectory} {
       "## Examples\n\n" >> o
       samples-dir | FS.Iterate | ForEach({
         When({FS.Extension | Is(".shs")} {
           FS.Filename(NoExtension: true) = sample-filename
-          [shard-doc:name "/" sample-filename ".shs"] | String.Join = sample-script-fname
-          [shard-doc:name "/" sample-filename ".shs.log"] | String.Join = sample-log-fname
-          [shard-doc:name "/" sample-filename ".out.md"] | String.Join = sample-out-md-fname
+          [shard-doc.name "/" sample-filename ".shs"] | String.Join = sample-script-fname
+          [shard-doc.name "/" sample-filename ".shs.log"] | String.Join = sample-log-fname
+          [shard-doc.name "/" sample-filename ".out.md"] | String.Join = sample-out-md-fname
           
           "=== \"Code\"\n\n" >> o
           "  ```x86asm linenums=\"1\"\n" >> o
@@ -280,21 +280,21 @@
       "" >= usage-example
       
       // for AI purposes
-      shard-doc:input-help | @input-help-shards | Set(shard-doc "input-help")
-      shard-doc:output-help | @output-help-shards | Set(shard-doc "output-help")
+      shard-doc.input-help | @input-help-shards | Set(shard-doc "input-help")
+      shard-doc.output-help | @output-help-shards | Set(shard-doc "output-help")
       
-      shard-doc:input-types | @params-types-shards | Set(shard-doc "input-types")
-      shard-doc:output-types | @params-types-shards | Set(shard-doc "output-types")
+      shard-doc.input-types | @params-types-shards | Set(shard-doc "input-types")
+      shard-doc.output-types | @params-types-shards | Set(shard-doc "output-types")
       
       false >= missing-help
-      shard-doc:help | When(Is("") {
+      shard-doc.help | When(Is("") {
         "Help text is missing!" | Set(shard-doc "help")
         true > missing-help
       })
       
       parameters-seq | Map({
         ExpectTable >= param-table
-        param-table:types | ExpectSeq
+        param-table.types | ExpectSeq
         Map({ExpectTable | Take("name")}) | Set(param-table "types")
         param-table
       }) = parameters-seq-edited
@@ -356,13 +356,13 @@
             "\n" | AppendTo(shard-doc-string)
             p-help | AppendTo(shard-doc-string)
             "\n" | AppendTo(shard-doc-string)
-            "\n**Default parameter value:** " | AppendTo(shard-doc-string)
+            "\n**Default parameter value.** " | AppendTo(shard-doc-string)
             p-default | AppendTo(shard-doc-string)
             "\n" | AppendTo(shard-doc-string)
             "\n**Is the parameter optional?** " | AppendTo(shard-doc-string)
             (p-optional | If(IsTrue {"Yes"} {"No"})) | AppendTo(shard-doc-string)
             "\n" | AppendTo(shard-doc-string)
-            "\n**Possible parameter types:**\n" | AppendTo(shard-doc-string)
+            "\n**Possible parameter types.**\n" | AppendTo(shard-doc-string)
             p-types | ForEach({
               {"  * " | AppendTo(shard-doc-string)}
               ExpectString | AppendTo(shard-doc-string)
@@ -434,7 +434,7 @@
                 }}]
               [{"type": "text"
                 "text": {
-                    "content": shard-doc:input-help
+                    "content": shard-doc.input-help
                 }}]
               [{"type": "text"
                 "text": {
@@ -442,7 +442,7 @@
                 }}]
               [{"type": "text"
                 "text": {
-                    "content": shard-doc:input-types
+                    "content": shard-doc.input-types
                 }}]]
           }
         } >> notion-params
@@ -460,7 +460,7 @@
                 }}]
               [{"type": "text"
                 "text": {
-                    "content": shard-doc:output-help
+                    "content": shard-doc.output-help
                 }}]
               [{"type": "text"
                 "text": {
@@ -468,7 +468,7 @@
                 }}]
               [{"type": "text"
                 "text": {
-                    "content": shard-doc:output-types
+                    "content": shard-doc.output-types
                 }}]]
           }
         } >> notion-params
@@ -565,7 +565,7 @@
                   {
                     "type": "text"
                     "text": {
-                      "content": shard-doc:help
+                      "content": shard-doc.help
                     }
                   }]
               }
@@ -575,7 +575,7 @@
       })
     }
     
-    shard-doc:name | Log("Documented shard")
+    shard-doc.name | Log("Documented shard")
     
     ""
   })
@@ -600,7 +600,7 @@
     "\n\n" >> o
     
     "# " >> o
-    enum-help:name | ExpectString = name | Set(enum-doc "name")
+    enum-help.name | ExpectString = name | Set(enum-doc "name")
     name >> o
     "\n\n" >> o
     
@@ -638,11 +638,11 @@
     file | FS.Write(content Overwrite: true)
     
     ["# " name " {.enum}\n\n"] | String.Join >= enum-doc-string
-    enum-help:help | ExpectString | AppendTo(enum-doc-string)
+    enum-help.help | ExpectString | AppendTo(enum-doc-string)
     "\n\n" | AppendTo(enum-doc-string)
     "| Value  | Description |\n" | AppendTo(enum-doc-string)
     "|------|---------------------|\n" | AppendTo(enum-doc-string)
-    enum-doc:values | ExpectSeq | ForEach({
+    enum-doc.values | ExpectSeq | ForEach({
       ExpectTable
       {Take("label") | ExpectString = label}
       {Take("description") | ExpectString = description}

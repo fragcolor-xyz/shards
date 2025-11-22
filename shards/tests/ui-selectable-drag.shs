@@ -47,7 +47,7 @@
               // UI.DragAndDrop({
               "Hi" | UI.Label
               "Select " >= label
-              item:name | ExpectString | AppendTo(label)
+              item.name | ExpectString | AppendTo(label)
               UI.Button(label {"Hi" | Log})
               // })
             }

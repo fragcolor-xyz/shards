@@ -37,9 +37,9 @@
   })
 
   chunks | Count | Assert.Is(3 true)
-  chunks:0 | Assert.Is("Chunk1" true)
-  chunks:1 | Assert.Is("Chunk2" true)
-  chunks:2 | Assert.Is("Chunk3" true)
+  chunks.0 | Assert.Is("Chunk1" true)
+  chunks.1 | Assert.Is("Chunk2" true)
+  chunks.2 | Assert.Is("Chunk3" true)
   Log("Chunked reading test passed")
 
   // Test 3: BasePath restriction

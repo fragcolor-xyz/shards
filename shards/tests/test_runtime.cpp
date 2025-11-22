@@ -1408,17 +1408,17 @@ TEST_CASE("shards-lang") {
   TEST_SUCCESS_CASE("_SubFlow Shards 2", "1 | Math.Add(2) | _SubFlow({Assert.Is(Value: 3) | Log}) | Log");
   TEST_EVAL_ERROR_CASE("_SubFlow Shards 3", "1 | Math.Add(2) | _SubFlow({Assert.Is(LOL: 3) | Log}) | Log",
                        "Unknown parameter 'LOL'");
-  TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log (3 | Log))");
+  TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log | (3 | Log))");
   TEST_SUCCESS_CASE("Exp 2", "[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
   TEST_SUCCESS_CASE("Exp 3", "[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
   TEST_EVAL_ERROR_CASE("Failed EvalExpr", "#(false | Assert.Is(true))", "Assert failed - Is");
   TEST_SUCCESS_CASE("EvalExpr 1", "2 | Math.Multiply(#(1 | Math.Add(2) | Log)) | Log | Assert.Is(6)");
-  TEST_SUCCESS_CASE("SeqTake 1", "[1 2] | Log = s s:0 | Log | Assert.Is(1) s:1 | Log | Assert.Is(2)");
-  TEST_SUCCESS_CASE("SeqTake 2", "[1 2] | Log = s 1 | Math.Add(s:0) | Assert.Is(2)");
-  TEST_SUCCESS_CASE("TableTake 1", "{a: 1 b: 2} | Log = t t:a | Log | Assert.Is(1) t:b | Log | Assert.Is(2)");
+  TEST_SUCCESS_CASE("SeqTake 1", "[1 2] | Log = s s.0 | Log | Assert.Is(1) s.1 | Log | Assert.Is(2)");
+  TEST_SUCCESS_CASE("SeqTake 2", "[1 2] | Log = s 1 | Math.Add(s.0) | Assert.Is(2)");
+  TEST_SUCCESS_CASE("TableTake 1", "{a: 1 b: 2} | Log = t t.a | Log | Assert.Is(1) t.b | Log | Assert.Is(2)");
 
   SECTION("TableTake 2") {
-    auto code = "{a: 1 b: 2} | Log = t 1 | Math.Add(t:a) | Assert.Is(2)";
+    auto code = "{a: 1 b: 2} | Log = t 1 | Math.Add(t.a) | Assert.Is(2)";
     auto seq = readHelper(code);
     shards::OwnedVar ast{seq->ast};
     REQUIRE(ast.valueType == SHType::Object);
@@ -1429,7 +1429,7 @@ TEST_CASE("shards-lang") {
   }
 
   SECTION("_SubFlow 1") {
-    auto code = "{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t:a | Log | Assert.Is(1) t:b "
+    auto code = "{a: 1 b: 2} | {ToString | Assert.Is(\"{a: 1, b: 2}\") | Log} | Log = t t.a | Log | Assert.Is(1) t.b "
                 "| Log | Assert.Is(2)";
     auto seq = readHelper(code);
     shards::OwnedVar ast{seq->ast};

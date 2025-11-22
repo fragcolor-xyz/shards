@@ -73,20 +73,20 @@
     Shader.WithTexture("shadowTexture" {
       Shader.ReadInput("worldPosition") | @fbl/float4-with-alpha(1.0) = world-pos-4
       Shader.ReadBuffer("shadowViewProj") | Math.MatMul(world-pos-4) >= tmp
-      Math.Divide((tmp:3)) | ToFloat3 = shadow-pos
+      Math.Divide((tmp.3)) | ToFloat3 = shadow-pos
       shadow-pos | ToFloat2 | Math.Multiply(@f2(0.5 -0.5)) | Math.Add(0.5) = shadow-uv
       
       // Sample shadow depth
       shadow-uv | Shader.SampleTextureCoord("shadowTexture") | Take(0) = sampled-shadow-depth
       
       // Compute expected-shadow-depth
-      shadow-pos:2 = expected-shadow-depth
+      shadow-pos.2 = expected-shadow-depth
       
       // Scale out shadowing when sampling out of texture bounds
       1.0 >= shadow-factor
-      When({shadow-uv:0 | IsLess(0.0) | Or shadow-uv:0 | IsMore(1.0)}
+      When({shadow-uv.0 | IsLess(0.0) | Or shadow-uv.0 | IsMore(1.0)}
       {0.0 > shadow-factor})
-      When({shadow-uv:1 | IsLess(0.0) | Or shadow-uv:1 | IsMore(1.0)}
+      When({shadow-uv.1 | IsLess(0.0) | Or shadow-uv.1 | IsMore(1.0)}
       {0.0 > shadow-factor})
       
       expected-shadow-depth | Math.Subtract(sampled-shadow-depth) = delta
@@ -101,7 +101,7 @@
 })
 
 @template(fbl/render-shadow-map [queues light-data] {
-  light-data:direction | ExpectFloat3 | Math.Normalize = light-direction
+  light-data.direction | ExpectFloat3 | Math.Normalize = light-direction
   Get(light-data "sample-threshold" Default: 0.00001) | ExpectFloat = sample-threshold
   Get(light-data "projection-size" Default: 20.0) | ExpectFloat = projection-size
   Get(light-data "position" Default: @f3(0.0)) | ExpectFloat3 = origin
@@ -167,9 +167,9 @@
       {
         lightDirection: light-direction
         lightColor: light-color
-        shadowViewProj: (shadow-params:shadowViewProj)
-        shadowTexture: (shadow-params:shadowTexture)
-        shadowSampleThreshold: (shadow-params:shadowSampleThreshold)
+        shadowViewProj: (shadow-params.shadowViewProj)
+        shadowTexture: (shadow-params.shadowTexture)
+        shadowSampleThreshold: (shadow-params.shadowSampleThreshold)
       }
     }
   )
