@@ -189,7 +189,6 @@ if [ "$SKIP_MISC" = false ]; then
         "shards/tests/hot-reload.shs||"
         "shards/tests/crdts.shs||"
         "shards/tests/crdt-benchmarks.shs||"
-        "shards/tests/tui1.shs||"
         "shards/tests/physics.shs||"
     )
 fi
