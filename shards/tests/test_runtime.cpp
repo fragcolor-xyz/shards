@@ -1408,7 +1408,7 @@ TEST_CASE("shards-lang") {
   TEST_SUCCESS_CASE("_SubFlow Shards 2", "1 | Math.Add(2) | _SubFlow({Assert.Is(Value: 3) | Log}) | Log");
   TEST_EVAL_ERROR_CASE("_SubFlow Shards 3", "1 | Math.Add(2) | _SubFlow({Assert.Is(LOL: 3) | Log}) | Log",
                        "Unknown parameter 'LOL'");
-  TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log (3 | Log))");
+  TEST_SUCCESS_CASE("Exp 1", "1 | Log | (2 | Log | (3 | Log))");
   TEST_SUCCESS_CASE("Exp 2", "[(2 | Math.Multiply(3)) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
   TEST_SUCCESS_CASE("Exp 3", "[(2 | Math.Multiply((3 | Math.Add(6)))) (2 | Math.Multiply(6)) (2 | Math.Multiply(12))] | Log")
   TEST_EVAL_ERROR_CASE("Failed EvalExpr", "#(false | Assert.Is(true))", "Assert failed - Is");
