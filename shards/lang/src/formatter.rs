@@ -1023,4 +1023,7 @@ fn test_comma_preservation() {
   let mixed = "Func(1, 2 3, 4)\n";
   let formatted = format_str(mixed).unwrap();
   assert_eq!(formatted, "Func(1, 2 3, 4)\n", "Mixed commas should be preserved as-is");
+
+  // NOTE: Formatter support for pipes in params/seq/table requires additional work
+  // to properly visit PipeValue nodes. For now, commas are preserved for simple values.
 }

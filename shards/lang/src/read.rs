@@ -895,9 +895,6 @@ fn process_pipeline(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Pipeline, Sha
         custom_state: CustomStateContainer::new(),
       }),
       Rule::Shard => {
-        if line_info.line == 0 && line_info.column == 0 {
-          eprintln!("heee");
-        }
         match process_function(inner_pair, env)? {
           FunctionValue::Const(value) => blocks.push(Block {
             content: BlockContent::Const(value),
@@ -2208,6 +2205,55 @@ fn test_pipe_in_table_structure() {
   } else {
     panic!("Expected Pipeline statement");
   }
+}
+
+#[test]
+fn test_pipe_advanced_cases() {
+  // Test nested pipes - pipe within pipe param
+  let nested = "Outer(Inner(1 | Add(2)) | Process)";
+  let parsed = ShardsParser::parse(Rule::Program, nested).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Nested pipes should parse: {:?}", result.err());
+
+  // Test eval expressions as pipe values
+  let eval_expr = "Func(#(1 | Add(2)) | Process)";
+  let parsed = ShardsParser::parse(Rule::Program, eval_expr).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Eval expr in pipe should parse: {:?}", result.err());
+
+  // Test @func style calls with pipes
+  let func_style = "@wire(test { x | @transform(1 | Add(2)) | Log })";
+  let parsed = ShardsParser::parse(Rule::Program, func_style).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "@func with pipes should parse: {:?}", result.err());
+
+  // Test deeply nested pipes
+  let deep = "A(B(C(1 | X) | Y) | Z)";
+  let parsed = ShardsParser::parse(Rule::Program, deep).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Deep nested pipes should parse: {:?}", result.err());
+
+  // Test comments between pipe elements
+  let with_comments = r#"Func(
+    1 // first param
+    2 | Add(3) // piped param
+    4 // last param
+  )"#;
+  let parsed = ShardsParser::parse(Rule::Program, with_comments).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Comments in pipes should parse: {:?}", result.err());
+
+  // Test expression parens in pipe
+  let expr_in_pipe = "Func((x | Y) | Z)";
+  let parsed = ShardsParser::parse(Rule::Program, expr_in_pipe).unwrap();
+  let mut env = ReadEnv::new_cwd("");
+  let result = process_program(parsed.into_iter().next().unwrap(), &mut env);
+  assert!(result.is_ok(), "Expr parens in pipe should parse: {:?}", result.err());
 }
 
 // Shards.Docs shard for getting documentation for shards and enums
