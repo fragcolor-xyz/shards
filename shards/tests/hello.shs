@@ -340,3 +340,7 @@ any-value.b | Assert.Is(2)
     b: 6
   }
 )
+
+{name: "Hello"} = tt
+[0 1] = tn
+["`" tt.name " (" tn.1 ")`"] | String.Format | Log | Assert.Is("`Hello (1)`")
