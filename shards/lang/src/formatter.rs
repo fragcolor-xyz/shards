@@ -880,6 +880,10 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
       // Restore previous state (for nested pipe values)
       self.pipe_value_remaining = old_remaining;
       self.emit_pipe_before_next_block = old_emit;
+
+      // Verify state was properly restored in debug builds
+      debug_assert_eq!(self.pipe_value_remaining, old_remaining);
+      debug_assert_eq!(self.emit_pipe_before_next_block, old_emit);
     } else {
       inner(self);
     }
@@ -1172,4 +1176,30 @@ fn test_take_seq_preservation() {
     "{key: shadow-uv.0}\n",
     "TakeSeq inside table value should now work"
   );
+}
+
+#[test]
+fn test_deeply_nested_pipe_values() {
+  // Test deeply nested pipes to verify state restoration handles arbitrary nesting
+  let nested_2 = "Func(1 | A(2 | B(3)))\n";
+  let formatted = format_str(nested_2).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3)))\n", "2-level nesting");
+
+  let nested_3 = "Func(1 | A(2 | B(3 | C(4))))\n";
+  let formatted = format_str(nested_3).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3 | C(4))))\n", "3-level nesting");
+
+  let nested_4 = "Func(1 | A(2 | B(3 | C(4 | D(5)))))\n";
+  let formatted = format_str(nested_4).unwrap();
+  assert_eq!(formatted, "Func(1 | A(2 | B(3 | C(4 | D(5)))))\n", "4-level nesting");
+
+  // Test with multiple pipes at each level
+  let multi_pipe = "Func(1 | A | B(2 | C | D(3 | E | F)))\n";
+  let formatted = format_str(multi_pipe).unwrap();
+  assert_eq!(formatted, "Func(1 | A | B(2 | C | D(3 | E | F)))\n", "Multi-pipe nesting");
+
+  // Test nested in table values
+  let nested_in_table = "{a: 1 | Add(2 | Mul(3))}\n";
+  let formatted = format_str(nested_in_table).unwrap();
+  assert_eq!(formatted, "{a: 1 | Add(2 | Mul(3))}\n", "Nested in table");
 }

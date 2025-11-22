@@ -375,7 +375,6 @@ fn substitute_inline_template(
         let sw = (&iden).resolve();
         let src = sw.as_str();
         let dst = param.as_str();
-        eprintln!("Subst {} => {}", src, dst);
         str = str.replace(src, dst);
       } else {
         return errr(env, "Parameter should be an identifier", context_pair);
@@ -1262,14 +1261,9 @@ fn process_pipe_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, Shar
     .map(|inner_pair| process_block(inner_pair, env, false))
     .collect::<Result<Vec<_>, _>>()?;
 
-  // Defensive check: PipeValue grammar requires at least one block
-  if blocks.is_empty() {
-    return errr(
-      env,
-      "PipeValue must contain at least one block",
-      &pair,
-    );
-  }
+  // Grammar `PipeValue = { Block ~ ("|" ~ Block)* }` requires at least one block.
+  // This should be unreachable with valid parses.
+  debug_assert!(!blocks.is_empty(), "PipeValue must contain at least one block");
 
   if blocks.len() == 1 {
     // Single block - convert directly to Value
