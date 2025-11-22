@@ -344,3 +344,20 @@ any-value.b | Assert.Is(2)
 {name: "Hello"} = tt
 [0 1] = tn
 ["`" tt.name " (" tn.1 ")`"] | String.Format | Log | Assert.Is("`Hello (1)`")
+
+; SFINAE-like auto-evaluation for shard parameters
+; When a parameter expects a value but receives a shard, automatically wrap in EvalExpr
+; Msg outputs to log, so these tests verify the shard gets auto-evaluated as a parameter
+
+; Test 1: Identifier that resolves to a shard (e.g., NanoID produces a string)
+; NanoID would fail without auto-eval since Msg expects String not Shard
+Msg(NanoID)
+
+; Test 2: Shards sequence as parameter - auto-evaluates and produces result
+Msg({1 | Math.Add(1) | ToString}) ; outputs "2"
+
+; Test 3: Shard with parameters as value
+Msg(Random.Name(3))
+
+; Test 4: Multiple shards chained in parameter
+Msg({["Result: " 42] | String.Format}) ; outputs "Result: 42"

@@ -2740,6 +2740,63 @@ fn create_shard_inner(
   Ok(s)
 }
 
+/// Check if a value can potentially be wrapped in an EvalExpr for auto-evaluation.
+/// This is used for SFINAE-like parameter setting: if setting a parameter fails,
+/// we try wrapping executable values in EvalExpr to get their result.
+/// Includes Identifier since identifiers can resolve to shard names (e.g., NanoID).
+fn can_eval_expr_wrap(value: &Value, var_value: &SVar) -> bool {
+  // Check if the result is a ShardRef - that's a strong indicator we should try wrapping
+  if var_value.as_ref().valueType == SHType_ShardRef {
+    return true;
+  }
+  // Also check for sequences of shards
+  if var_value.as_ref().is_seq() {
+    let seq = unsafe { var_value.as_ref().payload.__bindgen_anon_1.seqValue };
+    if seq.len > 0 {
+      let first = unsafe { &*seq.elements };
+      if first.valueType == SHType_ShardRef {
+        return true;
+      }
+    }
+  }
+  // Fall back to checking the AST value type for other cases
+  matches!(value, Value::Shard(_) | Value::Func(_) | Value::Shards(_))
+}
+
+/// Wrap a value in an EvalExpr for compile-time evaluation.
+/// This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+fn wrap_in_eval_expr(value: &Value, line_info: LineInfo) -> Value {
+  // For Shards sequences, the sequence IS the pipeline to execute directly
+  if let Value::Shards(seq) = value {
+    return Value::EvalExpr(seq.clone());
+  }
+
+  let block = Block {
+    content: match value {
+      Value::Shard(f) => BlockContent::Shard(f.clone()),
+      Value::Func(f) => BlockContent::Func(f.clone()),
+      // For identifiers that resolved to shards, treat as a parameterless shard call
+      Value::Identifier(name) => BlockContent::Shard(Function {
+        name: name.clone(),
+        params: None,
+        custom_state: CustomStateContainer::new(),
+      }),
+      // For anything else, wrap as a const
+      other => BlockContent::Const(other.clone()),
+      // Note: Value::Shards is handled above with early return
+    },
+    line_info: Some(line_info),
+    custom_state: CustomStateContainer::new(),
+  };
+
+  Value::EvalExpr(Sequence {
+    statements: vec![Statement::Pipeline(Pipeline {
+      blocks: vec![block],
+    })],
+    custom_state: CustomStateContainer::new(),
+  })
+}
+
 fn set_shard_parameter(
   info: &shards::SHParameterInfo,
   env: &mut EvalEnv,
@@ -2817,20 +2874,41 @@ fn set_shard_parameter(
       }
     }
   } else {
-    if let Err(e) = s.0.set_parameter(
+    // Try setting the parameter directly first
+    match s.0.set_parameter(
       i.try_into().expect("Too many parameters"),
       *var_value.as_ref(),
     ) {
-      let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
-      Err(
-        (
-          format!("Failed to set parameter '{}', error: {}", param_name, e),
-          line_info,
+      Ok(()) => Ok(()),
+      Err(e) => {
+        // SFINAE-like fallback: if the value resolved to a shard or is an executable,
+        // try wrapping it in EvalExpr to evaluate at compile-time.
+        // This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+        if can_eval_expr_wrap(value, &var_value) {
+          let wrapped = wrap_in_eval_expr(value, line_info);
+          if let Ok(eval_result) = as_var(&wrapped, line_info, Some(s.0), env) {
+            if s
+              .0
+              .set_parameter(
+                i.try_into().expect("Too many parameters"),
+                *eval_result.as_ref(),
+              )
+              .is_ok()
+            {
+              return Ok(());
+            }
+          }
+        }
+        // Fallback failed or not applicable, return original error
+        let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
+        Err(
+          (
+            format!("Failed to set parameter '{}', error: {}", param_name, e),
+            line_info,
+          )
+            .into(),
         )
-          .into(),
-      )
-    } else {
-      Ok(())
+      }
     }
   }
 }
