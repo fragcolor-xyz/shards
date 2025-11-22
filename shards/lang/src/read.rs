@@ -19,7 +19,6 @@ use shards::{
 use std::borrow::Cow;
 use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::iter::Cloned;
 use std::mem::swap;
 use std::ops::Sub;
 use std::path::{Path, PathBuf};
@@ -1262,11 +1261,14 @@ fn process_pipe_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, Shar
     .collect::<Result<Vec<_>, _>>()?;
 
   // Grammar `PipeValue = { Block ~ ("|" ~ Block)* }` requires at least one block.
-  // This should be unreachable with valid parses.
-  debug_assert!(!blocks.is_empty(), "PipeValue must contain at least one block");
+  // This should be unreachable with valid parses, but handle gracefully in release.
+  let Some(_) = blocks.first() else {
+    return errr(env, "PipeValue must contain at least one block (grammar violation)", &pair);
+  };
 
   if blocks.len() == 1 {
     // Single block - convert directly to Value
+    // SAFETY: We just checked blocks.first() is Some, so this is safe
     let block = blocks.into_iter().next().unwrap();
     match block.content {
       BlockContent::Const(v) => Ok(v),
