@@ -90,6 +90,10 @@ pub struct FormatterVisitor<'a> {
   pub newline_style: NewlineStyle,
   // Track if there's a pending comma to emit before the next atom
   pending_comma: bool,
+  // Emit pipe before next block in a multi-block pipe value
+  emit_pipe_before_next_block: bool,
+  // Remaining blocks in current pipe value (excluding current)
+  pipe_value_remaining: usize,
 
   input: String,
 }
@@ -126,6 +130,8 @@ impl<'a> FormatterVisitor<'a> {
       context_stack: vec![Context::Unknown],
       newline_style: NewlineStyle::LF,
       pending_comma: false,
+      emit_pipe_before_next_block: false,
+      pipe_value_remaining: 0,
     }
   }
 
@@ -627,6 +633,12 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     self.interpolate(&pair);
     self.update_collection_first_item();
 
+    // Check if we need to emit "|" before this block (for multi-block pipe values)
+    if self.emit_pipe_before_next_block {
+      self.emit_pipe_before_next_block = false;
+      self.write_atom("|");
+    }
+
     let ctx = self.get_context();
     if self.top == FormatterTop::Atom {
       if let Context::Pipeline = ctx {
@@ -642,6 +654,13 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     } else {
       self.write_atom(pair.as_str());
       self.set_last_char(pair.as_span().end());
+    }
+
+    // After processing this block, if there are more blocks in the pipe value,
+    // set up to emit "|" before the next one
+    if self.pipe_value_remaining > 0 {
+      self.pipe_value_remaining -= 1;
+      self.emit_pipe_before_next_block = true;
     }
   }
   fn v_assign<T: FnOnce(&mut Self)>(
@@ -661,6 +680,12 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     let ctx = self.get_context();
     self.with_context(Context::Unknown, |_self| {
       _self.interpolate_at_pos(pair.as_span().start());
+
+      // Check if we need to emit "|" before this block (for multi-block pipe values)
+      if _self.emit_pipe_before_next_block {
+        _self.emit_pipe_before_next_block = false;
+        _self.write_atom("|");
+      }
 
       if _self.top == FormatterTop::Atom {
         if let Context::Pipeline = ctx {
@@ -705,6 +730,13 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
         last
       };
       _self.set_last_char(last.as_span().end());
+
+      // After processing this block, if there are more blocks in the pipe value,
+      // set up to emit "|" before the next one
+      if _self.pipe_value_remaining > 0 {
+        _self.pipe_value_remaining -= 1;
+        _self.emit_pipe_before_next_block = true;
+      }
     });
   }
 
@@ -823,6 +855,29 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
   fn v_take_table(&mut self, pair: Pair<Rule>) {
     let str = self.filter(pair.as_str());
     self.write_atom(&str);
+  }
+  fn v_pipe_value<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, num_blocks: usize, inner: T) {
+    self.interpolate(&pair);
+    self.update_collection_first_item();
+
+    // For multi-block pipe values, set up to emit "|" between blocks
+    // After the first block is processed, pipe_value_remaining will be decremented
+    // and emit_pipe_before_next_block will be set to emit "|" before subsequent blocks
+    if num_blocks > 1 {
+      let old_remaining = self.pipe_value_remaining;
+      let old_emit = self.emit_pipe_before_next_block;
+
+      self.pipe_value_remaining = num_blocks - 1; // Number of pipes to emit
+      self.emit_pipe_before_next_block = false;   // Don't emit before first block
+
+      inner(self);
+
+      // Restore previous state (for nested pipe values)
+      self.pipe_value_remaining = old_remaining;
+      self.emit_pipe_before_next_block = old_emit;
+    } else {
+      inner(self);
+    }
   }
   fn v_end(&mut self, _pair: Pair<Rule>) {
     // Manually done to measure final newline
@@ -1023,7 +1078,37 @@ fn test_comma_preservation() {
   let mixed = "Func(1, 2 3, 4)\n";
   let formatted = format_str(mixed).unwrap();
   assert_eq!(formatted, "Func(1, 2 3, 4)\n", "Mixed commas should be preserved as-is");
+}
 
-  // NOTE: Formatter support for pipes in params/seq/table requires additional work
-  // to properly visit PipeValue nodes. For now, commas are preserved for simple values.
+#[test]
+fn test_pipe_value_formatting() {
+  // Test pipe in function parameter - the main use case
+  let pipe_in_param = "Func(1 | Add(2))\n";
+  let formatted = format_str(pipe_in_param).unwrap();
+  assert_eq!(formatted, "Func(1 | Add(2))\n", "Pipe in param should be preserved");
+
+  // Test pipe with named parameter
+  let pipe_named = "Func(Value: 1 | Add(2))\n";
+  let formatted = format_str(pipe_named).unwrap();
+  assert_eq!(formatted, "Func(Value: 1 | Add(2))\n", "Pipe in named param should be preserved");
+
+  // Test pipe in sequence
+  let pipe_in_seq = "[1 | Add(2) 3 4]\n";
+  let formatted = format_str(pipe_in_seq).unwrap();
+  assert_eq!(formatted, "[1 | Add(2) 3 4]\n", "Pipe in seq should be preserved");
+
+  // Test pipe in table value
+  let pipe_in_table = "{a: 1 | Add(2) b: 3}\n";
+  let formatted = format_str(pipe_in_table).unwrap();
+  assert_eq!(formatted, "{a: 1 | Add(2) b: 3}\n", "Pipe in table should be preserved");
+
+  // Test multiple pipes in chain
+  let multi_pipe = "Func(1 | Add(2) | Mul(3))\n";
+  let formatted = format_str(multi_pipe).unwrap();
+  assert_eq!(formatted, "Func(1 | Add(2) | Mul(3))\n", "Multiple pipes should be preserved");
+
+  // Test pipe with commas preserved
+  let pipe_with_comma = "Func(1, 2 | Add(3), 4)\n";
+  let formatted = format_str(pipe_with_comma).unwrap();
+  assert_eq!(formatted, "Func(1, 2 | Add(3), 4)\n", "Pipe with commas should be preserved");
 }
