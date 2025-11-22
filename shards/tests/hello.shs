@@ -330,3 +330,13 @@ trigger-1-count | Assert.Is(2)
 ; test speculative destructure (will inject ExpectTable)
 any-value.a | Assert.Is(1)
 any-value.b | Assert.Is(2)
+
+{
+  a: 1 | Add(1 | Add(1))
+  b: 2 | Mul(1 | Add(1) | Add(1))
+} | Assert.Is(
+  {
+    a: 3
+    b: 6
+  }
+)
