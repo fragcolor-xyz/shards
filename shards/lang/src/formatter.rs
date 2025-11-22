@@ -88,6 +88,8 @@ pub struct FormatterVisitor<'a> {
   last_char: usize,
   context_stack: Vec<Context>,
   pub newline_style: NewlineStyle,
+  // Track if there's a pending comma to emit before the next atom
+  pending_comma: bool,
 
   input: String,
 }
@@ -101,6 +103,8 @@ enum UserLine {
 #[derive(Default)]
 struct UserStyling {
   lines: Vec<UserLine>,
+  // Track if there was a comma in the whitespace between tokens
+  has_comma: bool,
 }
 
 struct QuoteState {
@@ -121,6 +125,7 @@ impl<'a> FormatterVisitor<'a> {
       last_char: 0,
       context_stack: vec![Context::Unknown],
       newline_style: NewlineStyle::LF,
+      pending_comma: false,
     }
   }
 
@@ -232,6 +237,11 @@ impl<'a> FormatterVisitor<'a> {
         }
       }
 
+      // Detect comma (only when not in comments)
+      if c == ',' && line_comment_start.is_none() {
+        us.has_comma = true;
+      }
+
       i += 1;
     }
 
@@ -247,7 +257,7 @@ impl<'a> FormatterVisitor<'a> {
       us.lines.push(UserLine::BlockComment(comment.into()));
     }
 
-    if !us.lines.is_empty() {
+    if !us.lines.is_empty() || us.has_comma {
       return Some(us);
     }
     None
@@ -265,6 +275,10 @@ impl<'a> FormatterVisitor<'a> {
 
   fn interpolate_at_pos_ext(&mut self, ptr: usize, strip_final_newline: bool) {
     if let Some(us) = self.extract_styling(ptr) {
+      // Track comma for later use in write_pre_space
+      if us.has_comma {
+        self.pending_comma = true;
+      }
       for (i, line) in us.lines.iter().enumerate() {
         match line {
           UserLine::Newline => {
@@ -272,6 +286,8 @@ impl<'a> FormatterVisitor<'a> {
               continue;
             }
             self.newline();
+            // Clear pending comma on newline - newlines are enough separation
+            self.pending_comma = false;
           }
           UserLine::LineComment(line) => {
             self.write(&format!("//{}", line), FormatterTop::Comment);
@@ -351,15 +367,26 @@ impl<'a> FormatterVisitor<'a> {
 
   fn write_pre_space(&mut self) {
     match self.top {
-      FormatterTop::None => {}
+      FormatterTop::None => {
+        // If we have a pending comma but no previous atom, just clear it
+        self.pending_comma = false;
+      }
       FormatterTop::Atom => {
-        self.write_raw(" ");
+        // Emit comma if user had one, otherwise just space
+        if self.pending_comma {
+          self.write_raw(", ");
+          self.pending_comma = false;
+        } else {
+          self.write_raw(" ");
+        }
       }
       FormatterTop::Comment => {
         self.newline();
+        self.pending_comma = false;
       }
       FormatterTop::LineFunc => {
         self.newline();
+        self.pending_comma = false;
       }
     }
     self.top = FormatterTop::None;
@@ -968,4 +995,32 @@ pub fn run_tests() -> Result<(), crate::error::Error> {
   } else {
     Ok(())
   }
+}
+
+#[test]
+fn test_comma_preservation() {
+  // Test that commas are preserved when present
+  let with_commas = "Func(1, 2, 3)\n";
+  let formatted = format_str(with_commas).unwrap();
+  assert_eq!(formatted, "Func(1, 2, 3)\n", "Commas should be preserved");
+
+  // Test that no commas are added when not present
+  let no_commas = "Func(1 2 3)\n";
+  let formatted = format_str(no_commas).unwrap();
+  assert_eq!(formatted, "Func(1 2 3)\n", "No commas should be added");
+
+  // Test seq with commas
+  let seq_commas = "[1, 2, 3]\n";
+  let formatted = format_str(seq_commas).unwrap();
+  assert_eq!(formatted, "[1, 2, 3]\n", "Seq commas should be preserved");
+
+  // Test table with commas
+  let table_commas = "{a: 1, b: 2}\n";
+  let formatted = format_str(table_commas).unwrap();
+  assert_eq!(formatted, "{a: 1, b: 2}\n", "Table commas should be preserved");
+
+  // Test mixed - some with commas, some without
+  let mixed = "Func(1, 2 3, 4)\n";
+  let formatted = format_str(mixed).unwrap();
+  assert_eq!(formatted, "Func(1, 2 3, 4)\n", "Mixed commas should be preserved as-is");
 }
