@@ -810,6 +810,14 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
   }
   fn v_table<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
+    self.update_collection_first_item();
+
+    // Check if we need to emit "|" before this block (for multi-block pipe values)
+    if self.emit_pipe_before_next_block {
+      self.emit_pipe_before_next_block = false;
+      self.write_atom("|");
+    }
+
     self.write("{", FormatterTop::None);
     let ctx = Context::Table(self.determine_collection_styling());
     let ctx = self.with_context(ctx, |_self| {
@@ -820,9 +828,24 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     });
     self.opt_pre_closing_newline(ctx);
     self.write_joined("}");
+
+    // After processing this block, if there are more blocks in the pipe value,
+    // set up to emit "|" before the next one
+    if self.pipe_value_remaining > 0 {
+      self.pipe_value_remaining -= 1;
+      self.emit_pipe_before_next_block = true;
+    }
   }
   fn v_seq<T: FnOnce(&mut Self)>(&mut self, pair: Pair<Rule>, inner: T) {
     self.interpolate(&pair);
+    self.update_collection_first_item();
+
+    // Check if we need to emit "|" before this block (for multi-block pipe values)
+    if self.emit_pipe_before_next_block {
+      self.emit_pipe_before_next_block = false;
+      self.write_atom("|");
+    }
+
     self.write("[", FormatterTop::None);
 
     let ctx = Context::Seq(self.determine_collection_styling());
@@ -834,6 +857,13 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     });
     self.opt_pre_closing_newline(ctx);
     self.write_joined("]");
+
+    // After processing this block, if there are more blocks in the pipe value,
+    // set up to emit "|" before the next one
+    if self.pipe_value_remaining > 0 {
+      self.pipe_value_remaining -= 1;
+      self.emit_pipe_before_next_block = true;
+    }
   }
   fn v_table_val<TK: FnOnce(&mut Self), TV: FnOnce(&mut Self)>(
     &mut self,
@@ -860,33 +890,33 @@ impl<'a> RuleVisitor for FormatterVisitor<'a> {
     self.interpolate(&pair);
     self.update_collection_first_item();
 
-    // For multi-block pipe values, set up to emit "|" between blocks
-    // After the first block is processed, pipe_value_remaining will be decremented
-    // and emit_pipe_before_next_block will be set to emit "|" before subsequent blocks
+    // Always save/restore pipe state to prevent nested PipeValues from interfering
+    // with outer state. For example, in `["Bearer " token] | String.Join`, the
+    // elements inside the Seq are each single-block PipeValues, but they shouldn't
+    // modify the outer PipeValue's state.
     //
     // Note: We manually save/restore state instead of using a guard pattern because:
     // 1. A guard holding &mut self conflicts with passing &mut self to inner()
     // 2. If inner() panics, the entire formatting operation fails anyway
     // 3. State leakage only matters if we catch panics and continue (which we don't)
-    if num_blocks > 1 {
-      let old_remaining = self.pipe_value_remaining;
-      let old_emit = self.emit_pipe_before_next_block;
+    let old_remaining = self.pipe_value_remaining;
+    let old_emit = self.emit_pipe_before_next_block;
 
+    if num_blocks > 1 {
       self.pipe_value_remaining = num_blocks - 1; // Number of pipes to emit
       self.emit_pipe_before_next_block = false; // Don't emit before first block
-
-      inner(self);
-
-      // Restore previous state (for nested pipe values)
-      self.pipe_value_remaining = old_remaining;
-      self.emit_pipe_before_next_block = old_emit;
-
-      // Verify state was properly restored in debug builds
-      debug_assert_eq!(self.pipe_value_remaining, old_remaining);
-      debug_assert_eq!(self.emit_pipe_before_next_block, old_emit);
     } else {
-      inner(self);
+      // Single-block PipeValue: reset state to prevent inner values from
+      // accidentally triggering pipe emission from outer context
+      self.pipe_value_remaining = 0;
+      self.emit_pipe_before_next_block = false;
     }
+
+    inner(self);
+
+    // Restore previous state (for nested pipe values)
+    self.pipe_value_remaining = old_remaining;
+    self.emit_pipe_before_next_block = old_emit;
   }
   fn v_end(&mut self, _pair: Pair<Rule>) {
     // Manually done to measure final newline
@@ -1202,4 +1232,15 @@ fn test_deeply_nested_pipe_values() {
   let nested_in_table = "{a: 1 | Add(2 | Mul(3))}\n";
   let formatted = format_str(nested_in_table).unwrap();
   assert_eq!(formatted, "{a: 1 | Add(2 | Mul(3))}\n", "Nested in table");
+
+  // Test seq inside pipe value - elements should NOT get pipes between them
+  // This was a bug: ["Bearer " token] | String.Join was becoming ["Bearer " | token] | String.Join
+  let seq_in_pipe = "[\"Bearer \" token] | String.Join\n";
+  let formatted = format_str(seq_in_pipe).unwrap();
+  assert_eq!(formatted, "[\"Bearer \" token] | String.Join\n", "Seq elements should not get pipes");
+
+  // More complex case with table
+  let table_with_seq_pipe = "{auth: [\"Bearer \" token] | String.Join}\n";
+  let formatted = format_str(table_with_seq_pipe).unwrap();
+  assert_eq!(formatted, "{auth: [\"Bearer \" token] | String.Join}\n", "Table with seq pipe");
 }
