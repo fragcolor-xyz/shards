@@ -114,7 +114,7 @@
   Assert.Is([@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(2 3 4 1)] true) |
   Log |
   Math.Decompose = trs
-  trs:translation | Assert.Is(@f3(2 3 4) true)
+  trs.translation | Assert.Is(@f3(2 3 4) true)
 
   180.0 | Math.DegreesToRadians | Log | {ToString | Assert.Is("3.14159" true)} |
   Math.AxisAngleX | Log |

@@ -122,7 +122,7 @@
   temp-prompt-seq
   ForEach({
     Expect(@prompt-type) = chat
-    [chat:instruction, chat:code, chat:explanation] >> rows
+    [chat.instruction, chat.code, chat.explanation] >> rows
   })
 
   

@@ -60,7 +60,7 @@
               Namespace: #(namespace)
             ) = wire
             
-            hot-result:tag = old-tag
+            hot-result.tag = old-tag
             {tag: (old-tag | Add(1))} > hot-result
             WireRunner(wire) | ExpectTable
             ForEach({

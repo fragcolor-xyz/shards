@@ -1145,3 +1145,31 @@ fn test_comma_edge_cases() {
   let formatted = format_str(table_leading_newline).unwrap();
   assert_eq!(formatted, "{\n  a: 1, b: 2\n}\n", "Table commas with leading newline should be preserved");
 }
+
+#[test]
+fn test_take_seq_preservation() {
+  // Test TakeSeq alone - uses '.' syntax
+  let take_seq_only = "shadow-uv.0\n";
+  let formatted = format_str(take_seq_only).unwrap();
+  assert_eq!(formatted, "shadow-uv.0\n", "TakeSeq dot should be preserved");
+
+  // TakeSeq in pipeline
+  let take_seq_in_pipe = "shadow-uv.0 | IsLess(0.0)\n";
+  let formatted = format_str(take_seq_in_pipe).unwrap();
+  assert_eq!(formatted, "shadow-uv.0 | IsLess(0.0)\n", "TakeSeq in pipe should preserve");
+
+  // TakeSeq as shard param
+  let take_seq_as_param = "Or shadow-uv.0\n";
+  let formatted = format_str(take_seq_as_param).unwrap();
+  assert_eq!(formatted, "Or shadow-uv.0\n", "TakeSeq as param should preserve");
+
+  // TakeSeq inside table values - now works correctly with '.' syntax!
+  // The ':' is only used for table key-value pairs
+  let take_seq_in_table = "{key: shadow-uv.0}\n";
+  let formatted = format_str(take_seq_in_table).unwrap();
+  assert_eq!(
+    formatted,
+    "{key: shadow-uv.0}\n",
+    "TakeSeq inside table value should now work"
+  );
+}

@@ -3,8 +3,8 @@
 @template(gfx/align-pixel-viewport [alignment] {
   GFX.Viewport | Memoize({
     = vp
-    vp:2 | Sub((vp:0)) | ToFloat = width
-    vp:3 | Sub((vp:1)) | ToFloat = height
+    vp.2 | Sub((vp.0)) | ToFloat = width
+    vp.3 | Sub((vp.1)) | ToFloat = height
     
     alignment | Sub(0.5) = v
     

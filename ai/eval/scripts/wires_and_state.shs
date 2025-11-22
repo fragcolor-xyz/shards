@@ -69,7 +69,7 @@
   
   // Log changes
   global-counter | Log("Global counter after")
-  global-state:status | Log("Global state status")
+  global-state.status | Log("Global state status")
 })
 
 // Main wire to run the demonstrations

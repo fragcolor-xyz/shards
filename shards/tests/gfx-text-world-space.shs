@@ -79,8 +79,8 @@
     })
     
     GFX.Viewport = vp
-    vp:2 | Sub((vp:0)) = vp-width
-    vp:3 | Sub((vp:1)) = vp-height
+    vp.2 | Sub((vp.0)) = vp-width
+    vp.3 | Sub((vp.1)) = vp-height
     
     GFX.DynMesh = dmesh
     "Hello cube!" | GFX.DynDrawText(
@@ -95,7 +95,7 @@
     
     dmesh | GFX.DynToMesh(WindingOrder: WindingOrder::CW) | DoMany({
       = pair
-      Math.MatIdentity | GFX.Drawable((pair:mesh) Params: {baseColorTexture: (pair:texture)}) | GFX.Draw(text-queue)
+      Math.MatIdentity | GFX.Drawable((pair.mesh) Params: {baseColorTexture: (pair.texture)}) | GFX.Draw(text-queue)
     } ComposeSync: true)
     
     GFX.Render(Steps: render-steps View: view)

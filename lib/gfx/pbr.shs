@@ -176,8 +176,8 @@
     // glTF Spec:
     // The metalness values are sampled from the B channel. The roughness values are sampled from the G channel.
     Shader.SampleTexture("metallicRoughnessTexture") = metallic-roughness
-    metallic-roughness:2 | Math.Multiply(metallic) > metallic
-    metallic-roughness:1 | Math.Multiply(roughness) > roughness
+    metallic-roughness.2 | Math.Multiply(metallic) > metallic
+    metallic-roughness.1 | Math.Multiply(roughness) > roughness
     
     // Apply normal map
     // glTF Spec:

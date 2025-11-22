@@ -58,8 +58,8 @@
       
       Once({
         GFX.Viewport = vp
-        vp:2 | Math.Subtract((vp:0)) >= dx
-        vp:3 | Math.Subtract((vp:1)) >= dy
+        vp.2 | Math.Subtract((vp.0)) >= dx
+        vp.3 | Math.Subtract((vp.1)) >= dy
         dy | ToFloat | Mul(#(400.0 | Div(720.0))) | ToInt = py0 | Log("py0")
         dx | ToFloat | Mul(#(400.0 | Div(1280.0))) | ToInt = px0 | Log("px0")
         dx | ToFloat | Mul(#(800.0 | Div(1280.0))) | ToInt = px1 | Log("px1")
@@ -73,8 +73,8 @@
         0 >= fi-max
       })
       frame-index | When(IsMore(2) {
-        p0:0 = p0-x
-        p1:0 = p1-x
+        p0.0 = p0-x
+        p1.0 = p1-x
         frame-index | Math.Subtract(1) = expected-frame-index
         p0-x | IsMoreEqual(fi-max) | Assert.Is(true)
         fi-max | Max(p0-x) > fi-max
@@ -111,8 +111,8 @@
       u8-tex | GFX.ReadTexture(Wait: true) = image
       ImageSize = size
       
-      size:0 | ToFloat | Mul(#(400.0 | Div(1280.0))) | ToInt = px0
-      size:1 | ToFloat | Mul(#(400.0 | Div(720.0))) | ToInt = py0
+      size.0 | ToFloat | Mul(#(400.0 | Div(1280.0))) | ToInt = px0
+      size.1 | ToFloat | Mul(#(400.0 | Div(720.0))) | ToInt = py0
       
       @i2(px0 py0) | GetImagePixel(image AsInteger: true Default: @i4(0)) = p0 | Log("Pixel")
       p0 | Assert.Is(@i4(65535 0 0 0))

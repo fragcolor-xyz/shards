@@ -28,9 +28,9 @@
   
   // Run generic syntax checks for all problems
   @check-basic-syntax(solution-code) = syntax-result
-  syntax-result:score | Add(total-score) > total-score
-  syntax-result:max | Add(max-score) > max-score
-  syntax-result:feedback >> feedback
+  syntax-result.score | Add(total-score) > total-score
+  syntax-result.max | Add(max-score) > max-score
+  syntax-result.feedback >> feedback
   
   // Run problem-specific checks based on problem-id
   problem-id | Match([
@@ -76,9 +76,9 @@
   ])
   
   // Add problem-specific checks to total score
-  check-result:score | Add(total-score) > total-score
-  check-result:max | Add(max-score) > max-score
-  check-result:feedback | ForEach({
+  check-result.score | Add(total-score) > total-score
+  check-result.max | Add(max-score) > max-score
+  check-result.feedback | ForEach({
     Push(feedback)
   })
   

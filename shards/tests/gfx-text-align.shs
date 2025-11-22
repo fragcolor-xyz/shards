@@ -56,8 +56,8 @@
   GFX.MainWindow(Title: "Text Demo" Width: 1280 Height: 720 Contents: {
     GFX.Viewport = vp
     [font-index vp font-size] | Memoize({
-      vp:2 | Sub((vp:0)) | ToFloat = width
-      vp:3 | Sub((vp:1)) | ToFloat = height
+      vp.2 | Sub((vp.0)) | ToFloat = width
+      vp.3 | Sub((vp.1)) | ToFloat = height
       
       Math.Inc(refresh-trigger)
     })

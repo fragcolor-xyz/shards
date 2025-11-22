@@ -53,7 +53,7 @@
   "world" = world
   [hello " " world] | Bytes.Join | Assert.Is(("hello world" | StringToBytes))
   
-  "fbl|pose:transform:0:rot" | String.Split(":")
+  "fbl|pose.transform:0:rot" | String.Split(".")
   Assert.Is(["fbl|pose" "transform" "0" "rot"])
   
   """Something
