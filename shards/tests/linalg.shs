@@ -27,140 +27,139 @@
 @mesh(root)
 
 @wire(tests {
-  @f3(1 2 3) |
-  Math.Cross(@f3(2 2 2)) |
-  Log |
-  Assert.Is(@f3(-2 4 -2) true)
-
-  Const([@f3(1 2 3) @f3(1 3 4)]) |
-  Math.Cross(@f3(2 2 2)) |
-  Log |
-  Assert.Is([@f3(-2 4 -2) @f3(-2 6 -4)] true)
-
-  Const([@f3(1 2 3) @f3(1 3 4)]) |
-  Math.Cross([@f3(2 2 2) @f3(3 3 3)]) |
-  Log |
-  Assert.Is([@f3(-2 4 -2) @f3(-3 9 -6)] true)
-
-  @f3(1 2 3) |
-  Math.Dot(@f3(1 5 7)) | ExpectFloat |
-  Log |
-  Assert.Is(32.0 true)
-
-  @f3(1 2 3) |
-  Math.LengthSquared | ExpectFloat |
-  Log |
-  Assert.Is(14.0 true)
-
-  @f3(1 1 2) |
-  Math.Length | ExpectFloat |
-  Log |
-  ToString | // truncate hack
-  Assert.Is("2.44949" true)
-
-  @f3(1 0 1) |
-  Math.Normalize |
+  @f3(1 2 3)
+  Math.Cross(@f3(2 2 2))
   Log
-
+  Assert.Is(@f3(-2 4 -2) true)
+  
+  Const([@f3(1 2 3) @f3(1 3 4)])
+  Math.Cross(@f3(2 2 2))
+  Log
+  Assert.Is([@f3(-2 4 -2) @f3(-2 6 -4)] true)
+  
+  Const([@f3(1 2 3) @f3(1 3 4)])
+  Math.Cross([@f3(2 2 2) @f3(3 3 3)])
+  Log
+  Assert.Is([@f3(-2 4 -2) @f3(-3 9 -6)] true)
+  
+  @f3(1 2 3)
+  Math.Dot(@f3(1 5 7)) | ExpectFloat
+  Log
+  Assert.Is(32.0 true)
+  
+  @f3(1 2 3)
+  Math.LengthSquared | ExpectFloat
+  Log
+  Assert.Is(14.0 true)
+  
+  @f3(1 1 2)
+  Math.Length | ExpectFloat
+  Log
+  ToString // truncate hack
+  Assert.Is("2.44949" true)
+  
+  @f3(1 0 1)
+  Math.Normalize
+  Log
+  
   @f3(4270.56 4602.19 188) | Ref(playerPos)
   // @f3(4277.35 4596.54 188) | Set(targetPos)
   @f3(4283.18 4604.73 188) | Ref(targetPos)
-  Get(targetPos) | Math.Subtract(playerPos) |
-  Math.Normalize |
+  Get(targetPos) | Math.Subtract(playerPos)
+  Math.Normalize
   Log
-
-  @f4(2 3 4 5) | Ref(vec4.1)
-
-  Const(@identity) |
-  Math.MatMul(@f4(1 2 3 4)) |
-  Log |
+  
+  @f4(2 3 4 5) = vec4-1
+  
+  Const(@identity)
+  Math.MatMul(@f4(1 2 3 4))
+  Log
   Assert.Is(@f4(1 2 3 4) true)
-
-  Const(@identity) |
-  Math.MatMul(vec4.1) |
-  Log |
-  Assert.Is(@f4(2 3 4 5) true) |
-  Ref(vec4.2)
-
-  Const(@identity) |
-  Math.MatMul(vec4.2) |
-  Log |
+  
+  Const(@identity)
+  Math.MatMul(vec4-1)
+  Log
+  Assert.Is(@f4(2 3 4 5) true) = vec4-2
+  
+  Const(@identity)
+  Math.MatMul(vec4-2)
+  Log
   Assert.Is(@f4(2 3 4 5) true)
-
-  Const(@identity) |
-  Math.MatMul(@identity) |
-  Log |
+  
+  Const(@identity)
+  Math.MatMul(@identity)
+  Log
   Assert.Is(@identity true)
-
-  Const(@mat1) |
-  Math.Transpose |
-  Log |
+  
+  Const(@mat1)
+  Math.Transpose
+  Log
   Assert.Is(@mat1t true)
-
-  Const(@mat2) |
-  Math.Transpose |
-  Log |
+  
+  Const(@mat2)
+  Math.Transpose
+  Log
   Assert.Is(@mat2t true)
-
-  Math.Orthographic(2560 1440 0 10000) |
-  Math.Transpose |
+  
+  Math.Orthographic(2560 1440 0 10000)
+  Math.Transpose
   Log
-
-  @f3(2 3 4) | Math.Scaling |
-  Assert.Is([@f4(2 0 0 0) @f4(0 3 0 0) @f4(0 0 4 0) @f4(0 0 0 1)] true) |
+  
+  @f3(2 3 4) | Math.Scaling
+  Assert.Is([@f4(2 0 0 0) @f4(0 3 0 0) @f4(0 0 4 0) @f4(0 0 0 1)] true)
   Log
-
-  @f3(2 3 4) | Math.Translation |
-  Assert.Is([@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(2 3 4 1)] true) |
-  Log |
+  
+  @f3(2 3 4) | Math.Translation
+  Assert.Is([@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(2 3 4 1)] true)
+  Log
   Math.Decompose = trs
   trs.translation | Assert.Is(@f3(2 3 4) true)
-
-  180.0 | Math.DegreesToRadians | Log | {ToString | Assert.Is("3.14159" true)} |
-  Math.AxisAngleX | Log |
+  
+  180.0 | Math.DegreesToRadians | Log {ToString | Assert.Is("3.14159" true)}
+  Math.AxisAngleX | Log
   Math.Rotation | Log
-
-  (3.141592653589793238463 | Math.Divide(2.0)) |
-  Math.AxisAngleY | Log |
+  
+  3.141592653589793238463 | Math.Divide(2.0)
+  Math.AxisAngleY | Log
   Math.Rotation | Log
   // TODO float precision-less asserts
   // {ToString | Assert.Is("[(0, 0, -1, 0), (0, 1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)]" true)}
-
+  
   @f3(-1.0 1.0 2.0) | Math.Normalize(Positive: false) | Log
   [-1.0 1.0 2.0] | Math.Normalize(Positive: false) | Log
   @f3(-1.0 1.0 2.0) | Math.Normalize(Positive: true) | Log
   [-1.0 1.0 2.0] | Math.Normalize(Positive: true) | Log
-
+  
   @f2(-1.0 1.0) | Math.Normalize(Positive: false) | Log
   [-1.0 1.0] | Math.Normalize(Positive: false) | Log
   @f2(-1.0 1.0) | Math.Normalize(Positive: true) | Log
   [-1.0 1.0] | Math.Normalize(Positive: true) | Log
-
+  
   @f2(20.0 30.0) | Math.Normalize(Positive: false) | Log
   [20.0 30.0] | Math.Normalize(Positive: false) | Log
   @f2(20.0 30.0) | Math.Normalize(Positive: true) | Log
   [20.0 30.0] | Math.Normalize(Positive: true) | Log
-
+  
   @f3(0.0 1.0 2.0) >= first-3
   @f3(4.0 -1.0 0.0) >= second-3
   0.5 | Math.Lerp(first-3 second-3) | Assert.Is(@f3(2 0 1) true) | Log("Lerped value")
-
+  
   @color(16 32 64 255) >= first-c
   @color(37 255 32 255) >= second-c
   0.5 | Math.Lerp(first-c second-c) | Assert.Is(@color(26 143 48 255) true) | Log("Lerped color")
-
+  
   0.5 | Math.Lerp(0.0 4.0) | Assert.Is(2.0 true) | Log("Lerped Float Value")
   0.5 | Math.Lerp(0x00 0xff) | Assert.Is(0x7f true) | Log("Lerped Int Value")
-
+  
   -1 | Clamp(0 10) | Assert.Is(0 true) | Log("Clamped value")
   22 | Clamp(0 10) | Assert.Is(10 true) | Log("Clamped value")
-
+  
   // test euler to quat - identity rotation
   @f3(0.0 0.0 0.0) | Math.EulerToQuat | Assert.Is(@f4(0.0 0.0 0.0 1.0) true) | Log("Euler identity to quat")
   
   // test 90 degree rotations around each axis
   @f3(1.5707963267948966 0.0 0.0) | Math.EulerToQuat | Log("90deg yaw to quat")
-  @f3(0.0 1.5707963267948966 0.0) | Math.EulerToQuat | Log("90deg pitch to quat") 
+  @f3(0.0 1.5707963267948966 0.0) | Math.EulerToQuat | Log("90deg pitch to quat")
   @f3(0.0 0.0 1.5707963267948966) | Math.EulerToQuat | Log("90deg roll to quat")
   
   // test 180 degree rotation around Y axis (pitch)
@@ -168,40 +167,40 @@
   
   // test combined rotations
   @f3(0.7853981633974483 0.7853981633974483 0.0) | Math.EulerToQuat | Log("45deg yaw+pitch to quat")
-
+  
   // Test MatMul with valid dimensions (4x4 * 4x4)
-  [@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(0 0 0 1)] |
-  Math.MatMul([@f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4)]) |
-  Assert.Is([@f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4)] true) |
+  [@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(0 0 0 1)]
+  Math.MatMul([@f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4)])
+  Assert.Is([@f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4) @f4(1 2 3 4)] true)
   Log("4x4 identity * 4x4 mat1")
-
+  
   // Test 2x2 matrix multiplication (column-major: [@f2(c0), @f2(c1)])
   // Matrix A = [[1,3], [2,4]] (columns [1,2] and [3,4])
   // Matrix B = [[5,7], [6,8]] (columns [5,6] and [7,8])
   // Result = [[23,31], [34,46]] (columns [23,34] and [31,46])
-  [@f2(1 2) @f2(3 4)] |
-  Math.MatMul([@f2(5 6) @f2(7 8)]) |
-  Assert.Is([@f2(23 34) @f2(31 46)] true) |
+  [@f2(1 2) @f2(3 4)]
+  Math.MatMul([@f2(5 6) @f2(7 8)])
+  Assert.Is([@f2(23 34) @f2(31 46)] true)
   Log("2x2 * 2x2 matrix multiplication")
-
+  
   // Test 3x3 identity matrix multiplication
-  [@f3(1 0 0) @f3(0 1 0) @f3(0 0 1)] |
-  Math.MatMul([@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)]) |
-  Assert.Is([@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)] true) |
+  [@f3(1 0 0) @f3(0 1 0) @f3(0 0 1)]
+  Math.MatMul([@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)])
+  Assert.Is([@f3(1 2 3) @f3(4 5 6) @f3(7 8 9)] true)
   Log("3x3 identity * 3x3 matrix multiplication")
-
+  
   // Test valid matrix-vector multiplication (3x3 * 3-vector)
-  [@f3(1 0 0) @f3(0 1 0) @f3(0 0 1)] |
-  Math.MatMul(@f3(1 2 3)) |
-  Assert.Is(@f3(1 2 3) true) |
+  [@f3(1 0 0) @f3(0 1 0) @f3(0 0 1)]
+  Math.MatMul(@f3(1 2 3))
+  Assert.Is(@f3(1 2 3) true)
   Log("3x3 identity * 3-vector")
-
+  
   // Test 2x2 matrix * 2-vector
-  [@f2(1 0) @f2(0 1)] |
-  Math.MatMul(@f2(1 2)) |
-  Assert.Is(@f2(1 2) true) |
+  [@f2(1 0) @f2(0 1)]
+  Math.MatMul(@f2(1 2))
+  Assert.Is(@f2(1 2) true)
   Log("2x2 identity * 2-vector")
-
+  
   Msg("Done!")
 })
 
