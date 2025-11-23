@@ -16,6 +16,9 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path \
   && rustup default nightly
 
+# CPM cache directory
+ENV CPM_SOURCE_CACHE=/cpm-cache
+
 # Build argument for cache invalidation
 ARG GIT_COMMIT=unknown
 ARG TARGETARCH
@@ -34,6 +37,7 @@ RUN sh update.sh \
 # Build Shards
 RUN --mount=type=cache,id=cargo-${TARGETARCH},target=/root/.cargo \
   --mount=type=cache,id=rustup-${TARGETARCH},target=/root/.rustup \
+  --mount=type=cache,id=cpm-${TARGETARCH},target=/cpm-cache \
   --mount=type=cache,id=shards-build-headless-${TARGETARCH},target=/shards/build \
   --mount=type=cache,id=shards-tools-${TARGETARCH},target=/shards/tools/build \
   cd build \
