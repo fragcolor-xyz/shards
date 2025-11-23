@@ -1559,11 +1559,13 @@ void freeComposeResult(SHComposeResult &result) {
 }
 void InternalCore::freeComposeResult(struct SHComposeResult *result) { shards::freeComposeResult(*result); }
 
-bool validateSetParam(Shard *shard, int index, const SHVar &value) {
+SHError validateSetParam(Shard *shard, int index, const SHVar &value) {
+  thread_local std::string errorCache;
+
   auto params = shard->parameters(shard);
   if (params.len <= (uint32_t)index) {
-    SHLOG_ERROR("Parameter index out of range, {}", formatShardSourceLocation(shard));
-    return false;
+    errorCache.assign(fmt::format("Parameter index out of range, {}", formatShardSourceLocation(shard)));
+    return SHError{1, SHStringWithLen{errorCache.data(), errorCache.size()}};
   }
 
   auto param = params.elements[index];
@@ -1577,22 +1579,23 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
     // This only does a quick check to see if the type is roughly correct
     // ContextVariable types will be checked in validateConnection based on requiredVariables
     if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
-      return true; // we are good just exit
+      return SHError::Success; // we are good just exit
     }
   }
 
-  auto err = fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), {}", param.name,
-                         value, varType, param.valueTypes, formatShardSourceLocation(shard));
+  errorCache.assign(fmt::format("Parameter {} not accepting this kind of variable: {} (type: {}, valid types: {}), {}",
+                                param.name, value, varType, param.valueTypes, formatShardSourceLocation(shard)));
+
 #if SH_DEBUG_TYPE_MATCHING
   // Put a breakpoint here to debug
   for (uint32_t i = 0; param.valueTypes.len > i; i++) {
     if (matchTypes(varType, param.valueTypes.elements[i], true, true, true)) {
-      return true;
+      return SHError::Success; // won't trigger
     }
   }
 #endif
 
-  return false;
+  return SHError{2, SHStringWithLen{errorCache.data(), errorCache.size()}};
 }
 
 void error_handler(int err_sig) {
@@ -2949,8 +2952,7 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     try {
       return shards::validateSetParam(shard, index, *param);
     } catch (...) {
-      // validateSetParam prints logs on failure so we don't need to do anything here
-      return false;
+      return SHError{3, {"Unknown", 7}};
     }
   };
 

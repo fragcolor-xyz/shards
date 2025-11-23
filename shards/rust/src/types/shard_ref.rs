@@ -207,9 +207,9 @@ impl ShardRef {
 
   pub fn set_parameter(&self, index: i32, value: Var) -> Result<(), &'static str> {
     unsafe {
-      let success = (*Core).validateSetParam.unwrap_unchecked()(self.0, index, &value);
-      if !success {
-        Err("Set parameter validation failed")
+      let result = (*Core).validateSetParam.unwrap_unchecked()(self.0, index, &value);
+      if result.code != 0 {
+        Err(result.message.static_str())
       } else {
         let err = (*self.0).setParam.unwrap_unchecked()(self.0, index, &value);
 

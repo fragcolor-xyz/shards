@@ -946,7 +946,7 @@ typedef void(__cdecl *SHDestroyVar)(struct SHVar *var);
 
 typedef struct SHVar(__cdecl *SHHashVar)(const struct SHVar *var);
 
-typedef SHBool(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param);
+typedef struct SHError(__cdecl *SHValidateSetParam)(struct Shard *shard, int index, const struct SHVar *param);
 
 typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, struct SHInstanceData data);
 typedef void(__cdecl *SHFreeComposeResult)(struct SHComposeResult *result);

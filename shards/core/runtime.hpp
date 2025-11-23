@@ -250,7 +250,7 @@ void freeComposeResult(SHComposeResult &result);
 
 SHVar *findVariable(SHContext *ctx, std::string_view name);
 
-bool validateSetParam(Shard *shard, int index, const SHVar &value);
+SHError validateSetParam(Shard *shard, int index, const SHVar &value);
 bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter, bool strict,
                 bool relaxEmptySeqCheck, bool ignoreFixedSeq = false);
 void triggerVarValueChange(SHContext *context, const SHVar *name, bool isGlobal, const SHVar *var);
