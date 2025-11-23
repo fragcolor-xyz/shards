@@ -558,3 +558,72 @@ Example:
 ```shards
 radius | Mul(theta | Math.Sin) | Mul(phi | Math.Cos) = x
 ```
+
+## Auto-Evaluation of Shards in Parameters and Tables
+
+Shards automatically evaluates shard references when they're used in contexts expecting values. This makes the language more convenient without requiring explicit parentheses.
+
+### Shards as Parameters
+
+When a shard parameter expects a value but receives a shard, it automatically wraps and evaluates:
+
+```shards
+; These are equivalent:
+Msg(NanoID)        ; Auto-evaluated - NanoID produces a string
+Msg((NanoID))      ; Explicit evaluation with parentheses
+
+; Works with shard pipelines too:
+Msg({1 | Math.Add(1) | ToString})  ; Outputs "2"
+
+; Works with @define that expands to shards:
+@define(my-id NanoID)
+Msg(@my-id)        ; Auto-evaluated
+```
+
+### Shards in Table Values
+
+Single shards in table values are automatically evaluated:
+
+```shards
+; These are equivalent:
+{id: NanoID name: Random.Name(2)}    ; Auto-evaluated
+{id: (NanoID) name: (Random.Name(2))} ; Explicit
+
+; To store shards themselves (not their results), use braces:
+{shards: {NanoID}}  ; Stores the shard sequence, not the result
+```
+
+### @define Tables with Expressions
+
+Tables defined with `@define` that contain expressions are automatically evaluated when used as parameters:
+
+```shards
+"my-api-key" >= ext/api-key
+
+@define(my-headers {
+  "content-type": "application/json"
+  "authorization": ["Bearer " ext/api-key] | String.Join
+})
+
+; The expressions in the table are evaluated when used:
+Http.Post(URL: "https://api.example.com" Headers: @my-headers)
+```
+
+### When Explicit Parentheses Are Still Needed
+
+For `@define` that expands to a shard, explicit parentheses are needed in table values:
+
+```shards
+@define(my-shard NanoID)
+
+; In parameters - works automatically:
+Msg(@my-shard)  ; OK
+
+; In table values - needs explicit evaluation:
+{id: (@my-shard)}  ; Need parens
+{id: @my-shard}    ; Won't auto-evaluate
+
+; Alternative: evaluate in the @define itself:
+@define(my-evaluated-id (NanoID))
+{id: @my-evaluated-id}  ; Works - already evaluated at define time
+```
