@@ -2740,11 +2740,11 @@ fn create_shard_inner(
   Ok(s)
 }
 
-/// Check if a value can potentially be wrapped in an EvalExpr for auto-evaluation.
+/// Check if a value can potentially be wrapped in an Expr for auto-evaluation.
 /// This is used for SFINAE-like parameter setting: if setting a parameter fails,
-/// we try wrapping executable values in EvalExpr to get their result.
+/// we try wrapping executable values in Expr to get their result.
 /// Includes Identifier since identifiers can resolve to shard names (e.g., NanoID).
-fn can_eval_expr_wrap(value: &Value, var_value: &SVar) -> bool {
+fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
   // Check if the result is a ShardRef - that's a strong indicator we should try wrapping
   if var_value.as_ref().valueType == SHType_ShardRef {
     return true;
@@ -2766,14 +2766,14 @@ fn can_eval_expr_wrap(value: &Value, var_value: &SVar) -> bool {
   )
 }
 
-/// Wrap a value in an EvalExpr for compile-time evaluation.
+/// Wrap a value in an Expr for evaluation.
 /// This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
 ///
 /// IMPORTANT: Only call this function for values that can_eval_expr_wrap() returns true for.
-fn wrap_in_eval_expr(value: &Value, line_info: LineInfo) -> Value {
+fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
   // For Shards sequences, the sequence IS the pipeline to execute directly
   if let Value::Shards(seq) = value {
-    return Value::EvalExpr(seq.clone());
+    return Value::Expr(seq.clone());
   }
 
   let content = match value {
@@ -2786,7 +2786,7 @@ fn wrap_in_eval_expr(value: &Value, line_info: LineInfo) -> Value {
       custom_state: CustomStateContainer::new(),
     }),
     // Value::Shards handled above; other types should not reach here per can_eval_expr_wrap()
-    _ => unreachable!("wrap_in_eval_expr called with unsupported value type"),
+    _ => unreachable!("wrap_in_expr called with unsupported value type"),
   };
 
   let block = Block {
@@ -2795,7 +2795,7 @@ fn wrap_in_eval_expr(value: &Value, line_info: LineInfo) -> Value {
     custom_state: CustomStateContainer::new(),
   };
 
-  Value::EvalExpr(Sequence {
+  Value::Expr(Sequence {
     statements: vec![Statement::Pipeline(Pipeline {
       blocks: vec![block],
     })],
@@ -2888,11 +2888,11 @@ fn set_shard_parameter(
       Ok(()) => Ok(()),
       Err(e) => {
         // SFINAE-like fallback: if the value resolved to a shard or is an executable,
-        // try wrapping it in EvalExpr to evaluate at compile-time.
+        // try wrapping it in Expr to evaluate.
         // This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
         let mut auto_eval_error: Option<String> = None;
-        if can_eval_expr_wrap(value, &var_value) {
-          let wrapped = wrap_in_eval_expr(value, line_info);
+        if can_expr_wrap(value, &var_value) {
+          let wrapped = wrap_in_expr(value, line_info);
           match as_var(&wrapped, line_info, Some(s.0), env) {
             Ok(eval_result) => {
               match s.0.set_parameter(
