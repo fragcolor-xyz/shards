@@ -1018,6 +1018,24 @@ struct SimpleParamInfo {
   is_var: bool, // true for ParamVar (context variables)
 }
 
+struct SimpleExternalInfo {
+  external_name: String, // The context variable name to look up
+  rust_name: syn::Ident,
+  rust_type: syn::Type,
+}
+
+// Helper struct to parse #[external("name")]
+struct SimpleExternalAttr {
+  name: String,
+}
+
+impl syn::parse::Parse for SimpleExternalAttr {
+  fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    let name: LitStr = input.parse()?;
+    Ok(Self { name: name.value() })
+  }
+}
+
 // Helper struct to parse #[param("Name", "Desc")] or #[param("Name", "Desc", default = value)]
 struct SimpleParamAttr {
   name: String,
@@ -1068,6 +1086,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
   let mut input_name: Option<syn::Ident> = None;
   let mut is_unit_input = false;
   let mut params: Vec<SimpleParamInfo> = Vec::new();
+  let mut externals: Vec<SimpleExternalInfo> = Vec::new();
 
   for (i, arg) in func.sig.inputs.iter().enumerate() {
     let syn::FnArg::Typed(pat_type) = arg else {
@@ -1114,6 +1133,9 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     let mut param_default: Option<syn::Expr> = None;
     let mut is_var = false;
 
+    let mut is_external = false;
+    let mut external_name = String::new();
+
     for attr in &pat_type.attrs {
       if attr.path().is_ident("param") {
         let parsed: SimpleParamAttr = attr.parse_args()?;
@@ -1127,17 +1149,30 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
         param_desc = parsed.description;
         param_default = parsed.default;
         is_var = true;
+      } else if attr.path().is_ident("external") {
+        // For external context variables (not user-configurable params)
+        let parsed: SimpleExternalAttr = attr.parse_args()?;
+        external_name = parsed.name;
+        is_external = true;
       }
     }
 
-    params.push(SimpleParamInfo {
-      name: param_name,
-      rust_name: arg_name,
-      rust_type: arg_type,
-      description: param_desc,
-      default: param_default,
-      is_var,
-    });
+    if is_external {
+      externals.push(SimpleExternalInfo {
+        external_name,
+        rust_name: arg_name,
+        rust_type: arg_type,
+      });
+    } else {
+      params.push(SimpleParamInfo {
+        name: param_name,
+        rust_name: arg_name,
+        rust_type: arg_type,
+        description: param_desc,
+        default: param_default,
+        is_var,
+      });
+    }
   }
 
   let input_type = input_type.ok_or("Function must have at least one argument (input)")?;
@@ -1186,7 +1221,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     syn::ReturnType::Default => return Err("Function must have return type".into()),
   };
 
-  // Generate struct fields
+  // Generate struct fields for params
   let param_fields: Vec<_> = params
     .iter()
     .map(|p| {
@@ -1199,7 +1234,16 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     })
     .collect();
 
-  // Generate default values
+  // Generate struct fields for externals
+  let external_fields: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let name = &e.rust_name;
+      quote! { #name: shards::types::ParamVar }
+    })
+    .collect();
+
+  // Generate default values for params
   let param_defaults: Vec<_> = params
     .iter()
     .map(|p| {
@@ -1215,6 +1259,16 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
       } else {
         quote! { #name: #default_val }
       }
+    })
+    .collect();
+
+  // Generate default values for externals (using new_named)
+  let external_defaults: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let name = &e.rust_name;
+      let ext_name = &e.external_name;
+      quote! { #name: shards::types::ParamVar::new_named(#ext_name) }
     })
     .collect();
 
@@ -1251,7 +1305,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     })
     .collect();
 
-  // Generate warmup/cleanup calls for ParamVar
+  // Generate warmup/cleanup calls for ParamVar params
   let param_warmups: Vec<_> = params
     .iter()
     .filter(|p| p.is_var)
@@ -1270,9 +1324,29 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     })
     .collect();
 
+  // Generate warmup/cleanup calls for externals
+  let external_warmups: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let name = &e.rust_name;
+      quote! { self.#name.warmup(context); }
+    })
+    .collect();
+
+  let external_cleanups: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let name = &e.rust_name;
+      quote! { self.#name.cleanup(context); }
+    })
+    .collect();
+
   // The original function body
   let func_body = &func.block;
   let func_name = &func.sig.ident;
+
+  // Collect external rust names for function call (needed early for activate_call)
+  let external_rust_names: Vec<_> = externals.iter().map(|e| &e.rust_name).collect();
 
   // CRC for shard hash
   let crc = crc32(format!("{}-rust-0x20250822", shard_name));
@@ -1372,19 +1446,20 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
   };
 
   // Generate activate call - differs for unit input vs normal input, and Result vs plain return
+  // Note: externals are passed after params
   let activate_call = match (is_unit_input, returns_result) {
-    (true, true) => quote! { #func_name((), #(#param_rust_names),*)? },
-    (true, false) => quote! { #func_name((), #(#param_rust_names),*) },
+    (true, true) => quote! { #func_name((), #(#param_rust_names,)* #(#external_rust_names),*)? },
+    (true, false) => quote! { #func_name((), #(#param_rust_names,)* #(#external_rust_names),*) },
     (false, true) => quote! {
       {
         let #input_name: #input_type = input.try_into()?;
-        #func_name(#input_name, #(#param_rust_names),*)?
+        #func_name(#input_name, #(#param_rust_names,)* #(#external_rust_names),*)?
       }
     },
     (false, false) => quote! {
       {
         let #input_name: #input_type = input.try_into()?;
-        #func_name(#input_name, #(#param_rust_names),*)
+        #func_name(#input_name, #(#param_rust_names,)* #(#external_rust_names),*)
       }
     },
   };
@@ -1398,6 +1473,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
 
   // Generate compose calls for param_var parameters
   let has_var_params = params.iter().any(|p| p.is_var);
+  let has_externals = !externals.is_empty();
   let param_var_composes: Vec<_> = params
     .iter()
     .filter(|p| p.is_var)
@@ -1423,22 +1499,60 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     })
     .collect();
 
+  // Generate compose calls for externals - directly add to required
+  let external_composes: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let ext_name = &e.external_name;
+      let ty = &e.rust_type;
+      quote! {
+        {
+          let exp_info = shards::types::ExposedInfo {
+            exposedType: <#ty as shards::types::ShardType>::shards_type(),
+            name: shards::cstr!(#ext_name).as_ptr() as *const std::os::raw::c_char,
+            help: shards::shccstr!(""),
+            ..shards::types::ExposedInfo::default()
+          };
+          self.required.push(exp_info);
+        }
+      }
+    })
+    .collect();
+
+  // Generate extraction for externals in activate
+  let external_extractions: Vec<_> = externals
+    .iter()
+    .map(|e| {
+      let name = &e.rust_name;
+      let ty = &e.rust_type;
+      quote! {
+        let #name: #ty = self.#name.get().as_ref().try_into()?;
+      }
+    })
+    .collect();
+
+  // Collect external types for function signature
+  let external_types: Vec<_> = externals.iter().map(|e| &e.rust_type).collect();
+
   // Generate the inner function signature based on whether it returns Result or plain type
   let inner_function = if returns_result {
     quote! {
       #[inline]
-      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> std::result::Result<#output_type, &'static str> {
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types,)* #(#external_rust_names: #external_types),*) -> std::result::Result<#output_type, &'static str> {
         #func_body
       }
     }
   } else {
     quote! {
       #[inline]
-      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types),*) -> #output_type {
+      fn #func_name(#input_name: #input_type, #(#param_rust_names: #param_types,)* #(#external_rust_names: #external_types),*) -> #output_type {
         #func_body
       }
     }
   };
+
+  // Determine if compose is needed (var params or externals)
+  let needs_compose = has_var_params || has_externals;
 
   // Generate the full shard implementation
   let output = quote! {
@@ -1448,6 +1562,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     pub struct #struct_id {
       required: shards::types::ExposedTypes,
       #(#param_fields,)*
+      #(#external_fields,)*
       output: shards::types::ClonedVar,
     }
 
@@ -1456,6 +1571,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
         Self {
           required: shards::types::ExposedTypes::new(),
           #(#param_defaults,)*
+          #(#external_defaults,)*
           output: shards::types::ClonedVar::default(),
         }
       }
@@ -1490,7 +1606,7 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
     }
 
     impl shards::shard::ShardGeneratedOverloads for #struct_id {
-      fn has_compose() -> bool { #has_var_params }
+      fn has_compose() -> bool { #needs_compose }
       fn has_warmup() -> bool { true }
       fn has_mutate() -> bool { false }
       fn has_crossover() -> bool { false }
@@ -1510,11 +1626,13 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
 
       fn warmup(&mut self, context: &shards::types::Context) -> std::result::Result<(), &str> {
         #(#param_warmups)*
+        #(#external_warmups)*
         Ok(())
       }
 
       fn cleanup(&mut self, context: std::option::Option<&shards::types::Context>) -> std::result::Result<(), &str> {
         #(#param_cleanups)*
+        #(#external_cleanups)*
         self.output = shards::types::ClonedVar::default();
         Ok(())
       }
@@ -1522,11 +1640,13 @@ fn generate_simple_shard(args: SimpleShardAttrArgs, func: syn::ItemFn) -> Result
       fn compose(&mut self, data: &shards::types::InstanceData) -> std::result::Result<shards::types::Type, &str> {
         self.required.clear();
         #(#param_var_composes)*
+        #(#external_composes)*
         Ok(<#output_type as shards::types::ShardType>::shards_type())
       }
 
       fn activate(&mut self, _context: &shards::types::Context, input: &shards::types::Var) -> std::result::Result<std::option::Option<shards::types::Var>, &str> {
         #(#param_extractions)*
+        #(#external_extractions)*
 
         let result = #activate_call;
         #output_assignment

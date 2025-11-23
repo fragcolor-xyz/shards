@@ -19,7 +19,6 @@ members = [
     "shards/modules/fileops",
     "shards/modules/fs",
     "shards/modules/http",
-    "shards/modules/ipc",
     "shards/modules/langffi",
     "shards/modules/localshell",
     "shards/modules/markdown",
