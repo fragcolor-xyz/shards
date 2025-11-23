@@ -375,11 +375,15 @@ auto-table.name | IsString | Assert.Is(true)
 {shards: {NanoID}} = shards-table
 shards-table.shards | IsSeq | Assert.Is(true)
 
-; Test 7: @func in parameters works via SFINAE (runtime ShardRef check)
-@define(my-nanoid NanoID)
-Msg(@my-nanoid)
+; Test 7: @define with evaluated shard - parens evaluate at define-time
+; @define(my-nanoid (NanoID)) evaluates NanoID immediately, storing the result
+@define(my-nanoid (NanoID))
+Msg(@my-nanoid)  ; Works: @my-nanoid is already a string
 
-; Note: {id: @my-nanoid} requires explicit wrapping: {id: (@my-nanoid)}
-; because we can't distinguish @funcs that produce ShardRefs at parse time
-{id: (@my-nanoid)} = auto-table2
+; Works in tables too since @my-nanoid is already evaluated to a string
+{id: @my-nanoid} = auto-table2
 auto-table2.id | IsString | Assert.Is(true)
+
+; Test 8: SFINAE for shard parameters - auto-wraps when parameter setting fails
+; Msg expects String, NanoID produces ShardRef, SFINAE wraps and re-evaluates
+Msg(NanoID)  ; Works via SFINAE
