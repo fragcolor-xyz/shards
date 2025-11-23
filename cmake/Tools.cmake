@@ -3,12 +3,20 @@ set(BIN2C_RS_DIR ${SHARDS_DIR}/shards/tools/bin2c-rs)
 set(BIN2C_TARGET_DIR ${CMAKE_BINARY_DIR}/bin2c-rs-build)
 
 # Build bin2c using cargo (always builds for host, even when cross-compiling)
+# Clear RUSTFLAGS to avoid inheriting sanitizer flags from parent build
+# (bin2c is a host tool and doesn't need sanitizers)
+set(SAVED_RUSTFLAGS "$ENV{RUSTFLAGS}")
+set(SAVED_CARGO_ENCODED_RUSTFLAGS "$ENV{CARGO_ENCODED_RUSTFLAGS}")
+set(ENV{RUSTFLAGS} "")
+set(ENV{CARGO_ENCODED_RUSTFLAGS} "")
 execute_process(
   COMMAND cargo build --manifest-path ${BIN2C_RS_DIR}/Cargo.toml --release --target-dir ${BIN2C_TARGET_DIR}
   RESULT_VARIABLE BIN2C_BUILD_RESULT
   OUTPUT_VARIABLE BIN2C_BUILD_OUTPUT
   ERROR_VARIABLE BIN2C_BUILD_ERROR
 )
+set(ENV{RUSTFLAGS} "${SAVED_RUSTFLAGS}")
+set(ENV{CARGO_ENCODED_RUSTFLAGS} "${SAVED_CARGO_ENCODED_RUSTFLAGS}")
 
 if(NOT BIN2C_BUILD_RESULT EQUAL 0)
   message(FATAL_ERROR "Failed to build bin2c: ${BIN2C_BUILD_ERROR}")
