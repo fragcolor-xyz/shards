@@ -2750,17 +2750,10 @@ fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
   if var_value.as_ref().valueType == SHType_ShardRef {
     return true;
   }
-  // Also check for sequences of shards
-  if var_value.as_ref().is_seq() {
-    let seq = unsafe { var_value.as_ref().payload.__bindgen_anon_1.seqValue };
-    if seq.len > 0 && !seq.elements.is_null() {
-      let first = unsafe { &*seq.elements };
-      if first.valueType == SHType_ShardRef {
-        return true;
-      }
-    }
-  }
   // Fall back to checking the AST value type for explicit shard/shards/func values.
+  // Note: We intentionally don't check runtime sequences here. A runtime sequence
+  // could come from Value::Seq (e.g., [NanoID 123]) which isn't a valid pipeline,
+  // while Value::Shards (valid pipeline) is already handled by the match below.
   // Note: Value::Identifier is NOT included - identifiers that resolve to shards
   // are already caught by the SHType_ShardRef check above.
   // Note: Value::Func IS included - while funcs are evaluated by as_var, they may
@@ -2792,8 +2785,13 @@ fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
       params: None,
       custom_state: CustomStateContainer::new(),
     }),
-    // Value::Shards handled above with early return
-    _ => unreachable!("wrap_in_expr called with unsupported value type"),
+    // Value::Shards handled above with early return.
+    // This arm should only be reachable if can_expr_wrap() logic is changed
+    // to allow new value types without updating this function.
+    other => unreachable!(
+      "wrap_in_expr: expected Shard, Func, Identifier, or Shards, got {:?}",
+      std::mem::discriminant(other)
+    ),
   };
 
   let block = Block {
