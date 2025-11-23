@@ -361,3 +361,16 @@ Msg(Random.Name(3))
 
 ; Test 4: Multiple shards chained in parameter
 Msg({["Result: " 42] | String.Format}) ; outputs "Result: 42"
+
+; Auto-wrap shards in table values
+; Single shards in table values are auto-wrapped in Expr for evaluation
+; This makes {a: NanoID} work like {a: (NanoID)}
+
+; Test 5: Single shard as table value - auto-evaluated
+{id: NanoID name: Random.Name(2)} = auto-table
+auto-table.id | IsString | Assert.Is(true)
+auto-table.name | IsString | Assert.Is(true)
+
+; Test 6: Explicit shards sequence still works for storing shards
+{shards: {NanoID}} = shards-table
+shards-table.shards | IsSeq | Assert.Is(true)
