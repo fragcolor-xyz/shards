@@ -2743,9 +2743,10 @@ fn create_shard_inner(
 /// Check if a value can potentially be wrapped in an Expr for auto-evaluation.
 /// This is used for SFINAE-like parameter setting: if setting a parameter fails,
 /// we try wrapping executable values in Expr to get their result.
-/// Includes Identifier since identifiers can resolve to shard names (e.g., NanoID).
 fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
-  // Check if the result is a ShardRef - that's a strong indicator we should try wrapping
+  // Check if the result is a ShardRef - this catches identifiers that resolve to shards
+  // (e.g., NanoID). We check the runtime type rather than AST type to avoid false
+  // positives from regular variable identifiers like `my-string`.
   if var_value.as_ref().valueType == SHType_ShardRef {
     return true;
   }
@@ -2759,11 +2760,10 @@ fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
       }
     }
   }
-  // Fall back to checking the AST value type for other cases
-  matches!(
-    value,
-    Value::Shard(_) | Value::Func(_) | Value::Shards(_) | Value::Identifier(_)
-  )
+  // Fall back to checking the AST value type for explicit shard/func/shards values.
+  // Note: Value::Identifier is NOT included here - identifiers that resolve to shards
+  // are already caught by the SHType_ShardRef check above.
+  matches!(value, Value::Shard(_) | Value::Func(_) | Value::Shards(_))
 }
 
 /// Wrap a value in an Expr for evaluation.
