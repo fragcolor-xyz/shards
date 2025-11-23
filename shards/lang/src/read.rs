@@ -1168,6 +1168,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let pipe_value = inner
             .next()
             .ok_or_else(|| err(env, "Expected a value in TableEntry", &pair))?;
+          let line_info = env.make_line_info_from_pair(&pipe_value);
           let value = process_pipe_value(pipe_value, env)?;
           // Auto-wrap single shards in table values to force evaluation.
           // This makes `{a: NanoID}` work like `{a: (NanoID)}`.
@@ -1179,7 +1180,7 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
             Value::Shard(f) => {
               let block = Block {
                 content: BlockContent::Shard(f),
-                line_info: None,
+                line_info: Some(line_info),
                 custom_state: CustomStateContainer::new(),
               };
               Value::Expr(Sequence {

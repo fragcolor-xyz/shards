@@ -346,11 +346,11 @@ any-value.b | Assert.Is(2)
 ["`" tt.name " (" tn.1 ")`"] | String.Format | Log | Assert.Is("`Hello (1)`")
 
 ; SFINAE-like auto-evaluation for shard parameters
-; When a parameter expects a value but receives a shard, automatically wrap in EvalExpr
+; When a parameter expects a value but receives a shard, automatically wrap in Expr
 ; Msg outputs to log, so these tests verify the shard gets auto-evaluated as a parameter
 
-; Test 1: Identifier that resolves to a shard (e.g., NanoID produces a string)
-; NanoID would fail without auto-eval since Msg expects String not Shard
+; Test 1: Direct shard as parameter - auto-evaluated via SFINAE
+; Msg expects String, NanoID produces ShardRef, SFINAE wraps and re-evaluates
 Msg(NanoID)
 
 ; Test 2: Shards sequence as parameter - auto-evaluates and produces result
@@ -371,9 +371,12 @@ Msg({["Result: " 42] | String.Format}) ; outputs "Result: 42"
 auto-table.id | IsString | Assert.Is(true)
 auto-table.name | IsString | Assert.Is(true)
 
-; Test 6: Explicit shards sequence still works for storing shards
+; Test 6: Explicit shards sequence stores shards, not evaluated result
+; Use {NanoID} to store the shard sequence itself (not evaluated)
 {shards: {NanoID}} = shards-table
 shards-table.shards | IsSeq | Assert.Is(true)
+; Verify it contains shards by checking the sequence is not a string
+shards-table.shards | IsString | Assert.Is(false)
 
 ; Test 7: @define with evaluated shard - parens evaluate at define-time
 ; @define(my-nanoid (NanoID)) evaluates NanoID immediately, storing the result
@@ -384,6 +387,6 @@ Msg(@my-nanoid)  ; Works: @my-nanoid is already a string
 {id: @my-nanoid} = auto-table2
 auto-table2.id | IsString | Assert.Is(true)
 
-; Test 8: SFINAE for shard parameters - auto-wraps when parameter setting fails
-; Msg expects String, NanoID produces ShardRef, SFINAE wraps and re-evaluates
-Msg(NanoID)  ; Works via SFINAE
+; Test 8: @define without parens - stores shard reference, SFINAE handles it
+@define(my-shard-ref NanoID)
+Msg(@my-shard-ref)  ; Works: SFINAE catches ShardRef at runtime and wraps
