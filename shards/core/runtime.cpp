@@ -1591,7 +1591,7 @@ bool validateSetParam(Shard *shard, int index, const SHVar &value) {
     }
   }
 #endif
-  SHLOG_ERROR("{}", err);
+
   return false;
 }
 

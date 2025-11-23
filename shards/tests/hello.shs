@@ -344,3 +344,63 @@ any-value.b | Assert.Is(2)
 {name: "Hello"} = tt
 [0 1] = tn
 ["`" tt.name " (" tn.1 ")`"] | String.Format | Log | Assert.Is("`Hello (1)`")
+
+; SFINAE-like auto-evaluation for shard parameters
+; When a parameter expects a value but receives a shard, automatically wrap in Expr
+; Msg outputs to log, so these tests verify the shard gets auto-evaluated as a parameter
+
+; Test 1: Direct shard as parameter - auto-evaluated via SFINAE
+; Msg expects String, NanoID produces ShardRef, SFINAE wraps and re-evaluates
+Msg(NanoID)
+
+; Test 2: Shards sequence as parameter - auto-evaluates and produces result
+Msg({1 | Math.Add(1) | ToString}) ; outputs "2"
+
+; Test 3: Shard with parameters as value
+Msg(Random.Name(3))
+
+; Test 4: Multiple shards chained in parameter
+Msg({["Result: " 42] | String.Format}) ; outputs "Result: 42"
+
+; Auto-wrap shards in table values
+; Single shards in table values are auto-wrapped in Expr for evaluation
+; This makes {a: NanoID} work like {a: (NanoID)}
+
+; Test 5: Single shard as table value - auto-evaluated
+{id: NanoID name: Random.Name(2)} = auto-table
+auto-table.id | IsString | Assert.Is(true)
+auto-table.name | IsString | Assert.Is(true)
+
+; Test 6: Explicit shards sequence stores shards, not evaluated result
+; Use {NanoID} to store the shard sequence itself (not evaluated)
+{shards: {NanoID}} = shards-table
+shards-table.shards | IsSeq | Assert.Is(true)
+; Verify it contains shards by checking the sequence is not a string
+shards-table.shards | IsString | Assert.Is(false)
+
+; Test 7: @define with evaluated shard - parens evaluate at define-time
+; @define(my-nanoid (NanoID)) evaluates NanoID immediately, storing the result
+@define(my-nanoid (NanoID))
+Msg(@my-nanoid)  ; Works: @my-nanoid is already a string
+
+; Works in tables too since @my-nanoid is already evaluated to a string
+{id: @my-nanoid} = auto-table2
+auto-table2.id | IsString | Assert.Is(true)
+
+; Test 8: @define without parens - stores shard reference, SFINAE handles it
+@define(my-shard-ref NanoID)
+Msg(@my-shard-ref)  ; Works: SFINAE catches ShardRef at runtime and wraps
+
+; Test 9: @define table with expressions - SFINAE wraps to force evaluation
+; This pattern is common for HTTP headers with computed values
+"test-key" >= ext/api-key
+@define(my-headers {
+  "content-type": "application/json"
+  "authorization": ["Bearer " ext/api-key] | String.Join
+})
+; Http.Post Headers expects a table of strings, @my-headers has expressions
+; SFINAE catches Value::Func and wraps to evaluate the expressions
+; Use Repeat Times:0 to validate compose without executing
+Repeat({
+  "" | Http.Post(URL: "http://example.com" Headers: @my-headers)
+} Times: 0)

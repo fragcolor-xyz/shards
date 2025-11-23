@@ -2740,6 +2740,74 @@ fn create_shard_inner(
   Ok(s)
 }
 
+/// Check if a value can potentially be wrapped in an Expr for auto-evaluation.
+/// This is used for SFINAE-like parameter setting: if setting a parameter fails,
+/// we try wrapping executable values in Expr to get their result.
+fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
+  // Check if the result is a ShardRef - this catches identifiers that resolve to shards
+  // (e.g., NanoID). We check the runtime type rather than AST type to avoid false
+  // positives from regular variable identifiers like `my-string`.
+  if var_value.as_ref().valueType == SHType_ShardRef {
+    return true;
+  }
+  // Fall back to checking the AST value type for explicit shard/shards/func values.
+  // Note: We intentionally don't check runtime sequences here. A runtime sequence
+  // could come from Value::Seq (e.g., [NanoID 123]) which isn't a valid pipeline,
+  // while Value::Shards (valid pipeline) is already handled by the match below.
+  // Note: Value::Identifier is NOT included - identifiers that resolve to shards
+  // are already caught by the SHType_ShardRef check above.
+  // Note: Value::Func IS included - while funcs are evaluated by as_var, they may
+  // produce tables/values with unevaluated expressions (e.g., @headers-table with
+  // variable refs). Wrapping in Expr forces full evaluation. This is safe because
+  // we only try wrapping when the original set_parameter fails.
+  matches!(value, Value::Shard(_) | Value::Shards(_) | Value::Func(_))
+}
+
+/// Wrap a value in an Expr for evaluation.
+/// This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+///
+/// IMPORTANT: Only call this function for values that can_expr_wrap() returns true for.
+fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
+  // For Shards sequences, the sequence IS the pipeline to execute directly
+  if let Value::Shards(seq) = value {
+    return Value::Expr(seq.clone());
+  }
+
+  let content = match value {
+    Value::Shard(f) => BlockContent::Shard(f.clone()),
+    // For funcs that resolved to shards (e.g., @my-nanoid where my-nanoid is defined as NanoID),
+    // caught by SHType_ShardRef check in can_expr_wrap
+    Value::Func(f) => BlockContent::Func(f.clone()),
+    // For identifiers that resolved to shards (caught by SHType_ShardRef check),
+    // treat as a parameterless shard call
+    Value::Identifier(name) => BlockContent::Shard(Function {
+      name: name.clone(),
+      params: None,
+      custom_state: CustomStateContainer::new(),
+    }),
+    // Value::Shards handled above with early return.
+    // This arm should only be reachable if can_expr_wrap() logic is changed
+    // to allow new value types without updating this function.
+    other => unreachable!(
+      "wrap_in_expr: expected Shard, Func, Identifier, or Shards, got {:?}",
+      std::mem::discriminant(other)
+    ),
+  };
+
+  let block = Block {
+    content,
+    line_info: Some(line_info),
+    custom_state: CustomStateContainer::new(),
+  };
+
+  Value::Expr(Sequence {
+    statements: vec![Statement::Pipeline(Pipeline {
+      blocks: vec![block],
+    })],
+    custom_state: CustomStateContainer::new(),
+  })
+}
+
 fn set_shard_parameter(
   info: &shards::SHParameterInfo,
   env: &mut EvalEnv,
@@ -2817,20 +2885,49 @@ fn set_shard_parameter(
       }
     }
   } else {
-    if let Err(e) = s.0.set_parameter(
+    // Try setting the parameter directly first
+    match s.0.set_parameter(
       i.try_into().expect("Too many parameters"),
       *var_value.as_ref(),
     ) {
-      let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
-      Err(
-        (
-          format!("Failed to set parameter '{}', error: {}", param_name, e),
-          line_info,
-        )
-          .into(),
-      )
-    } else {
-      Ok(())
+      Ok(()) => Ok(()),
+      Err(e) => {
+        // SFINAE-like fallback: if the value resolved to a shard or is an executable,
+        // try wrapping it in Expr to evaluate.
+        // This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+        let mut auto_eval_error: Option<String> = None;
+        if can_expr_wrap(value, &var_value) {
+          let wrapped = wrap_in_expr(value, line_info);
+          match as_var(&wrapped, line_info, Some(s.0), env) {
+            Ok(eval_result) => {
+              match s.0.set_parameter(
+                i.try_into().expect("Too many parameters"),
+                *eval_result.as_ref(),
+              ) {
+                Ok(()) => return Ok(()),
+                Err(eval_e) => {
+                  // Auto-eval succeeded but produced incompatible type
+                  auto_eval_error = Some(format!("auto-evaluation also failed: {}", eval_e));
+                }
+              }
+            }
+            Err(_) => {
+              // Auto-eval itself failed, just use original error
+            }
+          }
+        }
+        // Fallback failed or not applicable
+        let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
+        let error_msg = if let Some(auto_err) = auto_eval_error {
+          format!(
+            "Failed to set parameter '{}', error: {} ({})",
+            param_name, e, auto_err
+          )
+        } else {
+          format!("Failed to set parameter '{}', error: {}", param_name, e)
+        };
+        Err((error_msg, line_info).into())
+      }
     }
   }
 }

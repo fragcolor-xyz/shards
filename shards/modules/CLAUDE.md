@@ -744,3 +744,121 @@ pub extern "C" fn shardsRegister_text_utils(core: *mut shards::shardsc::SHCore) 
 ```
 
 This Rust pattern provides excellent type safety, memory management, and integration with the Shards ecosystem. The derive macros eliminate most boilerplate while maintaining full control over shard behavior.
+
+---
+
+# Language Evaluator: Auto-Evaluation Features
+
+The Shards language evaluator includes automatic evaluation features that make the language more user-friendly by reducing the need for explicit syntax in common cases.
+
+## SFINAE-like Auto-Evaluation for Parameters
+
+When setting a shard parameter fails due to type mismatch, the evaluator attempts a fallback: if the value is a shard or produces a `ShardRef`, it wraps the value in an expression and re-evaluates to get the actual output.
+
+### How It Works
+
+```shards
+; This would fail: Msg expects String, but NanoID is a Shard
+; Msg(NanoID)  ; Without SFINAE: error!
+
+; With SFINAE auto-evaluation, this works automatically:
+Msg(NanoID)  ; NanoID is wrapped in Expr, evaluated, result (String) passed to Msg
+```
+
+The evaluator:
+1. Tries to set the parameter with the value as-is
+2. If it fails AND the value is wrappable (Shard, Shards, Func, or produces ShardRef), wraps in `Value::Expr`
+3. Evaluates the wrapped expression to get the actual output
+4. Retries parameter setting with the evaluated result
+
+### Supported Value Types
+
+- `Value::Shard` - Direct shard references like `NanoID`, `Random.Name(3)`
+- `Value::Shards` - Shard sequences like `{1 | Math.Add(1) | ToString}`
+- `Value::Identifier` - Identifiers that resolve to shards (caught via runtime `ShardRef` check)
+- `Value::Func` - `@func` calls, including:
+  - Functions that produce `ShardRef` (caught via runtime check)
+  - Functions that produce tables/values with unevaluated expressions (e.g., `@headers-table`)
+
+### Examples
+
+```shards
+; Direct shard as parameter - auto-evaluated
+Msg(NanoID)                           ; Outputs random nano ID string
+Msg(Random.Name(2))                   ; Outputs random name
+
+; Shard pipeline as parameter - auto-evaluated
+Msg({1 | Math.Add(1) | ToString})     ; Outputs "2"
+Msg({["Result: " 42] | String.Format}); Outputs "Result: 42"
+
+; @define that expands to a shard - caught via ShardRef runtime check
+@define(my-shard NanoID)
+Msg(@my-shard)                        ; Works: SFINAE catches ShardRef and wraps
+
+; @define table with expressions - SFINAE wraps to force evaluation
+@define(my-headers {
+  "content-type": "application/json"
+  "authorization": ["Bearer " ext/api-key] | String.Join
+})
+Http.Post(Headers: @my-headers)       ; Works: SFINAE wraps Value::Func
+```
+
+## Auto-Wrap for Table Values
+
+Single shards in table values are automatically wrapped to force evaluation:
+
+```shards
+; These are equivalent:
+{id: NanoID}           ; Auto-wrapped to {id: (NanoID)}
+{id: (NanoID)}         ; Explicit wrapping
+
+; Result: table with id containing the evaluated string, not the shard
+```
+
+### Limitations
+
+`Value::Func` (`@func` calls) are NOT auto-wrapped in table values because we cannot distinguish at parse time between:
+- `@my-shard` that produces a `ShardRef` (should be wrapped)
+- `@type(Type::Int)` that produces a `Type` value (should NOT be wrapped)
+
+**Workarounds for @func in tables:**
+
+```shards
+; Option 1: Use explicit parentheses in the define
+@define(my-nanoid (NanoID))  ; Evaluates NanoID at define-time
+{id: @my-nanoid}             ; Works: @my-nanoid is already a string
+
+; Option 2: Use explicit wrapping in the table
+@define(my-shard NanoID)     ; Stores NanoID shard reference
+{id: (@my-shard)}            ; Works: explicit parens force evaluation
+
+; Option 3: Use pipe syntax
+{id: Pass | @my-shard}       ; Works: pipe creates evaluated expression
+```
+
+## Implementation Details
+
+### Files Involved
+
+- `shards/lang/src/eval.rs` - SFINAE logic in `set_shard_parameter()`, helper functions `can_expr_wrap()` and `wrap_in_expr()`
+- `shards/lang/src/read.rs` - Table value auto-wrapping in table entry processing
+
+### Key Functions
+
+**`can_expr_wrap(value, var_value)`** - Checks if a value can be wrapped:
+- Returns `true` if `var_value.valueType == SHType_ShardRef` (runtime check)
+- Returns `true` if `var_value` is a sequence of shards
+- Falls back to checking AST type for `Value::Shard`, `Value::Shards`, or `Value::Func`
+
+**`wrap_in_expr(value, line_info)`** - Wraps value in `Value::Expr`:
+- Handles `Value::Shards` by using sequence directly
+- Handles `Value::Shard`, `Value::Func`, `Value::Identifier`
+- Creates a `Pipeline` containing the value as a block
+
+### Error Handling
+
+When SFINAE fallback also fails, the error message includes both:
+- Original error (e.g., "expected String, got Shard")
+- Auto-evaluation error (e.g., "auto-evaluation also failed: ...")
+
+This helps users understand what was attempted and why it failed.

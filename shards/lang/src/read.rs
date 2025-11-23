@@ -1168,7 +1168,30 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           let pipe_value = inner
             .next()
             .ok_or_else(|| err(env, "Expected a value in TableEntry", &pair))?;
+          let line_info = env.make_line_info_from_pair(&pipe_value);
           let value = process_pipe_value(pipe_value, env)?;
+          // Auto-wrap single shards in table values to force evaluation.
+          // This makes `{a: NanoID}` work like `{a: (NanoID)}`.
+          // Use `{a: {NanoID}}` if you want to store shards themselves.
+          // Note: Value::Func is NOT wrapped here - we can't distinguish funcs that
+          // produce ShardRefs from those that produce other values without runtime info.
+          // Use explicit wrapping for @funcs that expand to shards: `{a: (@my-shard)}`
+          let value = match value {
+            Value::Shard(f) => {
+              let block = Block {
+                content: BlockContent::Shard(f),
+                line_info: Some(line_info),
+                custom_state: CustomStateContainer::new(),
+              };
+              Value::Expr(Sequence {
+                statements: vec![Statement::Pipeline(Pipeline {
+                  blocks: vec![block],
+                })],
+                custom_state: CustomStateContainer::new(),
+              })
+            }
+            other => other,
+          };
           Ok((key, value))
         })
         .collect::<Result<Vec<_>, _>>()?;
