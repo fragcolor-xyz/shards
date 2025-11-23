@@ -390,3 +390,17 @@ auto-table2.id | IsString | Assert.Is(true)
 ; Test 8: @define without parens - stores shard reference, SFINAE handles it
 @define(my-shard-ref NanoID)
 Msg(@my-shard-ref)  ; Works: SFINAE catches ShardRef at runtime and wraps
+
+; Test 9: @define table with expressions - SFINAE wraps to force evaluation
+; This pattern is common for HTTP headers with computed values
+"test-key" >= ext/api-key
+@define(my-headers {
+  "content-type": "application/json"
+  "authorization": ["Bearer " ext/api-key] | String.Join
+})
+; Http.Post Headers expects a table of strings, @my-headers has expressions
+; SFINAE catches Value::Func and wraps to evaluate the expressions
+; Use Repeat Times:0 to validate compose without executing
+Repeat({
+  "" | Http.Post(URL: "http://example.com" Headers: @my-headers)
+} Times: 0)

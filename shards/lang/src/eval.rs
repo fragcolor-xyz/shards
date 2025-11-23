@@ -2760,12 +2760,14 @@ fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
       }
     }
   }
-  // Fall back to checking the AST value type for explicit shard/shards values.
+  // Fall back to checking the AST value type for explicit shard/shards/func values.
   // Note: Value::Identifier is NOT included - identifiers that resolve to shards
   // are already caught by the SHType_ShardRef check above.
-  // Note: Value::Func is NOT included - funcs are already evaluated by as_var,
-  // wrapping them would just re-evaluate with the same result.
-  matches!(value, Value::Shard(_) | Value::Shards(_))
+  // Note: Value::Func IS included - while funcs are evaluated by as_var, they may
+  // produce tables/values with unevaluated expressions (e.g., @headers-table with
+  // variable refs). Wrapping in Expr forces full evaluation. This is safe because
+  // we only try wrapping when the original set_parameter fails.
+  matches!(value, Value::Shard(_) | Value::Shards(_) | Value::Func(_))
 }
 
 /// Wrap a value in an Expr for evaluation.

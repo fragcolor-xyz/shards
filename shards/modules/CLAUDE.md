@@ -767,7 +767,7 @@ Msg(NanoID)  ; NanoID is wrapped in Expr, evaluated, result (String) passed to M
 
 The evaluator:
 1. Tries to set the parameter with the value as-is
-2. If it fails AND the value is a `ShardRef` (checked at runtime), wraps in `Value::Expr`
+2. If it fails AND the value is wrappable (Shard, Shards, Func, or produces ShardRef), wraps in `Value::Expr`
 3. Evaluates the wrapped expression to get the actual output
 4. Retries parameter setting with the evaluated result
 
@@ -776,7 +776,9 @@ The evaluator:
 - `Value::Shard` - Direct shard references like `NanoID`, `Random.Name(3)`
 - `Value::Shards` - Shard sequences like `{1 | Math.Add(1) | ToString}`
 - `Value::Identifier` - Identifiers that resolve to shards (caught via runtime `ShardRef` check)
-- `Value::Func` - `@func` calls that produce `ShardRef` (caught via runtime check)
+- `Value::Func` - `@func` calls, including:
+  - Functions that produce `ShardRef` (caught via runtime check)
+  - Functions that produce tables/values with unevaluated expressions (e.g., `@headers-table`)
 
 ### Examples
 
@@ -792,6 +794,13 @@ Msg({["Result: " 42] | String.Format}); Outputs "Result: 42"
 ; @define that expands to a shard - caught via ShardRef runtime check
 @define(my-shard NanoID)
 Msg(@my-shard)                        ; Works: SFINAE catches ShardRef and wraps
+
+; @define table with expressions - SFINAE wraps to force evaluation
+@define(my-headers {
+  "content-type": "application/json"
+  "authorization": ["Bearer " ext/api-key] | String.Join
+})
+Http.Post(Headers: @my-headers)       ; Works: SFINAE wraps Value::Func
 ```
 
 ## Auto-Wrap for Table Values
@@ -839,7 +848,7 @@ Single shards in table values are automatically wrapped to force evaluation:
 **`can_expr_wrap(value, var_value)`** - Checks if a value can be wrapped:
 - Returns `true` if `var_value.valueType == SHType_ShardRef` (runtime check)
 - Returns `true` if `var_value` is a sequence of shards
-- Falls back to checking AST type for `Value::Shard` or `Value::Shards`
+- Falls back to checking AST type for `Value::Shard`, `Value::Shards`, or `Value::Func`
 
 **`wrap_in_expr(value, line_info)`** - Wraps value in `Value::Expr`:
 - Handles `Value::Shards` by using sequence directly
