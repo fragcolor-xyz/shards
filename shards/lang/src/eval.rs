@@ -2760,31 +2760,37 @@ fn can_eval_expr_wrap(value: &Value, var_value: &SVar) -> bool {
     }
   }
   // Fall back to checking the AST value type for other cases
-  matches!(value, Value::Shard(_) | Value::Func(_) | Value::Shards(_))
+  matches!(
+    value,
+    Value::Shard(_) | Value::Func(_) | Value::Shards(_) | Value::Identifier(_)
+  )
 }
 
 /// Wrap a value in an EvalExpr for compile-time evaluation.
 /// This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+///
+/// IMPORTANT: Only call this function for values that can_eval_expr_wrap() returns true for.
 fn wrap_in_eval_expr(value: &Value, line_info: LineInfo) -> Value {
   // For Shards sequences, the sequence IS the pipeline to execute directly
   if let Value::Shards(seq) = value {
     return Value::EvalExpr(seq.clone());
   }
 
+  let content = match value {
+    Value::Shard(f) => BlockContent::Shard(f.clone()),
+    Value::Func(f) => BlockContent::Func(f.clone()),
+    // For identifiers that resolved to shards, treat as a parameterless shard call
+    Value::Identifier(name) => BlockContent::Shard(Function {
+      name: name.clone(),
+      params: None,
+      custom_state: CustomStateContainer::new(),
+    }),
+    // Value::Shards handled above; other types should not reach here per can_eval_expr_wrap()
+    _ => unreachable!("wrap_in_eval_expr called with unsupported value type"),
+  };
+
   let block = Block {
-    content: match value {
-      Value::Shard(f) => BlockContent::Shard(f.clone()),
-      Value::Func(f) => BlockContent::Func(f.clone()),
-      // For identifiers that resolved to shards, treat as a parameterless shard call
-      Value::Identifier(name) => BlockContent::Shard(Function {
-        name: name.clone(),
-        params: None,
-        custom_state: CustomStateContainer::new(),
-      }),
-      // For anything else, wrap as a const
-      other => BlockContent::Const(other.clone()),
-      // Note: Value::Shards is handled above with early return
-    },
+    content,
     line_info: Some(line_info),
     custom_state: CustomStateContainer::new(),
   };
@@ -2884,30 +2890,38 @@ fn set_shard_parameter(
         // SFINAE-like fallback: if the value resolved to a shard or is an executable,
         // try wrapping it in EvalExpr to evaluate at compile-time.
         // This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
+        let mut auto_eval_error: Option<String> = None;
         if can_eval_expr_wrap(value, &var_value) {
           let wrapped = wrap_in_eval_expr(value, line_info);
-          if let Ok(eval_result) = as_var(&wrapped, line_info, Some(s.0), env) {
-            if s
-              .0
-              .set_parameter(
+          match as_var(&wrapped, line_info, Some(s.0), env) {
+            Ok(eval_result) => {
+              match s.0.set_parameter(
                 i.try_into().expect("Too many parameters"),
                 *eval_result.as_ref(),
-              )
-              .is_ok()
-            {
-              return Ok(());
+              ) {
+                Ok(()) => return Ok(()),
+                Err(eval_e) => {
+                  // Auto-eval succeeded but produced incompatible type
+                  auto_eval_error = Some(format!("auto-evaluation also failed: {}", eval_e));
+                }
+              }
+            }
+            Err(_) => {
+              // Auto-eval itself failed, just use original error
             }
           }
         }
-        // Fallback failed or not applicable, return original error
+        // Fallback failed or not applicable
         let param_name = unsafe { CStr::from_ptr(info.name).to_str().unwrap() }; // should be valid
-        Err(
-          (
-            format!("Failed to set parameter '{}', error: {}", param_name, e),
-            line_info,
+        let error_msg = if let Some(auto_err) = auto_eval_error {
+          format!(
+            "Failed to set parameter '{}', error: {} ({})",
+            param_name, e, auto_err
           )
-            .into(),
-        )
+        } else {
+          format!("Failed to set parameter '{}', error: {}", param_name, e)
+        };
+        Err((error_msg, line_info).into())
       }
     }
   }
