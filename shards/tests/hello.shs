@@ -374,3 +374,12 @@ auto-table.name | IsString | Assert.Is(true)
 ; Test 6: Explicit shards sequence still works for storing shards
 {shards: {NanoID}} = shards-table
 shards-table.shards | IsSeq | Assert.Is(true)
+
+; Test 7: @func in parameters works via SFINAE (runtime ShardRef check)
+@define(my-nanoid NanoID)
+Msg(@my-nanoid)
+
+; Note: {id: @my-nanoid} requires explicit wrapping: {id: (@my-nanoid)}
+; because we can't distinguish @funcs that produce ShardRefs at parse time
+{id: (@my-nanoid)} = auto-table2
+auto-table2.id | IsString | Assert.Is(true)

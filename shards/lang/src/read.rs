@@ -1172,7 +1172,9 @@ fn process_value(pair: Pair<Rule>, env: &mut ReadEnv) -> Result<Value, ShardsErr
           // Auto-wrap single shards in table values to force evaluation.
           // This makes `{a: NanoID}` work like `{a: (NanoID)}`.
           // Use `{a: {NanoID}}` if you want to store shards themselves.
-          // Note: Value::Func (@funcs) are NOT wrapped as they already evaluate correctly.
+          // Note: Value::Func is NOT wrapped here - we can't distinguish funcs that
+          // produce ShardRefs from those that produce other values without runtime info.
+          // Use explicit wrapping for @funcs that expand to shards: `{a: (@my-shard)}`
           let value = match value {
             Value::Shard(f) => {
               let block = Block {

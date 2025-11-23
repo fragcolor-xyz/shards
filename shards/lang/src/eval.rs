@@ -2780,6 +2780,9 @@ fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
 
   let content = match value {
     Value::Shard(f) => BlockContent::Shard(f.clone()),
+    // For funcs that resolved to shards (e.g., @my-nanoid where my-nanoid is defined as NanoID),
+    // caught by SHType_ShardRef check in can_expr_wrap
+    Value::Func(f) => BlockContent::Func(f.clone()),
     // For identifiers that resolved to shards (caught by SHType_ShardRef check),
     // treat as a parameterless shard call
     Value::Identifier(name) => BlockContent::Shard(Function {
@@ -2787,7 +2790,7 @@ fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
       params: None,
       custom_state: CustomStateContainer::new(),
     }),
-    // Value::Shards handled above; Value::Func not included (already evaluated by as_var)
+    // Value::Shards handled above with early return
     _ => unreachable!("wrap_in_expr called with unsupported value type"),
   };
 
