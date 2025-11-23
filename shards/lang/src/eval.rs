@@ -2753,23 +2753,25 @@ fn can_expr_wrap(value: &Value, var_value: &SVar) -> bool {
   // Also check for sequences of shards
   if var_value.as_ref().is_seq() {
     let seq = unsafe { var_value.as_ref().payload.__bindgen_anon_1.seqValue };
-    if seq.len > 0 {
+    if seq.len > 0 && !seq.elements.is_null() {
       let first = unsafe { &*seq.elements };
       if first.valueType == SHType_ShardRef {
         return true;
       }
     }
   }
-  // Fall back to checking the AST value type for explicit shard/func/shards values.
-  // Note: Value::Identifier is NOT included here - identifiers that resolve to shards
+  // Fall back to checking the AST value type for explicit shard/shards values.
+  // Note: Value::Identifier is NOT included - identifiers that resolve to shards
   // are already caught by the SHType_ShardRef check above.
-  matches!(value, Value::Shard(_) | Value::Func(_) | Value::Shards(_))
+  // Note: Value::Func is NOT included - funcs are already evaluated by as_var,
+  // wrapping them would just re-evaluate with the same result.
+  matches!(value, Value::Shard(_) | Value::Shards(_))
 }
 
 /// Wrap a value in an Expr for evaluation.
 /// This allows `Msg(NanoID)` to work like `Msg((NanoID))` automatically.
 ///
-/// IMPORTANT: Only call this function for values that can_eval_expr_wrap() returns true for.
+/// IMPORTANT: Only call this function for values that can_expr_wrap() returns true for.
 fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
   // For Shards sequences, the sequence IS the pipeline to execute directly
   if let Value::Shards(seq) = value {
@@ -2778,14 +2780,14 @@ fn wrap_in_expr(value: &Value, line_info: LineInfo) -> Value {
 
   let content = match value {
     Value::Shard(f) => BlockContent::Shard(f.clone()),
-    Value::Func(f) => BlockContent::Func(f.clone()),
-    // For identifiers that resolved to shards, treat as a parameterless shard call
+    // For identifiers that resolved to shards (caught by SHType_ShardRef check),
+    // treat as a parameterless shard call
     Value::Identifier(name) => BlockContent::Shard(Function {
       name: name.clone(),
       params: None,
       custom_state: CustomStateContainer::new(),
     }),
-    // Value::Shards handled above; other types should not reach here per can_eval_expr_wrap()
+    // Value::Shards handled above; Value::Func not included (already evaluated by as_var)
     _ => unreachable!("wrap_in_expr called with unsupported value type"),
   };
 
