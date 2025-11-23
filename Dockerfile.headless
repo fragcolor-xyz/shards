@@ -29,7 +29,6 @@ COPY . /shards
 WORKDIR /shards
 
 RUN sh update.sh \
-  && ./bootstrap \
   && mkdir -p build
 
 # Build Shards
