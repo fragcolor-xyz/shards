@@ -151,6 +151,29 @@ impl Wire {
   pub fn get_info(&self) -> SHWireInfo {
     unsafe { (*Core).getWireInfo.unwrap_unchecked()(self.0 .0) }
   }
+
+  /// Prepares the wire for execution by creating the coroutine.
+  /// Call this after compose but before start.
+  pub fn prepare(&self) {
+    unsafe { (*Core).prepareWire.unwrap_unchecked()(self.0 .0) }
+  }
+
+  /// Starts the wire with the given input.
+  /// Call this after prepare to set the wire state to Starting.
+  pub fn start(&self, input: &Var) {
+    unsafe { (*Core).startWire.unwrap_unchecked()(self.0 .0, input) }
+  }
+
+  /// Ticks the wire, resuming the coroutine if it's ready to run.
+  /// Use this for manual wire scheduling instead of mesh.tick().
+  pub fn tick(&self) {
+    unsafe { (*Core).tickWire.unwrap_unchecked()(self.0 .0) }
+  }
+
+  /// Checks if the wire is currently running.
+  pub fn is_running(&self) -> bool {
+    unsafe { (*Core).isWireRunning.unwrap_unchecked()(self.0 .0) }
+  }
 }
 
 unsafe extern "C" fn error_cb(

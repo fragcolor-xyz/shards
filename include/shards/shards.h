@@ -985,6 +985,11 @@ typedef struct SHVar(__cdecl *SHStopWire)(SHWireRef wire);
 typedef struct SHComposeResult(__cdecl *SHComposeWire)(SHWireRef wire, struct SHInstanceData data);
 typedef struct SHRunWireOutput(__cdecl *SHRunWire)(SHWireRef wire, struct SHContext *context, const struct SHVar *input);
 
+// Wire lifecycle for manual ticking (use with mesh.compose, but without mesh.schedule)
+typedef void(__cdecl *SHPrepareWire)(SHWireRef wire);
+typedef void(__cdecl *SHStartWire)(SHWireRef wire, const struct SHVar *input);
+typedef void(__cdecl *SHTickWire)(SHWireRef wire);
+
 typedef SHMeshRef(__cdecl *SHCreateMesh)();
 typedef void(__cdecl *SHDestroyMesh)(SHMeshRef mesh);
 typedef struct SHVar(__cdecl *SHCreateMeshVar)();
@@ -1412,6 +1417,11 @@ typedef struct _SHCore {
 
   SHCreateContext createContext;
   SHDestroyContext destroyContext;
+
+  // Wire lifecycle for manual ticking (use with mesh.compose, but without mesh.schedule)
+  SHPrepareWire prepareWire;
+  SHStartWire startWire;
+  SHTickWire tickWire;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

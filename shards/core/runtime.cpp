@@ -2941,6 +2941,22 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->destroyContext = [](SHContext *ctx) { delete ctx; };
 
+  result->prepareWire = [](SHWireRef wire) {
+    auto &sc = SHWire::sharedFromRef(wire);
+    shards::prepare(sc.get());
+  };
+
+  result->startWire = [](SHWireRef wire, const SHVar *input) {
+    auto &sc = SHWire::sharedFromRef(wire);
+    shards::start(sc.get(), input ? *input : Var::Empty);
+  };
+
+  result->tickWire = [](SHWireRef wire) {
+    auto &sc = SHWire::sharedFromRef(wire);
+    SHDuration now = SHClock::now().time_since_epoch();
+    shards::tick(sc.get(), now);
+  };
+
   result->runWire = [](SHWireRef wire, SHContext *context, const SHVar *input) noexcept {
     auto &sc = SHWire::sharedFromRef(wire);
     return shards::runSubWire(sc.get(), context, *input);
