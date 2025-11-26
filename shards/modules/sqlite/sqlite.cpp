@@ -435,7 +435,7 @@ struct Base {
 struct Query : public Base {
   static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
   static SHTypesInfo outputTypes() {
-    static Types types{CoreInfo::AnyTableType, CoreInfo::AnySeqType};
+    static Types types{CoreInfo::TableOfAnySeqType, CoreInfo::SeqOfAnyTableType};
     return types;
   }
 
@@ -669,7 +669,7 @@ struct Query : public Base {
       return CoreInfo::SeqOfAnyTableType;
     } else {
       _returnCols = true;
-      return CoreInfo::AnyTableType;
+      return CoreInfo::TableOfAnySeqType;
     }
   }
 
