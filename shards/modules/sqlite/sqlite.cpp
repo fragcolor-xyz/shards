@@ -340,7 +340,10 @@ struct Connection {
         sqlite3_free(errorMsg);
     });
     if (sqlite3_crsqlite_init(db, &errorMsg, nullptr) != SQLITE_OK) {
-      throw ActivationError(errorMsg);
+      if (errorMsg)
+        throw ActivationError(errorMsg);
+      else
+        throw ActivationError("Unknown SQL error");
     }
   }
 
