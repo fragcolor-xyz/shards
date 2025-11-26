@@ -755,8 +755,15 @@ class OwnedVar: Hashable, Equatable {
     var v: SHVar
     var borrowed = false
 
+    public static let any = OwnedVar(type: .AnyValue)
+
     init() {
         v = SHVar()
+    }
+
+    convenience init(type: VarType) {
+        self.init()
+        v.valueType = type.asSHType()
     }
 
     init(cloning: SHVar) {
