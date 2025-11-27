@@ -121,6 +121,10 @@
   order by distance
   limit 2""" @db-file) | Log
   } none)
+  
+  // Get all user tables (excluding sqlite internal tables)
+  [] | DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'" @db-file)
+  Take("name") | ExpectSeq | Log("tables")
 })
 
 // @schedule(root cleanup)

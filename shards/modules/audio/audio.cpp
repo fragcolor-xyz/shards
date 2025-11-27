@@ -59,7 +59,7 @@ struct ChannelData {
   std::vector<uint32_t> inChannels;
   std::vector<uint32_t> outChannels;
   ShardsVar shards;
-  ParamVar volume{Var(0.7)};
+  ParamVar volume{Var(1.0)};
   std::unordered_map<OwnedVar, OwnedVar> initialVariables;
 };
 
@@ -200,6 +200,8 @@ struct Device {
       // Inside here, if happens, there might be syscalls
       // Allocations and such... we need to refactor if we start
       // Noticing audio cracks
+      SHLOG_TRACE("Audio: Adding channel inBus={} inHash={} outBus={} outHash={} outChannels={} inChannels={}",
+                  c.inBus, c.inHash, c.outBus, c.outHash, c.outChannels, c.data->inChannels.size());
       {
         auto &bus = device->channels[c.inBus];
         bus[c.inHash].emplace_back(c.data);
@@ -240,6 +242,9 @@ struct Device {
         auto nChannels = SHInt(channels[0]->inChannels.size());
         nChannels = std::min(nChannels, inChannels);
 
+        SHLOG_TRACE("Audio: Processing batch nbus={} kind={} nChannels={} channelCount={}",
+                    nbus, kind, nChannels, channels.size());
+
         device->inputScratch.resize(frameCount * nChannels);
 
         if (nbus == 0) {
@@ -251,7 +256,7 @@ struct Device {
             // need to properly compose the input
             for (uint32_t c = 0; c < nChannels; c++) {
               for (ma_uint32 i = 0; i < frameCount; i++) {
-                device->inputScratch[(i * nChannels) + c] = finput[(i * nChannels) + channels[0]->inChannels[c]];
+                device->inputScratch[(i * nChannels) + c] = finput[(i * inChannels) + channels[0]->inChannels[c]];
               }
             }
           }
@@ -290,22 +295,74 @@ struct Device {
               memset(pOutput, 0x0, frameCount * sizeof(float));
               return;
             }
-            auto &a = output.payload.audioValue;
-            for (uint32_t i = 0; i < a.channels * a.nsamples; i++) {
-              channel->outputBuffer[i] += a.samples[i] * channel->volume.get().payload.floatValue;
+            // Only write to output buffer if we have output channels
+            if (channel->outChannels.size() > 0) {
+              auto &a = output.payload.audioValue;
+              for (uint32_t i = 0; i < a.channels * a.nsamples; i++) {
+                channel->outputBuffer[i] += a.samples[i] * channel->volume.get().payload.floatValue;
+              }
             }
           }
         }
       }
     }
 
-    // finally bake the device buffer
-    auto &output = device->outputBuffers[0][device->outputHash];
-    if (output.size() > 0) {
-      memcpy(pOutput, output.data(), frameCount * sizeof(float) * device->_outChannels.payload.intValue);
-    } else {
-      // always cleanup or we risk to break someone's ears
-      memset(pOutput, 0x0, frameCount * sizeof(float) * device->_outChannels.payload.intValue);
+    // finally bake the device buffer with soft clipping
+    auto *fOutput = reinterpret_cast<float *>(pOutput);
+    auto outChannels = device->_outChannels.payload.intValue;
+    auto numSamples = frameCount * outChannels;
+
+    // Clear output buffer first
+    memset(pOutput, 0x0, numSamples * sizeof(float));
+
+    // Soft clipping: only engage above ±0.9 threshold to preserve volume at normal levels
+    // Below threshold: linear pass-through
+    // Above threshold: smooth transition to ±1.0 limit using tanh
+    auto softClip = [](float x) -> float {
+      constexpr float threshold = 0.9f;
+      if (std::abs(x) <= threshold) {
+        return x; // Linear region - no volume loss
+      } else {
+        // Above threshold: smoothly compress to ±1.0
+        // Map [0.9..inf] to [0.9..1.0] using tanh
+        float sign = x > 0.0f ? 1.0f : -1.0f;
+        float excess = (std::abs(x) - threshold) / (1.0f - threshold); // 0..inf
+        float compressed = std::tanh(excess); // 0..1
+        return sign * (threshold + compressed * (1.0f - threshold));
+      }
+    };
+
+    // Compose device output from all channel outputs on bus 0
+    // Each channel writes to specific output channels, we need to map them correctly
+    for (auto &[nbus, channelKinds] : device->channels) {
+      if (nbus != 0) continue; // Only device output bus
+      for (auto &[kind, channels] : channelKinds) {
+        if (channels.empty()) continue;
+        auto *channelData = channels[0];
+        if (channelData->outChannels.empty()) continue;
+
+        // Get the output buffer for this channel configuration
+        auto &channelOutput = channelData->outputBuffer;
+        if (!channelOutput) continue;
+
+        auto channelOutCount = channelData->outChannels.size();
+
+        // Map each channel's output to the correct device output channel
+        for (size_t c = 0; c < channelOutCount; c++) {
+          auto deviceChannel = channelData->outChannels[c];
+          if (deviceChannel >= outChannels) continue;
+
+          for (ma_uint32 i = 0; i < frameCount; i++) {
+            // Add to device output (mixing)
+            fOutput[i * outChannels + deviceChannel] += channelOutput[i * channelOutCount + c];
+          }
+        }
+      }
+    }
+
+    // Apply soft clipping to final output
+    for (size_t i = 0; i < numSamples; i++) {
+      fOutput[i] = softClip(fOutput[i]);
     }
   }
 
@@ -401,6 +458,9 @@ struct Device {
     if (ma_device_init(&_context, &deviceConfig, &_device) != MA_SUCCESS) {
       throw WarmupError("Failed to open default audio device");
     }
+
+    SHLOG_TRACE("Audio device opened: capture.channels={} playback.channels={} sampleRate={}",
+                _device.capture.channels, _device.playback.channels, _device.sampleRate);
 
     // fix up the actual sample rate
     _sampleRate = Var(int64_t(_device.sampleRate));
