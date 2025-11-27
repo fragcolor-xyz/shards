@@ -659,7 +659,7 @@ SHWireState unsafeSuspend(SHContext *context, double seconds) {
 
 FLATTEN SHWireState suspend(SHContext *context, double seconds) {
   if (unlikely(!context->shouldContinue())) {
-    throw ActivationError(fmt::format("Trying to suspend a context that is not running! - state: {}", context->getState()));
+    throw ActivationError("Trying to suspend a context that is not running!");
   } else if (unlikely(context->onWorkerThread)) {
     throw ActivationError("Trying to suspend a context on worker thread!");
   } else if (unlikely(!context->continuation)) {
