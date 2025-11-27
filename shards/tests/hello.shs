@@ -123,6 +123,8 @@ xy | Do(table-input) | Log
 
 @if(true Msg("True") Msg("False"))
 
+@if(true {"True"} {"False"}) | Assert.Is("True")
+
 "namespaced" = n/text
 
 @define(n/text2 "namespaced")
