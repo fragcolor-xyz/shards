@@ -314,7 +314,7 @@ if(AUDIO_ENABLED)
   CPMAddPackage(
     NAME miniaudio
     GITHUB_REPOSITORY shards-lang/miniaudio
-    GIT_TAG 67cbfbd11d09769584f311d73becb54d3e91156b
+    GIT_TAG 2774449deb737cffac13e3c84f267f8c8629351e
     DOWNLOAD_ONLY YES
   )
   add_library(miniaudio INTERFACE)

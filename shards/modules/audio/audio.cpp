@@ -207,10 +207,14 @@ struct Device {
         bus[c.inHash].emplace_back(c.data);
       }
       {
-        auto &bus = device->outputBuffers[c.outBus];
-        auto &buffer = bus[c.outHash];
-        buffer.resize(frameCount * c.outChannels);
-        c.data->outputBuffer = buffer.data();
+        if (c.outChannels > 0) {
+          auto &bus = device->outputBuffers[c.outBus];
+          auto &buffer = bus[c.outHash];
+          buffer.resize(frameCount * c.outChannels);
+          c.data->outputBuffer = buffer.data();
+        } else {
+          c.data->outputBuffer = nullptr;
+        }
       }
 
       // copy all needed variables
@@ -241,9 +245,6 @@ struct Device {
         // build the buffer with whatever we need as input
         auto nChannels = SHInt(channels[0]->inChannels.size());
         nChannels = std::min(nChannels, inChannels);
-
-        SHLOG_TRACE("Audio: Processing batch nbus={} kind={} nChannels={} channelCount={}",
-                    nbus, kind, nChannels, channels.size());
 
         device->inputScratch.resize(frameCount * nChannels);
 
@@ -406,7 +407,7 @@ struct Device {
           }
         }
         if (out_device_id == NULL) {
-          throw WarmupError("Input device not found");
+          throw WarmupError("Output device not found");
         } else {
           SHLOG_INFO("Output device found: {}", _deviceNameOut);
         }
@@ -421,7 +422,7 @@ struct Device {
           }
         }
         if (in_device_id == NULL) {
-          throw WarmupError("Output device not found");
+          throw WarmupError("Input device not found");
         } else {
           SHLOG_INFO("Input device found: {}", _deviceNameIn);
         }
@@ -435,6 +436,9 @@ struct Device {
       deviceConfig.playback.pDeviceID = out_device_id;
       deviceConfig.playback.format = ma_format_f32;
       deviceConfig.playback.channels = decltype(deviceConfig.playback.channels)(_outChannels.payload.intValue);
+      // Use simple channel mixing to avoid semantic remapping (e.g. FRONT_LEFT/RIGHT)
+      // This ensures channels map 1:1 by index, not by speaker position
+      deviceConfig.playback.channelMixMode = ma_channel_mix_mode_simple;
     }
 
     if (_inChannels.payload.intValue > 0) {
@@ -442,6 +446,9 @@ struct Device {
       deviceConfig.capture.format = ma_format_f32;
       deviceConfig.capture.channels = decltype(deviceConfig.capture.channels)(_inChannels.payload.intValue);
       deviceConfig.capture.shareMode = ma_share_mode_shared;
+      // Use simple channel mixing to avoid semantic remapping (e.g. FRONT_LEFT/RIGHT)
+      // This ensures channels map 1:1 by index, not by speaker position
+      deviceConfig.capture.channelMixMode = ma_channel_mix_mode_simple;
     }
 
     deviceConfig.sampleRate = decltype(deviceConfig.sampleRate)(_sampleRate.payload.intValue);
@@ -459,20 +466,19 @@ struct Device {
       throw WarmupError("Failed to open default audio device");
     }
 
-    SHLOG_TRACE("Audio device opened: capture.channels={} playback.channels={} sampleRate={}",
-                _device.capture.channels, _device.playback.channels, _device.sampleRate);
-
     // fix up the actual sample rate
     _sampleRate = Var(int64_t(_device.sampleRate));
 
     inputScratch.resize(deviceConfig.periodSizeInFrames * deviceConfig.capture.channels);
 
     {
+      constexpr uint32_t inputSalt = 0x494E5055; // "INPU"
       SHInt inChannels = SHInt(deviceConfig.capture.channels);
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &inputSalt, sizeof(uint32_t));
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
       for (SHInt i = 0; i < inChannels; i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(SHInt));
@@ -482,11 +488,13 @@ struct Device {
     }
 
     {
+      constexpr uint32_t outputSalt = 0x4F555450; // "OUTP"
       SHInt outChannels = SHInt(deviceConfig.playback.channels);
       uint32_t bus{0};
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &outputSalt, sizeof(uint32_t));
       XXH3_64bits_update(&hashState, &bus, sizeof(uint32_t));
       for (SHInt i = 0; i < outChannels; i++) {
         XXH3_64bits_update(&hashState, &i, sizeof(SHInt));
@@ -494,6 +502,9 @@ struct Device {
 
       outputHash = XXH3_64bits_digest(&hashState);
     }
+
+    SHLOG_TRACE("Audio device opened: capture.channels={} playback.channels={} sampleRate={} inputHash={} outputHash={}",
+                _device.capture.channels, _device.playback.channels, _device.sampleRate, inputHash, outputHash);
 
     _open = true;
     stopped = false;
@@ -683,9 +694,11 @@ struct Channel {
     d = reinterpret_cast<const Device *>(_device->payload.objectValue);
 
     {
+      constexpr uint32_t inputSalt = 0x494E5055; // "INPU"
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &inputSalt, sizeof(uint32_t));
       XXH3_64bits_update(&hashState, &_inBusNumber, sizeof(uint32_t));
       if (_inChannels.valueType == SHType::Seq) {
         for (auto &channel : _inChannels) {
@@ -697,9 +710,11 @@ struct Channel {
     }
 
     {
+      constexpr uint32_t outputSalt = 0x4F555450; // "OUTP"
       XXH3_state_s hashState;
       XXH3_INITSTATE(&hashState);
       XXH3_64bits_reset_withSecret(&hashState, CUSTOM_XXH3_kSecret, XXH_SECRET_DEFAULT_SIZE);
+      XXH3_64bits_update(&hashState, &outputSalt, sizeof(uint32_t));
       XXH3_64bits_update(&hashState, &_outBusNumber, sizeof(uint32_t));
       if (_outChannels.valueType == SHType::Seq) {
         outChannels = _outChannels.payload.seqValue.len;
