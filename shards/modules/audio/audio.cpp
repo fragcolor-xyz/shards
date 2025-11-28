@@ -56,6 +56,7 @@ struct AudioDefaultHelpText {
 
 struct ChannelData {
   float *outputBuffer;
+  size_t outputBufferSize;
   std::vector<uint32_t> inChannels;
   std::vector<uint32_t> outChannels;
   ShardsVar shards;
@@ -212,8 +213,10 @@ struct Device {
           auto &buffer = bus[c.outHash];
           buffer.resize(frameCount * c.outChannels);
           c.data->outputBuffer = buffer.data();
+          c.data->outputBufferSize = buffer.size();
         } else {
           c.data->outputBuffer = nullptr;
+          c.data->outputBufferSize = 0;
         }
       }
 
@@ -349,6 +352,11 @@ struct Device {
         if (!channelOutput) continue;
 
         auto channelOutCount = channelData->outChannels.size();
+        auto requiredBufferSize = channelOutCount * frameCount;
+        if (channelData->outputBufferSize < requiredBufferSize) {
+          SHLOG_ERROR("Channel output buffer too small: {} < {}", channelData->outputBufferSize, requiredBufferSize);
+          continue;
+        }
 
         // Map each channel's planar output to the correct interleaved device output channel
         for (size_t c = 0; c < channelOutCount; c++) {

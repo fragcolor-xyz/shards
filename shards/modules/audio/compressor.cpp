@@ -99,6 +99,11 @@ struct Compressor {
     const auto &audio = input.payload.audioValue;
     uint32_t numSamples = audio.nsamples;
     uint32_t numChannels = audio.channels;
+
+    // Check for overflow before multiplication
+    if (numChannels > 0 && numSamples > UINT32_MAX / numChannels) {
+      throw ActivationError("Audio buffer size overflow");
+    }
     uint32_t totalSamples = numSamples * numChannels;
     float sampleRate = static_cast<float>(audioGetSampleRate(audio));
 
