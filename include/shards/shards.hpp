@@ -1068,7 +1068,10 @@ template <typename TGenericArray, class Function> inline void ForEach(const TGen
 // ============================================================================
 
 // Create a planar SHAudio struct with proper sample rate encoding
+// Note: sampleRate must be divisible by 25 (all common rates: 11025, 22050, 44100, 48000, 96000, 192000)
+// Non-divisible rates will be truncated (e.g., 44099 -> 44075)
 inline SHAudio makeAudio(float *samples, uint32_t nsamples, uint32_t sampleRate, uint8_t channels) {
+  shassert((sampleRate % SHAUDIO_SAMPLE_RATE_DIVISOR) == 0 && "Sample rate must be divisible by 25");
   return SHAudio{samples, nsamples, SHAUDIO_ENCODE_SAMPLE_RATE(sampleRate), channels, 0};
 }
 
@@ -1076,8 +1079,15 @@ inline SHAudio makeAudio(float *samples, uint32_t nsamples, uint32_t sampleRate,
 inline uint32_t audioGetSampleRate(const SHAudio &audio) { return SHAUDIO_DECODE_SAMPLE_RATE(audio.sampleRate); }
 
 // Get pointer to a specific channel in planar audio
-inline float *audioGetChannel(SHAudio &audio, uint8_t channel) { return audio.samples + channel * audio.nsamples; }
-inline const float *audioGetChannel(const SHAudio &audio, uint8_t channel) { return audio.samples + channel * audio.nsamples; }
+// Note: channel must be < audio.channels, otherwise returns invalid pointer
+inline float *audioGetChannel(SHAudio &audio, uint8_t channel) {
+  shassert(channel < audio.channels && "Channel index out of bounds");
+  return audio.samples + channel * audio.nsamples;
+}
+inline const float *audioGetChannel(const SHAudio &audio, uint8_t channel) {
+  shassert(channel < audio.channels && "Channel index out of bounds");
+  return audio.samples + channel * audio.nsamples;
+}
 
 // Deinterleave audio: convert interleaved [L0,R0,L1,R1,...] to planar [L0,L1,...,R0,R1,...]
 // Output buffer must have space for nsamples * channels floats

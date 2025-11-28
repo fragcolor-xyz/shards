@@ -150,9 +150,10 @@ TEST_CASE("SHVar-comparison", "[ops]") {
     std::vector<float> b1(1024);
     std::vector<float> b2(1024);
     std::vector<float> b3(1024);
-    SHVar x{.payload = {.audioValue = SHAudio{44100, 512, 2, b1.data()}}, .valueType = SHType::Audio};
-    SHVar y{.payload = {.audioValue = SHAudio{44100, 512, 2, b2.data()}}, .valueType = SHType::Audio};
-    SHVar z{.payload = {.audioValue = SHAudio{44100, 1024, 1, b3.data()}}, .valueType = SHType::Audio};
+    // SHAudio layout: {samples, nsamples, sampleRate (encoded), channels, reserved}
+    SHVar x{.payload = {.audioValue = makeAudio(b1.data(), 512, 44100, 2)}, .valueType = SHType::Audio};
+    SHVar y{.payload = {.audioValue = makeAudio(b2.data(), 512, 44100, 2)}, .valueType = SHType::Audio};
+    SHVar z{.payload = {.audioValue = makeAudio(b3.data(), 1024, 44100, 1)}, .valueType = SHType::Audio};
     auto empty = Var::Empty;
     REQUIRE(x == y);
     REQUIRE(x != z);
