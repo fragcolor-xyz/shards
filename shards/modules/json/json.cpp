@@ -358,7 +358,7 @@ void from_json(const json &j, SHVar &var) {
     var.payload.audioValue.sampleRate = SHAUDIO_ENCODE_SAMPLE_RATE(j.at("sampleRate").get<uint32_t>());
     var.payload.audioValue.nsamples = j.at("nsamples").get<uint32_t>();
     var.payload.audioValue.channels = j.at("channels").get<uint8_t>();
-    var.payload.audioValue.reserved = 0;  // Reserved for future use
+    var.payload.audioValue.reserved = 0; // Reserved for future use
     auto size = var.payload.audioValue.nsamples * var.payload.audioValue.channels;
     var.payload.audioValue.samples = new float[size];
     auto buffer = j.at("samples").get<std::vector<float>>();

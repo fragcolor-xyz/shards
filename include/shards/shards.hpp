@@ -1108,8 +1108,7 @@ inline void audioDeinterleave(const float *__restrict interleaved, float *__rest
 
 #if defined(__AVX2__)
   // AVX2: use gather for any channel count - single elegant path
-  const __m256i indices =
-      _mm256_mullo_epi32(_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7), _mm256_set1_epi32(channels));
+  const __m256i indices = _mm256_mullo_epi32(_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7), _mm256_set1_epi32(channels));
 
   for (uint8_t ch = 0; ch < channels; ch++) {
     const float *__restrict src = interleaved + ch;

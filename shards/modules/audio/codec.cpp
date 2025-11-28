@@ -235,7 +235,7 @@ struct Compress {
   std::vector<unsigned char> _encodedBuffer;  // Buffer for encoded data
   std::vector<SHVar> _outputPackets;          // Sequence of encoded packets
 
-  std::vector<float> _interleavedInput;  // Buffer for interleaved audio (Opus expects interleaved)
+  std::vector<float> _interleavedInput; // Buffer for interleaved audio (Opus expects interleaved)
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &audio = input.payload.audioValue;
@@ -445,8 +445,8 @@ struct Decompress {
   bool _decoderInitialized = false;
   int _lastSampleRate = 0;
   int _lastChannels = 0;
-  std::vector<float> _interleavedOutput;  // Opus outputs interleaved
-  std::vector<float> _outputBuffer;        // Planar output
+  std::vector<float> _interleavedOutput; // Opus outputs interleaved
+  std::vector<float> _outputBuffer;      // Planar output
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &binaryData = input.payload.bytesValue;
@@ -504,8 +504,8 @@ struct Decompress {
     _interleavedOutput.resize(frameSizeSamples * channels);
 
     // Decode the Opus packet
-    int samplesDecoded =
-        opus_decode_float(_decoder, binaryData, static_cast<opus_int32>(binarySize), _interleavedOutput.data(), frameSizeSamples, 0);
+    int samplesDecoded = opus_decode_float(_decoder, binaryData, static_cast<opus_int32>(binarySize), _interleavedOutput.data(),
+                                           frameSizeSamples, 0);
 
     if (samplesDecoded < 0) {
       auto msg = fmt::format("Opus decoding failed: {}", opus_strerror(samplesDecoded));

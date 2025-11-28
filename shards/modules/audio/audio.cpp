@@ -201,8 +201,8 @@ struct Device {
       // Inside here, if happens, there might be syscalls
       // Allocations and such... we need to refactor if we start
       // Noticing audio cracks
-      SHLOG_TRACE("Audio: Adding channel inBus={} inHash={} outBus={} outHash={} outChannels={} inChannels={}",
-                  c.inBus, c.inHash, c.outBus, c.outHash, c.outChannels, c.data->inChannels.size());
+      SHLOG_TRACE("Audio: Adding channel inBus={} inHash={} outBus={} outHash={} outChannels={} inChannels={}", c.inBus, c.inHash,
+                  c.outBus, c.outHash, c.outChannels, c.data->inChannels.size());
       {
         auto &bus = device->channels[c.inBus];
         bus[c.inHash].emplace_back(c.data);
@@ -277,8 +277,8 @@ struct Device {
           }
         }
 
-        SHAudio inputPacket = makeAudio(device->inputScratch.data(), frameCount,
-                                        uint32_t(device->_sampleRate.payload.intValue), uint8_t(nChannels));
+        SHAudio inputPacket = makeAudio(device->inputScratch.data(), frameCount, uint32_t(device->_sampleRate.payload.intValue),
+                                        uint8_t(nChannels));
         Var inputVar(inputPacket);
 
         // run activations of all channels that need such input
@@ -333,7 +333,7 @@ struct Device {
         // Map [0.9..inf] to [0.9..1.0] using tanh
         float sign = x > 0.0f ? 1.0f : -1.0f;
         float excess = (std::abs(x) - threshold) / (1.0f - threshold); // 0..inf
-        float compressed = std::tanh(excess); // 0..1
+        float compressed = std::tanh(excess);                          // 0..1
         return sign * (threshold + compressed * (1.0f - threshold));
       }
     };
@@ -341,15 +341,19 @@ struct Device {
     // Compose device output from all channel outputs on bus 0
     // Channel outputs are planar, device output is interleaved (for miniaudio)
     for (auto &[nbus, channelKinds] : device->channels) {
-      if (nbus != 0) continue; // Only device output bus
+      if (nbus != 0)
+        continue; // Only device output bus
       for (auto &[kind, channels] : channelKinds) {
-        if (channels.empty()) continue;
+        if (channels.empty())
+          continue;
         auto *channelData = channels[0];
-        if (channelData->outChannels.empty()) continue;
+        if (channelData->outChannels.empty())
+          continue;
 
         // Get the output buffer for this channel configuration (planar layout)
         auto &channelOutput = channelData->outputBuffer;
-        if (!channelOutput) continue;
+        if (!channelOutput)
+          continue;
 
         auto channelOutCount = channelData->outChannels.size();
         auto requiredBufferSize = channelOutCount * frameCount;
@@ -361,7 +365,8 @@ struct Device {
         // Map each channel's planar output to the correct interleaved device output channel
         for (size_t c = 0; c < channelOutCount; c++) {
           auto deviceChannel = channelData->outChannels[c];
-          if (deviceChannel >= outChannels) continue;
+          if (deviceChannel >= outChannels)
+            continue;
 
           // Source is planar: channel c data is at channelOutput + c * frameCount
           const float *src = channelOutput + c * frameCount;
@@ -806,8 +811,8 @@ struct Oscillator {
   ma_uint64 _nsamples{1024};
   ma_uint32 _sampleRate{44100};
 
-  std::vector<float> _buffer;          // Planar output buffer
-  std::vector<float> _interleavedBuf;  // Scratch for miniaudio interleaved output
+  std::vector<float> _buffer;         // Planar output buffer
+  std::vector<float> _interleavedBuf; // Scratch for miniaudio interleaved output
 
   SHVar *_device{nullptr};
   Device *d{nullptr};
@@ -961,8 +966,8 @@ struct ReadFile {
 
   ma_uint64 _progress{0};
 
-  std::vector<float> _buffer;          // Planar output buffer
-  std::vector<float> _interleavedBuf;  // Scratch for miniaudio interleaved output
+  std::vector<float> _buffer;         // Planar output buffer
+  std::vector<float> _interleavedBuf; // Scratch for miniaudio interleaved output
   bool _done{false};
 
   SHVar *_device{nullptr};
@@ -1271,7 +1276,7 @@ struct WriteFile {
   ma_uint32 _sampleRate{44100};
   ma_uint64 _progress{0};
   ParamVar _filename;
-  std::vector<float> _interleavedBuf;  // Scratch for interleaving planar input
+  std::vector<float> _interleavedBuf; // Scratch for interleaving planar input
 
   static SHOptionalString help() { return SHCCSTR("This shard writes audio data to WAV format file."); }
 
@@ -1416,10 +1421,10 @@ struct Resample {
     PARAM_CLEANUP(context);
   }
 
-  std::vector<float> _buffer;           // Planar output buffer
-  std::vector<float> _interleavedIn;    // Interleaved input for resampler (includes leftovers)
-  std::vector<float> _interleavedOut;   // Interleaved output from resampler
-  std::vector<float> _leftoverSamples;  // Interleaved leftovers
+  std::vector<float> _buffer;          // Planar output buffer
+  std::vector<float> _interleavedIn;   // Interleaved input for resampler (includes leftovers)
+  std::vector<float> _interleavedOut;  // Interleaved output from resampler
+  std::vector<float> _leftoverSamples; // Interleaved leftovers
   ma_uint32 _inSampleRate{0};
   ma_uint32 _outSampleRate{0};
   ma_uint32 _channels{0};
@@ -1429,9 +1434,8 @@ struct Resample {
     uint32_t inSampleRate = audioGetSampleRate(audio);
 
     if (!_initialized) {
-      ma_resampler_config config =
-          ma_resampler_config_init(ma_format_f32, audio.channels, inSampleRate,
-                                   _outRate.get().payload.intValue, ma_resample_algorithm_linear);
+      ma_resampler_config config = ma_resampler_config_init(ma_format_f32, audio.channels, inSampleRate,
+                                                            _outRate.get().payload.intValue, ma_resample_algorithm_linear);
       ma_result res = ma_resampler_init(&config, NULL, &_resampler);
       if (res != MA_SUCCESS) {
         throw ActivationError("Failed to initialize resampler");
@@ -1472,7 +1476,8 @@ struct Resample {
     }
 
     _interleavedOut.resize(frameCountOut * _channels);
-    res = ma_resampler_process_pcm_frames(&_resampler, _interleavedIn.data(), &frameCountIn, _interleavedOut.data(), &frameCountOut);
+    res = ma_resampler_process_pcm_frames(&_resampler, _interleavedIn.data(), &frameCountIn, _interleavedOut.data(),
+                                          &frameCountOut);
 
     if (res != MA_SUCCESS) {
       SHLOG_ERROR("Failed to resample audio: {} {}", res, frameCountIn);
