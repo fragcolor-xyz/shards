@@ -1146,8 +1146,10 @@ struct ReadFile {
       _done = true;
       // zero anything that was not used in interleaved buffer
       const auto remains = nsamples - framesRead;
-      if (remains * channels <= _interleavedBuf.size()) {
-        memset(_interleavedBuf.data() + framesRead * channels, 0, sizeof(float) * remains * channels);
+      const size_t zeroStart = framesRead * channels;
+      const size_t zeroSize = remains * channels;
+      if (zeroStart + zeroSize <= _interleavedBuf.size()) {
+        memset(_interleavedBuf.data() + zeroStart, 0, sizeof(float) * zeroSize);
       } else {
         // Handle error: buffer is smaller than expected
         throw ActivationError("Buffer size mismatch");
