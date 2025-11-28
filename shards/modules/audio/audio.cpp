@@ -1417,10 +1417,9 @@ struct Resample {
   }
 
   std::vector<float> _buffer;           // Planar output buffer
-  std::vector<float> _interleavedIn;    // Interleaved input for resampler
+  std::vector<float> _interleavedIn;    // Interleaved input for resampler (includes leftovers)
   std::vector<float> _interleavedOut;   // Interleaved output from resampler
   std::vector<float> _leftoverSamples;  // Interleaved leftovers
-  std::vector<float> _combinedInput;    // Combined interleaved input
   ma_uint32 _inSampleRate{0};
   ma_uint32 _outSampleRate{0};
   ma_uint32 _channels{0};
@@ -1447,20 +1446,22 @@ struct Resample {
       throw ActivationError("Input sample rate does not match initialized sample rate");
     }
 
-    // Convert planar input to interleaved for miniaudio resampler
-    _interleavedIn.resize(audio.nsamples * _channels);
-    audioInterleave(audio.samples, _interleavedIn.data(), audio.nsamples, uint8_t(_channels));
+    // Build interleaved input: leftovers + new samples (single buffer, no intermediate copy)
+    const size_t newSamplesInterleaved = audio.nsamples * _channels;
+    const size_t leftoverSamplesInterleaved = _leftoverSamples.size();
+    const size_t totalSamplesInterleaved = leftoverSamplesInterleaved + newSamplesInterleaved;
 
-    // Prepare combined input buffer with leftover samples and new input
-    _combinedInput.clear();
-    if (!_leftoverSamples.empty()) {
-      _combinedInput.insert(_combinedInput.end(), _leftoverSamples.begin(), _leftoverSamples.end());
+    _interleavedIn.resize(totalSamplesInterleaved);
+
+    // Copy leftovers to front (if any)
+    if (leftoverSamplesInterleaved > 0) {
+      memcpy(_interleavedIn.data(), _leftoverSamples.data(), leftoverSamplesInterleaved * sizeof(float));
     }
 
-    // Add new interleaved input samples
-    _combinedInput.insert(_combinedInput.end(), _interleavedIn.begin(), _interleavedIn.end());
+    // Interleave new planar samples directly after leftovers
+    audioInterleave(audio.samples, _interleavedIn.data() + leftoverSamplesInterleaved, audio.nsamples, uint8_t(_channels));
 
-    ma_uint64 totalFramesIn = _combinedInput.size() / _channels;
+    ma_uint64 totalFramesIn = totalSamplesInterleaved / _channels;
     ma_uint64 frameCountIn = totalFramesIn;
     ma_uint64 frameCountOut = 0;
 
@@ -1471,7 +1472,7 @@ struct Resample {
     }
 
     _interleavedOut.resize(frameCountOut * _channels);
-    res = ma_resampler_process_pcm_frames(&_resampler, _combinedInput.data(), &frameCountIn, _interleavedOut.data(), &frameCountOut);
+    res = ma_resampler_process_pcm_frames(&_resampler, _interleavedIn.data(), &frameCountIn, _interleavedOut.data(), &frameCountOut);
 
     if (res != MA_SUCCESS) {
       SHLOG_ERROR("Failed to resample audio: {} {}", res, frameCountIn);
@@ -1480,8 +1481,8 @@ struct Resample {
 
     // Store unconsumed samples for next iteration (in interleaved format)
     if (frameCountIn < totalFramesIn) {
-      size_t unconsumedSamples = (totalFramesIn - frameCountIn) * _channels;
-      _leftoverSamples.assign(_combinedInput.end() - unconsumedSamples, _combinedInput.end());
+      size_t consumedSamples = frameCountIn * _channels;
+      _leftoverSamples.assign(_interleavedIn.begin() + consumedSamples, _interleavedIn.end());
     } else {
       _leftoverSamples.clear();
     }

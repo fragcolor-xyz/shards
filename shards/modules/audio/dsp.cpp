@@ -259,7 +259,7 @@ struct IFFT : public FFTBase {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 
       // IFFT output: mono audio with configurable sample rate (default 44100 Hz)
-      return Var(SHAudio{_fscratch.data(), uint32_t(olen), SHAUDIO_ENCODE_SAMPLE_RATE(_sampleRate), 1, 0});
+      return Var(makeAudio(_fscratch.data(), uint32_t(olen), _sampleRate, 1));
     } else if constexpr (OTYPE == SHType::Float) {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 

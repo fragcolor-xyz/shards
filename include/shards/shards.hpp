@@ -1100,7 +1100,7 @@ inline const float *audioGetChannel(const SHAudio &audio, uint8_t channel) {
 // Output buffer must have space for nsamples * channels floats
 // SIMD optimized: AVX2 gather (x86), NEON vld2-4 (ARM 2-4 channels)
 inline void audioDeinterleave(const float *__restrict interleaved, float *__restrict planar, uint32_t nsamples,
-                              uint8_t channels) {
+                              uint8_t channels) noexcept {
   if (channels == 1) {
     memcpy(planar, interleaved, nsamples * sizeof(float));
     return;
@@ -1207,7 +1207,7 @@ inline void audioDeinterleave(const float *__restrict interleaved, float *__rest
 // Output buffer must have space for nsamples * channels floats
 // SIMD optimized: AVX2 shuffles for stereo (x86), NEON vst2-4 (ARM 2-4 channels)
 inline void audioInterleave(const float *__restrict planar, float *__restrict interleaved, uint32_t nsamples,
-                            uint8_t channels) {
+                            uint8_t channels) noexcept {
   if (channels == 1) {
     memcpy(interleaved, planar, nsamples * sizeof(float));
     return;
