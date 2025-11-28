@@ -115,9 +115,9 @@ void to_json(json &j, const SHVar &var) {
       buffer.resize(size);
       memcpy(&buffer[0], var.payload.audioValue.samples, size * sizeof(float));
       j = json{{"type", valType},
-               {"sampleRate", var.payload.audioValue.sampleRate},
+               {"sampleRate", SHAUDIO_DECODE_SAMPLE_RATE(var.payload.audioValue.sampleRate)},
                {"nsamples", var.payload.audioValue.nsamples},
-               {"channels", var.payload.audioValue.channels},
+               {"channels", (int)var.payload.audioValue.channels},
                {"samples", buffer}};
     } else {
       j = json{{"type", 0}, {"value", int(SHWireState::Continue)}};
@@ -355,9 +355,10 @@ void from_json(const json &j, SHVar &var) {
   }
   case SHType::Audio: {
     var.valueType = SHType::Audio;
-    var.payload.audioValue.sampleRate = j.at("sampleRate").get<float>();
-    var.payload.audioValue.nsamples = j.at("nsamples").get<uint16_t>();
-    var.payload.audioValue.channels = j.at("channels").get<uint16_t>();
+    var.payload.audioValue.sampleRate = SHAUDIO_ENCODE_SAMPLE_RATE(j.at("sampleRate").get<uint32_t>());
+    var.payload.audioValue.nsamples = j.at("nsamples").get<uint32_t>();
+    var.payload.audioValue.channels = j.at("channels").get<uint8_t>();
+    var.payload.audioValue.reserved = 0;  // Reserved for future use
     auto size = var.payload.audioValue.nsamples * var.payload.audioValue.channels;
     var.payload.audioValue.samples = new float[size];
     auto buffer = j.at("samples").get<std::vector<float>>();

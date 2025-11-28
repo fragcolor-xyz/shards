@@ -1063,6 +1063,46 @@ template <typename TGenericArray, class Function> inline void ForEach(const TGen
     f(seq.elements[i]);
 }
 
+// ============================================================================
+// Audio utilities for SHAudio
+// ============================================================================
+
+// Create a planar SHAudio struct with proper sample rate encoding
+inline SHAudio makeAudio(float *samples, uint32_t nsamples, uint32_t sampleRate, uint8_t channels) {
+  return SHAudio{samples, nsamples, SHAUDIO_ENCODE_SAMPLE_RATE(sampleRate), channels, 0};
+}
+
+// Get decoded sample rate from SHAudio
+inline uint32_t audioGetSampleRate(const SHAudio &audio) { return SHAUDIO_DECODE_SAMPLE_RATE(audio.sampleRate); }
+
+// Get pointer to a specific channel in planar audio
+inline float *audioGetChannel(SHAudio &audio, uint8_t channel) { return audio.samples + channel * audio.nsamples; }
+inline const float *audioGetChannel(const SHAudio &audio, uint8_t channel) { return audio.samples + channel * audio.nsamples; }
+
+// Deinterleave audio: convert interleaved [L0,R0,L1,R1,...] to planar [L0,L1,...,R0,R1,...]
+// Output buffer must have space for nsamples * channels floats
+inline void audioDeinterleave(const float *interleaved, float *planar, uint32_t nsamples, uint8_t channels) {
+  for (uint32_t ch = 0; ch < channels; ch++) {
+    float *dst = planar + ch * nsamples;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      dst[i] = interleaved[i * channels + ch];
+    }
+  }
+}
+
+// Interleave audio: convert planar [L0,L1,...,R0,R1,...] to interleaved [L0,R0,L1,R1,...]
+// Output buffer must have space for nsamples * channels floats
+inline void audioInterleave(const float *planar, float *interleaved, uint32_t nsamples, uint8_t channels) {
+  for (uint32_t ch = 0; ch < channels; ch++) {
+    const float *src = planar + ch * nsamples;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      interleaved[i * channels + ch] = src[i];
+    }
+  }
+}
+
+// ============================================================================
+
 class WireProvider {
   // used specially for live editing wires, from host languages
 public:

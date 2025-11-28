@@ -2183,6 +2183,7 @@ NO_INLINE void _cloneVarSlow(SHVar &dst, const SHVar &src) {
     dst.payload.audioValue.sampleRate = src.payload.audioValue.sampleRate;
     dst.payload.audioValue.nsamples = src.payload.audioValue.nsamples;
     dst.payload.audioValue.channels = src.payload.audioValue.channels;
+    dst.payload.audioValue.reserved = src.payload.audioValue.reserved;
 
     if (src.payload.audioValue.samples == dst.payload.audioValue.samples)
       return;

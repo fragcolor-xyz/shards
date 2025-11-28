@@ -186,9 +186,9 @@ std::ostream &DocsFriendlyFormatter::format(std::ostream &os, const SHVar &var) 
     break;
   case SHType::Audio:
     os << "Audio";
-    os << " SampleRate: " << var.payload.audioValue.sampleRate;
+    os << " SampleRate: " << SHAUDIO_DECODE_SAMPLE_RATE(var.payload.audioValue.sampleRate);
     os << " Samples: " << var.payload.audioValue.nsamples;
-    os << " Channels: " << var.payload.audioValue.channels;
+    os << " Channels: " << (int)var.payload.audioValue.channels;
     break;
   case SHType::Seq:
     os << "[";

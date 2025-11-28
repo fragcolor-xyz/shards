@@ -260,11 +260,19 @@ struct SHImage {
   SHImageFreeProc free;
 } SH_STRUCT16;
 
+// Sample rate encoding: stored as actual_rate / 25 to fit in uint16_t
+// All common rates (11025, 22050, 44100, 48000, 96000, 192000) divide evenly by 25
+#define SHAUDIO_SAMPLE_RATE_DIVISOR 25
+#define SHAUDIO_ENCODE_SAMPLE_RATE(rate) ((uint16_t)((rate) / SHAUDIO_SAMPLE_RATE_DIVISOR))
+#define SHAUDIO_DECODE_SAMPLE_RATE(encoded) ((uint32_t)(encoded) * SHAUDIO_SAMPLE_RATE_DIVISOR)
+
+// Audio is always in planar format: channel N at samples + N * nsamples
 struct SHAudio {
-  uint32_t sampleRate; // set to 0 if unknown/not relevant
-  uint16_t nsamples;
-  uint16_t channels;
-  float *samples;
+  float *samples;      // Planar layout: [ch0_s0, ch0_s1, ...][ch1_s0, ch1_s1, ...]
+  uint32_t nsamples;   // Samples per channel
+  uint16_t sampleRate; // Encoded: actual_rate / 25 (use SHAUDIO_ENCODE/DECODE macros)
+  uint8_t channels;    // Number of channels (max 255)
+  uint8_t reserved;    // Reserved for future use
 };
 
 #define SH_FLOW_CONTINUE (0)

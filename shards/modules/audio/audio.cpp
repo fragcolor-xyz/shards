@@ -249,19 +249,23 @@ struct Device {
         device->inputScratch.resize(frameCount * nChannels);
 
         if (nbus == 0) {
-          if (kind == device->inputHash) {
-            // this is the full device input, just copy it
-            memcpy(device->inputScratch.data(), pInput, sizeof(float) * nChannels * frameCount);
+          // Device input - deinterleave from miniaudio's interleaved format to planar
+          auto *finput = reinterpret_cast<const float *>(pInput);
+          if (kind == device->inputHash && inChannels == nChannels) {
+            // Full device input, deinterleave all channels
+            audioDeinterleave(finput, device->inputScratch.data(), frameCount, uint8_t(nChannels));
           } else {
-            auto *finput = reinterpret_cast<const float *>(pInput);
-            // need to properly compose the input
-            for (uint32_t c = 0; c < nChannels; c++) {
+            // Selective channels - deinterleave only the channels we need
+            for (uint32_t c = 0; c < uint32_t(nChannels); c++) {
+              float *dst = device->inputScratch.data() + c * frameCount;
+              uint32_t srcChannel = channels[0]->inChannels[c];
               for (ma_uint32 i = 0; i < frameCount; i++) {
-                device->inputScratch[(i * nChannels) + c] = finput[(i * inChannels) + channels[0]->inChannels[c]];
+                dst[i] = finput[i * inChannels + srcChannel];
               }
             }
           }
         } else {
+          // Input from another bus - already planar
           const auto inputBuffer = device->outputBuffers[nbus][kind];
           if (inputBuffer.size() != 0) {
             std::copy(inputBuffer.begin(), inputBuffer.end(), device->inputScratch.begin());
@@ -270,10 +274,8 @@ struct Device {
           }
         }
 
-        SHAudio inputPacket{uint32_t(device->_sampleRate.payload.intValue), //
-                            uint16_t(frameCount),                           //
-                            uint16_t(nChannels),                            //
-                            device->inputScratch.data()};
+        SHAudio inputPacket = makeAudio(device->inputScratch.data(), frameCount,
+                                        uint32_t(device->_sampleRate.payload.intValue), uint8_t(nChannels));
         Var inputVar(inputPacket);
 
         // run activations of all channels that need such input
@@ -334,7 +336,7 @@ struct Device {
     };
 
     // Compose device output from all channel outputs on bus 0
-    // Each channel writes to specific output channels, we need to map them correctly
+    // Channel outputs are planar, device output is interleaved (for miniaudio)
     for (auto &[nbus, channelKinds] : device->channels) {
       if (nbus != 0) continue; // Only device output bus
       for (auto &[kind, channels] : channelKinds) {
@@ -342,20 +344,22 @@ struct Device {
         auto *channelData = channels[0];
         if (channelData->outChannels.empty()) continue;
 
-        // Get the output buffer for this channel configuration
+        // Get the output buffer for this channel configuration (planar layout)
         auto &channelOutput = channelData->outputBuffer;
         if (!channelOutput) continue;
 
         auto channelOutCount = channelData->outChannels.size();
 
-        // Map each channel's output to the correct device output channel
+        // Map each channel's planar output to the correct interleaved device output channel
         for (size_t c = 0; c < channelOutCount; c++) {
           auto deviceChannel = channelData->outChannels[c];
           if (deviceChannel >= outChannels) continue;
 
+          // Source is planar: channel c data is at channelOutput + c * frameCount
+          const float *src = channelOutput + c * frameCount;
           for (ma_uint32 i = 0; i < frameCount; i++) {
-            // Add to device output (mixing)
-            fOutput[i * outChannels + deviceChannel] += channelOutput[i * channelOutCount + c];
+            // Add to interleaved device output (mixing)
+            fOutput[i * outChannels + deviceChannel] += src[i];
           }
         }
       }
@@ -794,7 +798,8 @@ struct Oscillator {
   ma_uint64 _nsamples{1024};
   ma_uint32 _sampleRate{44100};
 
-  std::vector<float> _buffer;
+  std::vector<float> _buffer;          // Planar output buffer
+  std::vector<float> _interleavedBuf;  // Scratch for miniaudio interleaved output
 
   SHVar *_device{nullptr};
   Device *d{nullptr};
@@ -923,15 +928,22 @@ struct Oscillator {
     if (d) {
       // if a device is connected override this value
       _nsamples = d->actualBufferSize;
-      _buffer.resize(_channels * _nsamples);
     }
+
+    auto totalSamples = _channels * _nsamples;
+    _buffer.resize(totalSamples);
+    _interleavedBuf.resize(totalSamples);
 
     ma_waveform_set_amplitude(&_wave, _amplitude.get().payload.floatValue);
     ma_waveform_set_frequency(&_wave, input.payload.floatValue);
 
-    ma_waveform_read_pcm_frames(&_wave, _buffer.data(), _nsamples, NULL);
+    // miniaudio outputs interleaved, read into scratch buffer
+    ma_waveform_read_pcm_frames(&_wave, _interleavedBuf.data(), _nsamples, NULL);
 
-    return Var(SHAudio{_sampleRate, uint16_t(_nsamples), uint16_t(_channels), _buffer.data()});
+    // Deinterleave to planar output
+    audioDeinterleave(_interleavedBuf.data(), _buffer.data(), uint32_t(_nsamples), uint8_t(_channels));
+
+    return Var(makeAudio(_buffer.data(), uint32_t(_nsamples), _sampleRate, uint8_t(_channels)));
   }
 };
 
@@ -941,15 +953,8 @@ struct ReadFile {
 
   ma_uint64 _progress{0};
 
-  // ma_uint32 _channels{2};
-  // ma_uint64 _nsamples{1024};
-  // ma_uint32 _sampleRate{44100};
-  // what to do when not looped ends? throw?
-  // bool _looped{false};
-  // ParamVar _fromSample;
-  // ParamVar _toSample;
-
-  std::vector<float> _buffer;
+  std::vector<float> _buffer;          // Planar output buffer
+  std::vector<float> _interleavedBuf;  // Scratch for miniaudio interleaved output
   bool _done{false};
 
   SHVar *_device{nullptr};
@@ -1070,14 +1075,18 @@ struct ReadFile {
       ma_uint64 totalSamples;
       ma_decoder_get_length_in_pcm_frames(&_decoder, &totalSamples);
 
-      _buffer.resize(size_t(channels) * size_t(nsamples));
+      auto bufSize = size_t(channels) * size_t(nsamples);
+      _buffer.resize(bufSize);
+      _interleavedBuf.resize(bufSize);
       _initialized = true;
     }
 
     if (d) {
       // if a device is connected override this value
       nsamples = d->actualBufferSize;
-      _buffer.resize(size_t(channels) * size_t(nsamples));
+      auto bufSize = size_t(channels) * size_t(nsamples);
+      _buffer.resize(bufSize);
+      _interleavedBuf.resize(bufSize);
     }
 
     if (unlikely(_done)) {
@@ -1114,10 +1123,10 @@ struct ReadFile {
       }
     }
 
-    // read pcm data every iteration
+    // read pcm data every iteration (miniaudio outputs interleaved)
     ma_uint64 framesRead = 0;
     if (reading > 0) {
-      ma_result res = ma_decoder_read_pcm_frames(&_decoder, _buffer.data(), reading, &framesRead);
+      ma_result res = ma_decoder_read_pcm_frames(&_decoder, _interleavedBuf.data(), reading, &framesRead);
       if (res != MA_SUCCESS) {
         throw ActivationError("Failed to read");
       }
@@ -1127,17 +1136,20 @@ struct ReadFile {
     if (framesRead < nsamples) {
       // Reached the end.
       _done = true;
-      // zero anything that was not used
+      // zero anything that was not used in interleaved buffer
       const auto remains = nsamples - framesRead;
-      if (remains <= _buffer.size()) {
-        memset(_buffer.data() + framesRead * channels, 0, sizeof(float) * remains * channels);
+      if (remains * channels <= _interleavedBuf.size()) {
+        memset(_interleavedBuf.data() + framesRead * channels, 0, sizeof(float) * remains * channels);
       } else {
         // Handle error: buffer is smaller than expected
         throw ActivationError("Buffer size mismatch");
       }
     }
 
-    return Var(SHAudio{sampleRate, uint16_t(nsamples), uint16_t(channels), _buffer.data()});
+    // Deinterleave to planar output
+    audioDeinterleave(_interleavedBuf.data(), _buffer.data(), uint32_t(nsamples), uint8_t(channels));
+
+    return Var(makeAudio(_buffer.data(), uint32_t(nsamples), sampleRate, uint8_t(channels)));
   }
 };
 
@@ -1249,6 +1261,7 @@ struct WriteFile {
   ma_uint32 _sampleRate{44100};
   ma_uint64 _progress{0};
   ParamVar _filename;
+  std::vector<float> _interleavedBuf;  // Scratch for interleaving planar input
 
   static SHOptionalString help() { return SHCCSTR("This shard writes audio data to WAV format file."); }
 
@@ -1333,7 +1346,8 @@ struct WriteFile {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    if (input.payload.audioValue.channels != _channels) {
+    auto &audio = input.payload.audioValue;
+    if (audio.channels != _channels) {
       throw ActivationError("Input has an invalid number of audio channels");
     }
     if (!_initialized) {
@@ -1341,7 +1355,13 @@ struct WriteFile {
       initFile(fname);
       _initialized = true;
     }
-    ma_encoder_write_pcm_frames(&_encoder, input.payload.audioValue.samples, input.payload.audioValue.nsamples, NULL);
+
+    // miniaudio encoder expects interleaved format
+    // Interleave planar input before writing
+    _interleavedBuf.resize(audio.nsamples * audio.channels);
+    audioInterleave(audio.samples, _interleavedBuf.data(), audio.nsamples, audio.channels);
+
+    ma_encoder_write_pcm_frames(&_encoder, _interleavedBuf.data(), audio.nsamples, NULL);
     return input;
   }
 };
@@ -1386,31 +1406,40 @@ struct Resample {
     PARAM_CLEANUP(context);
   }
 
-  std::vector<float> _buffer;
-  std::vector<float> _leftoverSamples;
-  std::vector<float> _combinedInput;
+  std::vector<float> _buffer;           // Planar output buffer
+  std::vector<float> _interleavedIn;    // Interleaved input for resampler
+  std::vector<float> _interleavedOut;   // Interleaved output from resampler
+  std::vector<float> _leftoverSamples;  // Interleaved leftovers
+  std::vector<float> _combinedInput;    // Combined interleaved input
   ma_uint32 _inSampleRate{0};
   ma_uint32 _outSampleRate{0};
   ma_uint32 _channels{0};
 
   SHVar activate(SHContext *context, const SHVar &input) {
+    auto &audio = input.payload.audioValue;
+    uint32_t inSampleRate = audioGetSampleRate(audio);
+
     if (!_initialized) {
       ma_resampler_config config =
-          ma_resampler_config_init(ma_format_f32, input.payload.audioValue.channels, input.payload.audioValue.sampleRate,
+          ma_resampler_config_init(ma_format_f32, audio.channels, inSampleRate,
                                    _outRate.get().payload.intValue, ma_resample_algorithm_linear);
       ma_result res = ma_resampler_init(&config, NULL, &_resampler);
       if (res != MA_SUCCESS) {
         throw ActivationError("Failed to initialize resampler");
       }
       _initialized = true;
-      _inSampleRate = input.payload.audioValue.sampleRate;
+      _inSampleRate = inSampleRate;
       _outSampleRate = _outRate.get().payload.intValue;
-      _channels = input.payload.audioValue.channels;
+      _channels = audio.channels;
     }
 
-    if (input.payload.audioValue.sampleRate != _inSampleRate) {
+    if (inSampleRate != _inSampleRate) {
       throw ActivationError("Input sample rate does not match initialized sample rate");
     }
+
+    // Convert planar input to interleaved for miniaudio resampler
+    _interleavedIn.resize(audio.nsamples * _channels);
+    audioInterleave(audio.samples, _interleavedIn.data(), audio.nsamples, uint8_t(_channels));
 
     // Prepare combined input buffer with leftover samples and new input
     _combinedInput.clear();
@@ -1418,9 +1447,8 @@ struct Resample {
       _combinedInput.insert(_combinedInput.end(), _leftoverSamples.begin(), _leftoverSamples.end());
     }
 
-    // Add new input samples
-    _combinedInput.insert(_combinedInput.end(), input.payload.audioValue.samples,
-                          input.payload.audioValue.samples + (input.payload.audioValue.nsamples * _channels));
+    // Add new interleaved input samples
+    _combinedInput.insert(_combinedInput.end(), _interleavedIn.begin(), _interleavedIn.end());
 
     ma_uint64 totalFramesIn = _combinedInput.size() / _channels;
     ma_uint64 frameCountIn = totalFramesIn;
@@ -1432,15 +1460,15 @@ struct Resample {
       throw ActivationError("Failed to get expected output frame count");
     }
 
-    _buffer.resize(frameCountOut * _channels);
-    res = ma_resampler_process_pcm_frames(&_resampler, _combinedInput.data(), &frameCountIn, _buffer.data(), &frameCountOut);
+    _interleavedOut.resize(frameCountOut * _channels);
+    res = ma_resampler_process_pcm_frames(&_resampler, _combinedInput.data(), &frameCountIn, _interleavedOut.data(), &frameCountOut);
 
     if (res != MA_SUCCESS) {
       SHLOG_ERROR("Failed to resample audio: {} {}", res, frameCountIn);
       throw ActivationError("Failed to resample audio");
     }
 
-    // Store unconsumed samples for next iteration
+    // Store unconsumed samples for next iteration (in interleaved format)
     if (frameCountIn < totalFramesIn) {
       size_t unconsumedSamples = (totalFramesIn - frameCountIn) * _channels;
       _leftoverSamples.assign(_combinedInput.end() - unconsumedSamples, _combinedInput.end());
@@ -1448,12 +1476,11 @@ struct Resample {
       _leftoverSamples.clear();
     }
 
-    SHVar output = input;
-    output.payload.audioValue.nsamples = frameCountOut;
-    output.payload.audioValue.samples = _buffer.data();
-    output.payload.audioValue.sampleRate = _outSampleRate;
+    // Convert interleaved output back to planar
+    _buffer.resize(frameCountOut * _channels);
+    audioDeinterleave(_interleavedOut.data(), _buffer.data(), uint32_t(frameCountOut), uint8_t(_channels));
 
-    return output;
+    return Var(makeAudio(_buffer.data(), uint32_t(frameCountOut), _outSampleRate, uint8_t(_channels)));
   }
 };
 

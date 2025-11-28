@@ -970,10 +970,12 @@ impl std::fmt::Display for Var {
       }
       SHType::Audio => unsafe {
         let audio = self.payload.__bindgen_anon_1.audioValue;
+        // Decode sample rate: stored as actual_rate / 25
+        let decoded_sample_rate = (audio.sampleRate as u32) * 25;
         write!(
           f,
           "Audio SampleRate: {} Samples: {} Channels: {}",
-          audio.sampleRate, audio.nsamples, audio.channels
+          decoded_sample_rate, audio.nsamples, audio.channels
         )
       },
       SHType::Bytes => unsafe {

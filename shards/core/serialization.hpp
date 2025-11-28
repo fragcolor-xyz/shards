@@ -314,6 +314,7 @@ struct Serialization {
       read((uint8_t *)&output.payload.audioValue.nsamples, sizeof(output.payload.audioValue.nsamples));
       read((uint8_t *)&output.payload.audioValue.channels, sizeof(output.payload.audioValue.channels));
       read((uint8_t *)&output.payload.audioValue.sampleRate, sizeof(output.payload.audioValue.sampleRate));
+      read((uint8_t *)&output.payload.audioValue.reserved, sizeof(output.payload.audioValue.reserved));
 
       size_t size = output.payload.audioValue.nsamples * output.payload.audioValue.channels * sizeof(float);
 
@@ -626,6 +627,9 @@ struct Serialization {
 
       write((const uint8_t *)&input.payload.audioValue.sampleRate, sizeof(input.payload.audioValue.sampleRate));
       total += sizeof(input.payload.audioValue.sampleRate);
+
+      write((const uint8_t *)&input.payload.audioValue.reserved, sizeof(input.payload.audioValue.reserved));
+      total += sizeof(input.payload.audioValue.reserved);
 
       auto size = input.payload.audioValue.nsamples * input.payload.audioValue.channels * sizeof(float);
 

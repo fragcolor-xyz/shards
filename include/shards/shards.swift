@@ -301,7 +301,8 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
         case .Enum:
             return "Enum(vendor:\(payload.enumVendorId), type:\(payload.enumTypeId), value:\(payload.enumValue))"
         case .Audio:
-            return "Audio(\(payload.audioValue.nsamples) samples, channels:\(payload.audioValue.channels), rate:\(payload.audioValue.sampleRate))"
+            let decodedSampleRate = UInt32(payload.audioValue.sampleRate) * 25  // SHAUDIO_DECODE_SAMPLE_RATE
+            return "Audio(\(payload.audioValue.nsamples) samples, channels:\(payload.audioValue.channels), rate:\(decodedSampleRate))"
         case .TypeInfo:
             return "TypeInfo"
         case .Trait:
