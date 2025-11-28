@@ -3,6 +3,9 @@
 
 // WIP: This is a work in progress
 
+// Audio sample rate encoding divisor (must match SHAUDIO_SAMPLE_RATE_DIVISOR in shards.h)
+private let kAudioSampleRateDivisor: UInt32 = 25
+
 /*
  final class MyShard1 : IShard {
      static var name: StaticString = "MyShard1"
@@ -301,7 +304,8 @@ extension SHVar: CustomStringConvertible, Hashable, Equatable {
         case .Enum:
             return "Enum(vendor:\(payload.enumVendorId), type:\(payload.enumTypeId), value:\(payload.enumValue))"
         case .Audio:
-            return "Audio(\(payload.audioValue.nsamples) samples, channels:\(payload.audioValue.channels), rate:\(payload.audioValue.sampleRate))"
+            let decodedSampleRate = UInt32(payload.audioValue.sampleRate) * kAudioSampleRateDivisor
+            return "Audio(\(payload.audioValue.nsamples) samples, channels:\(payload.audioValue.channels), rate:\(decodedSampleRate))"
         case .TypeInfo:
             return "TypeInfo"
         case .Trait:

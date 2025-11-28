@@ -150,6 +150,7 @@ struct FFT : public FFTBase {
 struct IFFT : public FFTBase {
   bool _asAudio{false};
   bool _complex{false};
+  uint32_t _sampleRate{44100};
 
   static SHOptionalString help() {
     return SHCCSTR("This shard performs an Inverse Fast Fourier Transform (IFFT) on the input. It takes the frequency-domain "
@@ -172,7 +173,8 @@ struct IFFT : public FFTBase {
 
   static inline Parameters Params{
       {"Audio", SHCCSTR("If the output should be an Audio chunk."), {CoreInfo::BoolType}},
-      {"Complex", SHCCSTR("If the output should be complex numbers (only if not Audio)."), {CoreInfo::BoolType}}};
+      {"Complex", SHCCSTR("If the output should be complex numbers (only if not Audio)."), {CoreInfo::BoolType}},
+      {"SampleRate", SHCCSTR("The sample rate for audio output (only used when Audio is true)."), {CoreInfo::IntType}}};
 
   SHParametersInfo parameters() { return Params; }
 
@@ -183,6 +185,9 @@ struct IFFT : public FFTBase {
       break;
     case 1:
       _complex = value.payload.boolValue;
+      break;
+    case 2:
+      _sampleRate = uint32_t(value.payload.intValue);
       break;
     default:
       throw InvalidParameterIndex();
@@ -195,6 +200,8 @@ struct IFFT : public FFTBase {
       return Var(_asAudio);
     case 1:
       return Var(_complex);
+    case 2:
+      return Var(int64_t(_sampleRate));
     default:
       throw InvalidParameterIndex();
     }
@@ -251,7 +258,8 @@ struct IFFT : public FFTBase {
     if constexpr (OTYPE == SHType::Audio) {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 
-      return Var(SHAudio{0, uint16_t(olen), uint16_t(1), _fscratch.data()});
+      // IFFT output: mono audio with configurable sample rate (default 44100 Hz)
+      return Var(makeAudio(_fscratch.data(), uint32_t(olen), _sampleRate, 1));
     } else if constexpr (OTYPE == SHType::Float) {
       kiss_fftri(_rstate, _cscratch.data(), _fscratch.data());
 

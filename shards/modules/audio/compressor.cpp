@@ -99,8 +99,13 @@ struct Compressor {
     const auto &audio = input.payload.audioValue;
     uint32_t numSamples = audio.nsamples;
     uint32_t numChannels = audio.channels;
+
+    // Check for overflow before multiplication
+    if (numChannels > 0 && numSamples > UINT32_MAX / numChannels) {
+      throw ActivationError("Audio buffer size overflow");
+    }
     uint32_t totalSamples = numSamples * numChannels;
-    float sampleRate = static_cast<float>(audio.sampleRate);
+    float sampleRate = static_cast<float>(audioGetSampleRate(audio));
 
     // Get parameter values
     float threshold = _threshold.get().payload.floatValue;
@@ -116,15 +121,16 @@ struct Compressor {
     float releaseCoeff = timeToCoeff(release, sampleRate);
     float slope = 1.0f - (1.0f / ratio);
 
-    // Resize buffer if needed
+    // Resize buffer if needed (planar format)
     _buffer.resize(totalSamples);
 
-    // Process each sample
+    // Process each sample (audio is in planar format: [ch0_samples...][ch1_samples...])
     for (uint32_t i = 0; i < numSamples; ++i) {
       // Find the maximum absolute value across all channels for this sample
       float maxSample = 0.0f;
       for (uint32_t c = 0; c < numChannels; ++c) {
-        float sample = std::abs(audio.samples[i * numChannels + c]);
+        // Planar: channel c sample i is at samples[c * numSamples + i]
+        float sample = std::abs(audio.samples[c * numSamples + i]);
         maxSample = std::max(maxSample, sample);
       }
 
@@ -143,15 +149,15 @@ struct Compressor {
         gainReduction = dbToLinear(dbGainReduction);
       }
 
-      // Apply gain reduction and makeup gain to all channels
+      // Apply gain reduction and makeup gain to all channels (planar format)
       for (uint32_t c = 0; c < numChannels; ++c) {
-        uint32_t index = i * numChannels + c;
+        uint32_t index = c * numSamples + i;
         _buffer[index] = audio.samples[index] * gainReduction * makeupGainLinear;
       }
     }
 
-    // Create output audio with compressed samples
-    return Var(SHAudio{audio.sampleRate, audio.nsamples, audio.channels, _buffer.data()});
+    // Create output audio with compressed samples (planar format)
+    return Var(makeAudio(_buffer.data(), numSamples, uint32_t(sampleRate), uint8_t(numChannels)));
   }
 };
 

@@ -16,6 +16,13 @@
 #include <cstdint>
 #include <stdexcept>
 
+// SIMD headers for audio interleave/deinterleave
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#elif defined(__AVX2__) || defined(__SSE__)
+#include <immintrin.h>
+#endif
+
 #define ENTT_ID_TYPE std::uint64_t
 #ifdef SHARDS_WITH_ENTT
 // entt\meta\meta.hpp:768:10: note: 'meta_prop' has been explicitly marked deprecated here
@@ -1062,6 +1069,266 @@ template <typename TGenericArray, class Function> inline void ForEach(const TGen
   for (size_t i = 0; i < seq.len; i++)
     f(seq.elements[i]);
 }
+
+// ============================================================================
+// Audio utilities for SHAudio
+// ============================================================================
+
+// Create a planar SHAudio struct with proper sample rate encoding
+// Note: sampleRate must be divisible by 25 (all common rates: 11025, 22050, 44100, 48000, 96000, 192000)
+// Non-divisible rates will be truncated (e.g., 44099 -> 44075)
+inline SHAudio makeAudio(float *samples, uint32_t nsamples, uint32_t sampleRate, uint8_t channels) {
+  shassert((sampleRate % SHAUDIO_SAMPLE_RATE_DIVISOR) == 0 && "Sample rate must be divisible by 25");
+  return SHAudio{samples, nsamples, SHAUDIO_ENCODE_SAMPLE_RATE(sampleRate), channels, 0};
+}
+
+// Get decoded sample rate from SHAudio
+inline uint32_t audioGetSampleRate(const SHAudio &audio) { return SHAUDIO_DECODE_SAMPLE_RATE(audio.sampleRate); }
+
+// Get pointer to a specific channel in planar audio
+// Note: channel must be < audio.channels, otherwise returns invalid pointer
+inline float *audioGetChannel(SHAudio &audio, uint8_t channel) {
+  shassert(channel < audio.channels && "Channel index out of bounds");
+  return audio.samples + channel * audio.nsamples;
+}
+inline const float *audioGetChannel(const SHAudio &audio, uint8_t channel) {
+  shassert(channel < audio.channels && "Channel index out of bounds");
+  return audio.samples + channel * audio.nsamples;
+}
+
+// Deinterleave audio: convert interleaved [L0,R0,L1,R1,...] to planar [L0,L1,...,R0,R1,...]
+// Output buffer must have space for nsamples * channels floats
+// SIMD optimized: AVX2 gather (x86), NEON vld2-4 (ARM 2-4 channels)
+inline void audioDeinterleave(const float *__restrict interleaved, float *__restrict planar, uint32_t nsamples,
+                              uint8_t channels) noexcept {
+  if (channels == 1) {
+    memcpy(planar, interleaved, nsamples * sizeof(float));
+    return;
+  }
+
+#if defined(__AVX2__)
+  // AVX2: use gather for any channel count - single elegant path
+  const __m256i indices = _mm256_mullo_epi32(_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7), _mm256_set1_epi32(channels));
+
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    const float *__restrict src = interleaved + ch;
+    float *__restrict dst = planar + ch * nsamples;
+    uint32_t i = 0;
+
+    for (; i + 8 <= nsamples; i += 8) {
+      __m256 samples = _mm256_i32gather_ps(src + i * channels, indices, sizeof(float));
+      _mm256_storeu_ps(dst + i, samples);
+    }
+
+    for (; i < nsamples; i++) {
+      dst[i] = src[i * channels];
+    }
+  }
+
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  // NEON: native deinterleave for 2/3/4 channels
+  uint32_t i = 0;
+
+  if (channels == 2) {
+    float *__restrict ch0 = planar;
+    float *__restrict ch1 = planar + nsamples;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x2_t v = vld2q_f32(interleaved + i * 2);
+      vst1q_f32(ch0 + i, v.val[0]);
+      vst1q_f32(ch1 + i, v.val[1]);
+    }
+    for (; i < nsamples; i++) {
+      ch0[i] = interleaved[i * 2];
+      ch1[i] = interleaved[i * 2 + 1];
+    }
+    return;
+  }
+
+  if (channels == 3) {
+    float *__restrict ch0 = planar;
+    float *__restrict ch1 = planar + nsamples;
+    float *__restrict ch2 = planar + nsamples * 2;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x3_t v = vld3q_f32(interleaved + i * 3);
+      vst1q_f32(ch0 + i, v.val[0]);
+      vst1q_f32(ch1 + i, v.val[1]);
+      vst1q_f32(ch2 + i, v.val[2]);
+    }
+    for (; i < nsamples; i++) {
+      ch0[i] = interleaved[i * 3];
+      ch1[i] = interleaved[i * 3 + 1];
+      ch2[i] = interleaved[i * 3 + 2];
+    }
+    return;
+  }
+
+  if (channels == 4) {
+    float *__restrict ch0 = planar;
+    float *__restrict ch1 = planar + nsamples;
+    float *__restrict ch2 = planar + nsamples * 2;
+    float *__restrict ch3 = planar + nsamples * 3;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x4_t v = vld4q_f32(interleaved + i * 4);
+      vst1q_f32(ch0 + i, v.val[0]);
+      vst1q_f32(ch1 + i, v.val[1]);
+      vst1q_f32(ch2 + i, v.val[2]);
+      vst1q_f32(ch3 + i, v.val[3]);
+    }
+    for (; i < nsamples; i++) {
+      ch0[i] = interleaved[i * 4];
+      ch1[i] = interleaved[i * 4 + 1];
+      ch2[i] = interleaved[i * 4 + 2];
+      ch3[i] = interleaved[i * 4 + 3];
+    }
+    return;
+  }
+
+  // NEON fallback for 5+ channels
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    float *__restrict dst = planar + ch * nsamples;
+    for (uint32_t j = 0; j < nsamples; j++) {
+      dst[j] = interleaved[j * channels + ch];
+    }
+  }
+
+#else
+  // Scalar fallback
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    float *__restrict dst = planar + ch * nsamples;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      dst[i] = interleaved[i * channels + ch];
+    }
+  }
+#endif
+}
+
+// Interleave audio: convert planar [L0,L1,...,R0,R1,...] to interleaved [L0,R0,L1,R1,...]
+// Output buffer must have space for nsamples * channels floats
+// SIMD optimized: AVX2 shuffles for stereo (x86), NEON vst2-4 (ARM 2-4 channels)
+inline void audioInterleave(const float *__restrict planar, float *__restrict interleaved, uint32_t nsamples,
+                            uint8_t channels) noexcept {
+  if (channels == 1) {
+    memcpy(interleaved, planar, nsamples * sizeof(float));
+    return;
+  }
+
+#if defined(__AVX2__)
+  // AVX2: optimized for stereo (most common), scalar for others (no scatter until AVX-512)
+  if (channels == 2) {
+    const float *__restrict ch0 = planar;
+    const float *__restrict ch1 = planar + nsamples;
+    uint32_t i = 0;
+
+    for (; i + 8 <= nsamples; i += 8) {
+      __m256 l = _mm256_loadu_ps(ch0 + i); // L0 L1 L2 L3 L4 L5 L6 L7
+      __m256 r = _mm256_loadu_ps(ch1 + i); // R0 R1 R2 R3 R4 R5 R6 R7
+
+      __m256 lo = _mm256_unpacklo_ps(l, r); // L0 R0 L1 R1 | L4 R4 L5 R5
+      __m256 hi = _mm256_unpackhi_ps(l, r); // L2 R2 L3 R3 | L6 R6 L7 R7
+
+      __m256 out0 = _mm256_permute2f128_ps(lo, hi, 0x20); // L0 R0 L1 R1 L2 R2 L3 R3
+      __m256 out1 = _mm256_permute2f128_ps(lo, hi, 0x31); // L4 R4 L5 R5 L6 R6 L7 R7
+
+      _mm256_storeu_ps(interleaved + i * 2, out0);
+      _mm256_storeu_ps(interleaved + i * 2 + 8, out1);
+    }
+
+    for (; i < nsamples; i++) {
+      interleaved[i * 2] = ch0[i];
+      interleaved[i * 2 + 1] = ch1[i];
+    }
+    return;
+  }
+
+  // AVX2 scalar fallback for non-stereo (no scatter instruction)
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    const float *__restrict src = planar + ch * nsamples;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      interleaved[i * channels + ch] = src[i];
+    }
+  }
+
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  // NEON: native interleave for 2/3/4 channels
+  uint32_t i = 0;
+
+  if (channels == 2) {
+    const float *__restrict ch0 = planar;
+    const float *__restrict ch1 = planar + nsamples;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x2_t v;
+      v.val[0] = vld1q_f32(ch0 + i);
+      v.val[1] = vld1q_f32(ch1 + i);
+      vst2q_f32(interleaved + i * 2, v);
+    }
+    for (; i < nsamples; i++) {
+      interleaved[i * 2] = ch0[i];
+      interleaved[i * 2 + 1] = ch1[i];
+    }
+    return;
+  }
+
+  if (channels == 3) {
+    const float *__restrict ch0 = planar;
+    const float *__restrict ch1 = planar + nsamples;
+    const float *__restrict ch2 = planar + nsamples * 2;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x3_t v;
+      v.val[0] = vld1q_f32(ch0 + i);
+      v.val[1] = vld1q_f32(ch1 + i);
+      v.val[2] = vld1q_f32(ch2 + i);
+      vst3q_f32(interleaved + i * 3, v);
+    }
+    for (; i < nsamples; i++) {
+      interleaved[i * 3] = ch0[i];
+      interleaved[i * 3 + 1] = ch1[i];
+      interleaved[i * 3 + 2] = ch2[i];
+    }
+    return;
+  }
+
+  if (channels == 4) {
+    const float *__restrict ch0 = planar;
+    const float *__restrict ch1 = planar + nsamples;
+    const float *__restrict ch2 = planar + nsamples * 2;
+    const float *__restrict ch3 = planar + nsamples * 3;
+    for (; i + 4 <= nsamples; i += 4) {
+      float32x4x4_t v;
+      v.val[0] = vld1q_f32(ch0 + i);
+      v.val[1] = vld1q_f32(ch1 + i);
+      v.val[2] = vld1q_f32(ch2 + i);
+      v.val[3] = vld1q_f32(ch3 + i);
+      vst4q_f32(interleaved + i * 4, v);
+    }
+    for (; i < nsamples; i++) {
+      interleaved[i * 4] = ch0[i];
+      interleaved[i * 4 + 1] = ch1[i];
+      interleaved[i * 4 + 2] = ch2[i];
+      interleaved[i * 4 + 3] = ch3[i];
+    }
+    return;
+  }
+
+  // NEON fallback for 5+ channels
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    const float *__restrict src = planar + ch * nsamples;
+    for (uint32_t j = 0; j < nsamples; j++) {
+      interleaved[j * channels + ch] = src[j];
+    }
+  }
+
+#else
+  // Scalar fallback
+  for (uint8_t ch = 0; ch < channels; ch++) {
+    const float *__restrict src = planar + ch * nsamples;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      interleaved[i * channels + ch] = src[i];
+    }
+  }
+#endif
+}
+
+// ============================================================================
 
 class WireProvider {
   // used specially for live editing wires, from host languages

@@ -1445,10 +1445,6 @@ struct FloatsToAudio {
 
     uint32_t nsamples = totalSamples / channels;
 
-    if (nsamples > UINT16_MAX) {
-      throw ActivationError("Audio data exceeds the maximum number of samples (65535)");
-    }
-
     _samples.resize(totalSamples);
 
     // Copy the float values from the sequence to the samples array
@@ -1466,13 +1462,7 @@ struct FloatsToAudio {
       _samples[i] = value;
     }
 
-    SHAudio outAudio;
-    outAudio.channels = channels;
-    outAudio.nsamples = nsamples;
-    outAudio.sampleRate = sampleRate;
-    outAudio.samples = _samples.data();
-
-    return Var(outAudio);
+    return Var(makeAudio(_samples.data(), nsamples, sampleRate, uint8_t(channels)));
   }
 };
 
@@ -1524,10 +1514,6 @@ struct BytesToAudio {
     int bytesPerSample = bits / 8;
     size_t nsamples = input.payload.bytesSize / (bytesPerSample * channels);
 
-    if (nsamples > UINT16_MAX) {
-      throw ActivationError("Audio data exceeds the maximum number of samples (65535)");
-    }
-
     size_t totalSamples = nsamples * channels;
     _samples.resize(totalSamples);
 
@@ -1567,13 +1553,7 @@ struct BytesToAudio {
       }
     }
 
-    SHAudio outAudio;
-    outAudio.channels = channels;
-    outAudio.nsamples = nsamples;
-    outAudio.sampleRate = sampleRate;
-    outAudio.samples = _samples.data();
-
-    return Var(outAudio);
+    return Var(makeAudio(_samples.data(), uint32_t(nsamples), sampleRate, uint8_t(channels)));
   }
 };
 
