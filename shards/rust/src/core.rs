@@ -250,6 +250,13 @@ pub fn logRawLevel(level: i32, msg: &str) {
   }
 }
 
+#[inline(always)]
+pub fn logFlush() {
+  unsafe {
+    (*Core).logFlush.unwrap_unchecked()();
+  }
+}
+
 pub fn readCachedString(id: u32) -> &'static str {
   unsafe {
     let s = (*Core).readCachedString.unwrap_unchecked()(id);

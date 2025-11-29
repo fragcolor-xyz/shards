@@ -2429,6 +2429,10 @@ enum Shards {
         }
     }
 
+    static func logFlush() {
+        G.Core.pointee.logFlush()
+    }
+
     static func registerObjectType(vendor: Int32, type: Int32, info: SHObjectInfo) {
         G.Core.pointee.registerObjectType(vendor, type, info)
     }

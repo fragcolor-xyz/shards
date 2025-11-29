@@ -3392,6 +3392,8 @@ void shards_log(int level, SHStringWithLen msg, const char *file, const char *fu
   spdlog::default_logger_raw()->log(spdlog::source_loc{file, line, function}, (spdlog::level::level_enum)level, sv);
 };
 
+void shards_log_flush() { spdlog::default_logger()->flush(); }
+
 SHBool shards_cancel_abort(SHContext *context) {
   if (context->shouldStop() || context->onLastResume) {
     // ok this flow should stop already... so we can just return false

@@ -80,5 +80,7 @@ void setupCoreLoggingAPI(SHCore *result) {
   };
 
   result->setupLogger = [](const SHLogSettings *settings) { shards::logging::setupDefaultLogger(*settings); };
+
+  result->logFlush = []() { spdlog::default_logger()->flush(); };
 }
 } // namespace shards

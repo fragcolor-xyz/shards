@@ -973,6 +973,7 @@ typedef void(__cdecl *SHLog)(struct SHStringWithLen msg);
 typedef void(__cdecl *SHLogLevel)(int level, struct SHStringWithLen msg);
 typedef void(__cdecl *SHLogLogger)(struct SHStringWithLen cat, int level, struct SHStringWithLen message);
 typedef void(__cdecl *SHLogVar)(struct SHStringWithLen cat, int level, struct SHStringWithLen message, struct SHVar *var);
+typedef void(__cdecl *SHLogFlush)(void);
 
 typedef struct Shard *(__cdecl *SHCreateShard)(struct SHStringWithLen name);
 typedef void(__cdecl *SHReleaseShard)(struct Shard *shard);
@@ -1430,6 +1431,9 @@ typedef struct _SHCore {
   SHPrepareWire prepareWire;
   SHStartWire startWire;
   SHTickWire tickWire;
+
+  // Flush logs
+  SHLogFlush logFlush;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

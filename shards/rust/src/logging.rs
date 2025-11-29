@@ -10,6 +10,7 @@ extern "C" {
     function: *const c_char,
     line: c_int,
   );
+  fn shards_log_flush();
 }
 
 #[cfg(not(feature = "dllshard"))]
@@ -54,10 +55,24 @@ pub fn log_level(level: i32, s: &str, file: &str, function: &str, line: u32) {
   }
 }
 
+#[cfg(not(feature = "dllshard"))]
+#[inline(always)]
+pub fn flush() {
+  unsafe {
+    shards_log_flush();
+  }
+}
+
 #[cfg(feature = "dllshard")]
 #[inline(always)]
 pub fn log_level(level: i32, s: &str, _file: &str, _function: &str, _line: u32) {
   crate::core::logRawLevel(level, s);
+}
+
+#[cfg(feature = "dllshard")]
+#[inline(always)]
+pub fn flush() {
+  crate::core::logFlush();
 }
 
 #[macro_export]
