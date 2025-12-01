@@ -211,3 +211,55 @@
 
 @schedule(root load)
 @run(root) | Assert.Is(true)
+
+// ===== Joint Parameter Tests =====
+
+// Test: Detach with Joint: true - child stops when parent stops
+@wire(joint-looped-child {
+  Msg("joint-looped-child: tick")
+  Pause(0.05)
+} Looped: true)
+
+@wire(joint-detach-parent {
+  Msg("joint-detach-parent: starting")
+  Detach(joint-looped-child Joint: true)
+  Pause(0.1)  // Let child run a bit
+  Msg("joint-detach-parent: completing")
+})
+
+@wire(test-joint-detach {
+  Detach(joint-detach-parent)
+  Wait(joint-detach-parent)
+  Pause(0.05)  // Give cleanup time
+  IsRunning(joint-looped-child) | Assert.Is(false true)
+  Msg("Joint Detach test PASSED")
+})
+
+@schedule(root test-joint-detach)
+@run(root) | Assert.Is(true)
+
+// Test: Spawn with Joint: true - spawned wires stop when parent stops
+@wire(long-running-task {
+  Msg("long-running-task: starting")
+  Pause(0.5)  // Takes a while
+  Msg("long-running-task: completed")
+})
+
+@wire(spawn-joint-parent {
+  Msg("spawn-joint-parent: spawning tasks")
+  [1 2 3] | ForEach({
+    Spawn(long-running-task Joint: true)
+  })
+  Pause(0.05)  // Let them start but not finish
+  Msg("spawn-joint-parent: completing early")
+})
+
+@wire(test-spawn-joint {
+  Detach(spawn-joint-parent)
+  Wait(spawn-joint-parent)
+  Pause(0.1)  // Allow cleanup
+  Msg("Spawn Joint test PASSED - spawned tasks stopped with parent")
+})
+
+@schedule(root test-spawn-joint)
+@run(root) | Assert.Is(true)

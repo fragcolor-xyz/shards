@@ -61,8 +61,7 @@ protected:
     if (currentDispatcherType.basicType == SHType::None) {
       (*_dispatcher).get().assignType(targetType);
     } else if (!matchTypes(targetType, currentDispatcherType, false, true, true)) {
-      SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, targetType,
-                  currentDispatcherType);
+      SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, targetType, currentDispatcherType);
       throw shards::Error("Event type mismatch");
     }
     return targetType;
