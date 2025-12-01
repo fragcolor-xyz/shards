@@ -459,7 +459,6 @@ impl Shard for GrepShard {
     // Custom sink to properly count only matches, not context lines
     struct GrepSinkImpl {
       output: AutoSeqVar,
-      source_name: String,
       line_numbers: bool,
       match_count: i64,
       max_matches: i64,
@@ -478,13 +477,11 @@ impl Shard for GrepShard {
 
         if self.line_numbers {
           if let Some(lnum) = mat.line_number() {
-            match_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+            match_table.0.insert_fast_static("line-number", &(lnum as i64).into());
           }
         }
 
         match_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
-        match_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.source_name));
-        match_table.0.insert_fast_static("is_match", &true.into());
 
         self.output.0.push(&match_table.0.0);
         self.match_count += 1;
@@ -499,13 +496,11 @@ impl Shard for GrepShard {
 
         if self.line_numbers {
           if let Some(lnum) = context.line_number() {
-            context_table.0.insert_fast_static("line_number", &(lnum as i64).into());
+            context_table.0.insert_fast_static("line-number", &(lnum as i64).into());
           }
         }
 
         context_table.0.insert_fast_static("line", &Var::ephemeral_string(&line));
-        context_table.0.insert_fast_static("file", &Var::ephemeral_string(&self.source_name));
-        context_table.0.insert_fast_static("is_match", &false.into());
 
         self.output.0.push(&context_table.0.0);
 
@@ -541,11 +536,9 @@ impl Shard for GrepShard {
 
       // Resolve file path
       let file_path = resolve_path(file_path_str, &work_dir);
-      let source_name = file_path.display().to_string();
 
       let mut sink = GrepSinkImpl {
         output: AutoSeqVar::new(),
-        source_name,
         line_numbers,
         match_count: 0,
         max_matches: max,
@@ -563,7 +556,6 @@ impl Shard for GrepShard {
 
       let mut sink = GrepSinkImpl {
         output: AutoSeqVar::new(),
-        source_name: "<string>".to_string(),
         line_numbers,
         match_count: 0,
         max_matches: max,
