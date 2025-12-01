@@ -240,6 +240,7 @@ struct BaseRunner : public WireBase {
   }
 
   bool _restart{false};
+  bool _joint{false};
   void activateDetached(SHContext *context, const SHVar &input) {
     assert(_mesh);
 
@@ -269,7 +270,7 @@ struct BaseRunner : public WireBase {
 
       // also mark this wire as fully detached if needed
       // this means stopping this Shard will not stop the wire
-      if (detached)
+      if (detached && !_joint)
         wire->detached = true;
     } else if (_restart) {
       _mesh->remove(wire);
@@ -373,6 +374,9 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
 
   static inline Parameters DetachParamsInfo{
       {"Wire", SHCCSTR("The wire to execute."), {WireTypes}},
+      {"Joint",
+       SHCCSTR("If true, the specified wire will be stopped whenever the parent wire is stopped."),
+       {CoreInfo::BoolType}},
       {"Restart",
        SHCCSTR("If true, the specified wire will restart whenever the shard is called, even if it is already running."),
        {CoreInfo::BoolType}}};
@@ -394,9 +398,14 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
       break;
     case 1:
       if constexpr (WIRE_MODE == RunWireMode::Async) {
-        _restart = value.payload.boolValue;
-        break;
+        _joint = value.payload.boolValue;
       }
+      break;
+    case 2:
+      if constexpr (WIRE_MODE == RunWireMode::Async) {
+        _restart = value.payload.boolValue;
+      }
+      break;
     default:
       break;
     }
@@ -406,11 +415,16 @@ template <bool INPUT_PASSTHROUGH, RunWireMode WIRE_MODE> struct RunWire : public
     switch (index) {
     case 0:
       return wireref;
-    case 1: {
+    case 1:
+      if constexpr (WIRE_MODE == RunWireMode::Async) {
+        return Var(_joint);
+      }
+      break;
+    case 2:
       if constexpr (WIRE_MODE == RunWireMode::Async) {
         return Var(_restart);
       }
-    }
+      break;
     default:
       break;
     }

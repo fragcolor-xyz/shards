@@ -1803,14 +1803,23 @@ struct Spawn : public CapturingSpawners {
                    "every time the shard is called.");
   }
 
-  static inline Parameters _params{{"Wire", SHCCSTR("The Wire to schedule and run asynchronously"), IntoWire::RunnableTypes}};
+  static inline Parameters _params{
+      {"Wire", SHCCSTR("The Wire to schedule and run asynchronously"), IntoWire::RunnableTypes},
+      {"Joint",
+       SHCCSTR("If true, all the spawned wires will be stopped whenever the parent wire is stopped."),
+       {CoreInfo::BoolType}}};
 
   static SHParametersInfo parameters() { return _params; }
+
+  bool _joint{false};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
     case 0:
       wireref = value;
+      break;
+    case 1:
+      _joint = value.payload.boolValue;
       break;
     default:
       break;
@@ -1821,6 +1830,8 @@ struct Spawn : public CapturingSpawners {
     switch (index) {
     case 0:
       return wireref;
+    case 1:
+      return Var(_joint);
     default:
       return Var::Empty;
     }
@@ -1879,6 +1890,10 @@ struct Spawn : public CapturingSpawners {
   }
 
   void cleanup(SHContext *context) {
+    if (_joint && _pool) {
+      _pool->stopAll();
+    }
+
     for (auto &v : _vars) {
       v.cleanup();
     }
@@ -1946,6 +1961,10 @@ struct WhenDone : Spawn {
   SeqVar _cache;
   bool _scheduled{false};
   bool _activated{false};
+
+  // Need to override Spawn ones, cos we only use Wire
+  static inline Parameters _params{{"Wire", SHCCSTR("The Wire to schedule and run asynchronously"), IntoWire::RunnableTypes}};
+  static SHParametersInfo parameters() { return _params; }
 
   void warmup(SHContext *context) {
     _scheduled = false;
