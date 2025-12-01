@@ -42,3 +42,63 @@
 @schedule(main signal-process)
 
 @run(main FPS: 20 Iterations: 100) | Assert.Is(true)
+
+; Test explicit Type parameter - receiver can be defined before sender
+@mesh(typed-events)
+
+; Receive with explicit Type - no Send needed first!
+@wire(typed-receive {
+  Events.Receive("TypedChannel" Type: @type(Type::String)) | ExpectSeq | ForEach({ExpectString | Log("TypedRecv")})
+} Looped: true)
+
+; Send with explicit Type
+@wire(typed-send {
+  "Hello typed events!" | Events.Send("TypedChannel" Type: @type(Type::String)) | Log("TypedSend") | Pause(0.1)
+} Looped: true)
+
+@wire(typed-updater {
+  Events.Update("TypedChannel") | Pause(0.1)
+} Looped: true)
+
+; Schedule receive BEFORE send - this now works with explicit Type!
+@schedule(typed-events typed-receive)
+@schedule(typed-events typed-send)
+@schedule(typed-events typed-updater)
+@run(typed-events FPS: 20 Iterations: 50) | Assert.Is(true)
+
+; Test Check with explicit Type
+@mesh(check-typed)
+
+@wire(check-typed-emit {
+  Pause(0.05) | Events.Emit("check-signal" Type: @type(Type::Bool))
+})
+
+@wire(check-typed-process {
+  Events.Update("check-signal") |
+  When({Events.Check("check-signal" Type: @type(Type::Bool))} {Msg("CHECK-TYPED TRIGGERED") | Stop})
+} Looped: true)
+
+@schedule(check-typed check-typed-process)
+@schedule(check-typed check-typed-emit)
+@run(check-typed FPS: 20 Iterations: 50) | Assert.Is(true)
+
+; Test Events.Emit with explicit Type parameter
+@mesh(emit-typed)
+
+@wire(emit-typed-send {
+  Pause(0.05) | Events.Emit("emit-signal" Type: @type(Type::Bool))
+})
+
+@wire(emit-typed-receive {
+  Events.Receive("emit-signal" Type: @type(Type::Bool)) | ExpectSeq | ForEach({ExpectBool | Log("EmitTypedRecv")})
+} Looped: true)
+
+@wire(emit-typed-updater {
+  Events.Update("emit-signal") |
+  When({Events.Check("emit-signal")} {Msg("EMIT-TYPED DONE") | Stop})
+} Looped: true)
+
+@schedule(emit-typed emit-typed-receive)
+@schedule(emit-typed emit-typed-updater)
+@schedule(emit-typed emit-typed-send)
+@run(emit-typed FPS: 20 Iterations: 50) | Assert.Is(true)

@@ -17,7 +17,11 @@ struct Base {
         {CoreInfo::StringType, CoreInfo::StringVarType});
   PARAM_PARAMVAR(_id, "ID", "The optional ID to use to differentiate events with the same name.",
                  {CoreInfo::IntType, CoreInfo::IntVarType, CoreInfo::NoneType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id));
+  PARAM(OwnedVar, _type, "Type",
+        "The optional explicit type for this event. Allows defining the event type upfront without "
+        "requiring Events.Send to be called first (enables receiver-first pattern).",
+        {CoreInfo::NoneType, CoreInfo::TypeType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_eventName), PARAM_IMPL_FOR(_id), PARAM_IMPL_FOR(_type));
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -31,15 +35,47 @@ struct Base {
   void warmup(SHContext *context) { PARAM_WARMUP(context); }
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+protected:
+  // Helper to validate and set event type, returns the resolved event type
+  // If explicit type is provided, validates it matches existing dispatcher type
+  // If no explicit type, returns dispatcher type or throws if not set
+  SHTypeInfo resolveEventType(bool requireType = true) {
+    auto currentDispatcherType = (*_dispatcher).get().getType();
+
+    if (_type.valueType == SHType::Type) {
+      auto explicitType = *_type.payload.typeValue;
+      if (currentDispatcherType.basicType == SHType::None) {
+        (*_dispatcher).get().assignType(explicitType);
+      } else if (!matchTypes(explicitType, currentDispatcherType, false, true, true)) {
+        SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, explicitType,
+                    currentDispatcherType);
+        throw shards::Error("Event type mismatch");
+      }
+      return explicitType;
+    } else {
+      if (requireType && currentDispatcherType.basicType == SHType::None) {
+        SHLOG_ERROR("Event type not set for event: {}, use Events.Send first or specify Type parameter", _eventName);
+        throw shards::Error("Event type not set");
+      }
+      return currentDispatcherType;
+    }
+  }
 };
 
 struct Send : Base {
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
 
-    // when we send we store the type of the event
-    // we store the type of the event
-    (*_dispatcher).get().assignType(data.inputType);
+    // use explicit type if provided, otherwise use input type
+    const auto &eventType = _type.valueType == SHType::Type ? *_type.payload.typeValue : data.inputType;
+    auto currentDispatcherType = (*_dispatcher).get().getType();
+    if (currentDispatcherType.basicType == SHType::None) {
+      (*_dispatcher).get().assignType(eventType);
+    } else if (!matchTypes(eventType, currentDispatcherType, false, true, true)) {
+      SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, eventType, currentDispatcherType);
+      throw shards::Error("Event type mismatch");
+    }
 
     return data.inputType;
   }
@@ -95,15 +131,7 @@ struct Receive : Base {
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
 
-    // prevent none
-    auto currentType = (*_dispatcher).get().getType();
-    if (currentType.basicType == SHType::None) {
-      SHLOG_ERROR("Event type not set for event: {}, use Events.Send first", _eventName);
-      throw shards::Error("Event type not set");
-    }
-
-    // fixup type
-    singleType = currentType;
+    singleType = resolveEventType();
     outputType = Type::SeqOf(singleType);
 
     return outputType;
@@ -157,6 +185,7 @@ struct Check : Receive {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
+    resolveEventType(false); // validate type if provided, but don't require it
     return CoreInfo::BoolType;
   }
 
