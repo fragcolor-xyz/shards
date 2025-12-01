@@ -1,629 +1,963 @@
-# Below are comprehensive instructions for learning and using the Shards programming language:
+# Shards Programming Language Reference
 
-## Context
+## Core Philosophy
 
-Shards is a data flow programming language that follows a unique paradigm. It uses pipes (`|`) and organizes logic into Wires scheduled on Meshes.
+Shards is a **dataflow programming language**. Data flows through channels like water through rivers - variables are not containers, they're named channels directing flow. There are no traditional functions - everything is Wires (pipelines of operations) scheduled on Meshes.
 
 ## Execution Model
 
-Shards uses data flow. There are no traditional functions. Wires are pipelines of operations (Shards) on data. Wires have state and run on Meshes.
+- **Wires**: Pipelines of operations (Shards) that process data
+- **Meshes**: Schedulers that run Wires
+- **State**: Each Wire has isolated state; child Wires can access parent state via `Do()` or get copies via `Detach()`
 
-## Parameter Rules
-
-- Once you use a named parameter, all subsequent parameters must also be named
-- Named parameters use colon syntax: `Name: value`
-- Cannot mix unnamed and named parameters after first named parameter
-
-Examples:
+## Syntax Fundamentals
 
 ```shards
-// Basic operations use pipes and parameters
-5 | Add(3)                    // 5 + 3
-value | Mul(2.0)         // value * 2.0
+// Comments - C-style
+// Single line comment
+/* Multi-line comment */
 
-// All named parameters - OK
-Http.Get(
-  URL: "https://api.example.com"
-  Headers: headers
-  Timeout: 30
-)
+// No semicolons, no braces for code blocks (except wire/template definitions)
+// Whitespace flexible
+// Data flows through | (pipe operator)
 
-// Common with API calls
-Http.Post(
-  URL: "https://api.example.com/data"
-  Headers: {
-    "Content-Type": "application/json"
-    "Authorization": token
-  }
-  Body: payload
-)
-
-// Error examples - wrong parameter order:
-Http.Get(URL: "https://api.example.com" headers)             // Error! Named then unnamed
-Process(Input: data other-param)                            // Error! Must put unnamed first
+// Identifiers
+my-variable       // Variables: lowercase, kebab-case
+var/subvar        // Namespaces use /
+Math.Sin          // Shards: Capitalized, dot-namespaced
 ```
 
-## Syntax & Structure
+## Variable Assignment & Data Flow
 
-- Declare wires: `@wire(name { ... })`
-- Data flows through `|`
-- No braces for code blocks other than wire and template definitions, no semicolons needed
-- Whitespace flexible
-- Comments are C-style
-- No imperative assignments: data flows into variables
+Think channels, not containers.
 
-## Identifiers & Names
-
-- Variables: lowercase, can be `var`, `my-var`, etc.
-- Namespaces: `var/subvar`
-- Shards: Capitalized, e.g. `Math.Sin`
-- Use kebab-case for multi-word variable names
-- No traditional functions; all logic is wires and shards
-
-## String Operations
-
-- String.Join: Combines sequence of strings
-- String.Format: Combines strings with other types (numbers, vectors, etc)
-
-Examples:
+**Everything is a shard** - the syntax is just sugar:
+```shards
+0 >= x          // desugars to: Const(0) | Set(x)
+1 > x           // desugars to: Const(1) | Update(x)
+"hi" = msg      // desugars to: Const("hi") | Ref(msg)
+5 | Add(3)      // Add is a shard, 5 is Const(5)
+```
 
 ```shards
-// String.Join for string sequences
-["Hello" "World"] | String.Join = joined          // "HelloWorld"
-["a" "b" "c"] | String.Join = abc                // "abc"
+// Immutable channel (cannot be redirected)
+"hello" = greeting
+value | Ref(var-name)           // equivalent
 
-// String.Format for mixing types
-["Score: " 42 " points"] | String.Format = score  // "Score: 42 points"
-["Position: " @f3(1 2 3)] | String.Format = pos   // "Position: @f3(1 2 3)"
+// Mutable channel (can be redirected)  
+0 >= counter
+value | Set(var-name)           // equivalent
 
-// Common patterns
-["Bearer " token] | String.Join = auth-header     // Joining strings
-["User " name " is " age " years old"] | String.Format = info  // Mixing strings and numbers
+// Redirect flow (update mutable)
+new-value > counter
+new-value | Update(var-name)    // equivalent
 
-// With variables
-"Alice" = name
-30 = age
-["Hello " name "! Age: " age] | String.Format = greeting  // "Hello Alice! Age: 30"
+// Append to sequence (tributary joining main flow)
+item >> my-sequence
+item | Push(my-sequence)        // equivalent
+
+// Append to string
+"more text" | AppendTo(my-string)
+"prefix" | PrependTo(my-string)
 ```
 
 ## Data Types & Literals
 
-- Strings: `"hello"`
-- Integers: `1`
-- Floats: `1.0`
-- Float vectors: `@f2(1.0 2.0)`, `@f3(1.0 2.0 3.0)`, `@f4(1.0 2.0 3.0 4.0)`
-- Int vectors: `@i2(1 2)`, `@i3(1 2 3)`, `@i4(1 2 3 4)`
-- Booleans: `true`, `false`
-- None: `none` or `null`
-- Hex: `0x1A3F`
-- Sequences: `[1 2 3]` (can hold any types)
-  - Access: `sequence | Take(index)`, `RTake`, `Slice`, etc.
-  - Modify: append with `value >> seq-var`, remove with `Erase(index seq-var)`
+```shards
+// Primitives
+"hello"                         // String
+"""multi
+line
+string"""                       // Triple-quoted string (preserves newlines)
+42                              // Integer
+3.14                            // Float
+true false                      // Booleans
+none null                       // None/null
+0x1A3F                          // Hex
 
-Example:
+// Vectors
+@f2(1.0 2.0)                    // Float2
+@f3(1.0 2.0 3.0)                // Float3
+@f4(1.0 2.0 3.0 4.0)            // Float4
+@i2(1 2)                        // Int2
+@i3(1 2 3)                      // Int3
+@i4(1 2 3 4)                    // Int4
+@color(0.8 0.2 0.2)             // Color (RGB float)
+
+// Sequences (arrays - can hold mixed types)
+[1 2 3 4 5]
+["mixed" 42 true @f3(1 2 3)]
+
+// Tables (dictionaries/objects)
+{name: "Alice" age: 30 active: true}
+
+// Bytes
+"hello" | StringToBytes
+```
+
+## Parameter Rules
+
+**Critical**: Once you use a named parameter, ALL subsequent must be named.
 
 ```shards
+// Positional parameters
+Add(3)
+Take(0)
+
+// Named parameters
+Http.Get(URL: "https://api.example.com" Headers: headers Timeout: 30)
+
+// Mixed - positional MUST come first
+Process(data Input: extra Output: result)    // OK
+Process(Input: data extra)                   // ERROR! Named then unnamed
+```
+
+## Sequence Operations
+
+```shards
+// Declaration with type
+Sequence(items Type: @type([Type::String]))
+Sequence(any-items Type: @type([{none: Type::Any}]))
+
+// Access (dot notation - literal indices only)
+[1 2 3 4 5] = numbers
+numbers.0                       // 1 (first element)
+numbers.2                       // 3 (third element)
+// Note: numbers.some-var does NOT work - must be literal index
+
+// Access (dynamic - use Take for variable indices)
 [1 2 3 4 5] >= numbers
-numbers | Take(2) | Log("Third element")          // Outputs: 3
-numbers | Take([0 2 4]) | Log("Selected")         // Outputs: [1 3 5]
-numbers | Slice(1 3) | Log("Slice")               // Outputs: [2 3]
-numbers | Take(0) | Log("First element")          // Outputs: 1
-numbers | RTake(0) | Log("Last element")          // Outputs: 5
-6 >> numbers                                      // Append 6
-{data: [1 2 3]} >= table-with-seq
-4 | Push(table-with-seq "data")                   // Push 4 into table's data seq
-Erase(2 numbers)                                  // Remove element at index 2
-numbers | Log("After removal")
-Erase([0 2] numbers)                              // Remove multiple indices
-numbers | Log("After multiple removals")
+numbers | Take(2)               // Get index 2 → 3
+2 = idx
+numbers | Take(idx)             // Same - variable index works with Take
+numbers | Take([0 2 4])         // Multiple indices → [1 3 5]
+numbers | RTake(0)              // From end → 5
+numbers | Slice(1 3)            // Range → [2 3]
+numbers | Slice(From: 1)        // From index to end
+numbers | Slice(To: -2)         // From start, excluding last 2
+
+// Modification
+6 >> numbers                    // Append
+6 | Push(numbers)               // Same as above
+item | Insert(0 numbers)        // Insert at index
+PopFront(numbers)               // Remove & return first
+DropFront(numbers)              // Remove first (no return)
+Erase(2 numbers)                // Remove at index
+Erase([0 2] numbers)            // Remove multiple indices
+Clear(numbers)                  // Empty the sequence
+other-seq | Extend(numbers)     // Extend with another sequence
+
+// Iteration & Transformation
+numbers | ForEach({ Mul(2) | Log })
+numbers | Map({ Mul(2) })       // Transform, returns new sequence
+numbers | Reverse               // Reverse order
+numbers | Count                 // Length
 ```
 
-- Tables: `{key: value key2: value2}`
-  - Access: `table.key` or `table | Take(key)`
-  - Modify: `new-value | Update(table key)`
-  - Remove: `Erase(key table)`
-
-Example:
+## Table Operations
 
 ```shards
-{name: "Alice" age: 30 city: "NY"} >= person-data
-person-data.name | Log(Label: "Name")             // "Alice"
-"Bob" | Update(person-data "name")                // update name
-31 | Update(person-data "age")                    // update age
-Erase("city" person-data)                         // remove city
-person-data | Log(Label: "After removing city")
-Erase(["name" "age"] person-data)                 // remove multiple keys
-person-data | Log(Label: "After removing keys")
+{name: "Alice" age: 30} >= person
+
+// Access (dot notation - literal keys only)
+person.name                     // "Alice"
+person.age                      // 30
+// Note: person.some-var does NOT work - must be literal key
+
+// Access (dynamic - use Take for variable keys)
+person | Take("name")           // "Alice" (or none if missing)
+"name" = field-name
+person | Take(field-name)       // "Alice" - variable key works with Take
+
+// Get with default (for potentially undefined variables)
+Get(maybe-undefined-var Default: {})
+
+// Modification
+"Bob" | Set(person "name")      // Set value
+"NYC" | Update(person "city")   // Update existing
+Erase("age" person)             // Remove key
+other-table | Merge(person)     // Merge tables
+
+// Dynamic table creation
+Table(my-table)                 // Empty table
+Table(typed-table Type: @type({name: Type::String age: Type::Int}))
 ```
 
-- Matrices: sequences of vectors, e.g. identity matrix:
-  `[@f4(1 0 0 0) @f4(0 1 0 0) @f4(0 0 1 0) @f4(0 0 0 1)]`
-  Rotate 45° around Z:
-  `[@f3(0.707 -0.707 0) @f3(0.707 0.707 0) @f3(0 0 1)]`
+## String Operations
 
-## Variables & Data Flow
+```shards
+// Joining & Formatting
+["Hello" "World"] | String.Join              // "HelloWorld" (strings only)
+["Score: " 42 " pts"] | String.Format        // "Score: 42 pts" (mixed types)
 
-- Immutable assign: `value = var`  or `value | Ref(var)`
-- Mutable assign: `value >= var`  or `value | Set(var)`
-- Update mutable: `new-value > var`  or `new-value | Update(var)`
-- Append seq: `value >> seq-var`  or `value | Push(seq-var)`
-- Pipe for chaining: `op1 | op2 | op3`
+// Manipulation
+"  hello  " | String.Trim                    // "hello"
+"hello" | String.Starts(With: "he")          // true
+"hello" | String.Ends(With: "lo")            // true
+"a,b,c" | String.Split(",")                  // ["a" "b" "c"]
+"a,b,c" | String.Split("," KeepSeparator: true)
+"hello" | Replace(["l"] "L")                 // "heLLo"
+"hello" | Slice(1 4)                         // "ell"
 
-Think of a river system, not a storage container:
+// Regex
+"test@email.com" | Regex.Match("""(\w+)@(\w+)\.(\w+)""")
 
-TRADITIONAL (WRONG):
-x = 5          ❌ This is not a container being filled
-x += 1         ❌ This is not incrementing a stored value
-
-SHARDS (CORRECT):
-5 >= x         ✅ This creates a channel named 'x' and flows 5 into it
-x | Add(1) > x   ✅ This takes flow from x, adds 1, and channels it back
-
-Key concept: In Shards, variables are not boxes that hold values.
-They are CHANNELS that direct data flow, like:
-
-- Water channels in a river system
-- Data streams in a network
-- Signal paths in a circuit
-
-Examples showing the flow:
-
-Creating flow channels
-```
-5 >= counter           // Start a mutable flow channel named 'counter'
-"hello" = message      // Start an immutable flow channel named 'message'
+// Encoding
+"hello" | StringToBytes
+bytes | BytesToString
+data | ToBase64
+base64-str | FromBase64
+bytes | ToHex
 ```
 
-Directing and transforming flows
+## Control Flow
+
+```shards
+// If-Then-Else
+value | If(IsMore(5) 
+  {"Greater" | Log} 
+  {"LessOrEqual" | Log}
+)
+
+// When (no else branch)
+value | When(IsMore(5) {"Greater" | Log})
+value | WhenNot(IsMore(5) {"NotGreater" | Log})
+
+// Multi-branch Cond
+value | Cond([
+  {IsMore(10)} {"Large" | Log}
+  {IsMore(5)}  {"Medium" | Log}
+  {true}       {"Small" | Log}    // default case
+] Passthrough: false)
+
+// Pattern Matching
+status | Match([
+  "success" {"OK" | Log}
+  "error"   {"Failed" | Log}
+  none      {"Unknown" | Log}     // default case
+] Passthrough: false)
+
+// Loops
+Repeat({"tick" | Log} Times: 5)
+
+0 >= sum
+0 | ForRange(To: 10 {
+  Add(sum) > sum
+})
+
+[1 2 3] | ForEach({
+  Mul(2) | Log
+})
+
+// Early exit
+Repeat({
+  When(condition Return)          // Exit loop early
+} Times: 100)
+
+// Until condition
+Repeat({
+  do-work
+} Until: {done-condition})
+
+// Pass (do nothing - useful in Match/Cond)
+Match([
+  "skip" Pass
+  none   {"handle" | Log}
+])
 ```
-counter | Add(1) > counter    // Take flow from counter, add 1, direct back
-input | Transform | Process > output   // Chain of flow transformations
+
+## Type System
+
+```shards
+// Type definitions
+@type({name: Type::String age: Type::Int})
+@type([Type::String])                        // Sequence of strings
+@type([{none: Type::Any}])                   // Sequence of any
+
+// Available types
+Type::String Type::Int Type::Float Type::Bool
+Type::Any Type::Bytes Type::Image Type::Sequence
+Type::Object                                 // For Shards objects
+
+// Object types
+@type(Type::Object ObjectName: "Http.Stream")
+@type(Type::Object ObjectName: "LLM.Chat")
+
+// Runtime type checking
+value | IsString                             // Returns bool
+value | IsInt
+value | IsFloat
+value | IsBool  
+value | IsTable
+value | IsSeq
+value | IsNone
+value | IsNotNone
+value | IsImage
+
+// Type assertions (fail if wrong type)
+value | ExpectString
+value | ExpectInt
+value | ExpectFloat
+value | ExpectBool
+value | ExpectTable
+value | ExpectSeq
+value | ExpectBytes
+value | ExpectImage
+value | Expect(@type({name: Type::String}))
+
+// Conversions
+42 | ToString                                // "42"
+"42" | ToInt                                 // 42
+42 | ToFloat                                 // 42.0
+value | ToAny                                // Erase type info
+table | ToAnyTable                           // Generic table
+data | ToJson                                // JSON string
+json-str | FromJson                          // Parse JSON
 ```
 
-Remember: The | operator is not a pipe between containers.
-It's a direction marker showing how data flows through your system.
+## Comparison & Logic
 
-## Wire State & Variables:
+```shards
+// Equality
+value | Is(42)
+value | IsNot(42)
 
-- Each wire has its own isolated state
-- Child wires can access parent wire variables
-- Two ways to run child wires:
-  1. `Do(wire)` - child shares parent's variables directly
-  2. `Detach(wire)` - child gets copies of parent's variables
-- Use `Global: true` for shared state between any wires
+// Comparison
+value | IsMore(10)
+value | IsLess(10)
+value | IsMoreEqual(10)
+value | IsLessEqual(10)
 
-Examples:
+// Logical operators (for booleans in flow)
+is-valid | And | is-enabled      // logical AND - true if both true
+cond1 | Or | cond2               // logical OR - true if either true  
+condition | Not                  // Negate
+
+// Multi-condition chaining
+a | And | b | And | c            // all must be true
+x | Or | y | Or | z              // any can be true
+
+// ⚠️ IMPORTANT: And/Or have flow control side effects!
+// - And stops flow and restarts from top if condition is false
+// - Or stops flow and restarts from top if condition is true
+// Use them ONLY inside conditional contexts (If, When, Cond predicates)
+// Using them in regular flow can cause unexpected restarts!
+
+// ✓ CORRECT - inside conditional predicate
+value | When({IsMore(5) | And | IsLess(10)} {"In range" | Log})
+
+// ✗ CAREFUL - in regular flow, And/Or affect flow control
+// some-bool | And | other-bool | Log  // may restart flow unexpectedly!
+
+// Note: Math.And / Math.Or are BITWISE operators (see Math section)
+// Don't confuse: And/Or (logical+flow) vs Math.And/Math.Or (bitwise)
+
+// Boolean checks
+flag | IsTrue
+flag | IsFalse
+
+// Assertions
+value | Assert.Is(42)
+value | Assert.IsNot(0)
+```
+
+## Math Operations
+
+```shards
+// Arithmetic (data flows through)
+5 | Add(3)                       // 8
+10 | Sub(3)                      // 7
+4 | Mul(2)                       // 8
+10 | Div(2)                      // 5
+10 | Pow(2.0)                    // 100.0
+
+// In-place increment/decrement
+Inc(counter)                     // counter += 1
+Dec(counter)                     // counter -= 1
+
+// Clamping
+value | Min(100)                 // Cap at 100
+value | Max(0)                   // Floor at 0
+
+// Math functions
+angle | Math.Sin
+angle | Math.Cos
+value | Math.Floor
+value | Math.Abs
+
+// Bitwise (for integers - don't confuse with logical And/Or!)
+1 | Math.LShift(4)               // Left shift
+mask | Math.Xor(other)           // XOR
+flags | Math.Or(0x04)            // Bitwise OR
+mask | Math.And(0xFF)            // Bitwise AND
+```
+
+## Wires & Execution
+
+Wires are **stateful coroutines** - not just functions. They maintain state between calls, can be suspended (with `Pause`), and their memory is tied to their lifetime.
+
+### Memory Model
+
+Shards has a simple, efficient memory model:
+- **No manual memory management** - users never need to think about allocation/deallocation
+- **Memory tied to wire lifetime** - when a wire ends, its memory is cleaned up
+- **Looped wires recycle memory** - variables are reused each iteration, no new allocations
+- **Warmup allocates, activation reuses** - heavy lifting happens once at warmup
+
+This is why looped wires are so efficient - after the first iteration, everything is pre-allocated and just gets recycled.
+
+```shards
+@wire(game-loop {
+  // These allocations happen ONCE at warmup
+  Once({
+    Sequence(entities Type: @type([Type::Any]))
+    {} >= game-state
+  })
+  
+  // This runs every frame with ZERO allocations
+  // Variables are recycled, not reallocated
+  update-entities
+  render-frame
+} Looped: true)
+```
+
+```shards
+// Wire definition - wires are stateful coroutines
+@wire(my-wire {
+  "Hello" | Log
+  42                             // Wire outputs last value
+})
+
+// Looped wire (runs continuously, memory recycled each iteration)
+@wire(main-loop {
+  update-game
+} Looped: true)
+
+// Pure wire (isolated scope, no access to parent variables)
+@wire(isolated-wire {
+  // Cannot see parent's variables
+} Pure: true)
+
+// Wire execution methods
+Do(my-wire)                      // Run INLINE (not a coroutine), share parent state
+Step(looped-wire)                // Step looped wire once, share state (coroutine)
+Detach(my-wire)                  // Schedule on mesh, copied state (coroutine, non-blocking)
+Spawn(my-wire)                   // Spawn clone for each item (multiple coroutines)
+Branch([wire1 wire2])            // Create submesh, wires share parent state
+Branch([wires] CaptureAll: true FailureBehavior: BranchFailure::Everything)
+Expand(Wire: my-wire Size: 100)  // Create N copies, collect results
+TryMany(Wire: my-wire Policy: WaitUntil::FirstSuccess)
+
+// Dynamic wire execution
+wire-var | ExpectWire
+WireRunner(wire-var)
+```
+
+### Wire Execution Methods Comparison
+
+| Method   | Uses Original Variables? | Restarts Wire? | Continues Parent? | Multiple Instances? |
+| :------- | :----------------------- | :------------- | :---------------- | :------------------ |
+| Do       | Yes                      | No             | Yes               | No                  |
+| Step     | Yes                      | No             | Yes               | No                  |
+| Detach   | No (copies)              | Yes            | Yes               | No                  |
+| Spawn    | No (copies)              | Yes            | Yes               | Yes                 |
+| Branch   | Yes                      | No             | Yes               | No                  |
+| Expand   | No (copies)              | Yes            | Yes               | Yes                 |
+| TryMany  | No (copies)              | Yes            | Yes               | Yes                 |
+
+### Wire Control
+
+```shards
+// Wait for detached wire to complete
+Detach(background-task)
+Wait(background-task)
+
+// Pause/Resume wires
+Suspend(wire-name)               // Pause a wire
+Resume(wire-name)                // Resume from where it paused
+
+// Switch execution flow
+SwitchTo(other-wire)             // Suspend current, switch to other
+
+// Stop a wire
+Stop                             // End current wire
+Stop(wire-name)                  // End specific wire
+```
+
+### Wire State & Scope
 
 ```shards
 // Parent wire with child access
 @wire(parent {
   0 >= counter
-  "data" = value
-
-  // Regular child - shares parent's variables
-  Do(child)
-  counter | Log(Label: "After child")  // Shows child's changes
-
-  // Detached child - gets copies of variables
-  Detach(detached-child)
-  counter | Log(Label: "After detached")  // Unchanged
+  Do(child)                      // child can modify counter directly
+  counter | Log                  // Shows child's changes
 })
 
 @wire(child {
-  // Can modify parent's variables directly
-  counter | Add(1) > counter
+  counter | Add(1) > counter     // Modifies parent's counter
+})
+
+// Detached wire gets COPIES of variables
+@wire(parent {
+  0 >= counter
+  Detach(detached-child)
+  counter | Log                  // Still 0 - detached worked on copy
 })
 
 @wire(detached-child {
-  // Works with copies of parent's variables
-  counter | Add(1) > counter  // Only affects local copy
-})
-
-// Global variables for shared state between any wires
-@wire(init {
-  // Create global variables that any wire can access
-  0 | Set(shared-counter Global: true)
-  "initial" | Set(shared-value Global: true)
-
-  // Global tables
-  Table(shared-state Type: @type({
-    status: Type::String
-    count: Type::Int
-    data: Type::Sequence
-  }) Global: true)
-  "ready" | Update(shared-state "status")
-})
-
-@wire(any-wire {
-  // Can access and modify globals from anywhere
-  shared-counter | Add(1) > shared-counter
-  shared-value | Log(Label: "Value")
-  shared-state.status | Log(Label: "Status")
+  counter | Add(1) > counter     // Only affects local copy
 })
 ```
 
-Best practices:
-
-- Use globals when you need truly shared state between wires
-- Use Do(wire) when child needs to modify parent state
-- Use Detach(wire) when child should work with its own copy
-- Document global variables clearly
-- Use tables for structured global state
-- Initialize all globals in a single init wire
-
-## Sub Blocks & Flow Control
-
-- Sub blocks `{...}` are used when multiple operations need to process the same input independently
-- Example with ForEach:
-
-  ```shards
-  [1 2 3] | ForEach({
-    {Mul(2) | Log}  // each operation gets original input
-    {Add(5) | Log}       // processes same input independently
-  })
-  ```
-
-- Not needed for single operation flows:
-
-  ```shards
-  ForRange(1 10 {
-    Add(sum) > sum  // single flow, no sub block needed
-  })
-  ```
-
-- Common use cases for Sub blocks:
-  - ForEach: when multiple operations need to process each element
-  - Cond: for multiple condition/action pairs on same input
-  - When operations need to branch but maintain original input
-
-## Control Flow
-
-- `If(condition then else)`
-- `When(condition action)`
-- `Repeat({ ... } Times: count)`
-- `ForEach({ ... })`
-- `Match([value1 {action1} value2 {action2} ...])`
-- `Once({ ... })` for one-time init
-
-Examples:
+## Templates (Reusable Code)
 
 ```shards
-10 | If(IsMore(5)
-  {"Greater" | Log(Label: "Result")}
-  {"LessOrEq" | Log(Label: "Result")})
-
-Repeat({
-  "Repeated" | Log(Label: "Loop")
-} Times: 3)
-
-[1 2 3] | ForEach({
-  Mul(2) | Log(Label: "Doubled")
+// Definition
+@template(greet [name greeting] {
+  [greeting " " name "!"] | String.Format | Log
 })
 
-"B" | Match([
-  "A" {"Option A" | Log(Label: "Match")}
-  "B" {"Option B" | Log(Label: "Match")}
-  none {"Other" | Log(Label: "Match")}
-])
-```
+// Usage
+@greet("World" "Hello")          // Logs: "Hello World!"
 
-Once block for init:
-
-```shards
-Once({
-  0 >= counter
-  "" >= message
+// Templates can contain complex logic
+@template(retry-operation [operation max-retries] {
+  0 >= attempts
+  none >= result
+  Repeat({
+    Maybe({
+      operation > result
+      Return                     // Success, exit
+    } {
+      Inc(attempts)
+      When({attempts | IsMoreEqual(max-retries)} {
+        "Max retries exceeded" | Fail
+      })
+    })
+  } Times: max-retries)
+  result
 })
 ```
 
-## Types & Safety
-
-- Define custom types with `@type({ ... })`
-- `Expect(type)` to ensure type matches
-- `Assert.Is(value)` to verify conditions
-
-Example:
+## Defines & Compile-Time
 
 ```shards
-// Define a custom type
-@type({
-  name: Type::String
-  age: Type::Int
-  scores: Type::Sequence
-}) = person-type
+// Simple define
+@define(api-url "https://api.example.com")
+@define(max-retries 3)
 
-// Use the type
-{name: "Alice" age: 30 scores: [85 92 78]} | Expect(person-type) = person-data
-person-data.age | Assert.Is(30)
-```
+// Define with type
+@define(person-type @type({name: Type::String age: Type::Int}))
 
-## Concurrency
-
-- Wires on different meshes run concurrently
-- Use `Detach(wire)` for non-blocking
-
-Example:
-
-```shards
-@wire(long-task {
-  Pause(5.0)
-  "Done" | Log("Background")
+// Define table (expressions evaluated when used)
+@define(headers {
+  "Content-Type": "application/json"
+  "Authorization": (["Bearer " api-key] | String.Join)
 })
 
-@wire(main-loop {
-  "Main loop" | Log
-  Detach(long-task)
-} Looped: true)
+// Allow redefinition
+@define(config-value 42 IgnoreRedefined: true)
 
-@mesh(root)
-@schedule(root main-loop)
-@run(root FPS: 30)
+// Compile-time evaluation with #()
+@define(collision-mask #(1 | Math.LShift(4)))
+@define(computed #(100 | Mul(2)))
+
+// Compile-time conditionals
+@if(@platform | IsNot("watchos") {
+  // Code for non-watchOS
+} {
+  // Fallback code
+})
+
+@if(@apple-but-not-watch {
+  WebKit.Fetch
+} {
+  Http.Get(url)
+})
+```
+
+## Includes & Modules
+
+```shards
+// Basic include
+@include("utils.shs")
+
+// Include once (prevents double-inclusion)
+@include("shared-types.shs" Once: true)
+
+// Namespaced variables for organization
+ext/api-key                      // External config
+g/models                         // Global state
+tools/working-dir                // Tool-specific
+mcp/session-id                   // MCP server state
 ```
 
 ## Error Handling
 
-- `Maybe({ ... } { ... })` for error handling.
+```shards
+// Try-catch pattern
+Maybe({
+  risky-operation
+  "Success" | Log
+} {
+  "Error occurred" | Log
+})
 
-Example:
+// Fail with message
+condition | When(IsFalse {
+  "Validation failed" | Fail
+})
+
+// Capture logs for error details
+CaptureLog({
+  Maybe({
+    operation
+  } {
+    CurrentCaptureLog = error-log
+    error-log | Log("Captured errors")
+  })
+} MinLevel: LogLevel::Error)
+
+// Assertions
+value | Assert.Is(expected)
+value | Assert.IsNot(forbidden)
+```
+
+## Async Operations
 
 ```shards
-Maybe({
-  "10" | FromJson | Add(5) | Log(Label: "Success")
-} {
-  "Error occurred" | Log(Label: "Error")
+// Await async operations
+data | Await(ToJson)
+json | Await(FromJson)
+
+// Await block (multiple operations)
+Await({
+  LoadImage(path)
+  ResizeImage(Width: 256)
+  WriteJPG
+  ToBase64
 })
+
+// Pause execution
+Pause(1.0)                       // Pause 1 second
+
+// Periodic execution
+Once({
+  periodic-task
+} Every: 10.0)                   // Every 10 seconds
+
+// Producer/Consumer pattern
+audio-data | Produce("audio-channel")
+Consume("audio-channel" @type([Type::Float]))
+```
+
+## HTTP Operations
+
+```shards
+// GET request
+Http.Get(url Timeout: 30)
+
+// POST request
+payload | ToJson | Http.Post(
+  url 
+  Headers: {"Content-Type": "application/json"}
+  Timeout: 30
+  Retry: 3
+  Backoff: 5
+)
+
+// Streaming
+Http.Post(url Headers: headers Streaming: true FullResponse: true)
+{Take("stream") = stream}
+{Take("status") = status}
+Http.Stream(stream) | BytesToString
+
+// Server
+Http.Server(Port: 8080 SSL: false Handler: handler-wire)
+Http.Response(200 Headers: {"Content-Type": "text/plain"})
+Http.Chunk(Headers: {"Content-Type": "text/event-stream"})
+```
+
+## File System
+
+```shards
+// Path operations
+path | FS.IsFile
+path | FS.IsAbsolute
+[dir file] | FS.Join
+path | FS.Filename(NoExtension: true)
+
+// Read/Write
+path | FS.Read                   // Read text
+path | FS.Read(Bytes: true)      // Read bytes
+path | FS.Write(content Overwrite: true)  // Write to path
+
+// Embedded files (compile-time)
+@read("data.json")               // Embed file content
+@read("image.png" Bytes: true)   // Embed as bytes
+```
+
+## Database
+
+```shards
+[actor-id] | DB.Query(
+  "SELECT * FROM users WHERE id = ?"
+  AsRows: true
+  Database: "/path/to/db.sqlite"
+  ReadOnly: true
+)
+```
+
+## Events System
+
+```shards
+// Send event
+data | Events.Send("channel-name" session-id)
+
+// Receive events
+Events.Receive("channel-name" session-id) | ForEach({
+  process-event
+})
+
+// Update event system (call in loop)
+Events.Update("channel-name")
 ```
 
 ## Logging
 
-- `message | Log("Label")`
-- Label optional
+```shards
+// Basic
+"message" | Log
+value | Log("Label")
 
-## Program Structure
+// With level and category
+data | Log("Debug info" Level: LogLevel::Debug Name: "my-category")
 
-- Wires: `@wire(name { ... })`
-- Defines: `@define(name ...)`
-- Templates: `@template(name [args] { ... })`
-- Built-ins start with `@`, e.g. `@f3`, `@template`
-- Variables: lowercase
-- Shards: Capitalized, e.g. `UI.Area`, `Math.Sin`
+// Simple message
+Msg("Starting process")
 
-## Operation Grouping
+// Common pattern: debug templates
+value | @debug-log("context")    // Defined elsewhere as template
+```
 
-- Pipes work directly in shard parameters (pipe-in-params)
-- `time | Mul(0.5)` can be used directly without extra parentheses
-
-Example:
+## JSON Handling
 
 ```shards
-// Pipe-in-params - cleaner syntax:
+// Serialize
+{name: "test" value: 42} | ToJson        // Usually needs Await
+data | Await(ToJson)
+
+// Parse
+json-string | FromJson                    // Usually needs Await
+json-string | Await(FromJson) | ExpectTable
+
+// Common pattern
+Maybe({
+  input | Await(FromJson) | ExpectTable
+} {
+  "Invalid JSON" | Fail
+})
+```
+
+## Passthrough & Sub Blocks
+
+Passthrough allows data to pass through operations unchanged. Use `{}` sub blocks to save input, run operations, then restore the original input.
+
+```shards
+// Sub block preserves original value in flow
+1 | {Add(2) | Log("Inside")}     // Logs 3, but...
+  | Log("After")                 // Logs 1 (original preserved!)
+
+// Practical use - debug logging without disrupting flow
+user-data 
+| {Log("Debug: processing")}     // Logs user-data, doesn't change flow
+| ProcessUser
+| {Log("Debug: done")}           // Logs processed result
+| SaveUser
+
+// Passthrough parameter on shards
+1 | Match([
+  1 {"One"}
+  2 {"Two"}
+] Passthrough: false)            // Returns "One" (match result)
+
+1 | Match([
+  1 {"One"}
+  2 {"Two"}
+] Passthrough: true)             // Returns 1 (original input passed through)
+```
+
+## Advanced Patterns
+
+### Pipe-in-Params
+```shards
+// Pipes work directly in parameters (no extra parens needed)
 orbit-angle | Add(time | Mul(0.5)) > orbit-angle
 
-// Parentheses still work for explicit grouping:
-orbit-angle | Add((time | Mul(0.5))) > orbit-angle
-```
-
-## Templates
-
-- `@template(name [params] { code })`
-- Reusable code blocks
-- Called like `@template-name(param1 param2 ...)`
-
-Example:
-
-```shards
-@template(process-data [input output] {
-  input | Transform | Calculate > output
-})
-
-// and used like this:
-@process-data(in-var out-var)
-```
-
-## Variable Declaration/Usage
-
-- Declare before use
-- `=`: immutable, `>=`: mutable, `>`: update
-
-Example:
-
-```shards
-"Hello" = greeting
-0 >= counter
-greeting | Log(Label: "Greeting")
-```
-
-## Operation Grouping & Pipe-in-Params
-
-Shards supports **pipe-in-params**: you can use `|` directly inside shard parameters without parentheses.
-
-```shards
-// With pipe-in-params (preferred):
-value | Math.Add(other | Math.Mul(2))      // Cleaner!
-items | ForEach(item | Transform | Process)
-
-// Old style with explicit parentheses (still works):
-value | Math.Add((other | Math.Mul(2)))
-```
-
-**Pipes inside table literal values:**
-
-```shards
-// Compute values inline in table definitions
+// Also in table literals
 {
-  a: 1 | Add(1 | Add(1))
-  b: 2 | Mul(1 | Add(1) | Add(1))
-} | Assert.Is({a: 3 b: 6})
-
-// Nested pipe chains work anywhere
-{result: input | Transform | Process | Finalize} = computed-table
+  a: 1 | Add(1 | Add(1))         // Computed: 3
+  b: input | Transform
+}
 ```
 
-**Dot access in sequences (for String.Format):**
-
+### The $0 Syntax
 ```shards
-{name: "Hello"} = tt
-[0 1] = tn
-// Use .key for tables, .index for sequences
-["`" tt.name " (" tn.1 ")`"] | String.Format | Assert.Is("`Hello (1)`")
+// $0 is a special variable injected ONLY by: ForEach, ForRange, Map
+// It refers to the current element being processed
+
+items | ForEach({ $0 | Log })              // $0 is each item
+items | Map({ $0 | Mul(2) })               // $0 is each item, returns transformed seq
+0 | ForRange(To: 10 { $0 | Log })          // $0 is current index (0-9)
+
+// ForEach with TABLE input - get $0 (key) and $1 (value)
+{name: "Alice" age: 30} | ForEach({
+  $0 | ExpectString | Log("Key")           // "name", "age"
+  $1 | Log("Value")                        // "Alice", 30 (mixed types - use ExpectX)
+})
+
+// $0 does NOT exist in other contexts - use explicit variable assignment
+items | ForEach({ ExpectTable = item ... })  // alternative: assign to variable
 ```
 
-When to still use parentheses `(...)`:
-
-- To create an expression that evaluates ahead and produces a value
-- When you need explicit grouping for complex nested operations
-
+### Const Shard
 ```shards
-// Expression grouping still useful for complex cases:
-ToFloat | Div((32 | Div(3.1415926535))) >= x
-
-// Equivalent to:
-32 | Div(3.1415926535) = tmp
-ToFloat | Div(tmp) >= x
+// Returns constant regardless of input
+Match([
+  "a" Const(1)
+  "b" Const(2)
+  none Const(0)
+])
 ```
 
-- Parentheses create an implicit temporary variable
-- Use pipe-in-params for cleaner code when possible
-
-## Examples
-
-Basic wire:
+### Global Variables & Scope
 
 ```shards
-@wire(hello-world {
-  "Hello, Shards!" | Log("Greeting")
-  @f3(1.0 2.0 3.0) = vec3-variable | Log("Vector3")
-  [1 2 3 4] = seq-variable
-  {a: 1 b: 2} = table-ref
+// Local variable (default) - only visible in current wire
+0 >= local-counter
+
+// Global variable - visible across all wires on mesh
+0 | Set(shared-counter Global: true)
+
+// Access global from any wire
+shared-counter | Add(1) > shared-counter
+
+// Get with default (safe access)
+Get(Name: maybe-undefined Default: 0)
+
+// @define, @template, @wire declared at top-level are global
+@define(config-value 42)
+
+// BUT if declared inside a wire, they're scoped to that wire!
+@wire(outer {
+  @define(inner-only 123)        // Only visible inside 'outer'
+  @template(local-helper [] {})  // Only visible inside 'outer'
+  @wire(nested {})               // Only visible inside 'outer'
+})
+// inner-only, local-helper, nested are NOT accessible here
+```
+
+### Sub Blocks for Parallel Operations
+```shards
+// When multiple operations need same input independently
+data | ForEach({
+  {operation1 | Log}             // Gets original input
+  {operation2 | Log}             // Gets same original input
 })
 ```
 
-Control flow:
+## Mesh & Scheduling
 
 ```shards
-@wire(control-flow-demo {
-  10 | If(IsMore(5)
-    {"Greater than 5" | Log("Result")}
-    {"Less or equal to 5" | Log("Result")}
-  )
-  Repeat({"Repeated" | Log("Loop")} Times: 3)
-  [1 2 3] | ForEach({Mul(2) | Log("Doubled")})
-  "B" | Match([
-    "A" {"Option A" | Log("Match")}
-    "B" {"Option B" | Log("Match")}
-    none {"Other option" | Log("Match")}
-  ])
-})
-```
-
-Types & error:
-
-```shards
-@define(person @type({name: Type::String age: Type::Int}))
-@wire(type-and-error-demo {
-  {name: "Alice" age: 30} | Expect(@person) = person-table-ref
-  person-table-ref.age | Assert.Is(30)
-  Maybe({
-    "10" | FromJson | Add(5) | Log("Success")
-  } {
-    "Error occurred" | Log
-  })
-})
-```
-
-Concurrency & scheduling:
-
-```shards
-@wire(long-running-task {
-  Pause(5.0)
-  "Task completed" | Log("Background")
-})
-
 @wire(main-loop {
-  "Main loop running" | Log("Main")
-  Detach(long-running-task)
+  game-update
 } Looped: true)
 
 @mesh(root)
 @schedule(root main-loop)
-@run(root FPS: 30)
+@run(root FPS: 60)
 ```
 
-## Mathematical Operations in Shards
-
-- Data flows left to right, use `|` and proper grouping. No traditional infix.
-
-Example:
+## Common Idioms
 
 ```shards
-radius | Mul(theta | Math.Sin) | Mul(phi | Math.Cos) = x
-```
-
-## Auto-Evaluation of Shards in Parameters and Tables
-
-Shards automatically evaluates shard references when they're used in contexts expecting values. This makes the language more convenient without requiring explicit parentheses.
-
-### Shards as Parameters
-
-When a shard parameter expects a value but receives a shard, it automatically wraps and evaluates:
-
-```shards
-; These are equivalent:
-Msg(NanoID)        ; Auto-evaluated - NanoID produces a string
-Msg((NanoID))      ; Explicit evaluation with parentheses
-
-; Works with shard pipelines too:
-Msg({1 | Math.Add(1) | ToString})  ; Outputs "2"
-
-; Works with @define that expands to shards:
-@define(my-id NanoID)
-Msg(@my-id)        ; Auto-evaluated
-```
-
-### Shards in Table Values
-
-Single shards in table values are automatically evaluated:
-
-```shards
-; These are equivalent:
-{id: NanoID name: Random.Name(2)}    ; Auto-evaluated
-{id: (NanoID) name: (Random.Name(2))} ; Explicit
-
-; To store shards themselves (not their results), use braces:
-{shards: {NanoID}}  ; Stores the shard sequence, not the result
-```
-
-### @define Tables with Expressions
-
-Tables defined with `@define` that contain expressions are automatically evaluated when used as parameters:
-
-```shards
-"my-api-key" >= ext/api-key
-
-@define(my-headers {
-  "content-type": "application/json"
-  "authorization": ["Bearer " ext/api-key] | String.Join
+// Initialize once
+Once({
+  0 >= counter
+  "" >= buffer
+  Sequence(items Type: @type([Type::String]))
 })
 
-; The expressions in the table are evaluated when used:
-Http.Post(URL: "https://api.example.com" Headers: @my-headers)
+// Safe variable access with default
+Get(maybe-undefined-var Default: "fallback")
+
+// Chain type assertions
+data | ExpectTable | Take("key") | ExpectString
+
+// Conditional table field
+When({has-value} {
+  value | Set(table "optional-field")
+})
+
+// Alternative: inline condition
+has-value | When(IsTrue {
+  value | Set(table "field")
+})
+
+// Build response incrementally
+"" >= output
+"Header\n" | AppendTo(output)
+content | AppendTo(output)
+"Footer" | AppendTo(output)
+
+// Process and filter
+items | ForEach({
+  ExpectTable = item                 // needed if items is dynamic/unknown type
+  item.valid | ExpectBool            // needed if table is dynamic
+  When(IsTrue {
+    item | process >> results
+  })
+})
+
+// If types are known at compose time, Expect calls are not needed:
+typed-items | ForEach({
+  = item                             // type already known
+  item.valid | When(IsTrue {         // no ExpectBool needed
+    item | process >> results
+  })
+})
 ```
 
-### When Explicit Parentheses Are Still Needed
-
-For `@define` that expands to a shard, explicit parentheses are needed in table values:
+## Platform-Specific Code
 
 ```shards
-@define(my-shard NanoID)
+@if(@apple-but-not-watch {
+  // iOS/macOS specific
+  WebKit.Fetch
+} {
+  // Fallback
+  Http.Get(url)
+})
 
-; In parameters - works automatically:
-Msg(@my-shard)  ; OK
+@if(@platform | Is("watchos") {
+  "Limited mode" | Log
+})
 
-; In table values - needs explicit evaluation:
-{id: (@my-shard)}  ; Need parens
-{id: @my-shard}    ; Won't auto-evaluate
-
-; Alternative: evaluate in the @define itself:
-@define(my-evaluated-id (NanoID))
-{id: @my-evaluated-id}  ; Works - already evaluated at define time
+// App paths
+Apple.AppGroupPath               // iOS/macOS app group
 ```
+
+## Shards Lifecycle
+
+When a Shards script runs, it goes through these stages:
+
+1. **Read** - `.shs` file is read
+2. **Parse** - Converted to AST format
+3. **Construct** - Computational graph built (`#()` expressions evaluated here)
+4. **Compose** - Types validated, optimizations applied
+5. **Warmup** - Objects created, memory allocated (once per wire lifetime)
+6. **Activation** - Actual execution (minimal work due to warmup)
+7. **Cleanup** - Memory freed, resources cleaned
+
+The **Warmup** stage is key to Shards' efficiency - for looped wires, warmup happens once, then activation reuses those resources each iteration.
