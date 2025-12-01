@@ -105,6 +105,15 @@ struct Send : Base {
 
 struct Emit : Send {
   SHTypeInfo compose(const SHInstanceData &data) {
+    // Emit always sends Bool, validate explicit Type is compatible
+    if (_type.valueType == SHType::Type) {
+      auto explicitType = *_type.payload.typeValue;
+      if (!matchTypes(CoreInfo::BoolType, explicitType, false, true, true)) {
+        SHLOG_ERROR("Events.Emit always sends Bool, but explicit Type {} is incompatible", explicitType);
+        throw shards::Error("Emit Type must be compatible with Bool");
+      }
+    }
+
     auto dataCopy = data;
     dataCopy.inputType = CoreInfo::BoolType;
     Send::compose(dataCopy);
