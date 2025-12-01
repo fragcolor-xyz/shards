@@ -38,9 +38,8 @@ struct Base {
 
 protected:
   // Helper to validate and set event type, returns the resolved event type
-  // If explicit type is provided, validates it matches existing dispatcher type
-  // If no explicit type and fallbackType provided, uses fallbackType
-  // If no explicit type and no fallbackType, returns dispatcher type or throws if not set
+  // Priority: explicit Type param > fallbackType > existing dispatcher type
+  // Note: This is safe because compose() runs sequentially during wire compilation
   SHTypeInfo resolveEventType(bool requireType = true, const SHTypeInfo *fallbackType = nullptr) {
     auto currentDispatcherType = (*_dispatcher).get().getType();
 
@@ -104,7 +103,7 @@ struct Emit : Send {
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
 
-    // Emit always sends Bool - validate explicit Type is compatible if provided
+    // Emit always sends Bool - if explicit Type is provided, validate it's compatible
     if (_type.valueType == SHType::Type) {
       auto explicitType = *_type.payload.typeValue;
       if (!matchTypes(CoreInfo::BoolType, explicitType, false, true, true)) {
@@ -113,8 +112,8 @@ struct Emit : Send {
       }
     }
 
-    // Use Bool as the event type (with explicit Type taking precedence if compatible)
-    resolveEventType(true, &CoreInfo::BoolType);
+    // Register event type: uses explicit Type if provided (validated above), else Bool
+    resolveEventType(true, *CoreInfo::BoolType);
     return data.inputType;
   }
 
@@ -192,7 +191,9 @@ struct Check : Receive {
 
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
-    resolveEventType(false); // validate type if provided, but don't require it
+    // Validate/set type if explicit Type provided, but don't require it since Check just returns Bool
+    // This ensures type consistency if user specifies Type on Check before any Send
+    resolveEventType(false);
     return CoreInfo::BoolType;
   }
 
