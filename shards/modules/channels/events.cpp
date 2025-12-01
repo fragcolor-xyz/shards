@@ -39,20 +39,17 @@ struct Base {
 protected:
   // Helper to validate and set event type, returns the resolved event type
   // If explicit type is provided, validates it matches existing dispatcher type
-  // If no explicit type, returns dispatcher type or throws if not set
-  SHTypeInfo resolveEventType(bool requireType = true) {
+  // If no explicit type and fallbackType provided, uses fallbackType
+  // If no explicit type and no fallbackType, returns dispatcher type or throws if not set
+  SHTypeInfo resolveEventType(bool requireType = true, const SHTypeInfo *fallbackType = nullptr) {
     auto currentDispatcherType = (*_dispatcher).get().getType();
 
+    // Determine the target type: explicit Type param > fallbackType > dispatcher type
+    SHTypeInfo targetType;
     if (_type.valueType == SHType::Type) {
-      auto explicitType = *_type.payload.typeValue;
-      if (currentDispatcherType.basicType == SHType::None) {
-        (*_dispatcher).get().assignType(explicitType);
-      } else if (!matchTypes(explicitType, currentDispatcherType, false, true, true)) {
-        SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, explicitType,
-                    currentDispatcherType);
-        throw shards::Error("Event type mismatch");
-      }
-      return explicitType;
+      targetType = *_type.payload.typeValue;
+    } else if (fallbackType) {
+      targetType = *fallbackType;
     } else {
       if (requireType && currentDispatcherType.basicType == SHType::None) {
         SHLOG_ERROR("Event type not set for event: {}, use Events.Send first or specify Type parameter", _eventName);
@@ -60,23 +57,23 @@ protected:
       }
       return currentDispatcherType;
     }
+
+    // Validate and set dispatcher type
+    if (currentDispatcherType.basicType == SHType::None) {
+      (*_dispatcher).get().assignType(targetType);
+    } else if (!matchTypes(targetType, currentDispatcherType, false, true, true)) {
+      SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, targetType,
+                  currentDispatcherType);
+      throw shards::Error("Event type mismatch");
+    }
+    return targetType;
   }
 };
 
 struct Send : Base {
   SHTypeInfo compose(const SHInstanceData &data) {
     Base::compose(data);
-
-    // use explicit type if provided, otherwise use input type
-    const auto &eventType = _type.valueType == SHType::Type ? *_type.payload.typeValue : data.inputType;
-    auto currentDispatcherType = (*_dispatcher).get().getType();
-    if (currentDispatcherType.basicType == SHType::None) {
-      (*_dispatcher).get().assignType(eventType);
-    } else if (!matchTypes(eventType, currentDispatcherType, false, true, true)) {
-      SHLOG_ERROR("Event type mismatch for event: {}, provided: {}, existing: {}", _eventName, eventType, currentDispatcherType);
-      throw shards::Error("Event type mismatch");
-    }
-
+    resolveEventType(true, &data.inputType);
     return data.inputType;
   }
 
@@ -105,7 +102,9 @@ struct Send : Base {
 
 struct Emit : Send {
   SHTypeInfo compose(const SHInstanceData &data) {
-    // Emit always sends Bool, validate explicit Type is compatible
+    Base::compose(data);
+
+    // Emit always sends Bool - validate explicit Type is compatible if provided
     if (_type.valueType == SHType::Type) {
       auto explicitType = *_type.payload.typeValue;
       if (!matchTypes(CoreInfo::BoolType, explicitType, false, true, true)) {
@@ -114,9 +113,8 @@ struct Emit : Send {
       }
     }
 
-    auto dataCopy = data;
-    dataCopy.inputType = CoreInfo::BoolType;
-    Send::compose(dataCopy);
+    // Use Bool as the event type (with explicit Type taking precedence if compatible)
+    resolveEventType(true, &CoreInfo::BoolType);
     return data.inputType;
   }
 
