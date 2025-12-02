@@ -1427,10 +1427,10 @@ struct Set : public SetUpdateBase {
       } else {
         if (_isTable) {
           // Table types can change, so we need to force the metadata update
-          mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]), true);
+          mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]), true);
         } else {
           // Regular types can't change, so we can just set the metadata and fail if it already exists
-          mesh->setMetadata(_target, SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+          mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
         }
       }
     }
