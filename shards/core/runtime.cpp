@@ -1303,10 +1303,10 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
         if (mesh) {
           for (auto &v : mesh->getVariables()) {
             // only add variables with metadata basically
-            auto metadata = mesh->getMetadata(&v.second);
+            shassert(v.first.payload.stringValue && "Key must be a valid string");
+            std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
+            auto metadata = mesh->getMetadata(sName);
             if (metadata) {
-              shassert(v.first.payload.stringValue && "Key must be a valid string");
-              std::string_view sName(v.first.payload.stringValue, v.first.payload.stringLen);
               ctx.sharedContext->inherited.insert(sName, *metadata);
             }
           }
@@ -2864,8 +2864,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->setMeshVariableType = [](SHMeshRef mesh, SHStringWithLen name, const SHExposedTypeInfo *type) noexcept {
     auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-    auto vName = shards::OwnedVar::Foreign(name);
-    (*smesh)->setMetadata(&(*smesh)->getVariables()[vName], *type);
+    shassert(type->name && "type->name must be set");
+    shassert(std::string_view(name.string, name.len) == std::string_view(type->name) && "name parameter must match type->name");
+    (*smesh)->setMetadata(*type);
   };
 
   result->suspend = [](SHContext *context, double seconds) noexcept {

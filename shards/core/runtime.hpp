@@ -732,13 +732,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     _pendingUnschedule.clear();
 
     // find dangling variables and notice
-    for (auto var : variables) {
+    for (auto &var : variables) {
       if (var.second.refcount > 0) {
         SHLOG_ERROR("Found a dangling global variable: {}", var.first);
-      }
-      auto it = variablesMetadata.find(&var.second);
-      if (it != variablesMetadata.end()) {
-        it->second = shards::ExposedTypeInfo();
       }
     }
     variables.clear();
@@ -804,7 +800,8 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     //  the variable was left over from before, but has no references
     auto &vPtr = variables[key];
     if (vPtr.refcount == 0) {
-      auto it = variablesMetadata.find(&vPtr);
+      std::string_view nameView(name.string, name.len);
+      auto it = variablesMetadata.find(nameView);
       if (it != variablesMetadata.end()) {
         variablesMetadata.erase(it);
       }
@@ -814,8 +811,9 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
 
   constexpr auto &getVariables() { return variables; }
 
-  void setMetadata(SHVar *var, SHExposedTypeInfo info, bool force = false) {
-    auto it = variablesMetadata.find(var);
+  void setMetadata(SHExposedTypeInfo info, bool force = false) {
+    std::string_view name(info.name);
+    auto it = variablesMetadata.find(name);
     if (!force) {
       if (it != variablesMetadata.end()) {
         if (!shards::matchTypes(info.exposedType, it->second._innerInfo.exposedType, false, true, true)) {
@@ -824,17 +822,14 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
           return;
         }
       }
-      variablesMetadata.emplace(var, info);
+      variablesMetadata.emplace(std::string(name), info);
     } else {
-      if (it != variablesMetadata.end()) {
-        variablesMetadata.erase(it);
-      }
-      variablesMetadata.emplace(var, info);
+      variablesMetadata.insert_or_assign(std::string(name), shards::ExposedTypeInfo(info));
     }
   }
 
-  std::optional<SHExposedTypeInfo> getMetadata(SHVar *var) {
-    auto it = variablesMetadata.find(var);
+  std::optional<SHExposedTypeInfo> getMetadata(std::string_view name) {
+    auto it = variablesMetadata.find(name);
     if (it != variablesMetadata.end()) {
       return *it->second;
     } else {
@@ -943,7 +938,17 @@ private:
       variables;
 
   // this is used for the above global variables, not refs
-  std::unordered_map<SHVar *, shards::ExposedTypeInfo> variablesMetadata;
+  // Uses transparent hash/equal to allow lookups with string_view without allocating
+  struct StringHash {
+    using is_transparent = void;
+    size_t operator()(std::string_view sv) const { return std::hash<std::string_view>{}(sv); }
+    size_t operator()(const std::string &s) const { return std::hash<std::string_view>{}(s); }
+  };
+  struct StringEqual {
+    using is_transparent = void;
+    bool operator()(std::string_view a, std::string_view b) const { return a == b; }
+  };
+  std::unordered_map<std::string, shards::ExposedTypeInfo, StringHash, StringEqual> variablesMetadata;
 
   // variables with lifetime managed externally
   std::unordered_map<shards::OwnedVar, SHVar *, std::hash<shards::OwnedVar>, std::equal_to<shards::OwnedVar>,
