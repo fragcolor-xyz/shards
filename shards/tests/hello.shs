@@ -301,7 +301,8 @@ Const(foo) | Expect(@type(Type::Object ObjectName: "Mesh")) | Log
   )
 })
 
-1 | Do(tail-call-restart) | Log
+"x" = label
+1 | Do(tail-call-restart) | Log(label)
 
 @wire(trigger-it-1 {
   none

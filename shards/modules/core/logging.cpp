@@ -59,7 +59,8 @@ struct Log : public LoggingBase {
                    "The logging level can be specified to control the verbosity of the log output.");
   }
 
-  PARAM_PARAMVAR(_prefix, "Prefix", "A prefix string to be added to the log message.", {CoreInfo::StringType})
+  PARAM_PARAMVAR(_prefix, "Prefix", "A prefix string to be added to the log message.",
+                 {CoreInfo::NoneType, CoreInfo::StringType, CoreInfo::StringVarType})
   PARAM_IMPL_DERIVED_PREPEND(LoggingBase, PARAM_IMPL_FOR(_prefix))
 
   void warmup(SHContext *context) {
@@ -81,8 +82,8 @@ struct Log : public LoggingBase {
     auto id = findId(context);
     auto prefix = _prefix.get();
     auto level = spdlog::level::level_enum(_level.get().payload.intValue);
-    auto prefixSV = fmt::basic_string_view<char>(prefix.payload.stringValue, prefix.payload.stringLen);
-    if (prefixSV.size() > 0) {
+    if (prefix.valueType != SHType::None) {
+      auto prefixSV = fmt::basic_string_view<char>(prefix.payload.stringValue, prefix.payload.stringLen);
       if (id != entt::null) {
         SPDLOG_LOGGER_CALL(_logger, level, "[{} {}] {}: {}", current->name, id, prefixSV, input);
       } else {
@@ -115,8 +116,8 @@ struct LogType : public Log {
     auto id = findId(context);
     auto prefix = _prefix.get();
     auto level = spdlog::level::level_enum(_level.get().payload.intValue);
-    auto prefixSV = fmt::basic_string_view<char>(prefix.payload.stringValue, prefix.payload.stringLen);
-    if (prefixSV.size() > 0) {
+    if (prefix.valueType != SHType::None) {
+      auto prefixSV = fmt::basic_string_view<char>(prefix.payload.stringValue, prefix.payload.stringLen);
       if (id != entt::null) {
         SPDLOG_LOGGER_CALL(_logger, level, "[{} {}] {}: {}", current->name, id, prefixSV, type2Name(input.valueType));
       } else {
