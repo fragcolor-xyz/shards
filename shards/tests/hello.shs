@@ -406,3 +406,10 @@ Msg(@my-shard-ref)  ; Works: SFINAE catches ShardRef at runtime and wraps
 Repeat({
   "" | Http.Post(URL: "http://example.com" Headers: @my-headers)
 } Times: 0)
+
+@template(test-ast [a b] {
+  @ast(a) | Log | Is("""{"none":null}""")
+  @ast(b) | Log | Is("""{"id":{"name":"no-variable"}}""")
+})
+
+@test-ast(none no-variable)
