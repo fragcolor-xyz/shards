@@ -1568,18 +1568,26 @@ impl Shard for BM25IndexShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     // Extract strings from input sequence, deduplicating
-    let seq = input.as_seq().map_err(|_| "Input must be a sequence of strings")?;
+    let seq = input.as_seq().map_err(|e| {
+      shlog_error!("Input must be a sequence of strings: {:?}", e);
+      "Input must be a sequence of strings"
+    })?;
 
     let mut seen = std::collections::HashSet::new();
     let mut documents: Vec<String> = Vec::with_capacity(seq.len());
     for item in seq.iter() {
-      let s: &str = item.as_ref().try_into().map_err(|_| "All items must be strings")?;
-      if seen.insert(s.to_string()) {
-        documents.push(s.to_string());
+      let s: &str = item.as_ref().try_into().map_err(|e| {
+        shlog_error!("All items must be strings: {:?}", e);
+        "All items must be strings"
+      })?;
+      let doc = s.to_string();
+      if seen.insert(doc.clone()) {
+        documents.push(doc);
       }
     }
 
     if documents.is_empty() {
+      shlog_error!("Cannot create index from empty corpus");
       return Err("Cannot create index from empty corpus");
     }
 
@@ -1588,7 +1596,10 @@ impl Shard for BM25IndexShard {
       LanguageMode::Detect
     } else {
       let lang_str: &str = self.language.0.as_ref().try_into()
-        .map_err(|_| "Language must be a string")?;
+        .map_err(|e| {
+          shlog_error!("Language must be a string: {:?}", e);
+          "Language must be a string"
+        })?;
       let language = match lang_str.to_lowercase().as_str() {
         "arabic" => Language::Arabic,
         "danish" => Language::Danish,
@@ -1607,12 +1618,17 @@ impl Shard for BM25IndexShard {
         "swedish" => Language::Swedish,
         "tamil" => Language::Tamil,
         "turkish" => Language::Turkish,
-        _ => return Err("Unsupported language. Supported: arabic, danish, dutch, english, french, german, greek, hungarian, italian, norwegian, portuguese, romanian, russian, spanish, swedish, tamil, turkish"),
+        _ => {
+          shlog_error!("Unsupported language: {}", lang_str);
+          return Err("Unsupported language. Supported: arabic, danish, dutch, english, french, german, greek, hungarian, italian, norwegian, portuguese, romanian, russian, spanish, swedish, tamil, turkish");
+        }
       };
       LanguageMode::Fixed(language)
     };
 
     // Build search engine with corpus
+    // Note: clone is necessary because bm25 stores its own copy internally via with_corpus,
+    // but we also need the documents vec for retrieving content by ID in BM25.Query
     let engine = SearchEngineBuilder::<u32>::with_corpus(language_mode, documents.clone())
       .build();
 
@@ -1676,27 +1692,33 @@ impl Shard for BM25QueryShard {
 
   fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
     self.compose_helper(data)?;
-
-    if self.index.is_none() {
-      return Err("Index parameter is required");
-    }
-
     Ok(self.output_types()[0])
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let query: &str = input.try_into()?;
+    let query: &str = input.try_into().map_err(|e| {
+      shlog_error!("Query must be a string: {:?}", e);
+      "Query must be a string"
+    })?;
 
     let top_k: i64 = self.top_k.0.as_ref().try_into()
-      .map_err(|_| "TopK must be an integer")?;
+      .map_err(|e| {
+        shlog_error!("TopK must be an integer: {:?}", e);
+        "TopK must be an integer"
+      })?;
 
     if top_k <= 0 {
+      shlog_error!("TopK must be positive, got: {}", top_k);
       return Err("TopK must be positive");
     }
 
     // Get the index from parameter
     let index = unsafe {
-      &*Var::from_ref_counted_object::<BM25Index>(&self.index.get(), &*BM25_INDEX_TYPE)?
+      &*Var::from_ref_counted_object::<BM25Index>(&self.index.get(), &*BM25_INDEX_TYPE)
+        .map_err(|e| {
+          shlog_error!("Failed to get BM25 index: {}", e);
+          e
+        })?
     };
 
     // Perform search
@@ -1706,14 +1728,16 @@ impl Shard for BM25QueryShard {
     self.output.0.clear();
 
     // Build result sequence with content and score
+    // Document IDs from bm25 correspond to the order documents were indexed
     for result in results {
       let mut result_table = AutoTableVar::new();
 
-      // Get the document content using the document ID
       let doc_id = result.document.id as usize;
       if let Some(content) = index.documents.get(doc_id) {
         result_table.0.insert_fast_static("content", &Var::ephemeral_string(content));
       } else {
+        // This shouldn't happen if bm25 is working correctly, but handle defensively
+        shlog_error!("Document ID {} out of bounds (corpus size: {})", doc_id, index.documents.len());
         result_table.0.insert_fast_static("content", &Var::ephemeral_string(""));
       }
 
