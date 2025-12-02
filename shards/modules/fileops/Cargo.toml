@@ -18,4 +18,5 @@ grep-matcher = "0.1"
 grep-regex = "0.1"
 walkdir = "2.4"
 dirs = "5.0"
+bm25 = { version = "0.2", features = ["language_detection"] }
 
