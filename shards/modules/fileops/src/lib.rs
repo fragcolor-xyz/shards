@@ -82,7 +82,6 @@ fn create_backup(abs_path: &Path) -> Result<(), String> {
   // Attempt to copy, but ignore NotFound errors (new files don't need backup)
   match fs::copy(abs_path, &backup_path) {
     Ok(bytes) => {
-      shlog_error!("Created backup: {} ({} bytes)", backup_path.display(), bytes);
       // Cleanup old backups for this file
       cleanup_old_backups(backup_dir, hash)?;
       Ok(())
@@ -126,8 +125,6 @@ fn cleanup_old_backups(backup_dir: &Path, file_hash: u64) -> Result<(), String> 
     for (path, _) in backups.iter().take(to_remove) {
       if let Err(e) = fs::remove_file(path) {
         shlog_error!("Warning: Failed to remove old backup {}: {}", path.display(), e);
-      } else {
-        shlog_error!("Removed old backup: {}", path.display());
       }
     }
   }
@@ -362,7 +359,7 @@ impl Default for GrepShard {
       string: ParamVar::default(),
       work_dir: ParamVar::default(),
       case_insensitive: ParamVar::new(false.into()),
-      line_numbers: ParamVar::new(true.into()),
+      line_numbers: ParamVar::new(false.into()),
       before_context: ParamVar::new(0i64.into()),
       after_context: ParamVar::new(0i64.into()),
       multi_line: ParamVar::new(false.into()),
