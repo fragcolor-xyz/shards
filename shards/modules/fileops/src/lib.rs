@@ -1,6 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright © 2025 Fragcolor Pte. Ltd. */
 
+#[macro_use]
+extern crate shards;
+
+#[macro_use]
+extern crate lazy_static;
+
 use std::path::{Path, PathBuf};
 use std::env;
 use std::fs;
@@ -10,12 +16,32 @@ use std::io::Read;
 
 use shards::core::register_shard;
 use shards::shard::Shard;
-use shards::shlog_error;
 use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, ParamVar,
-  STRING_TYPES, SEQ_OF_ANY_TABLE_TYPES,
+  STRING_TYPES, SEQ_OF_ANY_TABLE_TYPES, STRINGS_TYPES, FRAG_CC,
 };
 use shards::types::{Context, ExposedTypes, InstanceData, Type, Types, Var};
+use shards::fourCharacterCode;
+
+use bm25::{Language, LanguageMode, SearchEngine, SearchEngineBuilder};
+
+// ============================================================================
+// BM25 Index Object Type
+// ============================================================================
+
+/// BM25 search index wrapping a search engine and the original documents
+pub struct BM25Index {
+  engine: SearchEngine<u32>,
+  documents: Vec<String>,
+}
+
+ref_counted_object_type_impl!(BM25Index);
+
+lazy_static! {
+  pub static ref BM25_INDEX_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"bm25"));
+  pub static ref BM25_INDEX_TYPE_VEC: Vec<Type> = vec![*BM25_INDEX_TYPE];
+  pub static ref BM25_INDEX_VAR_TYPE: Type = Type::context_variable(&BM25_INDEX_TYPE_VEC);
+}
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{SearcherBuilder, Searcher, Sink, SinkMatch, SinkContext};
@@ -1489,6 +1515,242 @@ impl Shard for InsertAtLineShard {
 }
 
 // ============================================================================
+// BM25.Index Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info("BM25.Index", "Creates a BM25 search index from a sequence of strings")]
+struct BM25IndexShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Language", "Language for tokenization (e.g. \"english\", \"german\"). If none, auto-detects per document.", [common_type::none, common_type::string])]
+  language: ClonedVar,
+
+  output: ClonedVar,
+}
+
+impl Default for BM25IndexShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      language: ClonedVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for BM25IndexShard {
+  fn input_types(&mut self) -> &Types {
+    &STRINGS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &BM25_INDEX_TYPE_VEC
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    // Extract strings from input sequence, deduplicating
+    let seq = input.as_seq().map_err(|e| {
+      shlog_error!("Input must be a sequence of strings: {:?}", e);
+      "Input must be a sequence of strings"
+    })?;
+
+    let mut seen = std::collections::HashSet::new();
+    let mut documents: Vec<String> = Vec::with_capacity(seq.len());
+    for item in seq.iter() {
+      let s: &str = item.as_ref().try_into().map_err(|e| {
+        shlog_error!("All items must be strings: {:?}", e);
+        "All items must be strings"
+      })?;
+      let doc = s.to_string();
+      if seen.insert(doc.clone()) {
+        documents.push(doc);
+      }
+    }
+
+    if documents.is_empty() {
+      shlog_error!("Cannot create index from empty corpus");
+      return Err("Cannot create index from empty corpus");
+    }
+
+    // Determine language mode
+    let language_mode = if self.language.0.is_none() {
+      LanguageMode::Detect
+    } else {
+      let lang_str: &str = self.language.0.as_ref().try_into()
+        .map_err(|e| {
+          shlog_error!("Language must be a string: {:?}", e);
+          "Language must be a string"
+        })?;
+      let language = match lang_str.to_lowercase().as_str() {
+        "arabic" => Language::Arabic,
+        "danish" => Language::Danish,
+        "dutch" => Language::Dutch,
+        "english" => Language::English,
+        "french" => Language::French,
+        "german" => Language::German,
+        "greek" => Language::Greek,
+        "hungarian" => Language::Hungarian,
+        "italian" => Language::Italian,
+        "norwegian" => Language::Norwegian,
+        "portuguese" => Language::Portuguese,
+        "romanian" => Language::Romanian,
+        "russian" => Language::Russian,
+        "spanish" => Language::Spanish,
+        "swedish" => Language::Swedish,
+        "tamil" => Language::Tamil,
+        "turkish" => Language::Turkish,
+        _ => {
+          shlog_error!("Unsupported language: {}", lang_str);
+          return Err("Unsupported language. Supported: arabic, danish, dutch, english, french, german, greek, hungarian, italian, norwegian, portuguese, romanian, russian, spanish, swedish, tamil, turkish");
+        }
+      };
+      LanguageMode::Fixed(language)
+    };
+
+    // Build search engine with corpus
+    // Note: clone is necessary because bm25 stores its own copy internally via with_corpus,
+    // but we also need the documents vec for retrieving content by ID in BM25.Query
+    let engine = SearchEngineBuilder::<u32>::with_corpus(language_mode, documents.clone())
+      .build();
+
+    let index = BM25Index { engine, documents };
+
+    self.output = Var::new_ref_counted(index, &*BM25_INDEX_TYPE).into();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
+// BM25.Query Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info("BM25.Query", "Queries a BM25 index and returns top matching documents with scores")]
+struct BM25QueryShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Index", "The BM25 index to query", [*BM25_INDEX_VAR_TYPE])]
+  index: ParamVar,
+
+  #[shard_param("TopK", "Maximum number of results to return", [common_type::int])]
+  top_k: ClonedVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for BM25QueryShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      index: ParamVar::default(),
+      top_k: 10i64.into(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for BM25QueryShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_ANY_TABLE_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output.0.clear();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let query: &str = input.try_into().map_err(|e| {
+      shlog_error!("Query must be a string: {:?}", e);
+      "Query must be a string"
+    })?;
+
+    let top_k: i64 = self.top_k.0.as_ref().try_into()
+      .map_err(|e| {
+        shlog_error!("TopK must be an integer: {:?}", e);
+        "TopK must be an integer"
+      })?;
+
+    if top_k <= 0 {
+      shlog_error!("TopK must be positive, got: {}", top_k);
+      return Err("TopK must be positive");
+    }
+
+    // Get the index from parameter
+    let index = unsafe {
+      &*Var::from_ref_counted_object::<BM25Index>(&self.index.get(), &*BM25_INDEX_TYPE)
+        .map_err(|e| {
+          shlog_error!("Failed to get BM25 index: {}", e);
+          e
+        })?
+    };
+
+    // Perform search
+    let results = index.engine.search(query, top_k as usize);
+
+    // Clear previous results
+    self.output.0.clear();
+
+    // Build result sequence with content and score
+    // Document IDs from bm25 correspond to the order documents were indexed
+    for result in results {
+      let mut result_table = AutoTableVar::new();
+
+      let doc_id = result.document.id as usize;
+      if let Some(content) = index.documents.get(doc_id) {
+        result_table.0.insert_fast_static("content", &Var::ephemeral_string(content));
+      } else {
+        // This shouldn't happen if bm25 is working correctly, but handle defensively
+        shlog_error!("Document ID {} out of bounds (corpus size: {})", doc_id, index.documents.len());
+        result_table.0.insert_fast_static("content", &Var::ephemeral_string(""));
+      }
+
+      result_table.0.insert_fast_static("score", &(result.score as f64).into());
+
+      self.output.0.push(&result_table.0.0);
+    }
+
+    Ok(Some(self.output.0.0))
+  }
+}
+
+// ============================================================================
 // Module Registration
 // ============================================================================
 
@@ -1505,4 +1767,6 @@ pub extern "C" fn shardsRegister_fileops_rust(core: *mut shards::shardsc::SHCore
   register_shard::<ReplaceStringFirstShard>();
   register_shard::<ReplaceStringAllShard>();
   register_shard::<InsertAtLineShard>();
+  register_shard::<BM25IndexShard>();
+  register_shard::<BM25QueryShard>();
 }

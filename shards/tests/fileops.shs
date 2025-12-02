@@ -406,6 +406,57 @@ single-line-matches | Log("Grep String: single line search")
 single-line-matches | Count | Assert.Is(1 true)
 
 // ============================================================================
+// Test 26: BM25.Index and BM25.Query - Basic search
+// ============================================================================
+["The rabbit munched the orange carrot"
+ "The snake hugged the green lizard"
+ "The hedgehog impaled the orange orange"
+ "The squirrel buried the brown nut"] | BM25.Index = bm25-index
+
+"orange" | BM25.Query(bm25-index TopK: 2) = bm25-results
+bm25-results | Log("BM25: search for 'orange'")
+
+; Should find 2 matches (hedgehog has 'orange' twice, rabbit has it once)
+bm25-results | Count | Assert.Is(2 true)
+
+; First result should be hedgehog (has 'orange' twice so higher score)
+bm25-results | Take(0) | Take("content") | Log("BM25: top result")
+
+; Verify score field exists and is a float
+bm25-results | Take(0) | Take("score") | IsFloat | Assert.Is(true true)
+
+// ============================================================================
+// Test 27: BM25.Query - Query with no matches
+// ============================================================================
+"elephant" | BM25.Query(bm25-index TopK: 5) = no-match-results
+no-match-results | Log("BM25: search for 'elephant'")
+
+; Should return empty sequence
+no-match-results | Count | Assert.Is(0 true)
+
+// ============================================================================
+// Test 28: BM25.Query - TopK limiting
+// ============================================================================
+; Note: "the" is a stopword filtered out by English tokenizer, use different words
+"brown green" | BM25.Query(bm25-index TopK: 2) = limited-results
+limited-results | Log("BM25: TopK limiting")
+
+; Should find matches for "brown" (rabbit) and "green" (snake), limited to 2
+limited-results | Count | Assert.Is(2 true)
+
+// ============================================================================
+// Test 29: BM25.Index with explicit Language parameter
+// ============================================================================
+["Das Kaninchen fraß die orange Karotte"
+ "Die Schlange umarmte die grüne Eidechse"] | BM25.Index(Language: "german") = german-index
+
+"Karotte" | BM25.Query(german-index TopK: 2) = german-results
+german-results | Log("BM25: German language search")
+
+; Should find 1 match (the rabbit/carrot sentence)
+german-results | Count | Assert.Is(1 true)
+
+// ============================================================================
 // Cleanup
 // ============================================================================
 "test-fileops" | FS.RemoveAll
