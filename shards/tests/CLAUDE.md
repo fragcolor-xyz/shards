@@ -19,7 +19,17 @@ Shards is a **dataflow programming language**. Data flows through channels like 
 
 // No semicolons, no braces for code blocks (except wire/template definitions)
 // Whitespace flexible
-// Data flows through | (pipe operator)
+
+// Data flows left-to-right, top-to-bottom
+// Newlines are IMPLICIT pipes - flow continues across lines
+// These are equivalent:
+"Hello" | Log
+
+"Hello"
+Log
+
+// This is NOT like imperative languages where newlines end statements
+// In Shards, data keeps flowing until explicitly stopped
 
 // Identifiers
 my-variable       // Variables: lowercase, kebab-case
