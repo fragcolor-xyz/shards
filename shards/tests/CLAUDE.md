@@ -146,6 +146,17 @@ numbers | Slice(1 3)            // Range → [2 3]
 numbers | Slice(From: 1)        // From index to end
 numbers | Slice(To: -2)         // From start, excluding last 2
 
+// ⚠️ Take vs Limit vs Slice - don't confuse!
+// Take(idx)   = element AT specific index (single element)
+// Limit(n)    = first N elements (truncation)
+// Slice       = range extraction (subsequence)
+[1 2 3 4 5] | Take(2)           // → 3 (element at index 2)
+[1 2 3 4 5] | Limit(2)          // → [1 2] (first 2 elements)
+[1 2 3 4 5] | Slice(1 4)        // → [2 3 4] (indices 1,2,3)
+[1 2 3 4 5] | Slice(From: 2)    // → [3 4 5] (from index 2 to end)
+[1 2 3 4 5] | Slice(To: 3)      // → [1 2 3] (from start up to index 3)
+[1 2 3 4 5] | Slice(From: 1 To: -1)  // → [2 3 4] (index 1 to second-to-last)
+
 // Modification
 6 >> numbers                    // Append
 6 | Push(numbers)               // Same as above
