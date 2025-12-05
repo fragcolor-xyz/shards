@@ -263,19 +263,22 @@ if(AUDIO_ENABLED)
     GIT_TAG 08bcc6e46227fca01aa3de3f3512f8b692d8d36b
   )
 
-  # SLEEF - vectorized math library for audio processing
-  set(SLEEF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(SLEEF_BUILD_DFT OFF CACHE BOOL "" FORCE)
-  set(SLEEF_BUILD_QUAD OFF CACHE BOOL "" FORCE)
-  set(SLEEF_BUILD_GNUABI_LIBS OFF CACHE BOOL "" FORCE)
-  set(SLEEF_BUILD_SCALAR_LIB OFF CACHE BOOL "" FORCE)
-  set(SLEEF_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  # SLEEF - vectorized math library for audio processing (non-Apple, non-WASM only)
+  # Apple uses Accelerate framework, WASM uses scalar fallback
+  if(NOT APPLE AND NOT EMSCRIPTEN)
+    set(SLEEF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(SLEEF_BUILD_DFT OFF CACHE BOOL "" FORCE)
+    set(SLEEF_BUILD_QUAD OFF CACHE BOOL "" FORCE)
+    set(SLEEF_BUILD_GNUABI_LIBS OFF CACHE BOOL "" FORCE)
+    set(SLEEF_BUILD_SCALAR_LIB OFF CACHE BOOL "" FORCE)
+    set(SLEEF_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-  CPMAddPackage(
-    NAME sleef
-    GITHUB_REPOSITORY shibatch/sleef
-    GIT_TAG 3.7
-  )
+    CPMAddPackage(
+      NAME sleef
+      GITHUB_REPOSITORY shibatch/sleef
+      GIT_TAG 3.7
+    )
+  endif()
 endif()
 
 if(NOT SHARDS_NO_SDL)

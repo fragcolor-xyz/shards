@@ -206,10 +206,176 @@ MATH_UNARY_FLOAT_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_FLOAT_OPERATION(Round, __builtin_round, __builtin_roundf);
 
 // =============================================================================
-// SLEEF-based SIMD specializations for audio unary operations
+// Apple Accelerate vForce specializations for audio unary operations
 // =============================================================================
 
-#ifdef SHARDS_HAS_SLEEF
+#ifdef SHARDS_HAS_ACCELERATE
+
+// vForce functions are highly optimized for Apple Silicon and Intel Macs
+// Single function call handles all SIMD optimization internally
+
+template <>
+inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsinf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvcosf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvtanf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvasinf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvacosf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvatanf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsinhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvcoshf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvtanhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvasinhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvacoshf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvatanhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexpf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexp2f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexpm1f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlogf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog10f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog2f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog1pf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsqrtf(out, a, &n);
+}
+
+// Cbrt - no vForce equivalent, use scalar fallback
+template <>
+inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
+  for (size_t i = 0; i < count; ++i)
+    out[i] = __builtin_cbrtf(a[i]);
+}
+
+template <>
+inline void applyUnaryAudioOp<AbsOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvfabsf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CeilOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvceilf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<FloorOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvfloorf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TruncOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvintf(out, a, &n);  // truncate toward zero
+}
+
+template <>
+inline void applyUnaryAudioOp<RoundOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvnintf(out, a, &n);  // round to nearest integer
+}
+
+// =============================================================================
+// SLEEF-based SIMD specializations for non-Apple platforms
+// =============================================================================
+
+#elif defined(SHARDS_HAS_SLEEF)
 
 // Sin - SIMD optimized
 template <>
@@ -652,7 +818,7 @@ inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) 
     out[i] = __builtin_cbrtf(a[i]);
 }
 
-#endif // SHARDS_HAS_SLEEF
+#endif // SHARDS_HAS_ACCELERATE || SHARDS_HAS_SLEEF
 
 // =============================================================================
 // Concrete Unary Operations

@@ -17,15 +17,23 @@
 #include <stdexcept>
 #include <variant>
 
-// SIMD headers
+// Apple Accelerate framework (vForce/vDSP) - preferred on Apple platforms
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#define SHARDS_HAS_ACCELERATE 1
+#endif
+
+// SIMD headers for non-Apple platforms
+#if !defined(SHARDS_HAS_ACCELERATE)
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
 #elif defined(__AVX2__) || defined(__SSE__)
 #include <immintrin.h>
 #endif
+#endif
 
-// SLEEF for vectorized transcendentals (only when audio module is enabled)
-#if __has_include(<sleef.h>)
+// SLEEF for vectorized transcendentals (non-Apple platforms with audio module)
+#if !defined(SHARDS_HAS_ACCELERATE) && __has_include(<sleef.h>)
 #include <sleef.h>
 #define SHARDS_HAS_SLEEF 1
 #endif
@@ -113,6 +121,9 @@ struct DivideOp;
 
 // SIMD binary audio add
 inline void applyBinaryAudioAdd(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  vDSP_vadd(a, 1, b, 1, out, 1, count);
+#else
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -129,10 +140,15 @@ inline void applyBinaryAudioAdd(float *__restrict out, const float *__restrict a
 #endif
   for (; i < count; ++i)
     out[i] = a[i] + b[i];
+#endif
 }
 
 // SIMD binary audio subtract
 inline void applyBinaryAudioSubtract(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  // vDSP_vsub computes C = B - A, so swap args to get out = a - b
+  vDSP_vsub(b, 1, a, 1, out, 1, count);
+#else
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -149,10 +165,14 @@ inline void applyBinaryAudioSubtract(float *__restrict out, const float *__restr
 #endif
   for (; i < count; ++i)
     out[i] = a[i] - b[i];
+#endif
 }
 
 // SIMD binary audio multiply
 inline void applyBinaryAudioMultiply(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  vDSP_vmul(a, 1, b, 1, out, 1, count);
+#else
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -169,10 +189,15 @@ inline void applyBinaryAudioMultiply(float *__restrict out, const float *__restr
 #endif
   for (; i < count; ++i)
     out[i] = a[i] * b[i];
+#endif
 }
 
 // SIMD binary audio divide
 inline void applyBinaryAudioDivide(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  // vDSP_vdiv computes C = B / A, so swap args to get out = a / b
+  vDSP_vdiv(b, 1, a, 1, out, 1, count);
+#else
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -189,6 +214,7 @@ inline void applyBinaryAudioDivide(float *__restrict out, const float *__restric
 #endif
   for (; i < count; ++i)
     out[i] = a[i] / b[i];
+#endif
 }
 
 // Template dispatch for binary audio ops

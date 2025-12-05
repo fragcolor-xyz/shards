@@ -99,9 +99,10 @@ if(ENABLE_FFI AND WIN32)
   target_link_libraries(shards-module-core Dbghelp)
 endif()
 
-# Link SLEEF for SIMD-optimized audio math operations
+# Link SLEEF for SIMD-optimized audio math operations (non-Apple, non-WASM only)
+# Apple uses Accelerate framework, WASM uses scalar fallback
 is_module_enabled(AUDIO_ENABLED audio)
-if(AUDIO_ENABLED)
+if(AUDIO_ENABLED AND NOT APPLE AND NOT EMSCRIPTEN)
   target_link_libraries(shards-module-core sleef)
 endif()
 
