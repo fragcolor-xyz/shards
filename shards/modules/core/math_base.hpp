@@ -376,10 +376,15 @@ bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TSha
   auto setActivate = [&data]<SHType VType>() {
     data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
       auto wrapper = reinterpret_cast<shards::ShardWrapper<TShard> *>(b);
-      wrapper->shard._result.valueType = VType;
-      auto operand = wrapper->shard._operand.get();
-      ::shards::Math::typedBinaryOp<TOp, VType>(wrapper->shard._result.payload, v->payload, operand.payload);
-      return &wrapper->shard._result;
+      try {
+        wrapper->shard._result.valueType = VType;
+        auto operand = wrapper->shard._operand.get();
+        ::shards::Math::typedBinaryOp<TOp, VType>(wrapper->shard._result.payload, v->payload, operand.payload);
+        return &wrapper->shard._result;
+      } catch (std::exception &e) {
+        shards::abortWire(ctx, e.what());
+        return &wrapper->shard._result;
+      }
     });
   };
 
@@ -468,9 +473,14 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
   auto setActivate = [&data]<SHType VType>() {
     data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
       auto wrapper = reinterpret_cast<shards::ShardWrapper<TShard> *>(b);
-      wrapper->shard._result.valueType = VType;
-      ::shards::Math::typedUnaryOp<TOp, VType>(wrapper->shard._result.payload, v->payload);
-      return &wrapper->shard._result;
+      try {
+        wrapper->shard._result.valueType = VType;
+        ::shards::Math::typedUnaryOp<TOp, VType>(wrapper->shard._result.payload, v->payload);
+        return &wrapper->shard._result;
+      } catch (std::exception &e) {
+        shards::abortWire(ctx, e.what());
+        return &wrapper->shard._result;
+      }
     });
   };
 
