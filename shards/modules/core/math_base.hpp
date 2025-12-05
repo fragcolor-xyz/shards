@@ -17,6 +17,24 @@
 #include <stdexcept>
 #include <variant>
 
+// SIMD headers
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#elif defined(__AVX2__) || defined(__SSE__)
+#include <immintrin.h>
+#endif
+
+// SLEEF for vectorized transcendentals (only when audio module is enabled)
+#if __has_include(<sleef.h>)
+#include <sleef.h>
+#define SHARDS_HAS_SLEEF 1
+#endif
+
+// Audio buffer capacity tracking via SHVar.version field
+// The version field is unused for Audio type, so we repurpose it to store buffer capacity
+#define SHVAR_AUDIO_GET_CAPACITY(var) ((var).version)
+#define SHVAR_AUDIO_SET_CAPACITY(var, cap) ((var).version = (cap))
+
 namespace shards {
 namespace Math {
 
@@ -696,13 +714,14 @@ bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TSha
           size_t total = size_t(inAudio.nsamples) * inAudio.channels;
           auto &result = wrapper->shard._result;
           size_t resultCapacity =
-              result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+              result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
           // Reallocate if needed (like cloneVar pattern)
           if (result.valueType != SHType::Audio || total > resultCapacity) {
             destroyVar(result);
             result.valueType = SHType::Audio;
             result.payload.audioValue.samples = new float[total];
+            SHVAR_AUDIO_SET_CAPACITY(result, total);
           }
 
           applyBinaryAudioOp<TOp>(result.payload.audioValue.samples, inAudio.samples, opAudio.samples, total);
@@ -740,13 +759,14 @@ bool overrideBinaryActivateForAudioScalar(const SHInstanceData &data, TShard *se
         size_t total = size_t(inAudio.nsamples) * inAudio.channels;
         auto &result = wrapper->shard._result;
         size_t resultCapacity =
-            result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+            result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
         // Reallocate if needed (like cloneVar pattern)
         if (result.valueType != SHType::Audio || total > resultCapacity) {
           destroyVar(result);
           result.valueType = SHType::Audio;
           result.payload.audioValue.samples = new float[total];
+          SHVAR_AUDIO_SET_CAPACITY(result, total);
         }
 
         applyBinaryAudioScalarOp<TOp>(result.payload.audioValue.samples, inAudio.samples, scalar, total);
@@ -859,13 +879,14 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
           size_t total = size_t(inAudio.nsamples) * inAudio.channels;
           auto &result = wrapper->shard._result;
           size_t resultCapacity =
-              result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+              result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
           // Reallocate if needed (like cloneVar pattern)
           if (result.valueType != SHType::Audio || total > resultCapacity) {
             destroyVar(result);
             result.valueType = SHType::Audio;
             result.payload.audioValue.samples = new float[total];
+            SHVAR_AUDIO_SET_CAPACITY(result, total);
           }
 
           applyUnaryAudioOp<TOp>(result.payload.audioValue.samples, inAudio.samples, total);

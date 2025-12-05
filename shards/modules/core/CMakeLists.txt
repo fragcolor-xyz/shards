@@ -99,6 +99,12 @@ if(ENABLE_FFI AND WIN32)
   target_link_libraries(shards-module-core Dbghelp)
 endif()
 
+# Link SLEEF for SIMD-optimized audio math operations
+is_module_enabled(AUDIO_ENABLED audio)
+if(AUDIO_ENABLED)
+  target_link_libraries(shards-module-core sleef)
+endif()
+
 if(APPLE)
   add_library(shards-core-swift-impl core.swift ${SHARDS_DIR}/include/shards/shards.swift)
   target_include_directories(shards-core-swift-impl PRIVATE ${SHARDS_DIR}/include)
