@@ -306,6 +306,9 @@ struct BinaryBase : public Base {
         throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
     } else {
       _opType = validator.validateTypes(data.inputType, operandSpec.valueType, resultType);
+      if (operandType) {
+        operandType->basicType = operandSpec.valueType;
+      }
     }
 
     if (_opType == Invalid) {
