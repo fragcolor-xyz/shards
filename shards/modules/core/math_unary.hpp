@@ -101,7 +101,7 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
     }
   }
 
-  ALWAYS_INLINE SHVar activate(SHContext *context, const SHVar &input) {
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
     bool failed = false;
     operate(_result, input, &failed);
     if (failed) {
