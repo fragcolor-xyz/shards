@@ -538,12 +538,7 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
       return true;
     }
     break;
-  case SHType::Bool:
-    if constexpr (hasDispatchType(DT, DispatchType::BoolTypes)) {
-      setActivate.template operator()<SHType::Bool>();
-      return true;
-    }
-    break;
+  // Note: No unary operations currently use BoolTypes
   default:
     break;
   }
