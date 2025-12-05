@@ -96,6 +96,7 @@ jobs:
             queue_test variables.shs
             queue_test subwires.shs@/tmp
             queue_test linalg.shs
+            queue_test math.shs
             queue_test network-ws.shs
             queue_test struct.shs
             queue_test flows.shs
