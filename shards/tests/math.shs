@@ -361,13 +361,15 @@
   @i16(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) | Math.Add(1)
   | Assert.Is(@i16(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17) true)
 
-  ; Bool operations
-  true | Math.And(true) | Assert.Is(true true)
-  true | Math.And(false) | Assert.Is(false true)
-  false | Math.Or(true) | Assert.Is(true true)
-  false | Math.Or(false) | Assert.Is(false true)
-  true | Math.Xor(true) | Assert.Is(false true)
-  true | Math.Xor(false) | Assert.Is(true true)
+  ; Bool operations (tests OVERRIDE_ACTIVATE for BoolTypes)
+  true | Math.And(true) | Log("Bool And(t,t)") | Assert.Is(true true)
+  true | Math.And(false) | Log("Bool And(t,f)") | Assert.Is(false true)
+  false | Math.Or(true) | Log("Bool Or(f,t)") | Assert.Is(true true)
+  false | Math.Or(false) | Log("Bool Or(f,f)") | Assert.Is(false true)
+  true | Math.Xor(true) | Log("Bool Xor(t,t)") | Assert.Is(false true)
+  true | Math.Xor(false) | Log("Bool Xor(t,f)") | Assert.Is(true true)
+  false | Math.Xor(true) | Log("Bool Xor(f,t)") | Assert.Is(true true)
+  false | Math.Xor(false) | Log("Bool Xor(f,f)") | Assert.Is(false true)
 
   Log("Edge cases test passed!")
 })
