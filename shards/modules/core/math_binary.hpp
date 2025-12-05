@@ -251,17 +251,52 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the addition."); }
 
+  static SHTypesInfo inputTypes() {
+    static Types types{MathTypes, {CoreInfo::AudioType}};
+    return types;
+  }
+  static SHTypesInfo outputTypes() { return inputTypes(); }
+
   static SHParametersInfo parameters() {
+    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
-        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to add to the input."), MathTypesOrVar));
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to add to the input."), ParamTypes));
     return SHParametersInfo(customParams);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
     _dispatchType = SHType::None;
+
+    // Audio path - handle BEFORE genericCompose (which doesn't understand audio)
+    if (data.inputType.basicType == SHType::Audio) {
+      // Get operand type manually
+      SHVar operandSpec = _operand;
+      if (operandSpec.valueType == SHType::ContextVar) {
+        auto &ctx = CompositionContext::get(data);
+        auto varIt = ctx.inherited.find(SHSTRVIEW(operandSpec));
+        if (varIt != ctx.inherited.end()) {
+          operandType = varIt->second.exposedType;
+        } else {
+          throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
+        }
+      } else {
+        operandType.basicType = operandSpec.valueType;
+      }
+
+      _dispatchType = SHType::Audio;
+      if (operandType.basicType == SHType::Audio) {
+        overrideBinaryActivateForType<AddOp, Add, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      } else if (operandType.basicType == SHType::Float) {
+        overrideBinaryActivateForAudioScalar<AddOp, Add>(data, this);
+      } else {
+        throw shards::Error("Audio operations require Audio or Float operand");
+      }
+      return CoreInfo::AudioType;
+    }
+
     auto result = genericCompose(*this, data, &operandType);
-    
+
     if (_opType == Direct && data.inputType == operandType) {
       _dispatchType = data.inputType.basicType;
       // Use InlineShard for super-fast VM path on common types
@@ -314,16 +349,51 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the subtraction."); }
 
+  static SHTypesInfo inputTypes() {
+    static Types types{MathTypes, {CoreInfo::AudioType}};
+    return types;
+  }
+  static SHTypesInfo outputTypes() { return inputTypes(); }
+
   static SHParametersInfo parameters() {
+    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
-        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to subtract from the input."), MathTypesOrVar));
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to subtract from the input."), ParamTypes));
     return SHParametersInfo(customParams);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
     _dispatchType = SHType::None;
+
+    // Audio path - handle BEFORE genericCompose
+    if (data.inputType.basicType == SHType::Audio) {
+      SHVar operandSpec = _operand;
+      if (operandSpec.valueType == SHType::ContextVar) {
+        auto &ctx = CompositionContext::get(data);
+        auto varIt = ctx.inherited.find(SHSTRVIEW(operandSpec));
+        if (varIt != ctx.inherited.end()) {
+          operandType = varIt->second.exposedType;
+        } else {
+          throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
+        }
+      } else {
+        operandType.basicType = operandSpec.valueType;
+      }
+
+      _dispatchType = SHType::Audio;
+      if (operandType.basicType == SHType::Audio) {
+        overrideBinaryActivateForType<SubtractOp, Subtract, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      } else if (operandType.basicType == SHType::Float) {
+        overrideBinaryActivateForAudioScalar<SubtractOp, Subtract>(data, this);
+      } else {
+        throw shards::Error("Audio operations require Audio or Float operand");
+      }
+      return CoreInfo::AudioType;
+    }
+
     auto result = genericCompose(*this, data, &operandType);
+
     if (_opType == Direct && data.inputType == operandType) {
       _dispatchType = data.inputType.basicType;
       if (data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) {
@@ -373,16 +443,51 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the multiplication."); }
 
+  static SHTypesInfo inputTypes() {
+    static Types types{MathTypes, {CoreInfo::AudioType}};
+    return types;
+  }
+  static SHTypesInfo outputTypes() { return inputTypes(); }
+
   static SHParametersInfo parameters() {
+    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
-        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to multiply the input by."), MathTypesOrVar));
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to multiply the input by."), ParamTypes));
     return SHParametersInfo(customParams);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
     _dispatchType = SHType::None;
+
+    // Audio path - handle BEFORE genericCompose
+    if (data.inputType.basicType == SHType::Audio) {
+      SHVar operandSpec = _operand;
+      if (operandSpec.valueType == SHType::ContextVar) {
+        auto &ctx = CompositionContext::get(data);
+        auto varIt = ctx.inherited.find(SHSTRVIEW(operandSpec));
+        if (varIt != ctx.inherited.end()) {
+          operandType = varIt->second.exposedType;
+        } else {
+          throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
+        }
+      } else {
+        operandType.basicType = operandSpec.valueType;
+      }
+
+      _dispatchType = SHType::Audio;
+      if (operandType.basicType == SHType::Audio) {
+        overrideBinaryActivateForType<MultiplyOp, Multiply, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      } else if (operandType.basicType == SHType::Float) {
+        overrideBinaryActivateForAudioScalar<MultiplyOp, Multiply>(data, this);
+      } else {
+        throw shards::Error("Audio operations require Audio or Float operand");
+      }
+      return CoreInfo::AudioType;
+    }
+
     auto result = genericCompose(*this, data, &operandType);
+
     if (_opType == Direct && data.inputType == operandType) {
       _dispatchType = data.inputType.basicType;
       if (data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) {
@@ -432,16 +537,51 @@ struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
 
   static SHOptionalString outputHelp() { return SHCCSTR("This shard outputs the result of the division."); }
 
+  static SHTypesInfo inputTypes() {
+    static Types types{MathTypes, {CoreInfo::AudioType}};
+    return types;
+  }
+  static SHTypesInfo outputTypes() { return inputTypes(); }
+
   static SHParametersInfo parameters() {
+    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
-        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to divide the input by."), MathTypesOrVar));
+        ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to divide the input by."), ParamTypes));
     return SHParametersInfo(customParams);
   }
 
   SHTypeInfo composeV2(const SHInstanceData &data) {
     SHTypeInfo operandType{};
     _dispatchType = SHType::None;
+
+    // Audio path - handle BEFORE genericCompose
+    if (data.inputType.basicType == SHType::Audio) {
+      SHVar operandSpec = _operand;
+      if (operandSpec.valueType == SHType::ContextVar) {
+        auto &ctx = CompositionContext::get(data);
+        auto varIt = ctx.inherited.find(SHSTRVIEW(operandSpec));
+        if (varIt != ctx.inherited.end()) {
+          operandType = varIt->second.exposedType;
+        } else {
+          throw shards::Error(fmt::format("Operand variable \"{}\" not found", SHSTRVIEW(operandSpec)));
+        }
+      } else {
+        operandType.basicType = operandSpec.valueType;
+      }
+
+      _dispatchType = SHType::Audio;
+      if (operandType.basicType == SHType::Audio) {
+        overrideBinaryActivateForType<DivideOp, Divide, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      } else if (operandType.basicType == SHType::Float) {
+        overrideBinaryActivateForAudioScalar<DivideOp, Divide>(data, this);
+      } else {
+        throw shards::Error("Audio operations require Audio or Float operand");
+      }
+      return CoreInfo::AudioType;
+    }
+
     auto result = genericCompose(*this, data, &operandType);
+
     if (_opType == Direct && data.inputType == operandType) {
       _dispatchType = data.inputType.basicType;
       overrideBinaryActivateForType<DivideOp, Divide>(data, data.inputType.basicType, this);

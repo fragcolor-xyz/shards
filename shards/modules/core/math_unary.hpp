@@ -118,13 +118,25 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static inline Types FloatOrSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
                                        CoreInfo::ColorType, CoreInfo::AnySeqType}};
+  static inline Types FloatOrSeqOrAudioTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
+                                              CoreInfo::ColorType, CoreInfo::AnySeqType, CoreInfo::AudioType}};
 
-  static SHTypesInfo inputTypes() { return FloatOrSeqTypes; }
+  static SHTypesInfo inputTypes() { return FloatOrSeqOrAudioTypes; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, or a sequence of these types "
+    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, audio, or a sequence of these types "
                    "supported by this operation.");
   }
-  static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
+  static SHTypesInfo outputTypes() { return FloatOrSeqOrAudioTypes; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    // Handle Audio before base compose
+    if (data.inputType.basicType == SHType::Audio) {
+      using ThisType = std::remove_pointer_t<decltype(this)>;
+      overrideUnaryActivateForType<typename TOp::OpType_, ThisType, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      return CoreInfo::AudioType;
+    }
+    return UnaryOperation<TOp>::compose(data);
+  }
 };
 
 template <class TOp> struct UnaryIntOperation : public UnaryOperation<TOp> {

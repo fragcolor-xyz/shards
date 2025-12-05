@@ -194,8 +194,10 @@ enum class DispatchType : uint8_t {
   FloatTypes = 0x1,
   IntTypes = 0x2,
   BoolTypes = 0x4,
+  AudioTypes = 0x8,
   NumberTypes = FloatTypes | IntTypes,
   IntOrBoolTypes = IntTypes | BoolTypes,
+  FloatOrAudioTypes = FloatTypes | AudioTypes,
 };
 } // namespace shards::Math
 

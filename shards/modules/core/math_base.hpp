@@ -83,6 +83,224 @@ void typedUnaryOp(SHVarPayload &out, const SHVarPayload &a) {
   unary.template apply<TOp>(getPayloadContents<ValueType>(out), getPayloadContents<ValueType>(a));
 }
 
+// =============================================================================
+// Audio SIMD Operations - Optimized element-wise operations for planar audio
+// =============================================================================
+
+// Forward declarations for audio ops
+struct AddOp;
+struct SubtractOp;
+struct MultiplyOp;
+struct DivideOp;
+
+// SIMD binary audio add
+inline void applyBinaryAudioAdd(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vb = _mm256_loadu_ps(b + i);
+    _mm256_storeu_ps(out + i, _mm256_add_ps(va, vb));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vb = vld1q_f32(b + i);
+    vst1q_f32(out + i, vaddq_f32(va, vb));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] + b[i];
+}
+
+// SIMD binary audio subtract
+inline void applyBinaryAudioSubtract(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vb = _mm256_loadu_ps(b + i);
+    _mm256_storeu_ps(out + i, _mm256_sub_ps(va, vb));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vb = vld1q_f32(b + i);
+    vst1q_f32(out + i, vsubq_f32(va, vb));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] - b[i];
+}
+
+// SIMD binary audio multiply
+inline void applyBinaryAudioMultiply(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vb = _mm256_loadu_ps(b + i);
+    _mm256_storeu_ps(out + i, _mm256_mul_ps(va, vb));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vb = vld1q_f32(b + i);
+    vst1q_f32(out + i, vmulq_f32(va, vb));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] * b[i];
+}
+
+// SIMD binary audio divide
+inline void applyBinaryAudioDivide(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vb = _mm256_loadu_ps(b + i);
+    _mm256_storeu_ps(out + i, _mm256_div_ps(va, vb));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vb = vld1q_f32(b + i);
+    vst1q_f32(out + i, vdivq_f32(va, vb));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] / b[i];
+}
+
+// Template dispatch for binary audio ops
+template <typename TOp>
+inline void applyBinaryAudioOp(float *out, const float *a, const float *b, size_t count);
+
+template <>
+inline void applyBinaryAudioOp<AddOp>(float *out, const float *a, const float *b, size_t count) {
+  applyBinaryAudioAdd(out, a, b, count);
+}
+template <>
+inline void applyBinaryAudioOp<SubtractOp>(float *out, const float *a, const float *b, size_t count) {
+  applyBinaryAudioSubtract(out, a, b, count);
+}
+template <>
+inline void applyBinaryAudioOp<MultiplyOp>(float *out, const float *a, const float *b, size_t count) {
+  applyBinaryAudioMultiply(out, a, b, count);
+}
+template <>
+inline void applyBinaryAudioOp<DivideOp>(float *out, const float *a, const float *b, size_t count) {
+  applyBinaryAudioDivide(out, a, b, count);
+}
+
+// SIMD scalar broadcast versions
+inline void applyBinaryAudioAddScalar(float *__restrict out, const float *__restrict a, float scalar, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    _mm256_storeu_ps(out + i, _mm256_add_ps(va, vs));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    vst1q_f32(out + i, vaddq_f32(va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] + scalar;
+}
+
+inline void applyBinaryAudioSubtractScalar(float *__restrict out, const float *__restrict a, float scalar, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    _mm256_storeu_ps(out + i, _mm256_sub_ps(va, vs));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    vst1q_f32(out + i, vsubq_f32(va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] - scalar;
+}
+
+inline void applyBinaryAudioMultiplyScalar(float *__restrict out, const float *__restrict a, float scalar, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    _mm256_storeu_ps(out + i, _mm256_mul_ps(va, vs));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    vst1q_f32(out + i, vmulq_f32(va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] * scalar;
+}
+
+inline void applyBinaryAudioDivideScalar(float *__restrict out, const float *__restrict a, float scalar, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    _mm256_storeu_ps(out + i, _mm256_div_ps(va, vs));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    vst1q_f32(out + i, vdivq_f32(va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] / scalar;
+}
+
+// Template dispatch for scalar broadcast ops
+template <typename TOp>
+inline void applyBinaryAudioScalarOp(float *out, const float *a, float scalar, size_t count);
+
+template <>
+inline void applyBinaryAudioScalarOp<AddOp>(float *out, const float *a, float scalar, size_t count) {
+  applyBinaryAudioAddScalar(out, a, scalar, count);
+}
+template <>
+inline void applyBinaryAudioScalarOp<SubtractOp>(float *out, const float *a, float scalar, size_t count) {
+  applyBinaryAudioSubtractScalar(out, a, scalar, count);
+}
+template <>
+inline void applyBinaryAudioScalarOp<MultiplyOp>(float *out, const float *a, float scalar, size_t count) {
+  applyBinaryAudioMultiplyScalar(out, a, scalar, count);
+}
+template <>
+inline void applyBinaryAudioScalarOp<DivideOp>(float *out, const float *a, float scalar, size_t count) {
+  applyBinaryAudioDivideScalar(out, a, scalar, count);
+}
+
+// Unary audio op - scalar loop (compiler may auto-vectorize for simple ops)
+template <typename TOp>
+inline void applyUnaryAudioOp(float *out, const float *a, size_t count) {
+  TOp op{};
+  for (size_t i = 0; i < count; ++i) {
+    out[i] = op.template apply<float>(a[i]);
+  }
+}
+
 // Get function pointer for a binary operation given the type
 template <typename TOp, DispatchType DT>
 constexpr BinaryDispatchFn getBinaryDispatchFn(SHType type) {
@@ -461,8 +679,89 @@ bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TSha
       return true;
     }
     break;
+  case SHType::Audio:
+    if constexpr (hasDispatchType(DT, DispatchType::AudioTypes)) {
+      data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
+        auto wrapper = reinterpret_cast<shards::ShardWrapper<TShard> *>(b);
+        try {
+          auto operand = wrapper->shard._operand.get();
+          const auto &inAudio = v->payload.audioValue;
+          const auto &opAudio = operand.payload.audioValue;
+
+          if (inAudio.nsamples != opAudio.nsamples || inAudio.channels != opAudio.channels) {
+            throw ActivationError(fmt::format("Audio dimension mismatch: {}x{} vs {}x{}", inAudio.nsamples, inAudio.channels,
+                                              opAudio.nsamples, opAudio.channels));
+          }
+
+          size_t total = size_t(inAudio.nsamples) * inAudio.channels;
+          auto &result = wrapper->shard._result;
+          size_t resultCapacity =
+              result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+
+          // Reallocate if needed (like cloneVar pattern)
+          if (result.valueType != SHType::Audio || total > resultCapacity) {
+            destroyVar(result);
+            result.valueType = SHType::Audio;
+            result.payload.audioValue.samples = new float[total];
+          }
+
+          applyBinaryAudioOp<TOp>(result.payload.audioValue.samples, inAudio.samples, opAudio.samples, total);
+
+          result.payload.audioValue.nsamples = inAudio.nsamples;
+          result.payload.audioValue.sampleRate = inAudio.sampleRate;
+          result.payload.audioValue.channels = inAudio.channels;
+          result.payload.audioValue.reserved = 0;
+          return &result;
+        } catch (std::exception &e) {
+          shards::abortWire(ctx, e.what());
+          return &wrapper->shard._result;
+        }
+      });
+      return true;
+    }
+    break;
   default:
     break;
+  }
+  return false;
+}
+
+// Helper for audio + scalar binary operations
+template <typename TOp, typename TShard, DispatchType DT = DispatchType::AudioTypes>
+bool overrideBinaryActivateForAudioScalar(const SHInstanceData &data, TShard *self) {
+  if constexpr (hasDispatchType(DT, DispatchType::AudioTypes)) {
+    data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
+      auto wrapper = reinterpret_cast<shards::ShardWrapper<TShard> *>(b);
+      try {
+        auto operand = wrapper->shard._operand.get();
+        const auto &inAudio = v->payload.audioValue;
+        float scalar = float(operand.payload.floatValue);
+
+        size_t total = size_t(inAudio.nsamples) * inAudio.channels;
+        auto &result = wrapper->shard._result;
+        size_t resultCapacity =
+            result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+
+        // Reallocate if needed (like cloneVar pattern)
+        if (result.valueType != SHType::Audio || total > resultCapacity) {
+          destroyVar(result);
+          result.valueType = SHType::Audio;
+          result.payload.audioValue.samples = new float[total];
+        }
+
+        applyBinaryAudioScalarOp<TOp>(result.payload.audioValue.samples, inAudio.samples, scalar, total);
+
+        result.payload.audioValue.nsamples = inAudio.nsamples;
+        result.payload.audioValue.sampleRate = inAudio.sampleRate;
+        result.payload.audioValue.channels = inAudio.channels;
+        result.payload.audioValue.reserved = 0;
+        return &result;
+      } catch (std::exception &e) {
+        shards::abortWire(ctx, e.what());
+        return &wrapper->shard._result;
+      }
+    });
+    return true;
   }
   return false;
 }
@@ -548,6 +847,39 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
   case SHType::Color:
     if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
       setActivate.template operator()<SHType::Color>();
+      return true;
+    }
+    break;
+  case SHType::Audio:
+    if constexpr (hasDispatchType(DT, DispatchType::AudioTypes)) {
+      data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
+        auto wrapper = reinterpret_cast<shards::ShardWrapper<TShard> *>(b);
+        try {
+          const auto &inAudio = v->payload.audioValue;
+          size_t total = size_t(inAudio.nsamples) * inAudio.channels;
+          auto &result = wrapper->shard._result;
+          size_t resultCapacity =
+              result.valueType == SHType::Audio ? size_t(result.payload.audioValue.nsamples) * result.payload.audioValue.channels : 0;
+
+          // Reallocate if needed (like cloneVar pattern)
+          if (result.valueType != SHType::Audio || total > resultCapacity) {
+            destroyVar(result);
+            result.valueType = SHType::Audio;
+            result.payload.audioValue.samples = new float[total];
+          }
+
+          applyUnaryAudioOp<TOp>(result.payload.audioValue.samples, inAudio.samples, total);
+
+          result.payload.audioValue.nsamples = inAudio.nsamples;
+          result.payload.audioValue.sampleRate = inAudio.sampleRate;
+          result.payload.audioValue.channels = inAudio.channels;
+          result.payload.audioValue.reserved = 0;
+          return &result;
+        } catch (std::exception &e) {
+          shards::abortWire(ctx, e.what());
+          return &wrapper->shard._result;
+        }
+      });
       return true;
     }
     break;
