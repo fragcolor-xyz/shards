@@ -118,13 +118,25 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static inline Types FloatOrSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
                                        CoreInfo::ColorType, CoreInfo::AnySeqType}};
+  static inline Types FloatOrSeqOrAudioTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
+                                              CoreInfo::ColorType, CoreInfo::AnySeqType, CoreInfo::AudioType}};
 
-  static SHTypesInfo inputTypes() { return FloatOrSeqTypes; }
+  static SHTypesInfo inputTypes() { return FloatOrSeqOrAudioTypes; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, or a sequence of these types "
+    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, audio, or a sequence of these types "
                    "supported by this operation.");
   }
-  static SHTypesInfo outputTypes() { return FloatOrSeqTypes; }
+  static SHTypesInfo outputTypes() { return FloatOrSeqOrAudioTypes; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    // Handle Audio before base compose
+    if (data.inputType.basicType == SHType::Audio) {
+      using ThisType = std::remove_pointer_t<decltype(this)>;
+      overrideUnaryActivateForType<typename TOp::OpType_, ThisType, DispatchType::AudioTypes>(data, SHType::Audio, this);
+      return CoreInfo::AudioType;
+    }
+    return UnaryOperation<TOp>::compose(data);
+  }
 };
 
 template <class TOp> struct UnaryIntOperation : public UnaryOperation<TOp> {
@@ -192,6 +204,621 @@ MATH_UNARY_FLOAT_OPERATION(Ceil, __builtin_ceil, __builtin_ceilf);
 MATH_UNARY_FLOAT_OPERATION(Floor, __builtin_floor, __builtin_floorf);
 MATH_UNARY_FLOAT_OPERATION(Trunc, __builtin_trunc, __builtin_truncf);
 MATH_UNARY_FLOAT_OPERATION(Round, __builtin_round, __builtin_roundf);
+
+// =============================================================================
+// Apple Accelerate vForce specializations for audio unary operations
+// =============================================================================
+
+#ifdef SHARDS_HAS_ACCELERATE
+
+// vForce functions are highly optimized for Apple Silicon and Intel Macs
+// Single function call handles all SIMD optimization internally
+
+template <>
+inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsinf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvcosf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvtanf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvasinf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvacosf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvatanf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsinhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvcoshf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvtanhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvasinhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvacoshf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvatanhf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexpf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexp2f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvexpm1f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlogf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog10f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog2f(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvlog1pf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvsqrtf(out, a, &n);
+}
+
+// Cbrt - no vForce equivalent, use scalar fallback
+template <>
+inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
+  for (size_t i = 0; i < count; ++i)
+    out[i] = __builtin_cbrtf(a[i]);
+}
+
+template <>
+inline void applyUnaryAudioOp<AbsOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvfabsf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<CeilOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvceilf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<FloorOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvfloorf(out, a, &n);
+}
+
+template <>
+inline void applyUnaryAudioOp<TruncOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvintf(out, a, &n);  // truncate toward zero
+}
+
+template <>
+inline void applyUnaryAudioOp<RoundOp>(float *out, const float *a, size_t count) {
+  int n = static_cast<int>(count);
+  vvnintf(out, a, &n);  // round to nearest integer
+}
+
+// =============================================================================
+// SLEEF-based SIMD specializations for non-Apple platforms
+// =============================================================================
+
+#elif defined(SHARDS_HAS_SLEEF)
+
+// Sin - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_sinf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_sinf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_sinf(a[i]);
+}
+
+// Cos - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_cosf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_cosf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_cosf(a[i]);
+}
+
+// Tan - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_tanf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_tanf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_tanf(a[i]);
+}
+
+// Asin - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_asinf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_asinf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_asinf(a[i]);
+}
+
+// Acos - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_acosf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_acosf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_acosf(a[i]);
+}
+
+// Atan - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_atanf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_atanf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_atanf(a[i]);
+}
+
+// Sinh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_sinhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_sinhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_sinhf(a[i]);
+}
+
+// Cosh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_coshf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_coshf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_coshf(a[i]);
+}
+
+// Tanh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_tanhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_tanhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_tanhf(a[i]);
+}
+
+// Asinh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_asinhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_asinhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_asinhf(a[i]);
+}
+
+// Acosh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_acoshf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_acoshf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_acoshf(a[i]);
+}
+
+// Atanh - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_atanhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_atanhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_atanhf(a[i]);
+}
+
+// Exp - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_expf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_expf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_expf(a[i]);
+}
+
+// Exp2 - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_exp2f8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_exp2f4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_exp2f(a[i]);
+}
+
+// Expm1 - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_expm1f8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_expm1f4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_expm1f(a[i]);
+}
+
+// Log - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_logf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_logf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_logf(a[i]);
+}
+
+// Log10 - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_log10f8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_log10f4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_log10f(a[i]);
+}
+
+// Log2 - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_log2f8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_log2f4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_log2f(a[i]);
+}
+
+// Log1p - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_log1pf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_log1pf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_log1pf(a[i]);
+}
+
+// Sqrt - SIMD optimized (native SIMD sqrt is very fast)
+template <>
+inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = _mm256_sqrt_ps(va);  // Native AVX sqrt
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = vsqrtq_f32(va);  // Native NEON sqrt
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_sqrtf(a[i]);
+}
+
+// Cbrt - SIMD optimized
+template <>
+inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vr = Sleef_cbrtf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vr = Sleef_cbrtf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = __builtin_cbrtf(a[i]);
+}
+
+#endif // SHARDS_HAS_ACCELERATE || SHARDS_HAS_SLEEF
 
 // =============================================================================
 // Concrete Unary Operations

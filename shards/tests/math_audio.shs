@@ -1,0 +1,180 @@
+; Audio math operations test suite
+
+@wire(test-audio-binary {
+  Msg("Testing Audio Math Binary Operations...")
+
+  ; Generate test audio samples using oscillators
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 1024) = audio1
+  880.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.3 Samples: 1024) = audio2
+
+  ; === Test Audio + Audio ===
+  audio1 | Math.Add(audio2) = sum-audio
+  sum-audio | Log("Add: Audio + Audio")
+
+  ; === Test Audio - Audio ===
+  audio1 | Math.Subtract(audio2) = diff-audio
+  diff-audio | Log("Subtract: Audio - Audio")
+
+  ; Self subtraction should give zeros
+  audio1 | Math.Subtract(audio1) = zero-audio
+  zero-audio | Log("Subtract: Audio - Self (should be zeros)")
+
+  ; === Test Audio * Audio ===
+  audio1 | Math.Multiply(audio2) = mul-audio
+  mul-audio | Log("Multiply: Audio * Audio")
+
+  ; === Test Audio / Audio ===
+  audio1 | Math.Divide(audio2) = div-audio
+  div-audio | Log("Divide: Audio / Audio")
+
+  ; === Test Audio + Float (DC offset) ===
+  audio1 | Math.Add(0.1) = offset-audio
+  offset-audio | Log("Add: Audio + 0.1 (DC offset)")
+
+  ; === Test Audio - Float ===
+  audio1 | Math.Subtract(0.1) = sub-scalar-audio
+  sub-scalar-audio | Log("Subtract: Audio - 0.1")
+
+  ; === Test Audio * Float (gain control) ===
+  audio1 | Math.Multiply(0.5) = half-audio
+  half-audio | Log("Multiply: Audio * 0.5 (gain)")
+
+  audio1 | Math.Multiply(2.0) = double-audio
+  double-audio | Log("Multiply: Audio * 2.0 (boost)")
+
+  ; === Test Audio / Float ===
+  audio1 | Math.Divide(2.0) = div-scalar-audio
+  div-scalar-audio | Log("Divide: Audio / 2.0")
+
+  Msg("Audio binary operations test passed!")
+})
+
+@wire(test-audio-unary {
+  Msg("Testing Audio Math Unary Operations...")
+
+  ; Generate test audio - use sine wave with known values
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.8 Samples: 512) = audio
+
+  ; === Trigonometric ===
+  audio | Math.Sin = sin-audio
+  sin-audio | Log("Sin(audio)")
+
+  audio | Math.Cos = cos-audio
+  cos-audio | Log("Cos(audio)")
+
+  audio | Math.Tan = tan-audio
+  tan-audio | Log("Tan(audio)")
+
+  ; === Inverse Trigonometric (input should be in [-1, 1]) ===
+  audio | Math.Asin = asin-audio
+  asin-audio | Log("Asin(audio)")
+
+  audio | Math.Acos = acos-audio
+  acos-audio | Log("Acos(audio)")
+
+  audio | Math.Atan = atan-audio
+  atan-audio | Log("Atan(audio)")
+
+  ; === Hyperbolic ===
+  audio | Math.Sinh = sinh-audio
+  sinh-audio | Log("Sinh(audio)")
+
+  audio | Math.Cosh = cosh-audio
+  cosh-audio | Log("Cosh(audio)")
+
+  audio | Math.Tanh = tanh-audio
+  tanh-audio | Log("Tanh(audio)")
+
+  ; === Inverse Hyperbolic ===
+  audio | Math.Asinh = asinh-audio
+  asinh-audio | Log("Asinh(audio)")
+
+  ; For Acosh, input must be >= 1, so use offset audio
+  audio | Math.Add(2.0) | Math.Acosh = acosh-audio
+  acosh-audio | Log("Acosh(audio+2)")
+
+  audio | Math.Atanh = atanh-audio
+  atanh-audio | Log("Atanh(audio)")
+
+  ; === Exponential and Logarithmic ===
+  audio | Math.Exp = exp-audio
+  exp-audio | Log("Exp(audio)")
+
+  audio | Math.Exp2 = exp2-audio
+  exp2-audio | Log("Exp2(audio)")
+
+  audio | Math.Expm1 = expm1-audio
+  expm1-audio | Log("Expm1(audio)")
+
+  ; For Log, input must be > 0, use abs + small offset
+  audio | Math.Multiply(audio) | Math.Add(0.1) | Math.Log = log-audio
+  log-audio | Log("Log(audio^2+0.1)")
+
+  audio | Math.Multiply(audio) | Math.Add(0.1) | Math.Log10 = log10-audio
+  log10-audio | Log("Log10(audio^2+0.1)")
+
+  audio | Math.Multiply(audio) | Math.Add(0.1) | Math.Log2 = log2-audio
+  log2-audio | Log("Log2(audio^2+0.1)")
+
+  audio | Math.Log1p = log1p-audio
+  log1p-audio | Log("Log1p(audio)")
+
+  ; === Root functions ===
+  audio | Math.Multiply(audio) | Math.Sqrt = sqrt-audio
+  sqrt-audio | Log("Sqrt(audio^2)")
+
+  audio | Math.Cbrt = cbrt-audio
+  cbrt-audio | Log("Cbrt(audio)")
+
+  ; === Rounding ===
+  audio | Math.Ceil = ceil-audio
+  ceil-audio | Log("Ceil(audio)")
+
+  audio | Math.Floor = floor-audio
+  floor-audio | Log("Floor(audio)")
+
+  audio | Math.Trunc = trunc-audio
+  trunc-audio | Log("Trunc(audio)")
+
+  audio | Math.Round = round-audio
+  round-audio | Log("Round(audio)")
+
+  ; === Error functions ===
+  audio | Math.Erf = erf-audio
+  erf-audio | Log("Erf(audio)")
+
+  audio | Math.Erfc = erfc-audio
+  erfc-audio | Log("Erfc(audio)")
+
+  Msg("Audio unary operations test passed!")
+})
+
+@wire(test-audio-chain {
+  Msg("Testing Audio Math Chain Operations...")
+
+  ; Generate test audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 256) = audio
+
+  ; Chain multiple operations: (audio * 2.0 + 0.1) * 0.5
+  audio
+  | Math.Multiply(2.0)
+  | Math.Add(0.1)
+  | Math.Multiply(0.5) = chain-result
+  chain-result | Log("Chain: (audio * 2 + 0.1) * 0.5")
+
+  ; Apply sin to audio, then square it
+  audio | Math.Sin | Math.Multiply(audio | Math.Sin) = sin-squared
+  sin-squared | Log("Chain: sin(audio)^2")
+
+  ; Tanh for soft clipping
+  audio | Math.Multiply(3.0) | Math.Tanh = soft-clip
+  soft-clip | Log("Chain: tanh(audio * 3) (soft clip)")
+
+  Msg("Audio chain operations test passed!")
+})
+
+@mesh(main)
+@schedule(main test-audio-binary)
+@schedule(main test-audio-unary)
+@schedule(main test-audio-chain)
+@run(main)
