@@ -633,6 +633,8 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAddFloat32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
@@ -694,6 +696,8 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathSubtractFloat32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
@@ -755,6 +759,8 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathMultiplyFloat32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
@@ -853,6 +859,8 @@ struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType:
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathXorInt32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
@@ -900,6 +908,8 @@ struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType:
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathAndInt32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
@@ -948,6 +958,8 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
                data.inputType == operandType) {
       data.shard->inlineShardId = InlineShard::MathOrInt32x4;
       _fastPathType = data.inputType.basicType;
+    } else {
+      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
