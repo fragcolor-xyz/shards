@@ -145,6 +145,10 @@ if(USE_RUST_TSAN)
   list(APPEND RUST_FLAGS -Zsanitizer=thread)
 endif()
 
+if(CODE_COVERAGE)
+  list(APPEND RUST_FLAGS -Cinstrument-coverage)
+endif()
+
 option(CARGO_OFFLINE_MODE "Use offline mode for cargo" OFF)
 
 if(CARGO_OFFLINE_MODE)
