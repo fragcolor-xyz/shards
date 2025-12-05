@@ -387,14 +387,23 @@
   @i2(0xFF 0xF0) | Math.And(@i2(0x0F 0x0F)) | Assert.Is(@i2(0x0F 0x00) true)
   @i3(0xFF 0xF0 0x0F) | Math.And(0x0F) | Assert.Is(@i3(0x0F 0x00 0x0F) true)
   @i4(0xFF 0xF0 0x0F 0x00) | Math.And(0x0F) | Assert.Is(@i4(0x0F 0x00 0x0F 0x00) true)
+  ; Direct Int3/Int4 And (InlineShard::MathAndInt32x4 path)
+  @i3(0xFF 0xF0 0x0F) | Math.And(@i3(0x0F 0x0F 0x0F)) | Assert.Is(@i3(0x0F 0x00 0x0F) true)
+  @i4(0xFF 0xF0 0x0F 0x00) | Math.And(@i4(0x0F 0x0F 0x0F 0x0F)) | Assert.Is(@i4(0x0F 0x00 0x0F 0x00) true)
 
   @i2(0xF0 0x00) | Math.Or(@i2(0x0F 0x0F)) | Assert.Is(@i2(0xFF 0x0F) true)
   @i3(0xF0 0x00 0x0F) | Math.Or(0x0F) | Assert.Is(@i3(0xFF 0x0F 0x0F) true)
   @i4(0xF0 0x00 0x0F 0x00) | Math.Or(0x0F) | Assert.Is(@i4(0xFF 0x0F 0x0F 0x0F) true)
+  ; Direct Int3/Int4 Or (InlineShard::MathOrInt32x4 path)
+  @i3(0xF0 0x00 0x0F) | Math.Or(@i3(0x0F 0x0F 0x00)) | Assert.Is(@i3(0xFF 0x0F 0x0F) true)
+  @i4(0xF0 0x00 0x0F 0x00) | Math.Or(@i4(0x0F 0x0F 0x00 0x0F)) | Assert.Is(@i4(0xFF 0x0F 0x0F 0x0F) true)
 
   @i2(0xFF 0xF0) | Math.Xor(@i2(0x0F 0x0F)) | Assert.Is(@i2(0xF0 0xFF) true)
   @i3(0xFF 0xF0 0x0F) | Math.Xor(0x0F) | Assert.Is(@i3(0xF0 0xFF 0x00) true)
   @i4(0xFF 0xF0 0x0F 0x00) | Math.Xor(0x0F) | Assert.Is(@i4(0xF0 0xFF 0x00 0x0F) true)
+  ; Direct Int3/Int4 Xor (InlineShard::MathXorInt32x4 path)
+  @i3(0xFF 0xF0 0x0F) | Math.Xor(@i3(0x0F 0x0F 0x0F)) | Assert.Is(@i3(0xF0 0xFF 0x00) true)
+  @i4(0xFF 0xF0 0x0F 0x00) | Math.Xor(@i4(0x0F 0x0F 0x0F 0x0F)) | Assert.Is(@i4(0xF0 0xFF 0x00 0x0F) true)
 
   ; =========================================================================
   ; Bitwise Operations - Int8 (OVERRIDE_ACTIVATE path)
@@ -525,6 +534,20 @@
   ; Sequences of vectors
   [@i2(1 2) @i2(3 4)] | Math.Add([@i2(10 20) @i2(30 40)]) | Assert.Is([@i2(11 22) @i2(33 44)] true)
   [@f2(1.0 2.0) @f2(3.0 4.0)] | Math.Multiply([@f2(2.0 2.0) @f2(3.0 3.0)]) | Assert.Is([@f2(2.0 4.0) @f2(9.0 12.0)] true)
+
+  ; =========================================================================
+  ; Nested sequence operations (SeqSeq and Seq1 within sequence iteration)
+  ; =========================================================================
+
+  ; SeqSeq within SeqSeq: both input and operand elements are sequences
+  [[1 2] [3 4]] | Math.Add([[10 20] [30 40]]) | Log("nested SeqSeq") | Assert.Is([[11 22] [33 44]] true)
+  [[1.0 2.0] [3.0 4.0]] | Math.Multiply([[2.0 2.0] [3.0 3.0]]) | Assert.Is([[2.0 4.0] [9.0 12.0]] true)
+  [[10 20] [30 40]] | Math.Subtract([[1 2] [3 4]]) | Assert.Is([[9 18] [27 36]] true)
+
+  ; Seq1 within SeqSeq: input elements are sequences, operand elements are scalars
+  [[1 2 3] [4 5 6]] | Math.Add([10 20]) | Log("nested Seq1") | Assert.Is([[11 12 13] [24 25 26]] true)
+  [[1.0 2.0] [3.0 4.0]] | Math.Multiply([2.0 3.0]) | Assert.Is([[2.0 4.0] [9.0 12.0]] true)
+  [[10 20 30] [40 50 60]] | Math.Divide([10 10]) | Assert.Is([[1 2 3] [4 5 6]] true)
 
   ; =========================================================================
   ; Context variable operands (tests the ContextVar branch in genericCompose)
