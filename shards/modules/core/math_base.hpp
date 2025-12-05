@@ -10,7 +10,6 @@
 #include <shards/shards.hpp>
 #include <shards/common_types.hpp>
 #include <shards/number_types.hpp>
-#include <shards/inlined.hpp>
 #include <shards/math_ops.hpp>
 #include <shards/core/params.hpp>
 #include <shards/shardwrapper.hpp>
@@ -206,6 +205,7 @@ constexpr UnaryDispatchFn getUnaryDispatchFn(SHType type) {
 
 struct UnaryBase : public Base {
   OpType _opType = Invalid;
+  SHType _dispatchType{SHType::None};  // Resolved type for direct dispatch
 
   void validateTypes(const SHTypeInfo &ti) {
     _opType = OpType::Invalid;
@@ -366,7 +366,8 @@ template <typename TOp> struct ApplyUnary {
 
 // Helper to select the right activate override based on type at compose time
 // Returns true if override was set, false if fallback needed
-template <typename TOp, typename TShard>
+// DT template parameter controls which types are valid (IntTypes, FloatTypes, NumberTypes, etc.)
+template <typename TOp, typename TShard, DispatchType DT = DispatchType::NumberTypes>
 bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TShard *self) {
   // Lambda generator for binary ops with explicit shard type
   auto setActivate = [&data]<SHType VType>() {
@@ -381,44 +382,84 @@ bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TSha
 
   switch (type) {
   case SHType::Int:
-    setActivate.template operator()<SHType::Int>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int>();
+      return true;
+    }
+    break;
   case SHType::Int2:
-    setActivate.template operator()<SHType::Int2>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int2>();
+      return true;
+    }
+    break;
   case SHType::Int3:
-    setActivate.template operator()<SHType::Int3>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int3>();
+      return true;
+    }
+    break;
   case SHType::Int4:
-    setActivate.template operator()<SHType::Int4>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int4>();
+      return true;
+    }
+    break;
   case SHType::Int8:
-    setActivate.template operator()<SHType::Int8>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int8>();
+      return true;
+    }
+    break;
   case SHType::Int16:
-    setActivate.template operator()<SHType::Int16>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int16>();
+      return true;
+    }
+    break;
   case SHType::Float:
-    setActivate.template operator()<SHType::Float>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float>();
+      return true;
+    }
+    break;
   case SHType::Float2:
-    setActivate.template operator()<SHType::Float2>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float2>();
+      return true;
+    }
+    break;
   case SHType::Float3:
-    setActivate.template operator()<SHType::Float3>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float3>();
+      return true;
+    }
+    break;
   case SHType::Float4:
-    setActivate.template operator()<SHType::Float4>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float4>();
+      return true;
+    }
+    break;
   case SHType::Color:
-    setActivate.template operator()<SHType::Color>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Color>();
+      return true;
+    }
+    break;
+  case SHType::Bool:
+    if constexpr (hasDispatchType(DT, DispatchType::BoolTypes)) {
+      setActivate.template operator()<SHType::Bool>();
+      return true;
+    }
+    break;
   default:
-    return false;
+    break;
   }
+  return false;
 }
 
-template <typename TOp, typename TShard>
+template <typename TOp, typename TShard, DispatchType DT = DispatchType::NumberTypes>
 bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShard *self) {
   // Lambda generator for unary ops with explicit shard type
   auto setActivate = [&data]<SHType VType>() {
@@ -432,41 +473,81 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
 
   switch (type) {
   case SHType::Int:
-    setActivate.template operator()<SHType::Int>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int>();
+      return true;
+    }
+    break;
   case SHType::Int2:
-    setActivate.template operator()<SHType::Int2>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int2>();
+      return true;
+    }
+    break;
   case SHType::Int3:
-    setActivate.template operator()<SHType::Int3>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int3>();
+      return true;
+    }
+    break;
   case SHType::Int4:
-    setActivate.template operator()<SHType::Int4>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int4>();
+      return true;
+    }
+    break;
   case SHType::Int8:
-    setActivate.template operator()<SHType::Int8>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int8>();
+      return true;
+    }
+    break;
   case SHType::Int16:
-    setActivate.template operator()<SHType::Int16>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Int16>();
+      return true;
+    }
+    break;
   case SHType::Float:
-    setActivate.template operator()<SHType::Float>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float>();
+      return true;
+    }
+    break;
   case SHType::Float2:
-    setActivate.template operator()<SHType::Float2>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float2>();
+      return true;
+    }
+    break;
   case SHType::Float3:
-    setActivate.template operator()<SHType::Float3>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float3>();
+      return true;
+    }
+    break;
   case SHType::Float4:
-    setActivate.template operator()<SHType::Float4>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::FloatTypes)) {
+      setActivate.template operator()<SHType::Float4>();
+      return true;
+    }
+    break;
   case SHType::Color:
-    setActivate.template operator()<SHType::Color>();
-    return true;
+    if constexpr (hasDispatchType(DT, DispatchType::IntTypes)) {
+      setActivate.template operator()<SHType::Color>();
+      return true;
+    }
+    break;
+  case SHType::Bool:
+    if constexpr (hasDispatchType(DT, DispatchType::BoolTypes)) {
+      setActivate.template operator()<SHType::Bool>();
+      return true;
+    }
+    break;
   default:
-    return false;
+    break;
   }
+  return false;
 }
 
 } // namespace Math

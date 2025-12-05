@@ -19,6 +19,9 @@ namespace Math {
 
 template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> 
 struct BasicUnaryOperation {
+  static constexpr DispatchType DispatchType__ = DispatchType_;
+  using OpType_ = TOp;  // Expose the operation type
+  
   ApplyUnary<TOp> apply;
 
   OpType validateTypes(const SHTypeInfo &a, SHTypeInfo &resultType) {
@@ -36,6 +39,13 @@ struct BasicUnaryOperation {
 // Unary Operation - Main template for unary operations
 // =============================================================================
 
+// Type trait to detect if TOp has OpType_ and DispatchType__ (i.e., is a BasicUnaryOperation)
+template <typename T, typename = void>
+struct HasUnaryOpTraits : std::false_type {};
+
+template <typename T>
+struct HasUnaryOpTraits<T, std::void_t<typename T::OpType_, decltype(T::DispatchType__)>> : std::true_type {};
+
 template <class TOp> struct UnaryOperation : public UnaryBase {
   TOp op;
 
@@ -50,6 +60,16 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     validateTypes(data.inputType, resultType);
+    
+    // Use OVERRIDE_ACTIVATE for direct operations (only if TOp supports it)
+    if constexpr (HasUnaryOpTraits<TOp>::value) {
+      if (_opType == OpType::Direct) {
+        _dispatchType = data.inputType.basicType;
+        using ThisType = std::remove_pointer_t<decltype(this)>;
+        overrideUnaryActivateForType<typename TOp::OpType_, ThisType, TOp::DispatchType__>(
+            data, data.inputType.basicType, this);
+      }
+    }
     return resultType;
   }
 

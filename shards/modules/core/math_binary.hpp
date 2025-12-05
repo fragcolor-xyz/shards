@@ -262,10 +262,9 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
     _dispatchType = SHType::None;
     auto result = genericCompose(*this, data, &operandType);
     
-    // Try to set up fast path with OVERRIDE_ACTIVATE pattern
     if (_opType == Direct && data.inputType == operandType) {
       _dispatchType = data.inputType.basicType;
-      // Set inline shard ID for the existing inline system (backward compat)
+      // Use InlineShard for super-fast VM path on common types
       if (data.inputType.basicType == SHType::Int || data.inputType.basicType == SHType::Int2) {
         data.shard->inlineShardId = InlineShard::MathAddInt64x2;
       } else if (data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) {
@@ -275,31 +274,30 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
       } else if (data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) {
         data.shard->inlineShardId = InlineShard::MathAddFloat32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        // Fallback to OVERRIDE_ACTIVATE for other types (Int8, Int16, Color, etc.)
+        overrideBinaryActivateForType<AddOp, Add>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  // Fast path methods for inline dispatch
-  void activateInt64x2(const SHVar &input) {
+  // Fast path methods for inlined.cpp super-fast VM dispatch
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value + b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value + b.payload.int4Value;
   }
 
-  void activateFloat64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float2Value = input.payload.float2Value + b.payload.float2Value;
   }
 
-  void activateFloat32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float4Value = input.payload.float4Value + b.payload.float4Value;
   }
@@ -337,30 +335,28 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
       } else if (data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) {
         data.shard->inlineShardId = InlineShard::MathSubtractFloat32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        overrideBinaryActivateForType<SubtractOp, Subtract>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  void activateInt64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value - b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value - b.payload.int4Value;
   }
 
-  void activateFloat64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float2Value = input.payload.float2Value - b.payload.float2Value;
   }
 
-  void activateFloat32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float4Value = input.payload.float4Value - b.payload.float4Value;
   }
@@ -398,30 +394,28 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
       } else if (data.inputType.basicType == SHType::Float3 || data.inputType.basicType == SHType::Float4) {
         data.shard->inlineShardId = InlineShard::MathMultiplyFloat32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        overrideBinaryActivateForType<MultiplyOp, Multiply>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  void activateInt64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value * b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value * b.payload.int4Value;
   }
 
-  void activateFloat64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float2Value = input.payload.float2Value * b.payload.float2Value;
   }
 
-  void activateFloat32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateFloat32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.float4Value = input.payload.float4Value * b.payload.float4Value;
   }
@@ -444,7 +438,16 @@ struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<DivideOp, Divide>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct Mod : public BinaryOperation<BasicBinaryOperation<ModOp>> {
@@ -465,7 +468,16 @@ struct Mod : public BinaryOperation<BasicBinaryOperation<ModOp>> {
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<ModOp, Mod>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType::IntOrBoolTypes>> {
@@ -497,20 +509,18 @@ struct Xor : public BinaryIntOperation<BasicBinaryOperation<XorOp, DispatchType:
       } else if (data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) {
         data.shard->inlineShardId = InlineShard::MathXorInt32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        overrideBinaryActivateForType<XorOp, Xor, DispatchType::IntOrBoolTypes>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  void activateInt64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value ^ b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value ^ b.payload.int4Value;
   }
@@ -545,20 +555,18 @@ struct And : public BinaryIntOperation<BasicBinaryOperation<AndOp, DispatchType:
       } else if (data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) {
         data.shard->inlineShardId = InlineShard::MathAndInt32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        overrideBinaryActivateForType<AndOp, And, DispatchType::IntOrBoolTypes>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  void activateInt64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value & b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value & b.payload.int4Value;
   }
@@ -593,20 +601,18 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
       } else if (data.inputType.basicType == SHType::Int3 || data.inputType.basicType == SHType::Int4) {
         data.shard->inlineShardId = InlineShard::MathOrInt32x4;
       } else {
-        data.shard->inlineShardId = InlineShard::NotInline;
+        overrideBinaryActivateForType<OrOp, Or, DispatchType::IntOrBoolTypes>(data, data.inputType.basicType, this);
       }
-    } else {
-      data.shard->inlineShardId = InlineShard::NotInline;
     }
     return result;
   }
 
-  void activateInt64x2(const SHVar &input) {
+  ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value | b.payload.int2Value;
   }
 
-  void activateInt32x4(const SHVar &input) {
+  ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value | b.payload.int4Value;
   }
@@ -628,7 +634,16 @@ struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, Dispatc
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<LShiftOp, LShift, DispatchType::IntTypes>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, DispatchType::IntTypes>> {
@@ -647,7 +662,16 @@ struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, Dispatc
     return SHParametersInfo(customParams);
   }
 
-  SHTypeInfo composeV2(const SHInstanceData &data) { return genericCompose(*this, data); }
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<RShiftOp, RShift, DispatchType::IntTypes>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct MaxOp {
@@ -662,6 +686,17 @@ struct Max : public BinaryOperation<BasicBinaryOperation<MaxOp>> {
   static SHOptionalString inputHelp() { return SHCCSTR("The first value to compare with."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The larger value between the input and the operand."); }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<MaxOp, Max>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct MinOp final {
@@ -676,6 +711,17 @@ struct Min : public BinaryOperation<BasicBinaryOperation<MinOp>> {
   static SHOptionalString inputHelp() { return SHCCSTR("The first value to compare with."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The smaller value between the input and the operand."); }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<MinOp, Min>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct PowOp final {
@@ -689,6 +735,17 @@ struct Pow : public BinaryOperation<BasicBinaryOperation<PowOp>> {
   static SHOptionalString inputHelp() { return SHCCSTR("The base value to raise the power of."); }
 
   static SHOptionalString outputHelp() { return SHCCSTR("The result of raising the input to the power of the operand."); }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<PowOp, Pow>(data, data.inputType.basicType, this);
+    }
+    return result;
+  }
 };
 
 struct Atan2Op final {
@@ -703,6 +760,17 @@ struct Atan2 : public BinaryOperation<BasicBinaryOperation<Atan2Op>> {
   }
   static SHOptionalString outputHelp() {
     return SHCCSTR("Outputs the angle in radians whose tangent is the quotient of the two inputs.");
+  }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    SHTypeInfo operandType{};
+    _dispatchType = SHType::None;
+    auto result = genericCompose(*this, data, &operandType);
+    if (_opType == Direct && data.inputType == operandType) {
+      _dispatchType = data.inputType.basicType;
+      overrideBinaryActivateForType<Atan2Op, Atan2>(data, data.inputType.basicType, this);
+    }
+    return result;
   }
 };
 
