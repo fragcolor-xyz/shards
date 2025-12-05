@@ -239,6 +239,8 @@ jobs:
           ./shards new ../shards/tests/linalg.shs
           echo "Running math"
           ./shards new ../shards/tests/math.shs
+          echo "Running math_audio"
+          ./shards new ../shards/tests/math_audio.shs
           echo "Running network"
           ./shards new ../shards/tests/network.shs
           echo "Running network-ws"
