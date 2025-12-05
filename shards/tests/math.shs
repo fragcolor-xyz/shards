@@ -1,0 +1,380 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2019 Fragcolor Pte. Ltd.
+
+; Comprehensive math operations test suite
+; Tests unary, binary, and special math operations across various types
+
+; Helper: Check if value is approximately equal (within tolerance)
+@template(assert-almost [expected tolerance] {
+  = actual
+  actual | Math.Subtract(expected) | Math.Abs | IsLess(tolerance) | Assert.Is(true)
+  actual
+})
+
+@wire(test-math-unary {
+  ; =========================================================================
+  ; Unary Float Operations - Float scalar
+  ; =========================================================================
+
+  ; Exponential functions
+  1.0 | Math.Exp | Log("Exp(1)") | @assert-almost(2.718281828 0.0001)
+  1.0 | Math.Exp2 | Log("Exp2(1)") | Assert.Is(2.0 true)
+  0.0 | Math.Expm1 | Log("Expm1(0)") | Assert.Is(0.0 true)
+
+  ; Logarithmic functions
+  2.718281828 | Math.Log | Log("Log(e)") | @assert-almost(1.0 0.0001)
+  100.0 | Math.Log10 | Log("Log10(100)") | Assert.Is(2.0 true)
+  8.0 | Math.Log2 | Log("Log2(8)") | Assert.Is(3.0 true)
+  0.0 | Math.Log1p | Log("Log1p(0)") | Assert.Is(0.0 true)
+
+  ; Root functions
+  9.0 | Math.Sqrt | Log("Sqrt(9)") | Assert.Is(3.0 true)
+  27.0 | Math.Cbrt | Log("Cbrt(27)") | Assert.Is(3.0 true)
+  0.0 | Math.Sqrt | Log("Sqrt(0)") | Assert.Is(0.0 true)
+
+  ; Fast approximations
+  9.0 | Math.FastSqrt | Log("FastSqrt(9)") | @assert-almost(3.0 0.01)
+  9.0 | Math.FastInvSqrt | Log("FastInvSqrt(9)") | @assert-almost(0.333333 0.01)
+
+  ; Trigonometric functions
+  0.0 | Math.Sin | Log("Sin(0)") | Assert.Is(0.0 true)
+  0.0 | Math.Cos | Log("Cos(0)") | Assert.Is(1.0 true)
+  0.0 | Math.Tan | Log("Tan(0)") | Assert.Is(0.0 true)
+
+  ; Inverse trigonometric functions
+  0.0 | Math.Asin | Log("Asin(0)") | Assert.Is(0.0 true)
+  1.0 | Math.Acos | Log("Acos(1)") | Assert.Is(0.0 true)
+  0.0 | Math.Atan | Log("Atan(0)") | Assert.Is(0.0 true)
+
+  ; Hyperbolic functions
+  0.0 | Math.Sinh | Log("Sinh(0)") | Assert.Is(0.0 true)
+  0.0 | Math.Cosh | Log("Cosh(0)") | Assert.Is(1.0 true)
+  0.0 | Math.Tanh | Log("Tanh(0)") | Assert.Is(0.0 true)
+
+  ; Inverse hyperbolic functions
+  0.0 | Math.Asinh | Log("Asinh(0)") | Assert.Is(0.0 true)
+  1.0 | Math.Acosh | Log("Acosh(1)") | Assert.Is(0.0 true)
+  0.0 | Math.Atanh | Log("Atanh(0)") | Assert.Is(0.0 true)
+
+  ; Error functions
+  0.0 | Math.Erf | Log("Erf(0)") | Assert.Is(0.0 true)
+  0.0 | Math.Erfc | Log("Erfc(0)") | Assert.Is(1.0 true)
+
+  ; Rounding functions
+  2.7 | Math.Ceil | Log("Ceil(2.7)") | Assert.Is(3.0 true)
+  2.7 | Math.Floor | Log("Floor(2.7)") | Assert.Is(2.0 true)
+  2.7 | Math.Trunc | Log("Trunc(2.7)") | Assert.Is(2.0 true)
+  2.5 | Math.Round | Log("Round(2.5)") | Assert.Is(3.0 true)  ; Rounds to nearest even? or up?
+  2.4 | Math.Round | Log("Round(2.4)") | Assert.Is(2.0 true)
+
+  ; Negation
+  5.0 | Math.Negate | Log("Negate(5)") | Assert.Is(-5.0 true)
+  -3.0 | Math.Negate | Log("Negate(-3)") | Assert.Is(3.0 true)
+
+  ; Abs
+  -5.0 | Math.Abs | Log("Abs(-5.0)") | Assert.Is(5.0 true)
+  5.0 | Math.Abs | Log("Abs(5.0)") | Assert.Is(5.0 true)
+
+  ; =========================================================================
+  ; Unary Float Operations - Float vectors
+  ; =========================================================================
+
+  @f2(1.0 4.0) | Math.Sqrt | Log("Sqrt(f2)") | Assert.Is(@f2(1.0 2.0) true)
+  @f3(1.0 4.0 9.0) | Math.Sqrt | Log("Sqrt(f3)") | Assert.Is(@f3(1.0 2.0 3.0) true)
+  @f4(1.0 4.0 9.0 16.0) | Math.Sqrt | Log("Sqrt(f4)") | Assert.Is(@f4(1.0 2.0 3.0 4.0) true)
+
+  @f2(0.0 0.0) | Math.Sin | Log("Sin(f2)") | Assert.Is(@f2(0.0 0.0) true)
+  @f3(0.0 0.0 0.0) | Math.Cos | Log("Cos(f3)") | Assert.Is(@f3(1.0 1.0 1.0) true)
+
+  @f2(-1.0 -2.0) | Math.Abs | Log("Abs(f2)") | Assert.Is(@f2(1.0 2.0) true)
+  @f3(-1.0 -2.0 -3.0) | Math.Abs | Log("Abs(f3)") | Assert.Is(@f3(1.0 2.0 3.0) true)
+  @f4(-1.0 -2.0 -3.0 -4.0) | Math.Abs | Log("Abs(f4)") | Assert.Is(@f4(1.0 2.0 3.0 4.0) true)
+
+  @f2(2.7 3.2) | Math.Floor | Log("Floor(f2)") | Assert.Is(@f2(2.0 3.0) true)
+  @f3(2.7 3.2 4.9) | Math.Ceil | Log("Ceil(f3)") | Assert.Is(@f3(3.0 4.0 5.0) true)
+
+  ; =========================================================================
+  ; Unary Int Operations
+  ; =========================================================================
+
+  -5 | Math.Abs | Log("Abs(-5)") | Assert.Is(5 true)
+  5 | Math.Abs | Log("Abs(5)") | Assert.Is(5 true)
+
+  @i2(-1 -2) | Math.Abs | Log("Abs(i2)") | Assert.Is(@i2(1 2) true)
+  @i3(-1 -2 -3) | Math.Abs | Log("Abs(i3)") | Assert.Is(@i3(1 2 3) true)
+  @i4(-1 -2 -3 -4) | Math.Abs | Log("Abs(i4)") | Assert.Is(@i4(1 2 3 4) true)
+
+  ; Not (bitwise)
+  0 | Math.Not | Log("Not(0)") | Assert.Is(-1 true)
+  -1 | Math.Not | Log("Not(-1)") | Assert.Is(0 true)
+
+  @i2(0 -1) | Math.Not | Log("Not(i2)") | Assert.Is(@i2(-1 0) true)
+
+  ; =========================================================================
+  ; Unary Operations on Sequences
+  ; =========================================================================
+
+  [1.0 4.0 9.0] | Math.Sqrt | Log("Sqrt seq") | Assert.Is([1.0 2.0 3.0] true)
+  [-1.0 -2.0 -3.0] | Math.Abs | Log("Abs seq") | Assert.Is([1.0 2.0 3.0] true)
+  [2.7 3.2 4.9] | Math.Floor | Log("Floor seq") | Assert.Is([2.0 3.0 4.0] true)
+
+  Log("Unary operations test passed!")
+})
+
+@wire(test-math-binary {
+  ; =========================================================================
+  ; Binary Operations - Basic types
+  ; =========================================================================
+
+  ; Add
+  5 | Math.Add(3) | Assert.Is(8 true)
+  5.0 | Math.Add(3.0) | Assert.Is(8.0 true)
+  @i2(1 2) | Math.Add(@i2(3 4)) | Assert.Is(@i2(4 6) true)
+  @f2(1.0 2.0) | Math.Add(@f2(3.0 4.0)) | Assert.Is(@f2(4.0 6.0) true)
+
+  ; Subtract
+  5 | Math.Subtract(3) | Assert.Is(2 true)
+  5.0 | Math.Subtract(3.0) | Assert.Is(2.0 true)
+  @i2(5 6) | Math.Subtract(@i2(1 2)) | Assert.Is(@i2(4 4) true)
+
+  ; Multiply
+  5 | Math.Multiply(3) | Assert.Is(15 true)
+  5.0 | Math.Multiply(3.0) | Assert.Is(15.0 true)
+  @i2(2 3) | Math.Multiply(@i2(4 5)) | Assert.Is(@i2(8 15) true)
+
+  ; Divide
+  15 | Math.Divide(3) | Assert.Is(5 true)
+  15.0 | Math.Divide(3.0) | Assert.Is(5.0 true)
+  @i2(8 15) | Math.Divide(@i2(2 3)) | Assert.Is(@i2(4 5) true)
+
+  ; Mod
+  17 | Math.Mod(5) | Assert.Is(2 true)
+  17.5 | Math.Mod(5.0) | Assert.Is(2.5 true)
+  @i2(17 18) | Math.Mod(@i2(5 5)) | Assert.Is(@i2(2 3) true)
+
+  ; =========================================================================
+  ; Binary Operations - Int8 and Int16
+  ; =========================================================================
+
+  @i8(1 2 3 4 5 6 7 8) | Math.Add(@i8(1 1 1 1 1 1 1 1)) | Log("Add i8") | Assert.Is(@i8(2 3 4 5 6 7 8 9) true)
+  @i8(2 4 6 8 10 12 14 16) | Math.Multiply(2) | Log("Mul i8 broadcast") | Assert.Is(@i8(4 8 12 16 20 24 28 32) true)
+  @i8(10 20 30 40 50 60 70 80) | Math.Divide(10) | Log("Div i8 broadcast") | Assert.Is(@i8(1 2 3 4 5 6 7 8) true)
+
+  @i16(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) | Math.Add(1) | Log("Add i16 broadcast")
+  | Assert.Is(@i16(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17) true)
+
+  @i16(2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32) | Math.Divide(2) | Log("Div i16 broadcast")
+  | Assert.Is(@i16(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) true)
+
+  ; =========================================================================
+  ; Binary Operations - Color
+  ; =========================================================================
+
+  @color(100 150 200 255) | Math.Add(@color(10 10 10 0)) | Log("Add color") | Assert.Is(@color(110 160 210 255) true)
+  @color(50 50 75 100) | Math.Multiply(2) | Log("Mul color broadcast") | Assert.Is(@color(100 100 150 200) true)
+  @color(100 100 150 200) | Math.Divide(2) | Log("Div color broadcast") | Assert.Is(@color(50 50 75 100) true)
+
+  ; =========================================================================
+  ; Bitwise Operations - Various int types
+  ; =========================================================================
+
+  ; And
+  0xFF | Math.And(0x0F) | Assert.Is(0x0F true)
+  @i2(0xFF 0xF0) | Math.And(@i2(0x0F 0x0F)) | Assert.Is(@i2(0x0F 0x00) true)
+  @i4(0xFF 0xF0 0x0F 0x00) | Math.And(0x0F) | Assert.Is(@i4(0x0F 0x00 0x0F 0x00) true)
+
+  ; Or
+  0xF0 | Math.Or(0x0F) | Assert.Is(0xFF true)
+  @i2(0xF0 0x00) | Math.Or(@i2(0x0F 0x0F)) | Assert.Is(@i2(0xFF 0x0F) true)
+
+  ; Xor
+  0xFF | Math.Xor(0x0F) | Assert.Is(0xF0 true)
+  @i2(0xFF 0xF0) | Math.Xor(@i2(0x0F 0x0F)) | Assert.Is(@i2(0xF0 0xFF) true)
+  @i3(0xFF 0xF0 0x0F) | Math.Xor(0x0F) | Assert.Is(@i3(0xF0 0xFF 0x00) true)
+  @i4(0xFF 0xF0 0x0F 0x00) | Math.Xor(0x0F) | Assert.Is(@i4(0xF0 0xFF 0x00 0x0F) true)
+  @i8(1 2 3 4 5 6 7 8) | Math.Xor(0xFF) | Log("Xor i8")
+
+  ; LShift / RShift
+  1 | Math.LShift(4) | Assert.Is(16 true)
+  16 | Math.RShift(4) | Assert.Is(1 true)
+  @i2(1 2) | Math.LShift(2) | Assert.Is(@i2(4 8) true)
+  @i2(4 8) | Math.RShift(2) | Assert.Is(@i2(1 2) true)
+
+  ; =========================================================================
+  ; Min / Max
+  ; =========================================================================
+
+  5 | Min(3) | Assert.Is(3 true)
+  5 | Max(3) | Assert.Is(5 true)
+  5.0 | Min(3.0) | Assert.Is(3.0 true)
+  5.0 | Max(3.0) | Assert.Is(5.0 true)
+
+  @f2(1.0 5.0) | Min(@f2(3.0 3.0)) | Assert.Is(@f2(1.0 3.0) true)
+  @f2(1.0 5.0) | Max(@f2(3.0 3.0)) | Assert.Is(@f2(3.0 5.0) true)
+
+  @i2(1 5) | Min(@i2(3 3)) | Assert.Is(@i2(1 3) true)
+  @i2(1 5) | Max(@i2(3 3)) | Assert.Is(@i2(3 5) true)
+
+  ; =========================================================================
+  ; Pow
+  ; =========================================================================
+
+  2.0 | Math.Pow(3.0) | Assert.Is(8.0 true)
+  3.0 | Math.Pow(2.0) | Assert.Is(9.0 true)
+  @f2(2.0 3.0) | Math.Pow(@f2(3.0 2.0)) | Assert.Is(@f2(8.0 9.0) true)
+
+  ; =========================================================================
+  ; Atan2
+  ; =========================================================================
+
+  1.0 | Math.Atan2(1.0) | Log("Atan2(1,1)") | @assert-almost(0.7853981634 0.0001) ; pi/4
+  0.0 | Math.Atan2(1.0) | Log("Atan2(0,1)") | Assert.Is(0.0 true)
+
+  @f2(1.0 0.0) | Math.Atan2(@f2(1.0 1.0)) | Log("Atan2 f2")
+
+  ; =========================================================================
+  ; Broadcast operations
+  ; =========================================================================
+
+  ; Scalar broadcast to vector
+  2.0 | Math.Multiply(@f2(3.0 4.0)) | Log("scalar * f2") | Assert.Is(@f2(6.0 8.0) true)
+  2.0 | Math.Multiply(@f3(3.0 4.0 5.0)) | Log("scalar * f3") | Assert.Is(@f3(6.0 8.0 10.0) true)
+  2.0 | Math.Multiply(@f4(3.0 4.0 5.0 6.0)) | Log("scalar * f4") | Assert.Is(@f4(6.0 8.0 10.0 12.0) true)
+
+  ; Vector with scalar operand
+  @f2(3.0 4.0) | Math.Multiply(2.0) | Log("f2 * scalar") | Assert.Is(@f2(6.0 8.0) true)
+  @f3(3.0 4.0 5.0) | Math.Multiply(2.0) | Log("f3 * scalar") | Assert.Is(@f3(6.0 8.0 10.0) true)
+  @f4(3.0 4.0 5.0 6.0) | Math.Multiply(2.0) | Log("f4 * scalar") | Assert.Is(@f4(6.0 8.0 10.0 12.0) true)
+
+  2 | Math.Add(@i2(3 4)) | Log("int + i2") | Assert.Is(@i2(5 6) true)
+  2 | Math.Add(@i3(3 4 5)) | Log("int + i3") | Assert.Is(@i3(5 6 7) true)
+  2 | Math.Add(@i4(3 4 5 6)) | Log("int + i4") | Assert.Is(@i4(5 6 7 8) true)
+
+  ; =========================================================================
+  ; Sequence operations
+  ; =========================================================================
+
+  [1 2 3] | Math.Add([10 20 30]) | Log("seq + seq") | Assert.Is([11 22 33] true)
+  [1.0 2.0 3.0] | Math.Multiply([2.0 3.0 4.0]) | Log("seq * seq") | Assert.Is([2.0 6.0 12.0] true)
+  [1 2 3] | Math.Add(10) | Log("seq + scalar") | Assert.Is([11 12 13] true)
+
+  Log("Binary operations test passed!")
+})
+
+@wire(test-math-special {
+  ; =========================================================================
+  ; Lerp
+  ; =========================================================================
+
+  0.0 | Math.Lerp(First: 0.0 Second: 10.0) | Log("Lerp 0") | Assert.Is(0.0 true)
+  1.0 | Math.Lerp(First: 0.0 Second: 10.0) | Log("Lerp 1") | Assert.Is(10.0 true)
+  0.5 | Math.Lerp(First: 0.0 Second: 10.0) | Log("Lerp 0.5") | Assert.Is(5.0 true)
+  0.25 | Math.Lerp(First: 0.0 Second: 100.0) | Log("Lerp 0.25") | Assert.Is(25.0 true)
+
+  ; Lerp with vectors
+  0.5 | Math.Lerp(First: @f2(0.0 0.0) Second: @f2(10.0 20.0)) | Log("Lerp f2") | Assert.Is(@f2(5.0 10.0) true)
+  0.5 | Math.Lerp(First: @f3(0.0 0.0 0.0) Second: @f3(10.0 20.0 30.0)) | Log("Lerp f3") | Assert.Is(@f3(5.0 10.0 15.0) true)
+  0.5 | Math.Lerp(First: @f4(0.0 0.0 0.0 0.0) Second: @f4(10.0 20.0 30.0 40.0)) | Log("Lerp f4") | Assert.Is(@f4(5.0 10.0 15.0 20.0) true)
+
+  ; =========================================================================
+  ; Clamp
+  ; =========================================================================
+
+  5.0 | Clamp(Min: 0.0 Max: 10.0) | Log("Clamp middle") | Assert.Is(5.0 true)
+  -5.0 | Clamp(Min: 0.0 Max: 10.0) | Log("Clamp below") | Assert.Is(0.0 true)
+  15.0 | Clamp(Min: 0.0 Max: 10.0) | Log("Clamp above") | Assert.Is(10.0 true)
+
+  5 | Clamp(Min: 0 Max: 10) | Log("Clamp int middle") | Assert.Is(5 true)
+  -5 | Clamp(Min: 0 Max: 10) | Log("Clamp int below") | Assert.Is(0 true)
+  15 | Clamp(Min: 0 Max: 10) | Log("Clamp int above") | Assert.Is(10 true)
+
+  ; Clamp vectors
+  @f2(-5.0 15.0) | Clamp(Min: @f2(0.0 0.0) Max: @f2(10.0 10.0)) | Log("Clamp f2") | Assert.Is(@f2(0.0 10.0) true)
+  @i2(-5 15) | Clamp(Min: @i2(0 0) Max: @i2(10 10)) | Log("Clamp i2") | Assert.Is(@i2(0 10) true)
+
+  ; =========================================================================
+  ; Mean
+  ; =========================================================================
+
+  [1.0 2.0 3.0 4.0 5.0] | Math.Mean(Kind: Mean::Arithmetic) | Log("Arithmetic Mean") | Assert.Is(3.0 true)
+  [1.0 2.0 4.0 8.0] | Math.Mean(Kind: Mean::Geometric) | Log("Geometric Mean") | @assert-almost(2.8284271 0.0001)
+  [1.0 2.0 4.0] | Math.Mean(Kind: Mean::Harmonic) | Log("Harmonic Mean") | @assert-almost(1.7142857 0.0001)
+
+  ; Note: Mean only works on Float sequences, not Int sequences
+
+  ; =========================================================================
+  ; Inc / Dec
+  ; =========================================================================
+
+  0 >= counter
+  Math.Inc(counter)
+  counter | Assert.Is(1 true)
+  Math.Inc(counter)
+  counter | Assert.Is(2 true)
+  Math.Dec(counter)
+  counter | Assert.Is(1 true)
+  Math.Dec(counter)
+  counter | Assert.Is(0 true)
+
+  0.0 >= fcounter
+  Math.Inc(fcounter)
+  fcounter | Assert.Is(1.0 true)
+  Math.Dec(fcounter)
+  fcounter | Assert.Is(0.0 true)
+
+  @i2(0 0) >= i2counter
+  Math.Inc(i2counter)
+  i2counter | Assert.Is(@i2(1 1) true)
+  Math.Dec(i2counter)
+  i2counter | Assert.Is(@i2(0 0) true)
+
+  ; =========================================================================
+  ; Percentile
+  ; =========================================================================
+
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0] | Math.Percentile(50.0) | Log("Percentile 50") | @assert-almost(5.5 0.1)
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0] | Math.Percentile(0.0) | Log("Percentile 0") | Assert.Is(1.0 true)
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0] | Math.Percentile(100.0) | Log("Percentile 100") | Assert.Is(10.0 true)
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0] | Math.Percentile(25.0) | Log("Percentile 25")
+  [1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0] | Math.Percentile(75.0) | Log("Percentile 75")
+
+  Log("Special operations test passed!")
+})
+
+@wire(test-math-edge-cases {
+  ; =========================================================================
+  ; Edge cases and special values
+  ; =========================================================================
+
+  ; Zero handling
+  0.0 | Math.Sqrt | Assert.Is(0.0 true)
+  0.0 | Math.Exp | Assert.Is(1.0 true)
+  1.0 | Math.Log | Assert.Is(0.0 true)
+
+  ; Negative numbers with Abs
+  -0.0 | Math.Abs | Assert.Is(0.0 true)
+
+  ; Large vectors
+  @i8(1 2 3 4 5 6 7 8) | Math.Abs | Assert.Is(@i8(1 2 3 4 5 6 7 8) true)
+  @i8(-1 -2 -3 -4 -5 -6 -7 -8) | Math.Abs | Assert.Is(@i8(1 2 3 4 5 6 7 8) true)
+
+  @i16(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) | Math.Add(1)
+  | Assert.Is(@i16(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17) true)
+
+  ; Bool operations
+  true | Math.And(true) | Assert.Is(true true)
+  true | Math.And(false) | Assert.Is(false true)
+  false | Math.Or(true) | Assert.Is(true true)
+  false | Math.Or(false) | Assert.Is(false true)
+  true | Math.Xor(true) | Assert.Is(false true)
+  true | Math.Xor(false) | Assert.Is(true true)
+
+  Log("Edge cases test passed!")
+})
+
+@mesh(main)
+@schedule(main test-math-unary)
+@schedule(main test-math-binary)
+@schedule(main test-math-special)
+@schedule(main test-math-edge-cases)
+@run(main)
