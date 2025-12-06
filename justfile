@@ -65,7 +65,7 @@ tests:
   build/Debug/shards shards/tests/hello.shs
 
 run-all-tests mode="Release":
-  sh run-macos-gpu-tests.sh --with-cpu --shards-bin build/{{mode}}/shards
+  sh run-tests.sh --with-cpu --shards-bin build/{{mode}}/shards
 
 format:
   sh format.sh
