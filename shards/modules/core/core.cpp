@@ -556,7 +556,7 @@ struct XPendBase {
 
     const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
     const uint8_t channels = colAudio.channels;
-    const uint16_t sampleRate = colAudio.sampleRate; // Save before potential destroy
+    const uint32_t sampleRateHz = audioGetSampleRate(colAudio); // Save actual Hz before potential destroy
     const size_t newTotal = size_t(newNsamples) * channels;
 
     // Note: In-place expansion is complex for multi-channel planar audio because
@@ -581,16 +581,10 @@ struct XPendBase {
         }
       }
 
-      // Reallocate the collection's audio buffer
-      destroyVar(collection);
-      collection.valueType = SHType::Audio;
-      collection.payload.audioValue.samples = new float[newTotal];
-      collection.payload.audioValue.nsamples = newNsamples;
-      collection.payload.audioValue.sampleRate = sampleRate; // Use saved value (colAudio is invalid after destroyVar)
-      collection.payload.audioValue.channels = channels;
-      collection.payload.audioValue.reserved = 0;
-      SHVAR_AUDIO_SET_CAPACITY(collection, newTotal);
-      memcpy(collection.payload.audioValue.samples, scratch, newTotal * sizeof(float));
+      // Use makeAudio on scratch buffer, cloneVar handles destroy/realloc efficiently
+      // (see cloneVarSlow in runtime.cpp for Audio - it reuses dst buffer when capacity allows)
+      SHVar scratchAudio{.payload = {.audioValue = makeAudio(scratch, newNsamples, sampleRateHz, channels)}, .valueType = SHType::Audio};
+      cloneVar(collection, scratchAudio);
     }
   }
 
