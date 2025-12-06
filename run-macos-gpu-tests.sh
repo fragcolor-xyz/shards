@@ -197,7 +197,7 @@ if [ "$SKIP_MISC" = false ]; then
     TESTS+=(
         "shards/tests/ml.shs||"
         "shards/tests/fib.shs||LOG_shards=trace"
-        "lib/ml/test.shs||"
+        "shards/tests/ml-test.shs||"
         "shards/tests/global-init.shs||"
         "shards/tests/hot-reload.shs||"
         "shards/tests/crdts.shs||"
