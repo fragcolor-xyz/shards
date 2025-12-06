@@ -173,8 +173,329 @@
   Msg("Audio chain operations test passed!")
 })
 
+; ============================================================================
+; Audio Collection Operations Tests (AppendTo, PrependTo, Slice, Pad, Trim)
+; ============================================================================
+
+@wire(test-audio-append-prepend {
+  Msg("Testing Audio AppendTo/PrependTo...")
+
+  ; Generate test audio samples
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = audio1
+  880.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.3 Samples: 50) = audio2
+
+  ; === Test AppendTo - basic case ===
+  audio1 | Set(collection)
+  audio2 | AppendTo(collection)
+  collection | Log("AppendTo result (should have 150 samples)")
+
+  ; === Test PrependTo - basic case ===
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) | Set(collection2)
+  880.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.3 Samples: 50) | PrependTo(collection2)
+  collection2 | Log("PrependTo result (should have 150 samples)")
+
+  ; === Test multiple append operations (buffer reuse) ===
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 10) | Set(multi-append)
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 5) = small-audio
+  small-audio | AppendTo(multi-append)
+  small-audio | AppendTo(multi-append)
+  small-audio | AppendTo(multi-append)
+  multi-append | Log("Multiple appends (should have 25 samples)")
+
+  ; === Test mono audio ===
+  ; TODO: Test mono when Audio.Oscillator supports it
+
+  Msg("Audio AppendTo/PrependTo tests passed!")
+})
+
+@wire(test-audio-slice {
+  Msg("Testing Audio Slice...")
+
+  ; Generate test audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 1.0 Samples: 100) = audio
+
+  ; === Basic slice (From and To) ===
+  audio | Slice(From: 10 To: 50) = sliced
+  sliced | Log("Sliced audio (40 samples from index 10-50)")
+
+  ; === Slice from beginning (To only) ===
+  audio | Slice(To: 30) = front-slice
+  front-slice | Log("Front slice (first 30 samples)")
+
+  ; === Slice to end (From only) ===
+  audio | Slice(From: 70) = back-slice
+  back-slice | Log("Back slice (last 30 samples)")
+
+  ; === Negative indices (from end) ===
+  audio | Slice(From: -20) = last-20
+  last-20 | Log("Last 20 samples using negative index")
+
+  audio | Slice(From: -50 To: -10) = neg-slice
+  neg-slice | Log("Slice with negative from and to (-50 to -10)")
+
+  ; === Slice with step ===
+  audio | Slice(From: 0 To: 50 Step: 2) = stepped
+  stepped | Log("Every other sample (25 samples)")
+
+  audio | Slice(From: 0 To: 60 Step: 3) = stepped-3
+  stepped-3 | Log("Every 3rd sample (20 samples)")
+
+  ; === Edge cases ===
+  audio | Slice(From: 0 To: 100) = full-copy
+  full-copy | Log("Full slice (100 samples)")
+
+  audio | Slice(From: 50 To: 50) = empty-slice
+  empty-slice | Log("Empty slice (0 samples from 50-50)")
+
+  Msg("Audio Slice tests passed!")
+})
+
+@wire(test-audio-pad {
+  Msg("Testing Pad for Audio...")
+
+  ; Generate test audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = audio
+
+  ; === Pad at beginning only ===
+  audio | Pad(Before: 50) = padded-before
+  padded-before | Log("Audio padded at beginning (150 samples)")
+
+  ; === Pad at end only ===
+  audio | Pad(After: 50) = padded-after
+  padded-after | Log("Audio padded at end (150 samples)")
+
+  ; === Pad both ends ===
+  audio | Pad(Before: 25 After: 25) = padded-both
+  padded-both | Log("Audio padded both ends (150 samples)")
+
+  ; === Zero padding (default values) ===
+  audio | Pad(Before: 0 After: 0) = no-pad
+  no-pad | Log("No padding (100 samples)")
+
+  ; === Large padding ===
+  audio | Pad(Before: 1000 After: 1000) = large-pad
+  large-pad | Log("Large padding (2100 samples)")
+
+  Msg("Audio Pad tests passed!")
+})
+
+@wire(test-audio-trim {
+  Msg("Testing Trim for Audio...")
+
+  ; Generate test audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = audio
+
+  ; === Trim from beginning only ===
+  audio | Trim(Before: 20) = trimmed-before
+  trimmed-before | Log("Audio trimmed at beginning (80 samples)")
+
+  ; === Trim from end only ===
+  audio | Trim(After: 20) = trimmed-after
+  trimmed-after | Log("Audio trimmed at end (80 samples)")
+
+  ; === Trim both ends ===
+  audio | Trim(Before: 10 After: 10) = trimmed-both
+  trimmed-both | Log("Audio trimmed both ends (80 samples)")
+
+  ; === Zero trim (no change) ===
+  audio | Trim(Before: 0 After: 0) = no-trim
+  no-trim | Log("No trim (100 samples)")
+
+  ; === Trim to near-empty ===
+  audio | Trim(Before: 49 After: 50) = almost-empty
+  almost-empty | Log("Nearly empty audio (1 sample)")
+
+  Msg("Audio Trim tests passed!")
+})
+
+@wire(test-pad-seq {
+  Msg("Testing Pad for Seq...")
+
+  ; === Seq with default pad value (None) ===
+  [1 2 3] | Pad(Before: 2 After: 2) = padded-default
+  padded-default | Log("Padded sequence with default (None)")
+
+  ; === Seq with custom pad value ===
+  [1 2 3] | Pad(Before: 2 After: 2 Value: 0) = padded-zero
+  padded-zero | Log("Padded sequence with 0")
+  padded-zero | Assert.Is([0 0 1 2 3 0 0])
+
+  ; === Seq with string pad value ===
+  ["a" "b"] | Pad(Before: 1 After: 1 Value: "x") = padded-str
+  padded-str | Log("Padded string sequence")
+  padded-str | Assert.Is(["x" "a" "b" "x"])
+
+  ; === Pad only before ===
+  [1 2 3] | Pad(Before: 3 Value: -1) = pad-before
+  pad-before | Assert.Is([-1 -1 -1 1 2 3])
+
+  ; === Pad only after ===
+  [1 2 3] | Pad(After: 3 Value: -1) = pad-after
+  pad-after | Assert.Is([1 2 3 -1 -1 -1])
+
+  Msg("Pad Seq tests passed!")
+})
+
+@wire(test-pad-string {
+  Msg("Testing Pad for String...")
+
+  ; === Default padding (spaces) ===
+  "hi" | Pad(Before: 2 After: 2) = space-padded
+  space-padded | Log("Space padded string")
+  space-padded | Assert.Is("  hi  ")
+
+  ; === Custom character padding ===
+  "hello" | Pad(Before: 3 After: 3 Value: "*") = star-padded
+  star-padded | Log("Star padded string")
+  star-padded | Assert.Is("***hello***")
+
+  ; === Only before ===
+  "test" | Pad(Before: 5 Value: "-") = before-only
+  before-only | Assert.Is("-----test")
+
+  ; === Only after ===
+  "test" | Pad(After: 5 Value: "-") = after-only
+  after-only | Assert.Is("test-----")
+
+  ; === Single char from longer string ===
+  "abc" | Pad(Before: 2 After: 2 Value: "xyz") = first-char
+  first-char | Log("Uses first char of pad string")
+  first-char | Assert.Is("xxabcxx")
+
+  Msg("Pad String tests passed!")
+})
+
+@wire(test-pad-bytes {
+  Msg("Testing Pad for Bytes...")
+
+  ; === Default zero padding ===
+  "AB" | StringToBytes | Pad(Before: 2 After: 2) = zero-padded
+  zero-padded | Log("Zero padded bytes")
+
+  ; === Custom byte from Int ===
+  "test" | StringToBytes | Pad(Before: 2 After: 2 Value: 255) = int-padded
+  int-padded | Log("Padded with 0xFF from Int")
+
+  ; === Custom byte from Bytes ===
+  "CD" | StringToBytes | Pad(Before: 1 After: 1 Value: ("X" | StringToBytes)) = bytes-padded
+  bytes-padded | BytesToString | Assert.Is("XCDX")
+
+  Msg("Pad Bytes tests passed!")
+})
+
+@wire(test-trim-seq {
+  Msg("Testing Trim for Seq...")
+
+  ; === Basic trim ===
+  [0 0 1 2 3 0 0] | Trim(Before: 2 After: 2) = trimmed
+  trimmed | Log("Trimmed sequence")
+  trimmed | Assert.Is([1 2 3])
+
+  ; === Trim only before ===
+  [1 2 3 4 5] | Trim(Before: 2) = trim-before
+  trim-before | Assert.Is([3 4 5])
+
+  ; === Trim only after ===
+  [1 2 3 4 5] | Trim(After: 2) = trim-after
+  trim-after | Assert.Is([1 2 3])
+
+  ; === Zero trim ===
+  [1 2 3] | Trim(Before: 0 After: 0) = no-trim
+  no-trim | Assert.Is([1 2 3])
+
+  ; === Trim to single element ===
+  [1 2 3 4 5] | Trim(Before: 2 After: 2) = single
+  single | Assert.Is([3])
+
+  Msg("Trim Seq tests passed!")
+})
+
+@wire(test-trim-string {
+  Msg("Testing Trim for String...")
+
+  ; === Basic trim ===
+  "***hello***" | Trim(Before: 3 After: 3) = trimmed
+  trimmed | Log("Trimmed string")
+  trimmed | Assert.Is("hello")
+
+  ; === Trim only before ===
+  "xxxtest" | Trim(Before: 3) = trim-before
+  trim-before | Assert.Is("test")
+
+  ; === Trim only after ===
+  "testyyy" | Trim(After: 3) = trim-after
+  trim-after | Assert.Is("test")
+
+  ; === Zero trim ===
+  "hello" | Trim(Before: 0 After: 0) = no-trim
+  no-trim | Assert.Is("hello")
+
+  ; === Trim to single char ===
+  "xxAxx" | Trim(Before: 2 After: 2) = single-char
+  single-char | Assert.Is("A")
+
+  Msg("Trim String tests passed!")
+})
+
+@wire(test-trim-bytes {
+  Msg("Testing Trim for Bytes...")
+
+  ; === Basic trim ===
+  "##test##" | StringToBytes | Trim(Before: 2 After: 2) = trimmed
+  trimmed | BytesToString | Assert.Is("test")
+
+  ; === Trim only before ===
+  "XXXdata" | StringToBytes | Trim(Before: 3) = trim-before
+  trim-before | BytesToString | Assert.Is("data")
+
+  ; === Trim only after ===
+  "dataYYY" | StringToBytes | Trim(After: 3) = trim-after
+  trim-after | BytesToString | Assert.Is("data")
+
+  Msg("Trim Bytes tests passed!")
+})
+
+@wire(test-audio-workflow {
+  Msg("Testing audio mixing workflow with Pad + Math.Add...")
+
+  ; Create two audio buffers of different lengths
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = short-audio
+  880.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.3 Samples: 150) = long-audio
+
+  ; Pad the short audio to match the long audio
+  short-audio | Pad(After: 50) = padded-short
+
+  ; Now mix them using Math.Add
+  padded-short | Math.Add(long-audio) = mixed
+  mixed | Log("Mixed audio (150 samples)")
+
+  ; Test concatenation workflow
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 50) | Set(concat-audio)
+  880.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 50) | AppendTo(concat-audio)
+  660.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 50) | AppendTo(concat-audio)
+  concat-audio | Log("Concatenated audio (150 samples)")
+
+  ; Test slice + pad workflow (extract and pad to original size)
+  concat-audio | Slice(From: 50 To: 100) = middle-section
+  middle-section | Pad(Before: 50 After: 50) = restored-size
+  restored-size | Log("Extracted middle, padded back to 150 samples")
+
+  Msg("Audio workflow tests passed!")
+})
+
 @mesh(main)
 @schedule(main test-audio-binary)
 @schedule(main test-audio-unary)
 @schedule(main test-audio-chain)
+@schedule(main test-audio-append-prepend)
+@schedule(main test-audio-slice)
+@schedule(main test-audio-pad)
+@schedule(main test-audio-trim)
+@schedule(main test-pad-seq)
+@schedule(main test-pad-string)
+@schedule(main test-pad-bytes)
+@schedule(main test-trim-seq)
+@schedule(main test-trim-string)
+@schedule(main test-trim-bytes)
+@schedule(main test-audio-workflow)
 @run(main)

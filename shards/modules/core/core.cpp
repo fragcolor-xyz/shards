@@ -8,6 +8,7 @@
 #include <shards/utility.hpp>
 #include <shards/inlined.hpp>
 #include <shards/modules/core/core.hpp>
+#include <shards/modules/core/math_base.hpp>
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <shards/core/params.hpp>
@@ -459,7 +460,8 @@ struct XPendBase {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
-  static inline Types xpendTypes{{CoreInfo::AnyVarSeqType, CoreInfo::StringVarType, CoreInfo::BytesVarType}};
+  static inline Types xpendTypes{
+      {CoreInfo::AnyVarSeqType, CoreInfo::StringVarType, CoreInfo::BytesVarType, CoreInfo::AudioVarType}};
   static inline ParamsInfo paramsInfo =
       ParamsInfo(ParamsInfo::Param("Collection", SHCCSTR("The collection to add the input to."), xpendTypes));
 
@@ -472,9 +474,8 @@ struct XPendBase {
     for (auto &cons : data.shared) {
       if (strcmp(cons.name, _collection.variableName()) == 0) {
         if (cons.exposedType.basicType != SHType::Seq && cons.exposedType.basicType != SHType::Bytes &&
-            cons.exposedType.basicType != SHType::String) {
-          throw shards::Error("AppendTo/PrependTo expects either a SHType::Seq, SHType::String "
-                              "or SHType::Bytes variable as collection.");
+            cons.exposedType.basicType != SHType::String && cons.exposedType.basicType != SHType::Audio) {
+          throw shards::Error("AppendTo/PrependTo expects either a Seq, String, Bytes, or Audio variable as collection.");
         } else {
           if (cons.exposedType.basicType != SHType::Seq && cons.exposedType != data.inputType) {
             SHLOG_ERROR("AppendTo/PrependTo input is: {} variable is: {}", data.inputType, cons.exposedType);
@@ -578,6 +579,38 @@ struct AppendTo : public XPendBase {
       cloneVar(collection, tmp);
       break;
     }
+    case SHType::Audio: {
+      auto &colAudio = collection.payload.audioValue;
+      const auto &inAudio = input.payload.audioValue;
+
+      // Validate channels and sample rate match
+      if (colAudio.channels != inAudio.channels) {
+        throw ActivationError(
+            fmt::format("AppendTo: Audio channel mismatch (collection: {}, input: {})", colAudio.channels, inAudio.channels));
+      }
+      if (colAudio.sampleRate != inAudio.sampleRate) {
+        throw ActivationError(fmt::format("AppendTo: Audio sample rate mismatch (collection: {}, input: {})",
+                                          colAudio.sampleRate * 25, inAudio.sampleRate * 25));
+      }
+
+      const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
+      const uint8_t channels = colAudio.channels;
+
+      // Build combined audio in scratch buffer (resize reuses capacity)
+      _scratchStr.resize(newNsamples * channels * sizeof(float));
+      float *scratch = reinterpret_cast<float *>(_scratchStr.data());
+
+      for (uint8_t ch = 0; ch < channels; ch++) {
+        memcpy(scratch + ch * newNsamples, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
+        memcpy(scratch + ch * newNsamples + colAudio.nsamples, inAudio.samples + ch * inAudio.nsamples,
+               inAudio.nsamples * sizeof(float));
+      }
+
+      // cloneVar handles reallocation efficiently
+      SHAudio tmpAudio{scratch, newNsamples, colAudio.sampleRate, channels, colAudio.reserved};
+      cloneVar(collection, Var(tmpAudio));
+      break;
+    }
     default:
       throw ActivationError(fmt::format("AppendTo, case not implemented for type {}", collection.valueType));
     }
@@ -627,6 +660,38 @@ struct PrependTo : public XPendBase {
       _scratchStr.append((char *)collection.payload.bytesValue, collection.payload.bytesSize);
       Var tmp((uint8_t *)_scratchStr.data(), _scratchStr.size());
       cloneVar(collection, tmp);
+      break;
+    }
+    case SHType::Audio: {
+      auto &colAudio = collection.payload.audioValue;
+      const auto &inAudio = input.payload.audioValue;
+
+      // Validate channels and sample rate match
+      if (colAudio.channels != inAudio.channels) {
+        throw ActivationError(
+            fmt::format("PrependTo: Audio channel mismatch (collection: {}, input: {})", colAudio.channels, inAudio.channels));
+      }
+      if (colAudio.sampleRate != inAudio.sampleRate) {
+        throw ActivationError(fmt::format("PrependTo: Audio sample rate mismatch (collection: {}, input: {})",
+                                          colAudio.sampleRate * 25, inAudio.sampleRate * 25));
+      }
+
+      const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
+      const uint8_t channels = colAudio.channels;
+
+      // Build combined audio in scratch buffer (resize reuses capacity)
+      _scratchStr.resize(newNsamples * channels * sizeof(float));
+      float *scratch = reinterpret_cast<float *>(_scratchStr.data());
+
+      for (uint8_t ch = 0; ch < channels; ch++) {
+        memcpy(scratch + ch * newNsamples, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
+        memcpy(scratch + ch * newNsamples + inAudio.nsamples, colAudio.samples + ch * colAudio.nsamples,
+               colAudio.nsamples * sizeof(float));
+      }
+
+      // cloneVar handles reallocation efficiently
+      SHAudio tmpAudio{scratch, newNsamples, colAudio.sampleRate, channels, colAudio.reserved};
+      cloneVar(collection, Var(tmpAudio));
       break;
     }
     default:
@@ -3215,6 +3280,345 @@ struct WebBrowseShard : public LambdaShard<webBrowseActivation, CoreInfo::String
   static SHOptionalString outputHelp() { return DefaultHelpText::OutputHelpPass; }
 };
 
+struct Pad {
+  static SHOptionalString help() {
+    return SHCCSTR("Adds padding to the beginning and/or end of a collection (Audio, Seq, String, or Bytes).");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The collection to pad."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The padded collection."); }
+
+  static inline Types PadInputTypes{
+      {CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
+
+  static SHTypesInfo inputTypes() { return PadInputTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  PARAM_VAR(_before, "Before", "Number of elements to add at the beginning.", {CoreInfo::IntType});
+  PARAM_VAR(_after, "After", "Number of elements to add at the end.", {CoreInfo::IntType});
+  PARAM_PARAMVAR(_value, "Value", "Value to pad with. For Audio, this is ignored (always zero). For Seq, defaults to None.",
+                 {CoreInfo::NoneType, CoreInfo::AnyType, CoreInfo::AnyVarType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_before), PARAM_IMPL_FOR(_after), PARAM_IMPL_FOR(_value));
+
+  PARAM_REQUIRED_VARIABLES();
+
+  std::vector<uint8_t> _buffer{};
+  OwnedVar _seqOutput{};
+
+  Pad() {
+    _before = Var(0);
+    _after = Var(0);
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _seqOutput = Var::Empty;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    if (data.inputType.basicType == SHType::Audio) {
+      OVERRIDE_ACTIVATE(data, activateAudio);
+    } else if (data.inputType.basicType == SHType::Seq) {
+      OVERRIDE_ACTIVATE(data, activateSeq);
+    } else if (data.inputType.basicType == SHType::String) {
+      OVERRIDE_ACTIVATE(data, activateString);
+    } else if (data.inputType.basicType == SHType::Bytes) {
+      OVERRIDE_ACTIVATE(data, activateBytes);
+    }
+
+    return data.inputType;
+  }
+
+  SHVar activateAudio(SHContext *context, const SHVar &input) {
+    const auto &inAudio = input.payload.audioValue;
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Pad: Before and After must be non-negative.");
+    }
+
+    const uint32_t newNsamples = inAudio.nsamples + uint32_t(before) + uint32_t(after);
+    const uint8_t channels = inAudio.channels;
+
+    _buffer.resize(newNsamples * channels * sizeof(float));
+    float *samples = reinterpret_cast<float *>(_buffer.data());
+
+    // For each channel in planar layout
+    for (uint8_t ch = 0; ch < channels; ch++) {
+      float *outCh = samples + ch * newNsamples;
+      const float *inCh = inAudio.samples + ch * inAudio.nsamples;
+
+      // Zero padding using SIMD where available
+#ifdef SHARDS_HAS_ACCELERATE
+      if (before > 0) {
+        vDSP_vclr(outCh, 1, before);
+      }
+      memcpy(outCh + before, inCh, inAudio.nsamples * sizeof(float));
+      if (after > 0) {
+        vDSP_vclr(outCh + before + inAudio.nsamples, 1, after);
+      }
+#else
+      // Use SIMD zeroing for non-Apple platforms
+      Math::applyAudioClear(outCh, before);
+      memcpy(outCh + before, inCh, inAudio.nsamples * sizeof(float));
+      Math::applyAudioClear(outCh + before + inAudio.nsamples, after);
+#endif
+    }
+
+    return Var(SHAudio{samples, newNsamples, inAudio.sampleRate, channels, inAudio.reserved});
+  }
+
+  SHVar activateSeq(SHContext *context, const SHVar &input) {
+    const auto &inSeq = input.payload.seqValue;
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Pad: Before and After must be non-negative.");
+    }
+
+    const uint32_t newLen = inSeq.len + uint32_t(before) + uint32_t(after);
+
+    // Prepare output - reuse existing seq if possible
+    if (_seqOutput.valueType != SHType::Seq) {
+      _seqOutput.valueType = SHType::Seq;
+      _seqOutput.payload.seqValue = {};
+    }
+    shards::arrayResize(_seqOutput.payload.seqValue, newLen);
+
+    const auto &padValue = _value.get();
+
+    // Pad at beginning
+    for (uint32_t i = 0; i < uint32_t(before); i++) {
+      cloneVar(_seqOutput.payload.seqValue.elements[i], padValue);
+    }
+
+    // Copy original elements
+    for (uint32_t i = 0; i < inSeq.len; i++) {
+      cloneVar(_seqOutput.payload.seqValue.elements[before + i], inSeq.elements[i]);
+    }
+
+    // Pad at end
+    for (uint32_t i = 0; i < uint32_t(after); i++) {
+      cloneVar(_seqOutput.payload.seqValue.elements[before + inSeq.len + i], padValue);
+    }
+
+    return _seqOutput;
+  }
+
+  SHVar activateString(SHContext *context, const SHVar &input) {
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Pad: Before and After must be non-negative.");
+    }
+
+    const auto &padValue = _value.get();
+    char padChar = ' '; // default is space
+    if (padValue.valueType == SHType::String && SHSTRLEN(padValue) > 0) {
+      padChar = padValue.payload.stringValue[0];
+    }
+
+    const uint32_t inputLen = SHSTRLEN(input);
+    const uint32_t newLen = inputLen + uint32_t(before) + uint32_t(after);
+
+    _buffer.resize(newLen + 1);
+    memset(_buffer.data(), padChar, before);
+    memcpy(_buffer.data() + before, input.payload.stringValue, inputLen);
+    memset(_buffer.data() + before + inputLen, padChar, after);
+    _buffer[newLen] = '\0';
+
+    return Var(reinterpret_cast<const char *>(_buffer.data()), newLen);
+  }
+
+  SHVar activateBytes(SHContext *context, const SHVar &input) {
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Pad: Before and After must be non-negative.");
+    }
+
+    const auto &padValue = _value.get();
+    uint8_t padByte = 0x00; // default is zero
+    if (padValue.valueType == SHType::Bytes && padValue.payload.bytesSize > 0) {
+      padByte = padValue.payload.bytesValue[0];
+    } else if (padValue.valueType == SHType::Int) {
+      padByte = uint8_t(padValue.payload.intValue & 0xFF);
+    }
+
+    const uint32_t inputLen = input.payload.bytesSize;
+    const uint32_t newLen = inputLen + uint32_t(before) + uint32_t(after);
+
+    _buffer.resize(newLen);
+    memset(_buffer.data(), padByte, before);
+    memcpy(_buffer.data() + before, input.payload.bytesValue, inputLen);
+    memset(_buffer.data() + before + inputLen, padByte, after);
+
+    return Var(_buffer.data(), newLen);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Pad: unreachable code path"); }
+};
+
+struct Trim {
+  static SHOptionalString help() {
+    return SHCCSTR("Removes elements from the beginning and/or end of a collection (Audio, Seq, String, or Bytes).");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The collection to trim."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The trimmed collection."); }
+
+  static inline Types TrimInputTypes{
+      {CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
+
+  static SHTypesInfo inputTypes() { return TrimInputTypes; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  PARAM_VAR(_before, "Before", "Number of elements to remove from the beginning.", {CoreInfo::IntType});
+  PARAM_VAR(_after, "After", "Number of elements to remove from the end.", {CoreInfo::IntType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_before), PARAM_IMPL_FOR(_after));
+
+  std::vector<uint8_t> _buffer{};
+  OwnedVar _seqOutput{};
+
+  Trim() {
+    _before = Var(0);
+    _after = Var(0);
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _seqOutput = Var::Empty;
+  }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Audio) {
+      OVERRIDE_ACTIVATE(data, activateAudio);
+    } else if (data.inputType.basicType == SHType::Seq) {
+      OVERRIDE_ACTIVATE(data, activateSeq);
+    } else if (data.inputType.basicType == SHType::String) {
+      OVERRIDE_ACTIVATE(data, activateString);
+    } else if (data.inputType.basicType == SHType::Bytes) {
+      OVERRIDE_ACTIVATE(data, activateBytes);
+    }
+
+    return data.inputType;
+  }
+
+  SHVar activateAudio(SHContext *context, const SHVar &input) {
+    const auto &inAudio = input.payload.audioValue;
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Trim: Before and After must be non-negative.");
+    }
+
+    const int64_t totalTrim = before + after;
+    if (totalTrim > int64_t(inAudio.nsamples)) {
+      throw ActivationError(
+          fmt::format("Trim: Cannot trim {} samples from audio with {} samples.", totalTrim, inAudio.nsamples));
+    }
+
+    const uint32_t newNsamples = inAudio.nsamples - uint32_t(before) - uint32_t(after);
+    const uint8_t channels = inAudio.channels;
+
+    _buffer.resize(newNsamples * channels * sizeof(float));
+    float *samples = reinterpret_cast<float *>(_buffer.data());
+
+    for (uint8_t ch = 0; ch < channels; ch++) {
+      float *outCh = samples + ch * newNsamples;
+      const float *inCh = inAudio.samples + ch * inAudio.nsamples + before;
+      memcpy(outCh, inCh, newNsamples * sizeof(float));
+    }
+
+    return Var(SHAudio{samples, newNsamples, inAudio.sampleRate, channels, inAudio.reserved});
+  }
+
+  SHVar activateSeq(SHContext *context, const SHVar &input) {
+    const auto &inSeq = input.payload.seqValue;
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Trim: Before and After must be non-negative.");
+    }
+
+    const int64_t totalTrim = before + after;
+    if (totalTrim > int64_t(inSeq.len)) {
+      throw ActivationError(fmt::format("Trim: Cannot trim {} elements from sequence with {} elements.", totalTrim, inSeq.len));
+    }
+
+    const uint32_t newLen = inSeq.len - uint32_t(before) - uint32_t(after);
+
+    if (_seqOutput.valueType != SHType::Seq) {
+      _seqOutput.valueType = SHType::Seq;
+      _seqOutput.payload.seqValue = {};
+    }
+    shards::arrayResize(_seqOutput.payload.seqValue, newLen);
+
+    for (uint32_t i = 0; i < newLen; i++) {
+      cloneVar(_seqOutput.payload.seqValue.elements[i], inSeq.elements[before + i]);
+    }
+
+    return _seqOutput;
+  }
+
+  SHVar activateString(SHContext *context, const SHVar &input) {
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Trim: Before and After must be non-negative.");
+    }
+
+    const uint32_t inputLen = SHSTRLEN(input);
+    const int64_t totalTrim = before + after;
+    if (totalTrim > int64_t(inputLen)) {
+      throw ActivationError(fmt::format("Trim: Cannot trim {} characters from string with {} characters.", totalTrim, inputLen));
+    }
+
+    const uint32_t newLen = inputLen - uint32_t(before) - uint32_t(after);
+
+    _buffer.resize(newLen + 1);
+    memcpy(_buffer.data(), input.payload.stringValue + before, newLen);
+    _buffer[newLen] = '\0';
+
+    return Var(reinterpret_cast<const char *>(_buffer.data()), newLen);
+  }
+
+  SHVar activateBytes(SHContext *context, const SHVar &input) {
+    const int64_t before = _before->payload.intValue;
+    const int64_t after = _after->payload.intValue;
+
+    if (before < 0 || after < 0) {
+      throw ActivationError("Trim: Before and After must be non-negative.");
+    }
+
+    const uint32_t inputLen = input.payload.bytesSize;
+    const int64_t totalTrim = before + after;
+    if (totalTrim > int64_t(inputLen)) {
+      throw ActivationError(fmt::format("Trim: Cannot trim {} bytes from input with {} bytes.", totalTrim, inputLen));
+    }
+
+    const uint32_t newLen = inputLen - uint32_t(before) - uint32_t(after);
+
+    _buffer.resize(newLen);
+    memcpy(_buffer.data(), input.payload.bytesValue + before, newLen);
+
+    return Var(_buffer.data(), newLen);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Trim: unreachable code path"); }
+};
+
 SHARDS_REGISTER_FN(core) {
   REGISTER_ENUM(CoreInfo2::TypeEnumInfo);
 
@@ -3240,6 +3644,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_CORE_SHARD(RTake);
   REGISTER_SHARD("Split", Split);
   REGISTER_SHARD("Slice", Slice);
+  REGISTER_SHARD("Pad", Pad);
+  REGISTER_SHARD("Trim", Trim);
   REGISTER_CORE_SHARD(Limit);
   REGISTER_CORE_SHARD(RLimit);
   REGISTER_SHARD("Repeat", Repeat);
