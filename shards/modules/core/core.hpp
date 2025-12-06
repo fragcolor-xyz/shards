@@ -2876,13 +2876,14 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("This shard counts the sequence, string, table, or audio variable specified in the Name parameter. If the variable "
-                   "specified is "
-                   "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
-                   "the number of "
-                   "elements. If the variable specified is a table, it will count the number of key-value pairs. "
-                   "If the variable specified is audio, it will count the number of samples (per channel). "
-                   "If the variable is left empty and instead an input is provided, the input will be counted instead.");
+    return SHCCSTR(
+        "This shard counts the sequence, string, table, or audio variable specified in the Name parameter. If the variable "
+        "specified is "
+        "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
+        "the number of "
+        "elements. If the variable specified is a table, it will count the number of key-value pairs. "
+        "If the variable specified is audio, it will count the number of samples (per channel). "
+        "If the variable is left empty and instead an input is provided, the input will be counted instead.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }

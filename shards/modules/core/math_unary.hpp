@@ -17,11 +17,10 @@ namespace Math {
 // Basic Unary Operation - Template for unary ops with type dispatch
 // =============================================================================
 
-template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> 
-struct BasicUnaryOperation {
+template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> struct BasicUnaryOperation {
   static constexpr DispatchType DispatchType__ = DispatchType_;
-  using OpType_ = TOp;  // Expose the operation type
-  
+  using OpType_ = TOp; // Expose the operation type
+
   ApplyUnary<TOp> apply;
 
   OpType validateTypes(const SHTypeInfo &a, SHTypeInfo &resultType) {
@@ -40,8 +39,7 @@ struct BasicUnaryOperation {
 // =============================================================================
 
 // Type trait to detect if TOp has OpType_ and DispatchType__ (i.e., is a BasicUnaryOperation)
-template <typename T, typename = void>
-struct HasUnaryOpTraits : std::false_type {};
+template <typename T, typename = void> struct HasUnaryOpTraits : std::false_type {};
 
 template <typename T>
 struct HasUnaryOpTraits<T, std::void_t<typename T::OpType_, decltype(T::DispatchType__)>> : std::true_type {};
@@ -60,14 +58,13 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
   SHTypeInfo compose(const SHInstanceData &data) {
     SHTypeInfo resultType = data.inputType;
     validateTypes(data.inputType, resultType);
-    
+
     // Use OVERRIDE_ACTIVATE for direct operations (only if TOp supports it)
     if constexpr (HasUnaryOpTraits<TOp>::value) {
       if (_opType == OpType::Direct) {
         _dispatchType = data.inputType.basicType;
         using ThisType = std::remove_pointer_t<decltype(this)>;
-        overrideUnaryActivateForType<typename TOp::OpType_, ThisType, TOp::DispatchType__>(
-            data, data.inputType.basicType, this);
+        overrideUnaryActivateForType<typename TOp::OpType_, ThisType, TOp::DispatchType__>(data, data.inputType.basicType, this);
       }
     }
     return resultType;
@@ -118,13 +115,15 @@ template <class TOp> struct UnaryOperation : public UnaryBase {
 template <class TOp> struct UnaryFloatOperation : public UnaryOperation<TOp> {
   static inline Types FloatOrSeqTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
                                        CoreInfo::ColorType, CoreInfo::AnySeqType}};
-  static inline Types FloatOrSeqOrAudioTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
-                                              CoreInfo::ColorType, CoreInfo::AnySeqType, CoreInfo::AudioType}};
+  static inline Types FloatOrSeqOrAudioTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type,
+                                              CoreInfo::Float4Type, CoreInfo::ColorType, CoreInfo::AnySeqType,
+                                              CoreInfo::AudioType}};
 
   static SHTypesInfo inputTypes() { return FloatOrSeqOrAudioTypes; }
   static SHOptionalString inputHelp() {
-    return SHCCSTR("A floating point number, a vector of floats (Float2, Float3, Float4), a color, audio, or a sequence of these types "
-                   "supported by this operation.");
+    return SHCCSTR(
+        "A floating point number, a vector of floats (Float2, Float3, Float4), a color, audio, or a sequence of these types "
+        "supported by this operation.");
   }
   static SHTypesInfo outputTypes() { return FloatOrSeqOrAudioTypes; }
 
@@ -214,161 +213,135 @@ MATH_UNARY_FLOAT_OPERATION(Round, __builtin_round, __builtin_roundf);
 // vForce functions are highly optimized for Apple Silicon and Intel Macs
 // Single function call handles all SIMD optimization internally
 
-template <>
-inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvsinf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvcosf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvtanf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvasinf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvacosf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvatanf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvsinhf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvcoshf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvtanhf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvasinhf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvacoshf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvatanhf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvexpf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvexp2f(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvexpm1f(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvlogf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvlog10f(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvlog2f(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvlog1pf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvsqrtf(out, a, &n);
 }
 
 // Cbrt - no vForce equivalent, use scalar fallback
-template <>
-inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
   for (size_t i = 0; i < count; ++i)
     out[i] = __builtin_cbrtf(a[i]);
 }
 
-template <>
-inline void applyUnaryAudioOp<AbsOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AbsOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvfabsf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<CeilOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CeilOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvceilf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<FloorOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<FloorOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
   vvfloorf(out, a, &n);
 }
 
-template <>
-inline void applyUnaryAudioOp<TruncOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<TruncOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
-  vvintf(out, a, &n);  // truncate toward zero
+  vvintf(out, a, &n); // truncate toward zero
 }
 
-template <>
-inline void applyUnaryAudioOp<RoundOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<RoundOp>(float *out, const float *a, size_t count) {
   int n = static_cast<int>(count);
-  vvnintf(out, a, &n);  // round to nearest integer
+  vvnintf(out, a, &n); // round to nearest integer
 }
 
 // =============================================================================
@@ -378,8 +351,7 @@ inline void applyUnaryAudioOp<RoundOp>(float *out, const float *a, size_t count)
 #elif defined(SHARDS_HAS_SLEEF)
 
 // Sin - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -399,8 +371,7 @@ inline void applyUnaryAudioOp<SinOp>(float *out, const float *a, size_t count) {
 }
 
 // Cos - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -420,8 +391,7 @@ inline void applyUnaryAudioOp<CosOp>(float *out, const float *a, size_t count) {
 }
 
 // Tan - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -441,8 +411,7 @@ inline void applyUnaryAudioOp<TanOp>(float *out, const float *a, size_t count) {
 }
 
 // Asin - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -462,8 +431,7 @@ inline void applyUnaryAudioOp<AsinOp>(float *out, const float *a, size_t count) 
 }
 
 // Acos - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -483,8 +451,7 @@ inline void applyUnaryAudioOp<AcosOp>(float *out, const float *a, size_t count) 
 }
 
 // Atan - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -504,8 +471,7 @@ inline void applyUnaryAudioOp<AtanOp>(float *out, const float *a, size_t count) 
 }
 
 // Sinh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -525,8 +491,7 @@ inline void applyUnaryAudioOp<SinhOp>(float *out, const float *a, size_t count) 
 }
 
 // Cosh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -546,8 +511,7 @@ inline void applyUnaryAudioOp<CoshOp>(float *out, const float *a, size_t count) 
 }
 
 // Tanh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -567,8 +531,7 @@ inline void applyUnaryAudioOp<TanhOp>(float *out, const float *a, size_t count) 
 }
 
 // Asinh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -588,8 +551,7 @@ inline void applyUnaryAudioOp<AsinhOp>(float *out, const float *a, size_t count)
 }
 
 // Acosh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -609,8 +571,7 @@ inline void applyUnaryAudioOp<AcoshOp>(float *out, const float *a, size_t count)
 }
 
 // Atanh - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -630,8 +591,7 @@ inline void applyUnaryAudioOp<AtanhOp>(float *out, const float *a, size_t count)
 }
 
 // Exp - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -651,8 +611,7 @@ inline void applyUnaryAudioOp<ExpOp>(float *out, const float *a, size_t count) {
 }
 
 // Exp2 - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -672,8 +631,7 @@ inline void applyUnaryAudioOp<Exp2Op>(float *out, const float *a, size_t count) 
 }
 
 // Expm1 - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -693,8 +651,7 @@ inline void applyUnaryAudioOp<Expm1Op>(float *out, const float *a, size_t count)
 }
 
 // Log - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -714,8 +671,7 @@ inline void applyUnaryAudioOp<LogOp>(float *out, const float *a, size_t count) {
 }
 
 // Log10 - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -735,8 +691,7 @@ inline void applyUnaryAudioOp<Log10Op>(float *out, const float *a, size_t count)
 }
 
 // Log2 - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -756,8 +711,7 @@ inline void applyUnaryAudioOp<Log2Op>(float *out, const float *a, size_t count) 
 }
 
 // Log1p - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -777,19 +731,18 @@ inline void applyUnaryAudioOp<Log1pOp>(float *out, const float *a, size_t count)
 }
 
 // Sqrt - SIMD optimized (native SIMD sqrt is very fast)
-template <>
-inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
     __m256 va = _mm256_loadu_ps(a + i);
-    __m256 vr = _mm256_sqrt_ps(va);  // Native AVX sqrt
+    __m256 vr = _mm256_sqrt_ps(va); // Native AVX sqrt
     _mm256_storeu_ps(out + i, vr);
   }
 #elif defined(__ARM_NEON) || defined(__ARM_NEON__)
   for (; i + 4 <= count; i += 4) {
     float32x4_t va = vld1q_f32(a + i);
-    float32x4_t vr = vsqrtq_f32(va);  // Native NEON sqrt
+    float32x4_t vr = vsqrtq_f32(va); // Native NEON sqrt
     vst1q_f32(out + i, vr);
   }
 #endif
@@ -798,8 +751,7 @@ inline void applyUnaryAudioOp<SqrtOp>(float *out, const float *a, size_t count) 
 }
 
 // Cbrt - SIMD optimized
-template <>
-inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
+template <> inline void applyUnaryAudioOp<CbrtOp>(float *out, const float *a, size_t count) {
   size_t i = 0;
 #if defined(__AVX2__)
   for (; i + 8 <= count; i += 8) {
@@ -872,9 +824,7 @@ struct Expm1 : public UnaryFloatOperation<BasicUnaryOperation<Expm1Op, DispatchT
 };
 
 struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the natural logarithm for the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the natural logarithm for the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the natural logarithm of. Must be positive.");
@@ -884,9 +834,7 @@ struct Log : public UnaryFloatOperation<BasicUnaryOperation<LogOp, DispatchType:
 };
 
 struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the base 10 logarithm for the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the base 10 logarithm for the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the base 10 logarithm of. Must be positive.");
@@ -896,9 +844,7 @@ struct Log10 : public UnaryFloatOperation<BasicUnaryOperation<Log10Op, DispatchT
 };
 
 struct Log2 : public UnaryFloatOperation<BasicUnaryOperation<Log2Op, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the base 2 logarithm for the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the base 2 logarithm for the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the base 2 logarithm of. Must be positive.");
@@ -930,7 +876,9 @@ struct Sqrt : public UnaryFloatOperation<BasicUnaryOperation<SqrtOp, DispatchTyp
 };
 
 struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() { return SHCCSTR("This shard calculates the square root of the given input (fast approximation)."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the square root of the given input (fast approximation).");
+  }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the square root of. Must be positive.");
@@ -940,7 +888,9 @@ struct FastSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastSqrtOp, Dis
 };
 
 struct FastInvSqrt : public UnaryFloatOperation<BasicUnaryOperation<FastInvSqrtOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse square root of the given input (fast approximation)."); }
+  static SHOptionalString help() {
+    return SHCCSTR("This shard calculates the inverse square root of the given input (fast approximation).");
+  }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse square root of. Must be positive.");
@@ -988,9 +938,7 @@ struct Tan : public UnaryFloatOperation<BasicUnaryOperation<TanOp, DispatchType:
 };
 
 struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse sine of the given input (arc sine).");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse sine of the given input (arc sine)."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse sine of.");
@@ -1000,9 +948,7 @@ struct Asin : public UnaryFloatOperation<BasicUnaryOperation<AsinOp, DispatchTyp
 };
 
 struct Acos : public UnaryFloatOperation<BasicUnaryOperation<AcosOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse cosine of the given input (arc cosine).");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse cosine of the given input (arc cosine)."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse cosine of.");
@@ -1024,9 +970,7 @@ struct Atan : public UnaryFloatOperation<BasicUnaryOperation<AtanOp, DispatchTyp
 };
 
 struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic sine of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the hyperbolic sine of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic sine of.");
@@ -1036,9 +980,7 @@ struct Sinh : public UnaryFloatOperation<BasicUnaryOperation<SinhOp, DispatchTyp
 };
 
 struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic cosine of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the hyperbolic cosine of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic cosine of.");
@@ -1048,9 +990,7 @@ struct Cosh : public UnaryFloatOperation<BasicUnaryOperation<CoshOp, DispatchTyp
 };
 
 struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the hyperbolic tangent of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the hyperbolic tangent of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the hyperbolic tangent of.");
@@ -1060,9 +1000,7 @@ struct Tanh : public UnaryFloatOperation<BasicUnaryOperation<TanhOp, DispatchTyp
 };
 
 struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse hyperbolic sine of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic sine of.");
@@ -1072,9 +1010,7 @@ struct Asinh : public UnaryFloatOperation<BasicUnaryOperation<AsinhOp, DispatchT
 };
 
 struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse hyperbolic cosine of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic cosine of.");
@@ -1084,9 +1020,7 @@ struct Acosh : public UnaryFloatOperation<BasicUnaryOperation<AcoshOp, DispatchT
 };
 
 struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the inverse hyperbolic tangent of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the inverse hyperbolic tangent of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the inverse hyperbolic tangent of.");
@@ -1096,9 +1030,7 @@ struct Atanh : public UnaryFloatOperation<BasicUnaryOperation<AtanhOp, DispatchT
 };
 
 struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the error function of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the error function of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the error function of.");
@@ -1110,9 +1042,7 @@ struct Erf : public UnaryFloatOperation<BasicUnaryOperation<ErfOp, DispatchType:
 };
 
 struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the complementary error function of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the complementary error function of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the complementary error function of.");
@@ -1124,11 +1054,11 @@ struct Erfc : public UnaryFloatOperation<BasicUnaryOperation<ErfcOp, DispatchTyp
 };
 
 struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the gamma function of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the gamma function of the given input."); }
 
-  static SHOptionalString inputHelp() { return SHCCSTR("The input float or sequence of floats to calculate the gamma function of."); }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("The input float or sequence of floats to calculate the gamma function of.");
+  }
 
   static SHOptionalString outputHelp() {
     return SHCCSTR("Outputs the gamma function of the input. Always positive for positive inputs.");
@@ -1136,9 +1066,7 @@ struct TGamma : public UnaryFloatOperation<BasicUnaryOperation<TGammaOp, Dispatc
 };
 
 struct LGamma : public UnaryFloatOperation<BasicUnaryOperation<LGammaOp, DispatchType::FloatTypes>> {
-  static SHOptionalString help() {
-    return SHCCSTR("This shard calculates the log gamma function of the given input.");
-  }
+  static SHOptionalString help() { return SHCCSTR("This shard calculates the log gamma function of the given input."); }
 
   static SHOptionalString inputHelp() {
     return SHCCSTR("The input float or sequence of floats to calculate the log gamma function of.");

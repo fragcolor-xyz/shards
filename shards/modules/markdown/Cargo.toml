@@ -14,4 +14,4 @@ lazy_static = "1.5"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1"
 pulldown-cmark = { version = "0.13", default-features = false }
-htmd = "0.2.1"
+htmd = "0.5.0"

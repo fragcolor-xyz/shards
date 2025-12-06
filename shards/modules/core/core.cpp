@@ -583,7 +583,8 @@ struct XPendBase {
 
       // Use makeAudio on scratch buffer, cloneVar handles destroy/realloc efficiently
       // (see cloneVarSlow in runtime.cpp for Audio - it reuses dst buffer when capacity allows)
-      SHVar scratchAudio{.payload = {.audioValue = makeAudio(scratch, newNsamples, sampleRateHz, channels)}, .valueType = SHType::Audio};
+      SHVar scratchAudio{.payload = {.audioValue = makeAudio(scratch, newNsamples, sampleRateHz, channels)},
+                         .valueType = SHType::Audio};
       cloneVar(collection, scratchAudio);
     }
   }
@@ -3287,8 +3288,7 @@ struct Pad {
   static SHOptionalString inputHelp() { return SHCCSTR("The collection to pad."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The padded collection."); }
 
-  static inline Types PadInputTypes{
-      {CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
+  static inline Types PadInputTypes{{CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
 
   static SHTypesInfo inputTypes() { return PadInputTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -3488,8 +3488,7 @@ struct Trim {
   static SHOptionalString inputHelp() { return SHCCSTR("The collection to trim."); }
   static SHOptionalString outputHelp() { return SHCCSTR("The trimmed collection."); }
 
-  static inline Types TrimInputTypes{
-      {CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
+  static inline Types TrimInputTypes{{CoreInfo::AudioType, CoreInfo::AnySeqType, CoreInfo::StringType, CoreInfo::BytesType}};
 
   static SHTypesInfo inputTypes() { return TrimInputTypes; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -3539,8 +3538,7 @@ struct Trim {
     // Use uint64_t to avoid int64_t overflow when adding two large positive values
     const uint64_t totalTrim = uint64_t(before) + uint64_t(after);
     if (totalTrim > inAudio.nsamples) {
-      throw ActivationError(
-          fmt::format("Trim: Cannot trim {} samples from audio with {} samples.", totalTrim, inAudio.nsamples));
+      throw ActivationError(fmt::format("Trim: Cannot trim {} samples from audio with {} samples.", totalTrim, inAudio.nsamples));
     }
 
     const uint32_t newNsamples = inAudio.nsamples - uint32_t(before) - uint32_t(after);

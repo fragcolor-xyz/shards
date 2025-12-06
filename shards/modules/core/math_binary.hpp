@@ -14,8 +14,7 @@ namespace Math {
 // Basic Binary Operation - Template for binary ops with type dispatch
 // =============================================================================
 
-template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> 
-struct BasicBinaryOperation {
+template <typename TOp, DispatchType DispatchType_ = DispatchType::NumberTypes> struct BasicBinaryOperation {
   static constexpr shards::Math::DispatchType DispatchType__ = DispatchType_;
 
   ApplyBinary<TOp> apply;
@@ -258,7 +257,8 @@ struct Add : public BinaryOperation<BasicBinaryOperation<AddOp>> {
   static SHTypesInfo outputTypes() { return inputTypes(); }
 
   static SHParametersInfo parameters() {
-    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
+    static Types ParamTypes{MathTypesOrVar,
+                            {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to add to the input."), ParamTypes));
     return SHParametersInfo(customParams);
@@ -356,7 +356,8 @@ struct Subtract : public BinaryOperation<BasicBinaryOperation<SubtractOp>> {
   static SHTypesInfo outputTypes() { return inputTypes(); }
 
   static SHParametersInfo parameters() {
-    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
+    static Types ParamTypes{MathTypesOrVar,
+                            {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to subtract from the input."), ParamTypes));
     return SHParametersInfo(customParams);
@@ -450,7 +451,8 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
   static SHTypesInfo outputTypes() { return inputTypes(); }
 
   static SHParametersInfo parameters() {
-    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
+    static Types ParamTypes{MathTypesOrVar,
+                            {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to multiply the input by."), ParamTypes));
     return SHParametersInfo(customParams);
@@ -544,7 +546,8 @@ struct Divide : public BinaryOperation<BasicBinaryOperation<DivideOp>> {
   static SHTypesInfo outputTypes() { return inputTypes(); }
 
   static SHParametersInfo parameters() {
-    static Types ParamTypes{MathTypesOrVar, {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
+    static Types ParamTypes{MathTypesOrVar,
+                            {CoreInfo::AudioType, CoreInfo::AudioVarType, CoreInfo::FloatType, CoreInfo::FloatVarType}};
     static ParamsInfo customParams(
         ParamsInfo::Param("Operand", SHCCSTR("The value or sequence of values to divide the input by."), ParamTypes));
     return SHParametersInfo(customParams);
@@ -760,8 +763,9 @@ struct Or : public BinaryIntOperation<BasicBinaryOperation<OrOp, DispatchType::I
 
 struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, DispatchType::IntTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard shifts the bits of the input value to the left by the number of positions specified in the Operand "
-                   "parameter.");
+    return SHCCSTR(
+        "This shard shifts the bits of the input value to the left by the number of positions specified in the Operand "
+        "parameter.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The integer or the sequence of integers to shift the bits of."); }
@@ -788,8 +792,9 @@ struct LShift : public BinaryIntOperation<BasicBinaryOperation<LShiftOp, Dispatc
 
 struct RShift : public BinaryIntOperation<BasicBinaryOperation<RShiftOp, DispatchType::IntTypes>> {
   static SHOptionalString help() {
-    return SHCCSTR("This shard shifts the bits of the input value to the right by the number of positions specified in the Operand "
-                   "parameter.");
+    return SHCCSTR(
+        "This shard shifts the bits of the input value to the right by the number of positions specified in the Operand "
+        "parameter.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The integer or the sequence of integers to shift the bits of."); }

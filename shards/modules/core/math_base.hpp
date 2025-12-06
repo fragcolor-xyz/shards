@@ -95,16 +95,14 @@ using BinaryDispatchFn = void (*)(SHVarPayload &, const SHVarPayload &, const SH
 using UnaryDispatchFn = void (*)(SHVarPayload &, const SHVarPayload &);
 
 // Typed binary operation that can be stored as function pointer
-template <typename TOp, SHType ValueType>
-void typedBinaryOp(SHVarPayload &out, const SHVarPayload &a, const SHVarPayload &b) {
+template <typename TOp, SHType ValueType> void typedBinaryOp(SHVarPayload &out, const SHVarPayload &a, const SHVarPayload &b) {
   typename PayloadTraits<ValueType>::ApplyBinary binary{};
   binary.template apply<TOp>(getPayloadContents<ValueType>(out), getPayloadContents<ValueType>(a),
                              getPayloadContents<ValueType>(b));
 }
 
 // Typed unary operation that can be stored as function pointer
-template <typename TOp, SHType ValueType>
-void typedUnaryOp(SHVarPayload &out, const SHVarPayload &a) {
+template <typename TOp, SHType ValueType> void typedUnaryOp(SHVarPayload &out, const SHVarPayload &a) {
   typename PayloadTraits<ValueType>::ApplyUnary unary{};
   unary.template apply<TOp>(getPayloadContents<ValueType>(out), getPayloadContents<ValueType>(a));
 }
@@ -121,7 +119,8 @@ struct DivideOp;
 
 // SIMD audio clear (zero buffer) - used by Pad shard
 inline void applyAudioClear(float *__restrict out, size_t count) {
-  if (count == 0) return;
+  if (count == 0)
+    return;
 #ifdef SHARDS_HAS_ACCELERATE
   vDSP_vclr(out, 1, count);
 #else
@@ -241,23 +240,18 @@ inline void applyBinaryAudioDivide(float *__restrict out, const float *__restric
 }
 
 // Template dispatch for binary audio ops
-template <typename TOp>
-inline void applyBinaryAudioOp(float *out, const float *a, const float *b, size_t count);
+template <typename TOp> inline void applyBinaryAudioOp(float *out, const float *a, const float *b, size_t count);
 
-template <>
-inline void applyBinaryAudioOp<AddOp>(float *out, const float *a, const float *b, size_t count) {
+template <> inline void applyBinaryAudioOp<AddOp>(float *out, const float *a, const float *b, size_t count) {
   applyBinaryAudioAdd(out, a, b, count);
 }
-template <>
-inline void applyBinaryAudioOp<SubtractOp>(float *out, const float *a, const float *b, size_t count) {
+template <> inline void applyBinaryAudioOp<SubtractOp>(float *out, const float *a, const float *b, size_t count) {
   applyBinaryAudioSubtract(out, a, b, count);
 }
-template <>
-inline void applyBinaryAudioOp<MultiplyOp>(float *out, const float *a, const float *b, size_t count) {
+template <> inline void applyBinaryAudioOp<MultiplyOp>(float *out, const float *a, const float *b, size_t count) {
   applyBinaryAudioMultiply(out, a, b, count);
 }
-template <>
-inline void applyBinaryAudioOp<DivideOp>(float *out, const float *a, const float *b, size_t count) {
+template <> inline void applyBinaryAudioOp<DivideOp>(float *out, const float *a, const float *b, size_t count) {
   applyBinaryAudioDivide(out, a, b, count);
 }
 
@@ -339,29 +333,23 @@ inline void applyBinaryAudioDivideScalar(float *__restrict out, const float *__r
 }
 
 // Template dispatch for scalar broadcast ops
-template <typename TOp>
-inline void applyBinaryAudioScalarOp(float *out, const float *a, float scalar, size_t count);
+template <typename TOp> inline void applyBinaryAudioScalarOp(float *out, const float *a, float scalar, size_t count);
 
-template <>
-inline void applyBinaryAudioScalarOp<AddOp>(float *out, const float *a, float scalar, size_t count) {
+template <> inline void applyBinaryAudioScalarOp<AddOp>(float *out, const float *a, float scalar, size_t count) {
   applyBinaryAudioAddScalar(out, a, scalar, count);
 }
-template <>
-inline void applyBinaryAudioScalarOp<SubtractOp>(float *out, const float *a, float scalar, size_t count) {
+template <> inline void applyBinaryAudioScalarOp<SubtractOp>(float *out, const float *a, float scalar, size_t count) {
   applyBinaryAudioSubtractScalar(out, a, scalar, count);
 }
-template <>
-inline void applyBinaryAudioScalarOp<MultiplyOp>(float *out, const float *a, float scalar, size_t count) {
+template <> inline void applyBinaryAudioScalarOp<MultiplyOp>(float *out, const float *a, float scalar, size_t count) {
   applyBinaryAudioMultiplyScalar(out, a, scalar, count);
 }
-template <>
-inline void applyBinaryAudioScalarOp<DivideOp>(float *out, const float *a, float scalar, size_t count) {
+template <> inline void applyBinaryAudioScalarOp<DivideOp>(float *out, const float *a, float scalar, size_t count) {
   applyBinaryAudioDivideScalar(out, a, scalar, count);
 }
 
 // Unary audio op - scalar loop (compiler may auto-vectorize for simple ops)
-template <typename TOp>
-inline void applyUnaryAudioOp(float *out, const float *a, size_t count) {
+template <typename TOp> inline void applyUnaryAudioOp(float *out, const float *a, size_t count) {
   TOp op{};
   for (size_t i = 0; i < count; ++i) {
     out[i] = op.template apply<float>(a[i]);
@@ -369,8 +357,7 @@ inline void applyUnaryAudioOp(float *out, const float *a, size_t count) {
 }
 
 // Get function pointer for a binary operation given the type
-template <typename TOp, DispatchType DT>
-constexpr BinaryDispatchFn getBinaryDispatchFn(SHType type) {
+template <typename TOp, DispatchType DT> constexpr BinaryDispatchFn getBinaryDispatchFn(SHType type) {
   switch (type) {
   case SHType::Int:
     if constexpr (hasDispatchType(DT, DispatchType::IntTypes))
@@ -427,8 +414,7 @@ constexpr BinaryDispatchFn getBinaryDispatchFn(SHType type) {
 }
 
 // Get function pointer for a unary operation given the type
-template <typename TOp, DispatchType DT>
-constexpr UnaryDispatchFn getUnaryDispatchFn(SHType type) {
+template <typename TOp, DispatchType DT> constexpr UnaryDispatchFn getUnaryDispatchFn(SHType type) {
   switch (type) {
   case SHType::Int:
     if constexpr (hasDispatchType(DT, DispatchType::IntTypes))
@@ -490,7 +476,7 @@ constexpr UnaryDispatchFn getUnaryDispatchFn(SHType type) {
 
 struct UnaryBase : public Base {
   OpType _opType = Invalid;
-  SHType _dispatchType{SHType::None};  // Resolved type for direct dispatch
+  SHType _dispatchType{SHType::None}; // Resolved type for direct dispatch
 
   void validateTypes(const SHTypeInfo &ti) {
     _opType = OpType::Invalid;
@@ -510,7 +496,7 @@ struct UnaryBase : public Base {
 };
 
 // =============================================================================
-// Binary Base  
+// Binary Base
 // =============================================================================
 
 struct BinaryBase : public Base {
@@ -534,7 +520,7 @@ struct BinaryBase : public Base {
   ParamVar _operand{shards::Var(0)};
   ExposedInfo _requiredInfo{};
   OpType _opType = Invalid;
-  SHType _dispatchType{SHType::None};  // Resolved type for direct dispatch
+  SHType _dispatchType{SHType::None}; // Resolved type for direct dispatch
 
   void cleanup(SHContext *context) { _operand.cleanup(); }
 
@@ -762,8 +748,7 @@ bool overrideBinaryActivateForType(const SHInstanceData &data, SHType type, TSha
 
           size_t total = size_t(inAudio.nsamples) * inAudio.channels;
           auto &result = wrapper->shard._result;
-          size_t resultCapacity =
-              result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
+          size_t resultCapacity = result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
           // Reallocate if needed (like cloneVar pattern)
           if (result.valueType != SHType::Audio || total > resultCapacity) {
@@ -807,8 +792,7 @@ bool overrideBinaryActivateForAudioScalar(const SHInstanceData &data, TShard *se
 
         size_t total = size_t(inAudio.nsamples) * inAudio.channels;
         auto &result = wrapper->shard._result;
-        size_t resultCapacity =
-            result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
+        size_t resultCapacity = result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
         // Reallocate if needed (like cloneVar pattern)
         if (result.valueType != SHType::Audio || total > resultCapacity) {
@@ -927,8 +911,7 @@ bool overrideUnaryActivateForType(const SHInstanceData &data, SHType type, TShar
           const auto &inAudio = v->payload.audioValue;
           size_t total = size_t(inAudio.nsamples) * inAudio.channels;
           auto &result = wrapper->shard._result;
-          size_t resultCapacity =
-              result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
+          size_t resultCapacity = result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
 
           // Reallocate if needed (like cloneVar pattern)
           if (result.valueType != SHType::Audio || total > resultCapacity) {
