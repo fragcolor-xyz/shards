@@ -119,6 +119,29 @@ struct SubtractOp;
 struct MultiplyOp;
 struct DivideOp;
 
+// SIMD audio clear (zero buffer) - used by Pad shard
+inline void applyAudioClear(float *__restrict out, size_t count) {
+  if (count == 0) return;
+#ifdef SHARDS_HAS_ACCELERATE
+  vDSP_vclr(out, 1, count);
+#else
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vzero = _mm256_setzero_ps();
+  for (; i + 8 <= count; i += 8) {
+    _mm256_storeu_ps(out + i, vzero);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vzero = vdupq_n_f32(0.0f);
+  for (; i + 4 <= count; i += 4) {
+    vst1q_f32(out + i, vzero);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = 0.0f;
+#endif
+}
+
 // SIMD binary audio add
 inline void applyBinaryAudioAdd(float *__restrict out, const float *__restrict a, const float *__restrict b, size_t count) {
 #ifdef SHARDS_HAS_ACCELERATE

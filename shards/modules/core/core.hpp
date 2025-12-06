@@ -2876,11 +2876,12 @@ struct SeqUser : VariableBase {
 
 struct Count : SeqUser {
   static SHOptionalString help() {
-    return SHCCSTR("This shard counts the sequence, string or table variable specified in the Name parameter. If the variable "
+    return SHCCSTR("This shard counts the sequence, string, table, or audio variable specified in the Name parameter. If the variable "
                    "specified is "
                    "a string, it will count the number of characters. If the variable specified is a sequence, it will count "
                    "the number of "
-                   "elements. If the variable specified is a table, it will count the number of key-value pairs."
+                   "elements. If the variable specified is a table, it will count the number of key-value pairs. "
+                   "If the variable specified is audio, it will count the number of samples (per channel). "
                    "If the variable is left empty and instead an input is provided, the input will be counted instead.");
   }
 
@@ -2915,6 +2916,8 @@ struct Count : SeqUser {
       return shards::Var(int64_t(value.payload.stringLen > 0 || value.payload.stringValue == nullptr
                                      ? value.payload.stringLen
                                      : strlen(value.payload.stringValue)));
+    case SHType::Audio:
+      return shards::Var(int64_t(value.payload.audioValue.nsamples));
     default:
       return shards::Var(0);
     }
@@ -3832,7 +3835,7 @@ struct Slice {
     }
   }
 
-  static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType}};
+  static inline Types InputTypes{{CoreInfo::AnySeqType, CoreInfo::BytesType, CoreInfo::StringType, CoreInfo::AudioType}};
 
   static SHTypesInfo inputTypes() { return InputTypes; }
   static SHOptionalString inputHelp() {
@@ -3851,6 +3854,8 @@ struct Slice {
       OVERRIDE_ACTIVATE(data, activateBytes);
     } else if (data.inputType.basicType == SHType::String) {
       OVERRIDE_ACTIVATE(data, activateString);
+    } else if (data.inputType.basicType == SHType::Audio) {
+      OVERRIDE_ACTIVATE(data, activateAudio);
     }
 
     return data.inputType;
@@ -3992,6 +3997,63 @@ struct Slice {
       }
       return shards::Var(_cachedSeq);
     }
+  }
+
+  SHVar activateAudio(SHContext *context, const SHVar &input) {
+    const auto &inAudio = input.payload.audioValue;
+    const auto inputLen = inAudio.nsamples;
+    const auto &vfrom = _from.get();
+    const auto &vto = _to.get();
+    SHInt from = vfrom.payload.intValue;
+    SHInt to = vto.valueType == SHType::None ? SHInt(inputLen) : vto.payload.intValue;
+    SHInt step = _step->payload.intValue;
+
+    // Convert negative indices to positive
+    from = from < 0 ? SHInt(inputLen) + from : from;
+    to = to < 0 ? SHInt(inputLen) + to : to;
+
+    // Bounds checking
+    if (from < 0 || to < 0 || uint32_t(from) > inputLen || uint32_t(to) > inputLen) {
+      throw OutOfRangeEx(inputLen, from, to);
+    }
+
+    // Ensure from is less than to
+    if (from > to) {
+      throw ActivationError("From index must be less than To index.");
+    }
+
+    const uint32_t len = uint32_t(to - from);
+    if (step <= 0) {
+      throw ActivationError("Slice's Step must be greater than 0");
+    }
+
+    const uint32_t actualLen = len / step + (len % step != 0 ? 1 : 0);
+    const uint8_t channels = inAudio.channels;
+
+    // Use _cachedBytes for sample storage (resize reuses capacity)
+    _cachedBytes.resize(actualLen * channels * sizeof(float));
+    float *samples = reinterpret_cast<float *>(_cachedBytes.data());
+
+    // Extract samples for each channel using planar layout
+    if (step == 1) {
+      // Fast path: contiguous copy using memcpy
+      for (uint8_t ch = 0; ch < channels; ch++) {
+        memcpy(samples + ch * actualLen, inAudio.samples + ch * inputLen + from, actualLen * sizeof(float));
+      }
+    } else {
+      // Stepped copy: element by element
+      // Note: idx < actualLen is defensive; mathematically i >= to always terminates first
+      // since actualLen = ceil((to-from)/step)
+      for (uint8_t ch = 0; ch < channels; ch++) {
+        uint32_t idx = 0;
+        for (SHInt i = from; i < to && idx < actualLen; i += step) {
+          samples[ch * actualLen + idx] = inAudio.samples[ch * inputLen + i];
+          idx++;
+        }
+      }
+    }
+
+    return Var(SHAudio{samples, actualLen, inAudio.sampleRate, channels, inAudio.reserved});
   }
 
   SHVar activate(SHContext *context, const SHVar &input) { throw ActivationError("Slice: unreachable code path"); }
