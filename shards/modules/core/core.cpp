@@ -3393,6 +3393,12 @@ struct Pad {
       throw ActivationError("Pad: Before and After must be non-negative.");
     }
 
+    // Overflow check
+    const uint64_t totalPadding = uint64_t(before) + uint64_t(after);
+    if (totalPadding > UINT32_MAX - inSeq.len) {
+      throw ActivationError("Pad: padded sequence would exceed maximum size.");
+    }
+
     const uint32_t newLen = inSeq.len + uint32_t(before) + uint32_t(after);
 
     // Prepare output - reuse existing seq if possible
@@ -3437,6 +3443,13 @@ struct Pad {
     }
 
     const uint32_t inputLen = SHSTRLEN(input);
+
+    // Overflow check
+    const uint64_t totalPadding = uint64_t(before) + uint64_t(after);
+    if (totalPadding > UINT32_MAX - inputLen) {
+      throw ActivationError("Pad: padded string would exceed maximum size.");
+    }
+
     const uint32_t newLen = inputLen + uint32_t(before) + uint32_t(after);
 
     _buffer.resize(newLen + 1);
@@ -3465,6 +3478,13 @@ struct Pad {
     }
 
     const uint32_t inputLen = input.payload.bytesSize;
+
+    // Overflow check
+    const uint64_t totalPadding = uint64_t(before) + uint64_t(after);
+    if (totalPadding > UINT32_MAX - inputLen) {
+      throw ActivationError("Pad: padded bytes would exceed maximum size.");
+    }
+
     const uint32_t newLen = inputLen + uint32_t(before) + uint32_t(after);
 
     _buffer.resize(newLen);
@@ -3533,8 +3553,9 @@ struct Trim {
       throw ActivationError("Trim: Before and After must be non-negative.");
     }
 
-    const int64_t totalTrim = before + after;
-    if (totalTrim > int64_t(inAudio.nsamples)) {
+    // Use uint64_t to avoid int64_t overflow when adding two large positive values
+    const uint64_t totalTrim = uint64_t(before) + uint64_t(after);
+    if (totalTrim > inAudio.nsamples) {
       throw ActivationError(
           fmt::format("Trim: Cannot trim {} samples from audio with {} samples.", totalTrim, inAudio.nsamples));
     }
@@ -3563,8 +3584,9 @@ struct Trim {
       throw ActivationError("Trim: Before and After must be non-negative.");
     }
 
-    const int64_t totalTrim = before + after;
-    if (totalTrim > int64_t(inSeq.len)) {
+    // Use uint64_t to avoid int64_t overflow when adding two large positive values
+    const uint64_t totalTrim = uint64_t(before) + uint64_t(after);
+    if (totalTrim > inSeq.len) {
       throw ActivationError(fmt::format("Trim: Cannot trim {} elements from sequence with {} elements.", totalTrim, inSeq.len));
     }
 
@@ -3592,8 +3614,9 @@ struct Trim {
     }
 
     const uint32_t inputLen = SHSTRLEN(input);
-    const int64_t totalTrim = before + after;
-    if (totalTrim > int64_t(inputLen)) {
+    // Use uint64_t to avoid int64_t overflow when adding two large positive values
+    const uint64_t totalTrim = uint64_t(before) + uint64_t(after);
+    if (totalTrim > inputLen) {
       throw ActivationError(fmt::format("Trim: Cannot trim {} characters from string with {} characters.", totalTrim, inputLen));
     }
 
@@ -3615,8 +3638,9 @@ struct Trim {
     }
 
     const uint32_t inputLen = input.payload.bytesSize;
-    const int64_t totalTrim = before + after;
-    if (totalTrim > int64_t(inputLen)) {
+    // Use uint64_t to avoid int64_t overflow when adding two large positive values
+    const uint64_t totalTrim = uint64_t(before) + uint64_t(after);
+    if (totalTrim > inputLen) {
       throw ActivationError(fmt::format("Trim: Cannot trim {} bytes from input with {} bytes.", totalTrim, inputLen));
     }
 
