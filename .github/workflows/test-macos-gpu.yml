@@ -120,7 +120,7 @@ jobs:
           LOG_shards=trace build/shards new shards/tests/fib.shs
 
           echo "Running ML embeddings test"
-          build/shards new lib/ml/test.shs
+          build/shards new shards/tests/ml-test.shs
 
           echo "Running GlobalOnce test"
           build/shards new shards/tests/global-init.shs
