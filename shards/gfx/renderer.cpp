@@ -612,26 +612,14 @@ struct RendererImpl final : public ContextData {
     WGPUGlobalReport report{};
     wgpuGenerateReport(context.wgpuInstance, &report);
 
-    WGPUHubReport *hubReport{};
-    switch (context.getBackendType()) {
-    case WGPUBackendType_Vulkan:
-      hubReport = &report.vulkan;
-      break;
-    case WGPUBackendType_D3D12:
-      hubReport = &report.dx12;
-      break;
-    default:
-      break;
-    }
-
-    if (hubReport) {
-      TracyPlot("WGPU Buffers", int64_t(hubReport->buffers.numAllocated));
-      TracyPlot("WGPU BindGroups", int64_t(hubReport->bindGroups.numAllocated));
-      TracyPlot("WGPU BindGroupLayouts", int64_t(hubReport->bindGroupLayouts.numAllocated));
-      TracyPlot("WGPU CommandBuffers", int64_t(hubReport->commandBuffers.numAllocated));
-      TracyPlot("WGPU Queues", int64_t(hubReport->queues.numAllocated));
-      TracyPlot("WGPU Textures", int64_t(hubReport->textures.numAllocated));
-    }
+    // wgpu v27: Single hub report instead of per-backend reports
+    WGPUHubReport *hubReport = &report.hub;
+    TracyPlot("WGPU Buffers", int64_t(hubReport->buffers.numAllocated));
+    TracyPlot("WGPU BindGroups", int64_t(hubReport->bindGroups.numAllocated));
+    TracyPlot("WGPU BindGroupLayouts", int64_t(hubReport->bindGroupLayouts.numAllocated));
+    TracyPlot("WGPU CommandBuffers", int64_t(hubReport->commandBuffers.numAllocated));
+    TracyPlot("WGPU Queues", int64_t(hubReport->queues.numAllocated));
+    TracyPlot("WGPU Textures", int64_t(hubReport->textures.numAllocated));
 #endif
   }
 

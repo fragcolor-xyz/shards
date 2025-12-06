@@ -1,6 +1,8 @@
 #ifndef GFX_GFX_WGPU
 #define GFX_GFX_WGPU
 
+#include <cstring>
+
 #ifdef WEBGPU_NATIVE
 extern "C" {
 #include <webgpu.h>
@@ -42,6 +44,9 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _x = nullptr;                  \
   }
 
+#ifdef WEBGPU_NATIVE
+// wgpu-native v27+ specific helpers (WGPUStringView doesn't exist in emscripten WebGPU)
+
 inline void wgpuShaderSourceWGSLSetCode(WGPUShaderSourceWGSL &desc, const char *code) {
   desc.code.data = code;
   desc.code.length = code ? strlen(code) : 0;
@@ -57,6 +62,7 @@ template<size_t N>
 constexpr WGPUStringView wgpuMakeStringView(const char (&str)[N]) {
   return WGPUStringView{.data = str, .length = N - 1};
 }
+#endif // WEBGPU_NATIVE
 
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();

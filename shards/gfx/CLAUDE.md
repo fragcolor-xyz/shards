@@ -110,6 +110,15 @@ if (st.status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
 }
 ```
 
+### Global report (Tracy profiling)
+```cpp
+// Old: Per-backend reports
+WGPUHubReport *hubReport = &report.vulkan; // or .dx12, .metal
+
+// New: Single hub report
+WGPUHubReport *hubReport = &report.hub;
+```
+
 ## Upgrading wgpu
 
 1. **Fetch upstream tags** in both forks
@@ -126,12 +135,17 @@ if (st.status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
 - Debug build may use cached artifacts - always verify with release build
 - The gfx crate is a **separate workspace** - patches must be in its Cargo.toml
 - Use `just cargo-check` for Rust, `just build` / `just build-rel` for full builds
+- **Test with Tracy**: CI uses `-DTRACY_ENABLE=ON`. Test locally with:
+  ```bash
+  cmake -S . -B build/DebugTracy -G Ninja -DCMAKE_BUILD_TYPE=Debug -DTRACY_ENABLE=ON
+  cmake --build build/DebugTracy --target shards
+  ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `gfx_wgpu.hpp` | WebGPU helpers, `wgpuMakeStringView` |
+| `gfx_wgpu.hpp` | WebGPU helpers, `wgpuMakeStringView` (includes `<cstring>` for `strlen`) |
 | `context.cpp` | Device/adapter creation, callbacks |
 | `platform_surface.hpp` | Platform-specific surface creation |
 | `renderer.cpp` | Buffer mapping, texture copies |
