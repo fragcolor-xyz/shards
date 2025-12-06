@@ -3358,21 +3358,10 @@ struct Pad {
       float *outCh = samples + ch * newNsamples;
       const float *inCh = inAudio.samples + ch * inAudio.nsamples;
 
-      // Zero padding using SIMD where available
-#ifdef SHARDS_HAS_ACCELERATE
-      if (before > 0) {
-        vDSP_vclr(outCh, 1, before);
-      }
-      memcpy(outCh + before, inCh, inAudio.nsamples * sizeof(float));
-      if (after > 0) {
-        vDSP_vclr(outCh + before + inAudio.nsamples, 1, after);
-      }
-#else
-      // Use SIMD zeroing for non-Apple platforms
+      // Zero padding using SIMD (applyAudioClear handles platform dispatch)
       Math::applyAudioClear(outCh, before);
       memcpy(outCh + before, inCh, inAudio.nsamples * sizeof(float));
       Math::applyAudioClear(outCh + before + inAudio.nsamples, after);
-#endif
     }
 
     return Var(SHAudio{samples, newNsamples, inAudio.sampleRate, channels, inAudio.reserved});

@@ -4042,6 +4042,8 @@ struct Slice {
       }
     } else {
       // Stepped copy: element by element
+      // Note: idx < actualLen is defensive; mathematically i >= to always terminates first
+      // since actualLen = ceil((to-from)/step)
       for (uint8_t ch = 0; ch < channels; ch++) {
         uint32_t idx = 0;
         for (SHInt i = from; i < to && idx < actualLen; i += step) {
