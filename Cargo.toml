@@ -25,7 +25,6 @@ members = [
     "shards/modules/network",
     "shards/modules/candle",
     "shards/modules/pdf",
-    "shards/modules/py",
     "shards/modules/random",
     "shards/modules/ssh",
     "shards/modules/svg",
