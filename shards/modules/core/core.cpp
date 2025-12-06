@@ -532,6 +532,88 @@ struct XPendBase {
 
   entt::dispatcher *_dispatcherPtr{nullptr};
 
+  // Helper for audio concatenation with overflow check and in-place optimization
+  // prepend=false: colAudio followed by inAudio (append)
+  // prepend=true: inAudio followed by colAudio (prepend)
+  void concatAudio(SHVar &collection, const SHAudio &inAudio, bool prepend, const char *shardName) {
+    auto &colAudio = collection.payload.audioValue;
+
+    // Validate channels and sample rate match
+    if (colAudio.channels != inAudio.channels) {
+      throw ActivationError(fmt::format("{}: channel mismatch (collection has {} channels, input has {})", shardName,
+                                        colAudio.channels, inAudio.channels));
+    }
+    if (colAudio.sampleRate != inAudio.sampleRate) {
+      // Sample rate is stored internally as Hz/25 to fit in uint16_t, multiply to show actual Hz
+      throw ActivationError(fmt::format("{}: sample rate mismatch (collection: {} Hz, input: {} Hz)", shardName,
+                                        colAudio.sampleRate * 25, inAudio.sampleRate * 25));
+    }
+
+    // Overflow check
+    if (colAudio.nsamples > UINT32_MAX - inAudio.nsamples) {
+      throw ActivationError(fmt::format("{}: combined audio would exceed maximum size", shardName));
+    }
+
+    const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
+    const uint8_t channels = colAudio.channels;
+    const uint16_t sampleRate = colAudio.sampleRate; // Save before potential destroy
+    const size_t newTotal = size_t(newNsamples) * channels;
+    const size_t currentCapacity = SHVAR_AUDIO_GET_CAPACITY(collection);
+
+    if (currentCapacity >= newTotal && colAudio.samples != nullptr) {
+      // In-place expansion - we have enough capacity
+      if (prepend) {
+        // Shift existing data right, then copy new data at the start (per channel)
+        for (int ch = channels - 1; ch >= 0; ch--) {
+          float *chBase = colAudio.samples + ch * newNsamples;
+          // Move existing samples to their new position
+          memmove(chBase + inAudio.nsamples, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
+          // Copy new samples at the beginning
+          memcpy(chBase, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
+        }
+      } else {
+        // Append: shift existing data to new positions, then copy new data at the end (per channel)
+        for (int ch = channels - 1; ch >= 0; ch--) {
+          float *chBase = colAudio.samples + ch * newNsamples;
+          // Move existing samples to their new position
+          memmove(chBase, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
+          // Copy new samples at the end
+          memcpy(chBase + colAudio.nsamples, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
+        }
+      }
+      colAudio.nsamples = newNsamples;
+    } else {
+      // Need to allocate new buffer
+      _scratchStr.resize(newTotal * sizeof(float));
+      float *scratch = reinterpret_cast<float *>(_scratchStr.data());
+
+      if (prepend) {
+        for (uint8_t ch = 0; ch < channels; ch++) {
+          memcpy(scratch + ch * newNsamples, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
+          memcpy(scratch + ch * newNsamples + inAudio.nsamples, colAudio.samples + ch * colAudio.nsamples,
+                 colAudio.nsamples * sizeof(float));
+        }
+      } else {
+        for (uint8_t ch = 0; ch < channels; ch++) {
+          memcpy(scratch + ch * newNsamples, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
+          memcpy(scratch + ch * newNsamples + colAudio.nsamples, inAudio.samples + ch * inAudio.nsamples,
+                 inAudio.nsamples * sizeof(float));
+        }
+      }
+
+      // Reallocate the collection's audio buffer
+      destroyVar(collection);
+      collection.valueType = SHType::Audio;
+      collection.payload.audioValue.samples = new float[newTotal];
+      collection.payload.audioValue.nsamples = newNsamples;
+      collection.payload.audioValue.sampleRate = sampleRate; // Use saved value (colAudio is invalid after destroyVar)
+      collection.payload.audioValue.channels = channels;
+      collection.payload.audioValue.reserved = 0;
+      SHVAR_AUDIO_SET_CAPACITY(collection, newTotal);
+      memcpy(collection.payload.audioValue.samples, scratch, newTotal * sizeof(float));
+    }
+  }
+
   void maybeSendEvents(SHContext *context, SHVar &var) {
     if (var.trackingMask != 0) {
       OnTrackedVarSet ev{context->main->id, _collection.variableNameView(), Var::Empty, var, _isGlobal, context->currentWire()};
@@ -580,39 +662,11 @@ struct AppendTo : public XPendBase {
       break;
     }
     case SHType::Audio: {
-      auto &colAudio = collection.payload.audioValue;
-      const auto &inAudio = input.payload.audioValue;
-
-      // Validate channels and sample rate match
-      if (colAudio.channels != inAudio.channels) {
-        throw ActivationError(
-            fmt::format("AppendTo: Audio channel mismatch (collection: {}, input: {})", colAudio.channels, inAudio.channels));
-      }
-      if (colAudio.sampleRate != inAudio.sampleRate) {
-        throw ActivationError(fmt::format("AppendTo: Audio sample rate mismatch (collection: {}, input: {})",
-                                          colAudio.sampleRate * 25, inAudio.sampleRate * 25));
-      }
-
-      const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
-      const uint8_t channels = colAudio.channels;
-
-      // Build combined audio in scratch buffer (resize reuses capacity)
-      _scratchStr.resize(newNsamples * channels * sizeof(float));
-      float *scratch = reinterpret_cast<float *>(_scratchStr.data());
-
-      for (uint8_t ch = 0; ch < channels; ch++) {
-        memcpy(scratch + ch * newNsamples, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
-        memcpy(scratch + ch * newNsamples + colAudio.nsamples, inAudio.samples + ch * inAudio.nsamples,
-               inAudio.nsamples * sizeof(float));
-      }
-
-      // cloneVar handles reallocation efficiently
-      SHAudio tmpAudio{scratch, newNsamples, colAudio.sampleRate, channels, colAudio.reserved};
-      cloneVar(collection, Var(tmpAudio));
+      concatAudio(collection, input.payload.audioValue, false, "AppendTo");
       break;
     }
     default:
-      throw ActivationError(fmt::format("AppendTo, case not implemented for type {}", collection.valueType));
+      throw ActivationError(fmt::format("AppendTo: not implemented for type {}", collection.valueType));
     }
 
     maybeSendEvents(context, collection);
@@ -663,39 +717,11 @@ struct PrependTo : public XPendBase {
       break;
     }
     case SHType::Audio: {
-      auto &colAudio = collection.payload.audioValue;
-      const auto &inAudio = input.payload.audioValue;
-
-      // Validate channels and sample rate match
-      if (colAudio.channels != inAudio.channels) {
-        throw ActivationError(
-            fmt::format("PrependTo: Audio channel mismatch (collection: {}, input: {})", colAudio.channels, inAudio.channels));
-      }
-      if (colAudio.sampleRate != inAudio.sampleRate) {
-        throw ActivationError(fmt::format("PrependTo: Audio sample rate mismatch (collection: {}, input: {})",
-                                          colAudio.sampleRate * 25, inAudio.sampleRate * 25));
-      }
-
-      const uint32_t newNsamples = colAudio.nsamples + inAudio.nsamples;
-      const uint8_t channels = colAudio.channels;
-
-      // Build combined audio in scratch buffer (resize reuses capacity)
-      _scratchStr.resize(newNsamples * channels * sizeof(float));
-      float *scratch = reinterpret_cast<float *>(_scratchStr.data());
-
-      for (uint8_t ch = 0; ch < channels; ch++) {
-        memcpy(scratch + ch * newNsamples, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
-        memcpy(scratch + ch * newNsamples + inAudio.nsamples, colAudio.samples + ch * colAudio.nsamples,
-               colAudio.nsamples * sizeof(float));
-      }
-
-      // cloneVar handles reallocation efficiently
-      SHAudio tmpAudio{scratch, newNsamples, colAudio.sampleRate, channels, colAudio.reserved};
-      cloneVar(collection, Var(tmpAudio));
+      concatAudio(collection, input.payload.audioValue, true, "PrependTo");
       break;
     }
     default:
-      throw ActivationError("PrependTo, case not implemented");
+      throw ActivationError(fmt::format("PrependTo: not implemented for type {}", collection.valueType));
     }
 
     maybeSendEvents(context, collection);
@@ -3339,6 +3365,12 @@ struct Pad {
 
     if (before < 0 || after < 0) {
       throw ActivationError("Pad: Before and After must be non-negative.");
+    }
+
+    // Overflow check
+    const uint64_t totalPadding = uint64_t(before) + uint64_t(after);
+    if (totalPadding > UINT32_MAX - inAudio.nsamples) {
+      throw ActivationError("Pad: padded audio would exceed maximum size.");
     }
 
     const uint32_t newNsamples = inAudio.nsamples + uint32_t(before) + uint32_t(after);

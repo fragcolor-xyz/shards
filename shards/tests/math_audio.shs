@@ -483,6 +483,126 @@
   Msg("Audio workflow tests passed!")
 })
 
+; === Error condition tests ===
+
+@wire(test-error-channel-mismatch {
+  Msg("Testing error: channel mismatch...")
+
+  ; Create mono and stereo audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100 Channels: 1) = mono
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100 Channels: 2) = stereo
+
+  ; Try to append stereo to mono - should fail
+  mono | Set(collection)
+  Maybe({
+    stereo | AppendTo(collection)
+    "ERROR: Should have thrown channel mismatch!" | Fail
+  } {
+    Msg("Correctly caught channel mismatch error in AppendTo")
+  })
+
+  ; Try to prepend stereo to mono - should fail
+  mono | Set(collection2)
+  Maybe({
+    stereo | PrependTo(collection2)
+    "ERROR: Should have thrown channel mismatch!" | Fail
+  } {
+    Msg("Correctly caught channel mismatch error in PrependTo")
+  })
+
+  Msg("Channel mismatch error tests passed!")
+})
+
+@wire(test-error-samplerate-mismatch {
+  Msg("Testing error: sample rate mismatch...")
+
+  ; Create audio with different sample rates
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = audio44k
+  440.0 | Audio.Oscillator(SampleRate: 48000 Amplitude: 0.5 Samples: 100) = audio48k
+
+  ; Try to append different sample rates - should fail
+  audio44k | Set(collection)
+  Maybe({
+    audio48k | AppendTo(collection)
+    "ERROR: Should have thrown sample rate mismatch!" | Fail
+  } {
+    Msg("Correctly caught sample rate mismatch error in AppendTo")
+  })
+
+  ; Try to prepend different sample rates - should fail
+  audio44k | Set(collection2)
+  Maybe({
+    audio48k | PrependTo(collection2)
+    "ERROR: Should have thrown sample rate mismatch!" | Fail
+  } {
+    Msg("Correctly caught sample rate mismatch error in PrependTo")
+  })
+
+  Msg("Sample rate mismatch error tests passed!")
+})
+
+@wire(test-error-trim-overflow {
+  Msg("Testing error: trim overflow...")
+
+  ; Create short audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 10) = short-audio
+
+  ; Try to trim more than available - should fail
+  Maybe({
+    short-audio | Trim(Before: 6 After: 6)
+    "ERROR: Should have thrown trim overflow!" | Fail
+  } {
+    Msg("Correctly caught trim overflow error")
+  })
+
+  ; Test exact trim to empty - this is valid (results in 0 samples)
+  short-audio | Trim(Before: 5 After: 5) = empty-audio
+  empty-audio | Log("Trimmed to 0 samples (valid)")
+
+  Msg("Trim overflow error tests passed!")
+})
+
+@wire(test-error-negative-params {
+  Msg("Testing error: negative parameters...")
+
+  ; Create test audio
+  440.0 | Audio.Oscillator(SampleRate: 44100 Amplitude: 0.5 Samples: 100) = audio
+
+  ; Test negative Before in Pad - should fail
+  Maybe({
+    audio | Pad(Before: -1 After: 0)
+    "ERROR: Should have thrown negative param error!" | Fail
+  } {
+    Msg("Correctly caught negative Before in Pad")
+  })
+
+  ; Test negative After in Pad - should fail
+  Maybe({
+    audio | Pad(Before: 0 After: -1)
+    "ERROR: Should have thrown negative param error!" | Fail
+  } {
+    Msg("Correctly caught negative After in Pad")
+  })
+
+  ; Test negative Before in Trim - should fail
+  Maybe({
+    audio | Trim(Before: -1 After: 0)
+    "ERROR: Should have thrown negative param error!" | Fail
+  } {
+    Msg("Correctly caught negative Before in Trim")
+  })
+
+  ; Test negative After in Trim - should fail
+  Maybe({
+    audio | Trim(Before: 0 After: -1)
+    "ERROR: Should have thrown negative param error!" | Fail
+  } {
+    Msg("Correctly caught negative After in Trim")
+  })
+
+  Msg("Negative parameter error tests passed!")
+})
+
 @mesh(main)
 @schedule(main test-audio-binary)
 @schedule(main test-audio-unary)
@@ -498,4 +618,8 @@
 @schedule(main test-trim-string)
 @schedule(main test-trim-bytes)
 @schedule(main test-audio-workflow)
+@schedule(main test-error-channel-mismatch)
+@schedule(main test-error-samplerate-mismatch)
+@schedule(main test-error-trim-overflow)
+@schedule(main test-error-negative-params)
 @run(main)
