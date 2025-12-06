@@ -1,5 +1,0 @@
-# Basic Variable Assignment and Logging
-
-Problem: Write a Shards script that assigns the float value 2.5 to a mutable variable named 'x', then logs the value of x.
-
-Your script should be runnable with the Shards interpreter without any errors.
