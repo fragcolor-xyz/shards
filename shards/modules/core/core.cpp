@@ -558,31 +558,11 @@ struct XPendBase {
     const uint8_t channels = colAudio.channels;
     const uint16_t sampleRate = colAudio.sampleRate; // Save before potential destroy
     const size_t newTotal = size_t(newNsamples) * channels;
-    const size_t currentCapacity = SHVAR_AUDIO_GET_CAPACITY(collection);
 
-    if (currentCapacity >= newTotal && colAudio.samples != nullptr) {
-      // In-place expansion - we have enough capacity
-      if (prepend) {
-        // Shift existing data right, then copy new data at the start (per channel)
-        for (int ch = channels - 1; ch >= 0; ch--) {
-          float *chBase = colAudio.samples + ch * newNsamples;
-          // Move existing samples to their new position
-          memmove(chBase + inAudio.nsamples, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
-          // Copy new samples at the beginning
-          memcpy(chBase, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
-        }
-      } else {
-        // Append: shift existing data to new positions, then copy new data at the end (per channel)
-        for (int ch = channels - 1; ch >= 0; ch--) {
-          float *chBase = colAudio.samples + ch * newNsamples;
-          // Move existing samples to their new position
-          memmove(chBase, colAudio.samples + ch * colAudio.nsamples, colAudio.nsamples * sizeof(float));
-          // Copy new samples at the end
-          memcpy(chBase + colAudio.nsamples, inAudio.samples + ch * inAudio.nsamples, inAudio.nsamples * sizeof(float));
-        }
-      }
-      colAudio.nsamples = newNsamples;
-    } else {
+    // Note: In-place expansion is complex for multi-channel planar audio because
+    // channel strides change (old: nsamples, new: newNsamples). The channels would
+    // overlap during reorganization. We always use scratch buffer for correctness.
+    {
       // Need to allocate new buffer
       _scratchStr.resize(newTotal * sizeof(float));
       float *scratch = reinterpret_cast<float *>(_scratchStr.data());
