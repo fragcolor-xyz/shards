@@ -14,9 +14,7 @@ WGPULimits wgpuGetUndefinedLimits() {
       .maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED,
       .maxBindGroups = WGPU_LIMIT_U32_UNDEFINED,
       .maxBindGroupsPlusVertexBuffers = WGPU_LIMIT_U32_UNDEFINED,
-#ifdef WEBGPU_NATIVE
       .maxBindingsPerBindGroup = WGPU_LIMIT_U32_UNDEFINED,
-#endif
       .maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED,
       .maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED,
       .maxSampledTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
@@ -29,17 +27,12 @@ WGPULimits wgpuGetUndefinedLimits() {
       .minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,
       .minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,
       .maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED,
-#ifdef WEBGPU_NATIVE
-      .maxBufferSize = WGPU_LIMIT_U32_UNDEFINED,
-#endif
+      .maxBufferSize = WGPU_LIMIT_U64_UNDEFINED,
       .maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED,
       .maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED,
-      .maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED,
       .maxInterStageShaderVariables = WGPU_LIMIT_U32_UNDEFINED,
       .maxColorAttachments = WGPU_LIMIT_U32_UNDEFINED,
-#ifdef WEBGPU_NATIVE
       .maxColorAttachmentBytesPerSample = WGPU_LIMIT_U32_UNDEFINED,
-#endif
       .maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED,
       .maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED,
       .maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED,
@@ -49,4 +42,4 @@ WGPULimits wgpuGetUndefinedLimits() {
   };
 }
 
-void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits) { wgpuDeviceGetLimits(device, outLimits); }
+void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPULimits *outLimits) { wgpuDeviceGetLimits(device, outLimits); }

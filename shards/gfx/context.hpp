@@ -75,7 +75,7 @@ public:
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
 #if WEBGPU_NATIVE
-  WGPUInstanceBackendFlags instanceBackends{};
+  WGPUInstanceBackend instanceBackends{};
 #endif
 
 #ifndef RUST_BINDGEN

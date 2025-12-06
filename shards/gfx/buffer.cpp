@@ -51,7 +51,7 @@ void Buffer::updateContextData(Context &context, BufferContextData &contextData)
     desc.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
   }
   if (data.getLength() > contextData.bufferLength || contextData.currentUsage != desc.usage) {
-    desc.label = labelCopy.c_str();
+    desc.label = wgpuMakeStringView(labelCopy.c_str());
     desc.size = data.getLength();
     contextData.buffer.reset(wgpuDeviceCreateBuffer(context.wgpuDevice, &desc));
     contextData.bufferLength = desc.size;

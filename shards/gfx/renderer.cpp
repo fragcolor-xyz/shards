@@ -298,12 +298,12 @@ struct RendererImpl final : public ContextData {
     cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
     cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
-    WGPUImageCopyTexture srcDesc{
+    WGPUTexelCopyTextureInfo srcDesc{
         .texture = textureData.texture,
         .mipLevel = cmd.texture.mipIndex,
         .origin = {.x = 0, .y = 0, .z = cmd.texture.faceIndex},
     };
-    WGPUImageCopyBuffer dstDesc{
+    WGPUTexelCopyBufferInfo dstDesc{
         .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
         .buffer = cmd.stagingBuffer->buffer,
     };
@@ -331,9 +331,9 @@ struct RendererImpl final : public ContextData {
   }
 
   void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
-    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
-      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
-      if (status != WGPUBufferMapAsyncStatus_Success)
+    auto bufferMapped = [](WGPUMapAsyncStatus status, WGPUStringView message, void *userdata1, void *userdata2) {
+      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)userdata1;
+      if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
 #if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
@@ -342,7 +342,13 @@ struct RendererImpl final : public ContextData {
 #endif
     };
 #if WEBGPU_NATIVE
-    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+    WGPUBufferMapCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = bufferMapped,
+        .userdata1 = &cmd,
+        .userdata2 = nullptr,
+    };
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
 #else
     gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
 #endif
@@ -372,9 +378,9 @@ struct RendererImpl final : public ContextData {
   }
 
   void queueBufferReadBufferMap(DeferredBufferReadCommand &cmd) {
-    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
-      DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
-      if (status != WGPUBufferMapAsyncStatus_Success)
+    auto bufferMapped = [](WGPUMapAsyncStatus status, WGPUStringView message, void *userdata1, void *userdata2) {
+      DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)userdata1;
+      if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
 #if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
@@ -383,7 +389,13 @@ struct RendererImpl final : public ContextData {
 #endif
     };
 #if WEBGPU_NATIVE
-    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
+    WGPUBufferMapCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = bufferMapped,
+        .userdata1 = &cmd,
+        .userdata2 = nullptr,
+    };
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
 #else
     gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
 #endif

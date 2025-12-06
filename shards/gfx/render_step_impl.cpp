@@ -300,7 +300,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
     // Assume same processor
     try {
       processor.buildPipeline(builder, buildPipelineOptions);
-      builder.build(context.wgpuDevice, storage.deviceLimits.limits);
+      builder.build(context.wgpuDevice, storage.deviceLimits);
     } catch (std::exception &ex) {
       if (storage.ignoreCompilationErrors) {
         std::string msg = fmt::format("Ignored shader compilation error: {}", ex.what());

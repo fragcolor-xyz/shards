@@ -128,7 +128,7 @@ struct MeshDrawableProcessor final : public IDrawableProcessor {
 
   SharedBufferPool uniformBufferPool;
   SharedBufferPool storageBufferPool;
-  WGPUSupportedLimits limits{};
+  WGPULimits limits{};
 
   TextureViewCache textureViewCache;
   SamplerCache samplerCache;

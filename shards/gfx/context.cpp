@@ -24,11 +24,17 @@
 
 #if SH_EMSCRIPTEN
 #include <emscripten/html5.h>
-using WGPUInstanceRequestAdapterCallback = WGPURequestAdapterCallback;
-using WGPUAdapterRequestDeviceCallback = WGPURequestDeviceCallback;
 #endif
 
 namespace gfx {
+
+// Helper to convert WGPUStringView to std::string
+static std::string stringViewToString(WGPUStringView sv) {
+  if (sv.data && sv.length > 0) {
+    return std::string(sv.data, sv.length);
+  }
+  return std::string();
+}
 static auto logger = getLogger();
 static auto wgpuLogger = getWgpuLogger();
 
@@ -61,16 +67,21 @@ struct AdapterRequest {
 
   static std::shared_ptr<Self> create(WGPUInstance wgpuInstance, const WGPURequestAdapterOptions &options) {
     auto result = std::make_shared<Self>();
-    wgpuInstanceRequestAdapter(wgpuInstance, &options, (WGPUInstanceRequestAdapterCallback)&Self::callback,
-                               new std::shared_ptr<Self>(result));
+    WGPURequestAdapterCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = &Self::callback,
+        .userdata1 = new std::shared_ptr<Self>(result),
+        .userdata2 = nullptr,
+    };
+    wgpuInstanceRequestAdapter(wgpuInstance, &options, callbackInfo);
     return result;
   };
 
-  static void callback(WGPURequestAdapterStatus status, WGPUAdapter adapter, char const *message, std::shared_ptr<Self> *handle) {
+  static void callback(WGPURequestAdapterStatus status, WGPUAdapter adapter, WGPUStringView message, void *userdata1, void *userdata2) {
+    auto *handle = static_cast<std::shared_ptr<Self> *>(userdata1);
     (*handle)->status = status;
     (*handle)->adapter = adapter;
-    if (message)
-      (*handle)->message = message;
+    (*handle)->message = stringViewToString(message);
     (*handle)->finished = true;
     delete handle;
   };
@@ -86,16 +97,21 @@ struct DeviceRequest {
 
   static std::shared_ptr<Self> create(WGPUAdapter wgpuAdapter, const WGPUDeviceDescriptor &deviceDesc) {
     auto result = std::make_shared<Self>();
-    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, (WGPUAdapterRequestDeviceCallback)&Self::callback,
-                             new std::shared_ptr<Self>(result));
+    WGPURequestDeviceCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = &Self::callback,
+        .userdata1 = new std::shared_ptr<Self>(result),
+        .userdata2 = nullptr,
+    };
+    wgpuAdapterRequestDevice(wgpuAdapter, &deviceDesc, callbackInfo);
     return result;
   };
 
-  static void callback(WGPURequestDeviceStatus status, WGPUDevice device, char const *message, std::shared_ptr<Self> *handle) {
+  static void callback(WGPURequestDeviceStatus status, WGPUDevice device, WGPUStringView message, void *userdata1, void *userdata2) {
+    auto *handle = static_cast<std::shared_ptr<Self> *>(userdata1);
     (*handle)->status = status;
     (*handle)->device = device;
-    if (message)
-      (*handle)->message = message;
+    (*handle)->message = stringViewToString(message);
     (*handle)->finished = true;
     delete handle;
   };
@@ -177,13 +193,14 @@ struct ContextMainOutput {
 #ifdef WEBGPU_NATIVE
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
-    if (st.status != WGPUSurfaceGetCurrentTextureStatus_Success) {
+    if (st.status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
+        st.status != WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal) {
       // this happens on windows when the window is minimized
       SPDLOG_LOGGER_DEBUG(logger, "Failed to acquire surface texture: {}", magic_enum::enum_name(st.status));
       return false;
     }
 
-    if (st.suboptimal) {
+    if (st.status == WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal) {
       SPDLOG_LOGGER_DEBUG(logger, "Suboptimal surface configuration");
     }
     wgpuCurrentTexture = st.texture;
@@ -393,19 +410,9 @@ void Context::release() {
 #if WEBGPU_NATIVE
   WGPUGlobalReport report{};
   wgpuGenerateReport(wgpuInstance, &report);
-  WGPUHubReport *hubReport{};
-  switch (getBackendType()) {
-  case WGPUBackendType_Vulkan:
-    hubReport = &report.vulkan;
-    break;
-  case WGPUBackendType_D3D12:
-    hubReport = &report.dx12;
-    break;
-  default:
-    break;
-  }
+  WGPUHubReport *hubReport = &report.hub;
 
-  if (hubReport) {
+  {
     auto dumpStat = [&](const char *name, auto &v) {
       if (v.numAllocated > 0 || v.numKeptFromUser > 0) {
         SPDLOG_LOGGER_WARN(logger, "Context has {} {} at release ({} released, {} kept)", v.numAllocated, name,
@@ -627,34 +634,34 @@ void Context::requestDevice() {
 
   WGPUDeviceDescriptor deviceDesc{};
 
-  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDeviceLostReason reason, char const *message, void *userdata) {
-    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", message, magic_enum::enum_name(reason));
-    Context *context = static_cast<Context *>(userdata);
+  // Store 'this' pointer for device lost callback
+  Context *contextPtr = this;
+  WGPUDeviceLostCallback deviceLostCallback = [](WGPUDevice const *device, WGPUDeviceLostReason reason, WGPUStringView message, void *userdata1, void *userdata2) {
+    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", stringViewToString(message), magic_enum::enum_name(reason));
+    Context *context = static_cast<Context *>(userdata1);
     context->deviceLost();
   };
-  deviceDesc.deviceLostCallback = deviceLostCallback;
-  deviceDesc.deviceLostUserdata = this;
-  deviceDesc.defaultQueue.label = "queue";
+  deviceDesc.deviceLostCallbackInfo = {
+      .callback = deviceLostCallback,
+      .userdata1 = contextPtr,
+      .userdata2 = nullptr,
+  };
+  deviceDesc.defaultQueue.label = {.data = "queue", .length = 5};
 
   // Passed to force full feature set to be enabled
 #if WEBGPU_NATIVE
-  WGPURequiredLimits requiredLimits = {.limits = wgpuGetDefaultLimits()};
-  deviceDesc.requiredLimits = &requiredLimits;
-
+  WGPULimits requiredLimits = wgpuGetDefaultLimits();
   // Lower default limits to support devices like iOS simulator
-  requiredLimits.limits.maxBufferSize = 256 * 1024 * 1024;
-  WGPURequiredLimitsExtras extraLimits{
-      .chain =
-          WGPUChainedStruct{
-              .sType = (WGPUSType)WGPUSType_RequiredLimitsExtras,
-          },
-      .limits =
-          {
-              .maxPushConstantSize = 0,
-              .maxNonSamplerBindings = 1000000,
-          },
+  requiredLimits.maxBufferSize = 256 * 1024 * 1024;
+
+  // Add native limits extension
+  WGPUNativeLimits nativeLimits{
+      .chain = {.sType = (WGPUSType)WGPUSType_NativeLimits},
+      .maxPushConstantSize = 0,
+      .maxNonSamplerBindings = 1000000,
   };
-  requiredLimits.nextInChain = &extraLimits.chain;
+  requiredLimits.nextInChain = (WGPUChainedStructOut*)&nativeLimits.chain;
+  deviceDesc.requiredLimits = &requiredLimits;
 
 #if WEBGPU_TRACE
   // This defines `const char* wgpuTracePath`, as specified by the CMakeLists.txt
@@ -772,7 +779,7 @@ void Context::requestAdapter() {
     DEFER(wgpuAdapterInfoFreeMembers(props));
 
     SPDLOG_LOGGER_DEBUG(logger, "WGPUAdapter: {}", i);
-    SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterProperties {{
+    SPDLOG_LOGGER_DEBUG(logger, R"(WGPUAdapterInfo {{
   vendorID: {}
   architecture: {}
   deviceID: {}
@@ -780,8 +787,9 @@ void Context::requestAdapter() {
   adapterType: {}
   backendType: {}
 }})",
-                        props.vendorID, props.architecture, props.deviceID, props.description, props.adapterType,
-                        props.backendType);
+                        props.vendorID, stringViewToString(props.architecture), props.deviceID,
+                        stringViewToString(props.description), magic_enum::enum_name(props.adapterType),
+                        magic_enum::enum_name(props.backendType));
     if (!adapterToUse && (useAnyAdapter || props.adapterType == WGPUAdapterType_DiscreteGPU)) {
       adapterToUse = adapter;
       backendType = props.backendType;
@@ -832,8 +840,9 @@ void Context::initCommon() {
 
 #ifdef WEBGPU_NATIVE
   wgpuSetLogCallback(
-      [](WGPULogLevel level, const char *msg, void *userData) {
+      [](WGPULogLevel level, WGPUStringView message, void *userData) {
         (void)userData;
+        std::string msg = stringViewToString(message);
         switch (level) {
         case WGPULogLevel_Error:
           wgpuLogger->error("{}", msg);

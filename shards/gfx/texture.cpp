@@ -108,12 +108,12 @@ static void writeTextureData(Context &context, const TextureFormat &format, cons
   const TextureFormatDesc &inputFormat = getTextureFormatDescription(format.pixelFormat);
   uint32_t rowDataLength = rowDataLength_ != 0 ? rowDataLength_ : inputFormat.pixelSize * resolution.x;
 
-  WGPUImageCopyTexture dst{
+  WGPUTexelCopyTextureInfo dst{
       .texture = texture,
       .mipLevel = 0,
       .aspect = WGPUTextureAspect_All,
   };
-  WGPUTextureDataLayout layout{
+  WGPUTexelCopyBufferLayout layout{
       .bytesPerRow = rowDataLength,
       .rowsPerImage = uint32_t(resolution.y),
   };
@@ -184,7 +184,7 @@ void Texture::updateContextData(Context &context, TextureContextData &contextDat
     wgpuDesc.format = desc.format.pixelFormat;
     wgpuDesc.sampleCount = 1;
     wgpuDesc.mipLevelCount = desc.format.mipLevels;
-    wgpuDesc.label = label.empty() ? "unknown" : label.c_str();
+    wgpuDesc.label = wgpuMakeStringView(label.empty() ? "unknown" : label.c_str());
 
     contextData.texture.reset(wgpuDeviceCreateTexture(context.wgpuDevice, &wgpuDesc));
     shassert(contextData.texture);

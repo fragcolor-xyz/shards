@@ -36,6 +36,9 @@ tracy-client = { version = "0.17.4", optional = true }
 # visionOS support is now upstream in wgpu v27 and metal 0.32
 naga = { path = "../wgpu/naga" }
 
+# objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
+objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
+
 # Until updates tracy-client (https://github.com/aclysma/profiling/pull/44)
 profiling = { path = "../profiling" }
 

@@ -22,7 +22,7 @@ using DebugVisualizer = shards::FunctionBase<512, void(gfx::ShapeRenderer &sr)>;
 // Storage container for all renderer data
 struct RendererStorage {
   WorkerMemory workerMemory;
-  WGPUSupportedLimits deviceLimits = {};
+  WGPULimits deviceLimits = {};
   DrawableProcessorCache drawableProcessorCache;
   std::vector<TransientPtr> transientPtrCleanupQueue;
   RenderGraphCache renderGraphCache;

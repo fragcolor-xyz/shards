@@ -42,13 +42,27 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _x = nullptr;                  \
   }
 
-inline void wgpuShaderModuleWGSLDescriptorSetCode(WGPUShaderModuleWGSLDescriptor &desc, const char *code) { desc.code = code; }
+inline void wgpuShaderSourceWGSLSetCode(WGPUShaderSourceWGSL &desc, const char *code) {
+  desc.code.data = code;
+  desc.code.length = code ? strlen(code) : 0;
+}
+
+// Helper to create WGPUStringView from C string
+inline WGPUStringView wgpuMakeStringView(const char *str) {
+  return WGPUStringView{.data = str, .length = str ? strlen(str) : 0};
+}
+
+// Helper for string literals (compile-time length)
+template<size_t N>
+constexpr WGPUStringView wgpuMakeStringView(const char (&str)[N]) {
+  return WGPUStringView{.data = str, .length = N - 1};
+}
 
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
 
 // workaround for emscripten not implementing limits
-void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits *outLimits);
+void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPULimits *outLimits);
 
 // When copying textures into buffers the bytesPerRow should be aligned to this number
 inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;

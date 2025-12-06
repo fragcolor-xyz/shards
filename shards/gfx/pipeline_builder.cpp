@@ -513,7 +513,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
   vertStateBuilder.build(desc.vertex, meshFormat, output.shaderModule);
 
   WGPUFragmentState fragmentState = {};
-  fragmentState.entryPoint = "fragment_main";
+  fragmentState.entryPoint = wgpuMakeStringView("fragment_main");
   fragmentState.module = output.shaderModule;
 
   // Shared blend state for all color targets
@@ -534,7 +534,7 @@ void PipelineBuilder::finalize(WGPUDevice device) {
     if (index == depthIndex) {
       // Depth target
       depthStencilState.format = target.format;
-      depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true);
+      depthStencilState.depthWriteEnabled = pipelineState.depthWrite.value_or(true) ? WGPUOptionalBool_True : WGPUOptionalBool_False;
       depthStencilState.depthCompare = pipelineState.depthCompare.value_or(WGPUCompareFunction_Less);
       depthStencilState.stencilBack.compare = WGPUCompareFunction_Always;
       depthStencilState.stencilFront.compare = WGPUCompareFunction_Always;
