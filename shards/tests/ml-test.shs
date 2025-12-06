@@ -1,4 +1,4 @@
-@include("embeddings.shs" Once: true)
+@include("../../lib/ml/embeddings.shs" Once: true)
 
 @wire(_test {
   @ml/embeddings/prepare
