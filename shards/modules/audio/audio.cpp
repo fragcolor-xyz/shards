@@ -1943,9 +1943,9 @@ void registerCompressorShards();
 void registerCodecShards();
 
 // Accessor functions for Device - used by synth.cpp
-uint32_t getDeviceBufferSize(void *device) { return reinterpret_cast<Device *>(device)->actualBufferSize; }
+uint32_t getDeviceBufferSize(const Device *device) { return device->actualBufferSize; }
 
-uint32_t getDeviceSampleRate(void *device) { return uint32_t(reinterpret_cast<Device *>(device)->_sampleRate.payload.intValue); }
+uint32_t getDeviceSampleRate(const Device *device) { return uint32_t(device->_sampleRate.payload.intValue); }
 
 } // namespace Audio
 } // namespace shards
