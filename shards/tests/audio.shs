@@ -94,42 +94,117 @@
   @wire(device-test-3 {
     Audio.Device
     Audio.Channel(Shards: {
-      440.0 | Audio.Oscillator
+      none | Audio.Oscillator(Frequency: 440.0)
     })
   } Looped: true)
-  
+
   @schedule(main device-test-3)
   @run(main 0.1 25) | Assert.Is(true)
-  
+
   @wire(device-test-4 {
     Audio.Device
     Audio.Channel(Shards: {
-      440.0 | Audio.Oscillator(Waveform::Triangle)
+      none | Audio.Oscillator(Waveform: Waveform::Triangle Frequency: 440.0)
     })
   } Looped: true)
-  
+
   @schedule(main device-test-4)
   @run(main 0.1 25) | Assert.Is(true)
-  
+
   @wire(device-test-5 {
     Audio.Device
     Audio.Channel(Shards: {
-      440.0 | Audio.Oscillator(Waveform::Square)
+      none | Audio.Oscillator(Waveform: Waveform::Square Frequency: 440.0)
     })
   } Looped: true)
-  
+
   @schedule(main device-test-5)
   @run(main 0.1 25) | Assert.Is(true)
-  
+
   @wire(device-test-6 {
     Audio.Device
     Audio.Channel(Shards: {
-      440.0 | Audio.Oscillator(Waveform::Sawtooth)
+      none | Audio.Oscillator(Waveform: Waveform::Sawtooth Frequency: 440.0)
     })
   } Looped: true)
-  
+
   @schedule(main device-test-6)
   @run(main 0.1 25) | Assert.Is(true)
-  
+
+  ; === Audio.Oscillator FM Tests ===
+
+  ; Oscillator carrier mode (no modulation input)
+  @wire(device-test-osc-carrier {
+    Audio.Device
+    Audio.Channel(Shards: {
+      none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-osc-carrier)
+  @run(main 0.1 25) | Assert.Is(true)
+
+  ; Oscillator FM modulated mode (audio input for phase modulation)
+  @wire(device-test-osc-modulated {
+    Audio.Device
+    Audio.Channel(Shards: {
+      ; Modulator at 220Hz modulates carrier at 440Hz
+      none | Audio.Oscillator(Frequency: 220.0 Amplitude: 1.0)
+           | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 2.0)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-osc-modulated)
+  @run(main 0.1 25) | Assert.Is(true)
+
+  ; FM chain (multiple operators)
+  @wire(device-test-osc-chain {
+    Audio.Device
+    Audio.Channel(Shards: {
+      ; DX7-style algorithm: op3 -> op2 -> op1 (carrier)
+      none | Audio.Oscillator(Frequency: 880.0 Amplitude: 0.3)  ; op3
+           | Audio.Oscillator(Frequency: 440.0 Index: 1.5)       ; op2
+           | Audio.Oscillator(Frequency: 220.0 Amplitude: 0.4 Index: 2.0)  ; op1 carrier
+    })
+  } Looped: true)
+
+  @schedule(main device-test-osc-chain)
+  @run(main 0.1 25) | Assert.Is(true)
+
+  ; === Audio.Noise Tests ===
+
+  ; White noise
+  @wire(device-test-noise-white {
+    Audio.Device
+    Audio.Channel(Shards: {
+      none | Audio.Noise(Type: NoiseType::White Amplitude: 0.3)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-noise-white)
+  @run(main 0.1 25) | Assert.Is(true)
+
+  ; Pink noise
+  @wire(device-test-noise-pink {
+    Audio.Device
+    Audio.Channel(Shards: {
+      none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.3)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-noise-pink)
+  @run(main 0.1 25) | Assert.Is(true)
+
+  ; Brown noise
+  @wire(device-test-noise-brown {
+    Audio.Device
+    Audio.Channel(Shards: {
+      none | Audio.Noise(Type: NoiseType::Brown Amplitude: 0.3)
+    })
+  } Looped: true)
+
+  @schedule(main device-test-noise-brown)
+  @run(main 0.1 25) | Assert.Is(true)
+
   none
 } Pass)

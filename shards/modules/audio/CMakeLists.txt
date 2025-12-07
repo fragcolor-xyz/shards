@@ -2,10 +2,11 @@ set(SOURCES
   dsp.cpp
   compressor.cpp
   codec.cpp
+  synth.cpp
 )
 
 add_shards_module(audio SOURCES ${SOURCES}
-  REGISTER_SHARDS audio dsp
+  REGISTER_SHARDS audio dsp synth
   EXPERIMENTAL)
 
 if(SHARDS_AUDIO_LINK_WHOLE)
@@ -40,3 +41,11 @@ endif()
 #     "-sWASM_WORKERS=1" # Required for miniaudio
 #   )
 # endif()
+
+# SIMD optimizations for synth.cpp
+# Apple uses Accelerate framework, others use SLEEF, WASM uses scalar fallback
+if(APPLE)
+  target_link_libraries(shards-module-audio "-framework Accelerate")
+elseif(NOT EMSCRIPTEN)
+  target_link_libraries(shards-module-audio sleef)
+endif()

@@ -800,166 +800,6 @@ struct Channel {
   // re-route and send
 };
 
-struct Oscillator {
-  enum class Waveform { Sine, Square, Triangle, Sawtooth };
-  DECL_ENUM_INFO(Waveform, Waveform,
-                 "Type of waveform used in audio synthesis. Defines the shape of the oscillator's output signal.", 'wave');
-
-  ma_waveform _wave;
-
-  ma_uint32 _channels{2};
-  ma_uint64 _nsamples{1024};
-  ma_uint32 _sampleRate{44100};
-
-  std::vector<float> _buffer;         // Planar output buffer
-  std::vector<float> _interleavedBuf; // Scratch for miniaudio interleaved output
-
-  SHVar *_device{nullptr};
-  Device *d{nullptr};
-
-  ParamVar _amplitude{Var(0.4)};
-  Waveform _type{Waveform::Sine};
-
-  static SHOptionalString help() {
-    return SHCCSTR("This shard generates audio waveforms. It can produce various types of waveforms such as sine, square, "
-                   "triangle, and sawtooth. The Oscillator is typically used within an Audio.Channel and can be controlled "
-                   "by other shards to create dynamic audio effects or synthesize sounds.");
-  }
-
-  static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
-  static SHOptionalString inputHelp() {
-    return SHCCSTR("Accepts a float value representing the frequency of the waveform in Hertz (Hz).");
-  }
-  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("Outputs audio data as an Audio chunk, containing the generated waveform samples.");
-  }
-
-  static const SHTable *properties() { return &experimental.payload.tableValue; }
-
-  static inline Parameters params{
-      {"Type", SHCCSTR("The waveform type to oscillate (Sine, Square, Triangle or Sawtooth)."), {WaveformEnumInfo::Type}},
-      {"Amplitude", SHCCSTR("A float representing the waveform amplitude."), {CoreInfo::FloatType, CoreInfo::FloatVarType}},
-      {"Channels", SHCCSTR("An int representing the number of desired output audio channels."), {CoreInfo::IntType}},
-      {"SampleRate",
-       SHCCSTR("An int representing desired output sampling rate. Ignored if this shard is inside an "
-               "Audio.Channel."),
-       {CoreInfo::IntType}},
-      {"Samples",
-       SHCCSTR("An int representing desired number of samples in the output. Ignored if this shard is inside "
-               "an Audio.Channel."),
-       {CoreInfo::IntType}}};
-
-  static SHParametersInfo parameters() { return params; }
-
-  void setParam(int index, const SHVar &value) {
-    switch (index) {
-    case 0:
-      _type = Waveform(value.payload.enumValue);
-      break;
-    case 1:
-      _amplitude = value;
-      break;
-    case 2:
-      _channels = ma_uint32(value.payload.intValue);
-      break;
-    case 3:
-      _sampleRate = ma_uint32(value.payload.intValue);
-      break;
-    case 4:
-      _nsamples = ma_uint64(value.payload.intValue);
-      break;
-    default:
-      throw InvalidParameterIndex();
-    }
-  }
-
-  SHVar getParam(int index) {
-    switch (index) {
-    case 0:
-      return Var::Enum(_type, CoreCC, WaveformEnumInfo::TypeId);
-    case 1:
-      return _amplitude;
-    case 2:
-      return Var(_channels);
-    case 3:
-      return Var(_sampleRate);
-    case 4:
-      return Var(int64_t(_nsamples));
-    default:
-      throw InvalidParameterIndex();
-    }
-  }
-
-  void initWave() {
-    ma_waveform_type wtype;
-    switch (_type) {
-    case Waveform::Sine:
-      wtype = ma_waveform_type_sine;
-      break;
-    case Waveform::Square:
-      wtype = ma_waveform_type_square;
-      break;
-    case Waveform::Triangle:
-      wtype = ma_waveform_type_triangle;
-      break;
-    case Waveform::Sawtooth:
-      wtype = ma_waveform_type_sawtooth;
-      break;
-    }
-    ma_waveform_config config = ma_waveform_config_init(ma_format_f32, _channels, _sampleRate, wtype, 0.0, 1.0);
-    ma_result res = ma_waveform_init(&config, &_wave);
-    if (res != MA_SUCCESS) {
-      throw ActivationError("Failed to init waveform");
-    }
-  }
-
-  void warmup(SHContext *context) {
-    _amplitude.warmup(context);
-
-    _device = referenceVariable(context, "Audio.Device");
-    if (_device->valueType == SHType::Object) {
-      d = reinterpret_cast<Device *>(_device->payload.objectValue);
-      // we have a device! override SR and BS
-      _sampleRate = d->_sampleRate.payload.intValue;
-    }
-
-    initWave();
-  }
-
-  void cleanup(SHContext *context) {
-    _amplitude.cleanup();
-
-    if (_device) {
-      releaseVariable(_device);
-      _device = nullptr;
-      d = nullptr;
-    }
-  }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    if (d) {
-      // if a device is connected override this value
-      _nsamples = d->actualBufferSize;
-    }
-
-    auto totalSamples = _channels * _nsamples;
-    _buffer.resize(totalSamples);
-    _interleavedBuf.resize(totalSamples);
-
-    ma_waveform_set_amplitude(&_wave, _amplitude.get().payload.floatValue);
-    ma_waveform_set_frequency(&_wave, input.payload.floatValue);
-
-    // miniaudio outputs interleaved, read into scratch buffer
-    ma_waveform_read_pcm_frames(&_wave, _interleavedBuf.data(), _nsamples, NULL);
-
-    // Deinterleave to planar output
-    audioDeinterleave(_interleavedBuf.data(), _buffer.data(), uint32_t(_nsamples), uint8_t(_channels));
-
-    return Var(makeAudio(_buffer.data(), uint32_t(_nsamples), _sampleRate, uint8_t(_channels)));
-  }
-};
-
 struct ReadFile {
   ma_decoder _decoder;
   bool _initialized{false};
@@ -2102,15 +1942,18 @@ struct SetVelocity {
 void registerCompressorShards();
 void registerCodecShards();
 
+// Accessor functions for Device - used by synth.cpp
+uint32_t getDeviceBufferSize(void *device) { return reinterpret_cast<Device *>(device)->actualBufferSize; }
+
+uint32_t getDeviceSampleRate(void *device) { return uint32_t(reinterpret_cast<Device *>(device)->_sampleRate.payload.intValue); }
+
 } // namespace Audio
 } // namespace shards
 
 SHARDS_REGISTER_FN(audio) {
   using namespace shards::Audio;
-  REGISTER_ENUM(Oscillator::WaveformEnumInfo);
   REGISTER_SHARD("Audio.Device", shards::Audio::Device);
   REGISTER_SHARD("Audio.Channel", shards::Audio::Channel);
-  REGISTER_SHARD("Audio.Oscillator", shards::Audio::Oscillator);
   REGISTER_SHARD("Audio.ReadFile", shards::Audio::ReadFile);
   REGISTER_SHARD("Audio.ReadFileBytes", shards::Audio::ReadFileBytes);
   REGISTER_SHARD("Audio.WriteFile", shards::Audio::WriteFile);

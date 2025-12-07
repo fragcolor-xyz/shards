@@ -1,0 +1,110 @@
+; Synth Demo - Audio.Oscillator and Audio.Noise playback demo
+; Run with: shards run shards/tests/synth_demo.shs
+
+@mesh(main)
+
+; Simple FM carrier - pure sine tone
+@wire(demo-fm-simple {
+  Msg("Playing simple FM carrier (440Hz sine)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.3)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-fm-simple)
+@run(main)
+
+; FM with modulation - classic FM sound
+@wire(demo-fm-modulated {
+  Msg("Playing FM modulated (bell-like)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Modulator -> Carrier (ratio 2:1 gives bell-like tones)
+    none | Audio.Oscillator(Frequency: 880.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.3 Index: 3.0)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-fm-modulated)
+@run(main)
+
+; FM chain - more complex timbre
+@wire(demo-fm-chain {
+  Msg("Playing FM chain (3-operator, brass-like)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; 3-operator chain for richer harmonics
+    none | Audio.Oscillator(Frequency: 660.0 Amplitude: 0.5)
+         | Audio.Oscillator(Frequency: 440.0 Index: 2.0)
+         | Audio.Oscillator(Frequency: 220.0 Amplitude: 0.25 Index: 1.5)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-fm-chain)
+@run(main)
+
+; White noise
+@wire(demo-noise-white {
+  Msg("Playing white noise...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Noise(Type: NoiseType::White Amplitude: 0.15)
+  })
+  Pause(1.5)
+})
+
+@schedule(main demo-noise-white)
+@run(main)
+
+; Pink noise
+@wire(demo-noise-pink {
+  Msg("Playing pink noise (warmer)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.2)
+  })
+  Pause(1.5)
+})
+
+@schedule(main demo-noise-pink)
+@run(main)
+
+; Brown noise
+@wire(demo-noise-brown {
+  Msg("Playing brown noise (deep rumble)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Noise(Type: NoiseType::Brown Amplitude: 0.25)
+  })
+  Pause(1.5)
+})
+
+@schedule(main demo-noise-brown)
+@run(main)
+
+; FM + Noise combo - synth pad with breath
+@wire(demo-combo {
+  Msg("Playing FM + noise combo (synth pad with breath)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; FM bass drone
+    none | Audio.Oscillator(Frequency: 55.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 110.0 Amplitude: 0.4 Index: 2.0) = fm
+
+    ; Add some pink noise for texture
+    none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.05) = noise
+
+    ; Mix them
+    fm | Math.Add(noise)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-combo)
+@run(main)
+
+Msg("Demo complete!")
