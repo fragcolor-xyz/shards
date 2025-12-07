@@ -28,7 +28,7 @@ void TestRenderer::createRenderTarget(int2 res) {
   textureDesc.size.height = res.y;
   textureDesc.size.depthOrArrayLayers = 1;
   textureDesc.format = rtFormat = WGPUTextureFormat_RGBA8Unorm;
-  textureDesc.label = "headlessRenderTarget";
+  textureDesc.label = wgpuMakeStringView("headlessRenderTarget");
   textureDesc.sampleCount = 1;
   textureDesc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc;
   textureDesc.mipLevelCount = 1;
@@ -69,11 +69,11 @@ TestFrame TestRenderer::getTestFrame() {
   desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
   WGPUBuffer tempBuffer = wgpuDeviceCreateBuffer(context->wgpuDevice, &desc);
 
-  WGPUImageCopyTexture src{};
+  WGPUTexelCopyTextureInfo src{};
   src.texture = rtTexture;
   src.aspect = WGPUTextureAspect_All;
   src.mipLevel = 0;
-  WGPUImageCopyBuffer dst{};
+  WGPUTexelCopyBufferInfo dst{};
   dst.buffer = tempBuffer;
   dst.layout.bytesPerRow = bufferPitch;
   dst.layout.rowsPerImage = WGPU_COPY_STRIDE_UNDEFINED;
@@ -87,8 +87,14 @@ TestFrame TestRenderer::getTestFrame() {
   WgpuHandle<WGPUCommandBuffer> copyCommandBuffer(wgpuCommandEncoderFinish(commandEncoder, &finishDesc));
   wgpuQueueSubmit(context->wgpuQueue, 1, &copyCommandBuffer.handle);
 
-  auto mapBufferCallback = [](WGPUBufferMapAsyncStatus status, void *userdata) {};
-  wgpuBufferMapAsync(tempBuffer, WGPUMapMode_Read, 0, desc.size, mapBufferCallback, nullptr);
+  auto mapBufferCallback = [](WGPUMapAsyncStatus status, WGPUStringView message, void *userdata1, void *userdata2) {};
+  WGPUBufferMapCallbackInfo callbackInfo{
+      .mode = WGPUCallbackMode_AllowSpontaneous,
+      .callback = mapBufferCallback,
+      .userdata1 = nullptr,
+      .userdata2 = nullptr,
+  };
+  wgpuBufferMapAsync(tempBuffer, WGPUMapMode_Read, 0, desc.size, callbackInfo);
   context->poll();
 
   uint8_t *bufferData = (uint8_t *)wgpuBufferGetMappedRange(tempBuffer, 0, desc.size);
