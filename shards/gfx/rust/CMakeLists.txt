@@ -42,7 +42,7 @@ add_rust_library(
 )
 
 if(WIN32)
-  target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler)
+  target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler runtimeobject)
 endif()
 
 # Headers only to wgpu-native
