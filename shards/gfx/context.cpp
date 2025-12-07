@@ -619,6 +619,7 @@ void Context::requestDevice() {
     context->deviceLost();
   };
   deviceDesc.deviceLostCallbackInfo = {
+      .mode = WGPUCallbackMode_AllowSpontaneous,
       .callback = deviceLostCallback,
       .userdata1 = contextPtr,
       .userdata2 = nullptr,
