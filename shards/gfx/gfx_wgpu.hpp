@@ -44,8 +44,10 @@ WGPUDevice wgpuAdapterRequestDeviceSync(WGPUAdapter adapter, const WGPUDeviceDes
     _x = nullptr;                  \
   }
 
-#ifdef WEBGPU_NATIVE
-// wgpu-native v27+ specific helpers (WGPUStringView doesn't exist in emscripten WebGPU)
+// WebGPU v27+ helpers for WGPUStringView
+// Available on both wgpu-native and emscripten (via emdawnwebgpu which provides the same API)
+// Skip during bindgen parsing - these are C++ helpers not needed for Rust bindings
+#ifndef RUST_BINDGEN
 
 inline void wgpuShaderSourceWGSLSetCode(WGPUShaderSourceWGSL &desc, const char *code) {
   desc.code.data = code;
@@ -62,7 +64,8 @@ template<size_t N>
 constexpr WGPUStringView wgpuMakeStringView(const char (&str)[N]) {
   return WGPUStringView{.data = str, .length = N - 1};
 }
-#endif // WEBGPU_NATIVE
+
+#endif // !RUST_BINDGEN
 
 // Default limits as described by the spec (https://www.w3.org/TR/webgpu/#limits)
 WGPULimits wgpuGetDefaultLimits();
@@ -75,9 +78,6 @@ inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
 #if !WEBGPU_NATIVE
 extern "C" {
-WGPUSwapChain gfxWgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const *descriptor);
-void gfxWgpuBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback,
-                           void *userdata);
 // Custom function implemented in javascript that reads a mapped buffer directly into the given address
 // faster that the default implementation that copies the data into a temporary buffer
 void gfxWgpuBufferReadInto(WGPUBuffer buffer, void *dst, size_t offset, size_t size);

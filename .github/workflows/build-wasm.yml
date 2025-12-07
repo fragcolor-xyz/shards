@@ -23,14 +23,6 @@ jobs:
           path: emsdk
           fetch-depth: 1
 
-      - name: Checkout emscripten fork
-        uses: actions/checkout@v4
-        with:
-          repository: guusw/emscripten
-          path: emscripten
-          fetch-depth: 1
-          ref: shards-4.0.1
-
       - name: Set up dependencies
         run: |
           sudo apt -y update
@@ -51,23 +43,15 @@ jobs:
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=`which cc`
           echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" >> $GITHUB_ENV
 
-          # Use the prebuilt SDK tools/binaries (MAKE SURE VERSION IS COMPATIBLE)
+          # Use emsdk 4.0.10+ for emdawnwebgpu port (modern WebGPU API matching wgpu v27)
           pushd emsdk
-          ./emsdk install 4.0.1
-          ./emsdk activate 4.0.1
+          ./emsdk install 4.0.10
+          ./emsdk activate 4.0.10
           source ./emsdk_env.sh
           cat ./.emscripten
           export EM_CONFIG=$PWD/.emscripten
+          export EMSCRIPTEN_ROOT=$PWD/upstream/emscripten
           popd
-          
-          # !!!! Use and setup emscripten fork
-          export EMSCRIPTEN_ROOT=$(pwd)/emscripten
-          pushd $EMSCRIPTEN_ROOT
-          ./bootstrap
-          popd
-
-          # Stock emscripten
-          # export EMSCRIPTEN_ROOT=emsdk/upstream/emscripten
 
           echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
           echo "EMSCRIPTEN_ROOT=$EMSCRIPTEN_ROOT" >> $GITHUB_ENV

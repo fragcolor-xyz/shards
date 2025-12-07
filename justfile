@@ -148,3 +148,55 @@ coverage-rust-reset:
   echo "Resetting Rust coverage data..."
   find build/Coverage -name "*.profraw" -delete 2>/dev/null || true
   echo "Rust coverage data reset"
+
+# ==================== Emscripten Build ====================
+# Path to emsdk - override with: just emsdk_path=/path/to/emsdk configure-wasm
+emsdk_path := env_var_or_default("EMSDK_PATH", "../emsdk")
+# emsdk 4.0.10+ required for --use-port=emdawnwebgpu (modern WebGPU API matching wgpu v27)
+emsdk_version := "4.0.10"
+
+# configure cmake for emscripten/wasm build
+configure-wasm:
+  #!/bin/bash
+  set -e
+
+  # Check emsdk exists
+  if [ ! -d "{{ emsdk_path }}" ]; then
+    echo "Error: emsdk not found at {{ emsdk_path }}"
+    echo "Clone it with: git clone https://github.com/emscripten-core/emsdk.git {{ emsdk_path }}"
+    exit 1
+  fi
+
+  # Setup emsdk (4.0.10+ required for emdawnwebgpu port)
+  pushd "{{ emsdk_path }}"
+  ./emsdk install {{ emsdk_version }}
+  ./emsdk activate {{ emsdk_version }}
+  source ./emsdk_env.sh
+  export EM_CONFIG=$PWD/.emscripten
+  export EMSCRIPTEN_ROOT=$PWD/upstream/emscripten
+  popd
+
+  # Setup rust target
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
+  rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
+  rustup +$RUSTUP_TOOLCHAIN component add rust-src
+
+  # Setup host toolchain for cross-compilation
+  export HOST_CC=$(which cc)
+  export HOST_AR=$(which ar)
+
+  cmake -Bbuild/Wasm -GNinja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DSKIP_HEAVY_INLINE=1 \
+    -DUSE_LTO=0 \
+    -DRUST_USE_LTO=0 \
+    -DEMSCRIPTEN_PTHREADS=ON \
+    -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake
+
+# build shards for wasm (configures first if needed)
+build-wasm: configure-wasm
+  cmake --build build/Wasm --target shards
+
+# quick build wasm (skips configure if already done)
+build-wasm-quick:
+  cmake --build build/Wasm --target shards

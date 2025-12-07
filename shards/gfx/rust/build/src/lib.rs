@@ -51,19 +51,30 @@ pub fn setup_bindgen_for_gfx(gfx_path: &str, builder: bindgen::Builder) -> bindg
 
   let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
 
+  // Check for SDL3 include path from cmake (preferred)
+  let sdl3_include_path = env::var("SDL3_INCLUDE_PATH").ok();
+
   // Add CPM dependencies if available
   if let Some(ref cpm_deps) = cpm_deps_path {
     builder = builder
       .clang_arg(format!("-I{}", cpm_deps))
-      .clang_arg(format!("-I{}/linalg-src", cpm_deps))
-      .clang_arg(format!("-I{}/sdl3-src/include", cpm_deps));
+      .clang_arg(format!("-I{}/linalg-src", cpm_deps));
 
-    // SDL3 build directory only exists for non-wasm32 targets (where SDL3 is actually built)
-    if target_arch != "wasm32" {
-      builder = builder
-        .clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
+    // Use explicit SDL3 path if provided, otherwise try CPM paths
+    if let Some(ref sdl3_path) = sdl3_include_path {
+      builder = builder.clang_arg(format!("-I{}", sdl3_path));
+    } else {
+      builder = builder.clang_arg(format!("-I{}/sdl3-src/include", cpm_deps));
+      // SDL3 build directory only exists for non-wasm32 targets (where SDL3 is actually built)
+      if target_arch != "wasm32" {
+        builder = builder.clang_arg(format!("-I{}/sdl3-build/include", cpm_deps));
+      }
     }
   } else {
+    // Use explicit SDL3 path if provided
+    if let Some(ref sdl3_path) = sdl3_include_path {
+      builder = builder.clang_arg(format!("-I{}", sdl3_path));
+    }
     // Fall back to old submodule locations
     builder = builder
       .clang_arg(format!("-I{}/linalg", deps_path))

@@ -128,10 +128,6 @@ struct ContextMainOutput {
 
   ContextFlushTextureReferencesRegistry onFlushTextureReferences;
 
-#ifndef WEBGPU_NATIVE
-  WGPUSwapChain wgpuSwapChain{};
-#endif
-
   ContextMainOutput(Window &window, ContextFlushTextureReferencesRegistry onFlushTextureReferences)
       : window(&window), onFlushTextureReferences(onFlushTextureReferences) {
     texture = std::make_shared<Texture>();
@@ -143,9 +139,6 @@ struct ContextMainOutput {
   }
 
   ~ContextMainOutput() {
-#ifndef WEBGPU_NATIVE
-    releaseSwapchain();
-#endif
     releaseSurface();
   }
 
@@ -190,7 +183,7 @@ struct ContextMainOutput {
       resizeSwapchain(device, adapter, drawableSize);
     }
 
-#ifdef WEBGPU_NATIVE
+    // Modern surface API - works on both wgpu-native and emdawnwebgpu
     WGPUSurfaceTexture st{};
     wgpuSurfaceGetCurrentTexture(wgpuSurface, &st);
     if (st.status != WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal &&
@@ -204,11 +197,6 @@ struct ContextMainOutput {
       SPDLOG_LOGGER_DEBUG(logger, "Suboptimal surface configuration");
     }
     wgpuCurrentTexture = st.texture;
-#else
-    if (!wgpuSwapChain)
-      return false;
-    wgpuCurrentTexture = wgpuSwapChainGetCurrentTexture(wgpuSwapChain);
-#endif
 
     auto desc = texture->getDesc();
     desc.externalTexture = wgpuCurrentTexture;
@@ -226,9 +214,8 @@ struct ContextMainOutput {
   void present() {
     shassert(wgpuCurrentTexture);
 
-#if WEBGPU_NATIVE
+    // Present is supported on both wgpu-native and emdawnwebgpu
     wgpuSurfacePresent(wgpuSurface);
-#endif
 
     wgpuTextureRelease(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
@@ -298,8 +285,10 @@ struct ContextMainOutput {
       }
     }
 
-#if WEBGPU_NATIVE
-#if SH_APPLE
+    // Modern surface configuration - works on both wgpu-native and emdawnwebgpu
+#if SH_EMSCRIPTEN
+    auto alphaMode = WGPUCompositeAlphaMode_Opaque;
+#elif SH_APPLE
     auto alphaMode = window->transparent ? WGPUCompositeAlphaMode_Unpremultiplied : WGPUCompositeAlphaMode_Auto;
 #else
     auto alphaMode = window->transparent ? WGPUCompositeAlphaMode_Premultiplied : WGPUCompositeAlphaMode_Auto;
@@ -325,7 +314,7 @@ struct ContextMainOutput {
     auto trySetPresentMode = [&](WGPUPresentMode mode) {
       if (presentMode)
         return;
-      for (int i = 0; i < capabilities.presentModeCount; i++) {
+      for (size_t i = 0; i < capabilities.presentModeCount; i++) {
         if (capabilities.presentModes[i] == mode) {
           presentMode = mode;
           break;
@@ -343,18 +332,6 @@ struct ContextMainOutput {
 
     surfaceConf.presentMode = *presentMode;
     wgpuSurfaceConfigure(wgpuSurface, &surfaceConf);
-#else
-    WGPUSwapChainDescriptor desc{
-        .label = "<swapchain>",
-        .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst,
-        .format = swapchainFormat,
-        .width = uint32_t(newSize.x),
-        .height = uint32_t(newSize.y),
-        .presentMode = WGPUPresentMode_Fifo,
-    };
-    releaseSwapchain();
-    wgpuSwapChain = gfxWgpuDeviceCreateSwapChain(device, wgpuSurface, &desc);
-#endif
 
     texture
         ->initWithPixelFormat(swapchainFormat) //
@@ -376,9 +353,6 @@ struct ContextMainOutput {
 
     WGPU_SAFE_RELEASE(wgpuSurfaceRelease, wgpuSurface);
   }
-#ifndef WEBGPU_NATIVE
-  void releaseSwapchain() { WGPU_SAFE_RELEASE(wgpuSwapChainRelease, wgpuSwapChain); }
-#endif
 };
 
 Context::Context() {}

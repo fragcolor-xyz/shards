@@ -339,10 +339,11 @@ struct RendererImpl final : public ContextData {
 #if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
 #else
+      // Emscripten uses gfxWgpuBufferReadInto to read buffer data directly
       cmd.mappedBuffer = nullptr;
 #endif
     };
-#if WEBGPU_NATIVE
+    // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
         .mode = WGPUCallbackMode_AllowSpontaneous,
         .callback = bufferMapped,
@@ -350,9 +351,6 @@ struct RendererImpl final : public ContextData {
         .userdata2 = nullptr,
     };
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
-#else
-    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed
@@ -386,10 +384,11 @@ struct RendererImpl final : public ContextData {
 #if WEBGPU_NATIVE
       cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
 #else
+      // Emscripten uses gfxWgpuBufferReadInto to read buffer data directly
       cmd.mappedBuffer = nullptr;
 #endif
     };
-#if WEBGPU_NATIVE
+    // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
         .mode = WGPUCallbackMode_AllowSpontaneous,
         .callback = bufferMapped,
@@ -397,9 +396,6 @@ struct RendererImpl final : public ContextData {
         .userdata2 = nullptr,
     };
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
-#else
-    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#endif
   }
 
   // Poll for mapped bugfer and copy data to target, returns true when completed

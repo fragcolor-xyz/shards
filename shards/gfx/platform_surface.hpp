@@ -27,7 +27,7 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
     WGPUChainedStruct chain;
 #if SH_EMSCRIPTEN
-    WGPUSurfaceSourceCanvasHTMLSelector_Emscripten html;
+    WGPUEmscriptenSurfaceSourceCanvasHTMLSelector html;
 #else
     WGPUSurfaceSourceXlibWindow x11;
     WGPUSurfaceSourceMetalLayer mtl;
@@ -75,11 +75,11 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     platformDesc.chain.sType = WGPUSType_SurfaceSourceMetalLayer;
     platformDesc.mtl.layer = nativeSurfaceHandle;
 #elif SH_EMSCRIPTEN
-    platformDesc.chain.sType = WGPUSType_SurfaceSourceCanvasHTMLSelector_Emscripten;
+    platformDesc.chain.sType = WGPUSType_EmscriptenSurfaceSourceCanvasHTMLSelector;
     if (nativeSurfaceHandle)
-      platformDesc.html.selector = (const char *)nativeSurfaceHandle;
+      platformDesc.html.selector = wgpuMakeStringView((const char *)nativeSurfaceHandle);
     else
-      platformDesc.html.selector = "#canvas";
+      platformDesc.html.selector = wgpuMakeStringView("#canvas");
 #else
 #error "Unsupported platform"
 #endif
