@@ -337,6 +337,12 @@ struct Oscillator {
     const float modIndex = float(_index.get().payload.floatValue);
 
     const uint32_t channels = audio.channels;
+
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Oscillator: buffer size exceeds limits");
+    }
+
     _buffer.resize(channels * nsamples);
     _phaseBuffer.resize(nsamples);
     _modPhaseBuffer.resize(nsamples);
