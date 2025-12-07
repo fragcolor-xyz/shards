@@ -1587,7 +1587,11 @@ struct SendFile {
       return "image/svg+xml";
     if (iequals(ext, ".wasm"))
       return "application/wasm";
-    return "application/text";
+    if (iequals(ext, ".glb"))
+      return "application/octet-stream";
+    if (iequals(ext, ".gltf"))
+      return "model/gltf+json";
+    return "application/octet-stream";
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
@@ -1627,6 +1631,7 @@ struct SendFile {
       _response.clear();
       _response.result(http::status::ok);
       _response.set(http::field::content_type, mime_type(SHSTRVIEW(input)));
+      _response.set(http::field::accept_ranges, "none");
       _response.body() = std::move(file);
 
       // add custom headers

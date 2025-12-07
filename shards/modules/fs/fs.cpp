@@ -667,6 +667,25 @@ struct Copy {
   }
 };
 
+struct Size {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Returns the size of a file in bytes.");
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    fs::path p(SHSTRING_PREFER_SHSTRVIEW(input));
+    ErrorCode ec;
+    auto size = fs::file_size(p, ec);
+    if (ec.failed()) {
+      throw FileNotFoundException(fmt::format("FS.Size, file {} does not exist.", p));
+    }
+    return Var(static_cast<int64_t>(size));
+  }
+};
+
 struct LastWriteTime {
   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
@@ -970,6 +989,7 @@ SHARDS_REGISTER_FN(fs) {
   REGISTER_SHARD("FS.IsFile", IsFile);
   REGISTER_SHARD("FS.IsDirectory", IsDirectory);
   REGISTER_SHARD("FS.Copy", Copy);
+  REGISTER_SHARD("FS.Size", Size);
   REGISTER_SHARD("FS.Remove", Remove);
   REGISTER_SHARD("FS.RemoveAll", RemoveAll);
   REGISTER_SHARD("FS.LastWriteTime", LastWriteTime);

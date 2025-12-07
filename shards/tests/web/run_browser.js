@@ -27,6 +27,9 @@ const puppeteer = require('puppeteer');
 
     const page = await browser.newPage();
 
+    // Disable browser cache to ensure fresh file fetches
+    await page.setCacheEnabled(false);
+
     // Listen for console messages
     page.on('console', msg => {
       if (msg.text().startsWith('<puppeteer>')) {

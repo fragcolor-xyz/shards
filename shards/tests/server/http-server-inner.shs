@@ -199,7 +199,25 @@ Cond([
   }
   {String.Starts("/tfs/")} {// Index test filesystem
     target | Slice(4) = rel-path
-    [@root-path rel-path] | FS.Join | @srv-log("Serving test file") | Http.SendFile(@headers)
+    [@root-path rel-path] | FS.Join = file-path
+    [file-path method] | @srv-log("Serving test file")
+    method | Match([
+      "HEAD" {
+        // Return headers only for HEAD request (needed for wasmfs to determine file size)
+        // Accept-Ranges: none forces wasmfs to use whole-file download instead of chunked
+        file-path | FS.Size | ToString = file-size
+        {
+          "Content-Length": file-size
+          "Accept-Ranges": "none"
+          "Cross-Origin-Opener-Policy": "same-origin"
+          "Cross-Origin-Embedder-Policy": "require-corp"
+        } = head-headers
+        "" | Http.Response(Status: 200 Headers: head-headers)
+      }
+      none {
+        file-path | Http.SendFile(@headers)
+      }
+    ])
   }
   {Is("/")} {
     [@web-path "index.html"] | FS.Join | @srv-log("Serving") | Http.SendFile(@headers)

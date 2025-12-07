@@ -194,8 +194,9 @@ EMSCRIPTEN_KEEPALIVE void shardsFSMountHTTP(const char *target_, const char *bas
   std::string baseUrl{baseUrl_};
   asyncRunner.post([target, baseUrl]() {
     SPDLOG_INFO("Mounting HTTP FS at {} with base URL {}", target, baseUrl);
-    // 64KB chunk size for fetch backend
-    fetchBackend = wasmfs_create_fetch_backend(baseUrl.c_str(), 64 * 1024);
+    // Use large chunk size (100MB) to force whole-file downloads
+    // wasmfs chunked Range-request fetching corrupts binary data
+    fetchBackend = wasmfs_create_fetch_backend(baseUrl.c_str(), 100 * 1024 * 1024);
     int r = wasmfs_create_directory(target.c_str(), 0777, fetchBackend);
     if (r != 0) {
       SPDLOG_ERROR("Failed to mount HTTP FS at {} with base URL {} ({})", target, baseUrl, r);
