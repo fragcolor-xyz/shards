@@ -44,8 +44,6 @@ uint32_t getDeviceSampleRate(const Device *device);
 
 namespace Synth {
 
-static TableVar experimental{{Var("experimental"), Var(true)}};
-
 // Mathematical constants
 static constexpr double TWO_PI = 2.0 * M_PI;
 static constexpr float TWO_PI_F = float(TWO_PI);
@@ -62,15 +60,13 @@ static constexpr float PINK_NOISE_SCALE = 0.11f;
 static constexpr float BROWN_NOISE_SCALE = 3.5f;
 
 // =============================================================================
-// SIMD-optimized sin function for audio buffers
+// SIMD-optimized transcendental functions for audio buffers
+// NOTE: No INT_MAX guards needed. Audio buffers are validated at allocation time
+// (MAX_SAMPLES = 1M) and device buffers are typically 256-8192 samples.
 // =============================================================================
 
 inline void simdSinf(float *out, const float *in, size_t count) {
 #if defined(SYNTH_HAS_ACCELERATE)
-  // Apple vForce - highly optimized for Apple Silicon and Intel
-  // NOTE: No INT_MAX guard needed here. Audio buffers are validated at allocation time
-  // (MAX_SAMPLES = 1M) and device buffers are typically 256-8192 samples. vvsinf takes
-  // int count which handles up to 2B samples - we'll never hit that in audio processing.
   int n = static_cast<int>(count);
   vvsinf(out, in, &n);
 #elif defined(SYNTH_HAS_SLEEF)
@@ -88,13 +84,38 @@ inline void simdSinf(float *out, const float *in, size_t count) {
     vst1q_f32(out + i, vr);
   }
 #endif
-  // Scalar fallback for remainder
   for (; i < count; ++i)
     out[i] = std::sin(in[i]);
 #else
-  // Pure scalar fallback
   for (size_t i = 0; i < count; ++i)
     out[i] = std::sin(in[i]);
+#endif
+}
+
+inline void simdTanhf(float *out, const float *in, size_t count) {
+#if defined(SYNTH_HAS_ACCELERATE)
+  int n = static_cast<int>(count);
+  vvtanhf(out, in, &n);
+#elif defined(SYNTH_HAS_SLEEF)
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(in + i);
+    __m256 vr = Sleef_tanhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(in + i);
+    float32x4_t vr = Sleef_tanhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = std::tanhf(in[i]);
+#else
+  for (size_t i = 0; i < count; ++i)
+    out[i] = std::tanhf(in[i]);
 #endif
 }
 
@@ -153,7 +174,6 @@ struct Oscillator {
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The generated or modulated audio signal."); }
 
-  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -410,7 +430,6 @@ struct Noise {
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The generated noise signal."); }
 
-  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -553,11 +572,9 @@ struct Noise {
     for (ma_uint64 i = 0; i < nsamples; i++) {
       float white = _dist(_rng);
 
-      _brown_last = (_brown_last + (0.02f * white)) / 1.02f;
-      // Hard clamp to prevent unbounded drift. This is a nonlinearity that adds harmonics
-      // when signal approaches limits - acceptable for this experimental implementation.
-      // A DC-blocking highpass or soft limiter (tanh) would be more correct but heavier.
-      _brown_last = std::clamp(_brown_last, -1.0f, 1.0f);
+      // Leaky integrator with tanh soft limiting - prevents audible clicks from hard clipping
+      // while keeping the signal bounded. tanh is smooth and fast (SIMD-optimized on most platforms).
+      _brown_last = std::tanh((_brown_last + (0.02f * white)) / 1.02f);
 
       float sample = amp * _brown_last * BROWN_NOISE_SCALE;
 
