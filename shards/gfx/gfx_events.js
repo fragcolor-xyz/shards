@@ -40,6 +40,15 @@ var LibraryGFXEvents = {
     const eh = this.getEventHandler();
     this.eventHandlerSetCanvas(eh, canvas.id, canvasContainer.id);
 
+    // Send initial display format synchronously before graphics starts
+    {
+      const rect = canvasContainer.getBoundingClientRect();
+      const pixelRatio = window.devicePixelRatio;
+      let canvasWidth = rect.width * pixelRatio;
+      let canvasHeight = rect.height * pixelRatio;
+      this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
+    }
+
     canvasContainer.onmousemove = (e) => {
       e.type_ = 0;
 
