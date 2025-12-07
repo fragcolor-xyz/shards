@@ -115,14 +115,17 @@ else()
     "-sMIN_CHROME_VERSION=113"
     "-sMIN_SAFARI_VERSION=-1"
     "-sPTHREAD_POOL_SIZE=12"
-    "-sEXPORTED_RUNTIME_METHODS=['FS', 'FETCHFS', 'stringToNewUTF8', 'UTF8ToString', 'ccall', 'cwrap', 'gfxSetup']"
-    "-sEXPORTED_FUNCTIONS=['_malloc','_free']"
+    "-sEXPORTED_RUNTIME_METHODS=['FS', 'FETCHFS', 'stringToNewUTF8', 'UTF8ToString', 'ccall', 'cwrap', 'gfxSetup', 'HEAP32', 'HEAPU8']"
+    "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
     "-sOFFSCREENCANVAS_SUPPORT=1"
     "-sSTACK_SIZE=2097152"
     "-sINITIAL_MEMORY=2147483648"
     "-sWASMFS"
     "-lfetchfs.js"
     "-sFORCE_FILESYSTEM"
+    # Better error reporting
+    "-sASSERTIONS=2"
+    "-sSTACK_OVERFLOW_CHECK=2"
   )
 
   target_link_libraries(shards shards-core shards-cpp-union)
