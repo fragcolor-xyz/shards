@@ -186,7 +186,7 @@ configure-wasm:
   export HOST_AR=$(which ar)
 
   cmake -Bbuild/Wasm -GNinja \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DSKIP_HEAVY_INLINE=1 \
     -DUSE_LTO=0 \
     -DRUST_USE_LTO=0 \
@@ -323,6 +323,13 @@ test-wasm *tests:
 
   # Run the browser
   node ./run_browser.js
+
+# run wasm tests in debug mode (keeps browser open on error, DevTools auto-open)
+# Usage: just test-wasm-debug                    # run all tests
+#        just test-wasm-debug gfx-cube.shs       # run single test
+test-wasm-debug *tests:
+  DEBUG_WASM=1 just test-wasm {{ tests }}
+
 # run test-runtime on wasm (simple - no browser needed)
 # Usage: just test-runtime-wasm
 test-runtime-wasm:

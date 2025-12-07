@@ -123,9 +123,6 @@ else()
     "-sWASMFS"
     "-lfetchfs.js"
     "-sFORCE_FILESYSTEM"
-    # Better error reporting
-    "-sASSERTIONS=2"
-    "-sSTACK_OVERFLOW_CHECK=2"
   )
 
   target_link_libraries(shards shards-core shards-cpp-union)
