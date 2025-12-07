@@ -25,6 +25,7 @@ wgpu-native = { path = "../wgpu-native", default-features = false, features = [
   "spirv",
   "dx12",
   "metal",
+  "vulkan",
 ] }
 wgpu-core = { path = "../wgpu/wgpu-core" }
 wgpu-types = { path = "../wgpu/wgpu-types" }
