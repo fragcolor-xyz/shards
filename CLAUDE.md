@@ -119,3 +119,52 @@ The build system supports multiple platforms (macOS, Linux, Windows, iOS, etc.).
 
 ### Swift Integration
 Swift files provide iOS/macOS bindings. The main interface is in `include/shards/shards.swift` with module-specific implementations in various directories.
+
+## Emscripten / WebAssembly Build
+
+### Overview
+Shards supports WebAssembly builds via Emscripten. The wasm build uses **emdawnwebgpu** (Dawn's WebGPU bindings for Emscripten) instead of Emscripten's built-in WebGPU support, because emdawnwebgpu provides the modern WebGPU API (with `WGPUStringView`, etc.) that matches wgpu-native v27+.
+
+### Requirements
+- **emsdk 4.0.10+**: Required for the `--use-port=emdawnwebgpu` flag
+- emsdk should be cloned at `../emsdk` (or set `EMSDK_PATH` environment variable)
+
+### Just Commands
+- `just configure-wasm` - Configure cmake for wasm build (installs emsdk toolchain if needed)
+- `just build-wasm` - Full wasm build (configures first)
+- `just build-wasm-quick` - Quick rebuild (skips configure)
+- `just setup-wasm-tests` - Install npm dependencies and puppeteer for browser tests
+- `just test-wasm` - Run all wasm tests in headless browser
+- `just test-wasm gfx-cube.shs` - Run specific test(s)
+
+### Key Technical Details
+
+**emdawnwebgpu vs Emscripten WebGPU:**
+- Emscripten's built-in `webgpu.h` uses the old WebGPU API (null-terminated strings)
+- emdawnwebgpu uses the modern API (`WGPUStringView`, `WGPUBufferMapCallbackInfo`, etc.)
+- The `--use-port=emdawnwebgpu` flag is added in `shards/gfx/CMakeLists.txt`
+
+**WebGPU Surface API:**
+- Uses modern surface API: `wgpuSurfaceConfigure`, `wgpuSurfaceGetCurrentTexture`, `wgpuSurfacePresent`
+- No deprecated `WGPUSwapChain` - surface configuration is unified across platforms
+- Emscripten surface source: `WGPUEmscriptenSurfaceSourceCanvasHTMLSelector`
+
+**Buffer Mapping:**
+- Uses `wgpuBufferGetConstMappedRange` for both wgpu-native and emdawnwebgpu
+- On emdawnwebgpu: allocates WASM memory and copies buffer data there
+- Memory is automatically freed when buffer is unmapped
+
+**Canvas Setup (gfx_events.js):**
+- Must set `canvas.width`/`canvas.height` (intrinsic size) for WebGPU surface
+- CSS size (via `getBoundingClientRect`) is only for layout
+- Initial size must be set synchronously before graphics initialization
+
+### Test Infrastructure
+- Test server: `shards/tests/server/` - HTTP server for serving wasm and test files
+- Test harness: `shards/tests/web/` - Puppeteer-based browser test runner
+- Tests use wasmfs with fetch backend for filesystem access
+
+### Debugging Wasm Builds
+- Add `"SHELL:-s ASSERTIONS=2"` to link options for better error messages
+- Check browser console for WebGPU errors
+- The `pollLogs` function in `index.html` polls shards log messages from wasm
