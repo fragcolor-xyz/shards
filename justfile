@@ -246,6 +246,7 @@ test-wasm *tests:
   source ./shared
 
   function queue_test() {
+    echo ">>> Queuing test: $1"
     control action:run data:shards/tests/$1
   }
 
