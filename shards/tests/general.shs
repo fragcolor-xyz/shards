@@ -859,6 +859,9 @@
   FS.IsDirectory
   Assert.Is(false true)
   "text.txt"
+  FS.Size | Log("Size") | IsMore(0)
+  Assert.Is(true true)
+  "text.txt"
   FS.Copy("text-copy.txt" Behavior: IfExists::Skip)
   FS.Copy("text-copy2.txt" Behavior: IfExists::Skip)
   "text-copy.txt"

@@ -672,7 +672,7 @@ struct Size {
   static SHTypesInfo outputTypes() { return CoreInfo::IntType; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Returns the size of a file in bytes.");
+    return SHCCSTR("Outputs the size of a file in bytes.");
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
