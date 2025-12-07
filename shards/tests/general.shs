@@ -146,56 +146,64 @@
   true
   Cond([
     {Is(true)} {Msg("Cond was true!!") | false}
-    {Is(false)} {Msg("Cond was false!") | true}] Passthrough: false)
+    {Is(false)} {Msg("Cond was false!") | true}
+  ] Passthrough: false)
   Assert.Is(false true)
   Log
   
   true
   Cond([
     {Is(false) | Or | Is(true)} {Msg("Cond was true!!") | false}
-    {Is(false)} {Msg("Cond was false!") | true}] Passthrough: false)
+    {Is(false)} {Msg("Cond was false!") | true}
+  ] Passthrough: false)
   Assert.Is(false true)
   Log
   
   true
   Cond([
     {Is(false) | And | Is(true)} {Assert.Is(none true)}
-    {Is(true)} {Msg("Cond was false!") | true}] Passthrough: false)
+    {Is(true)} {Msg("Cond was false!") | true}
+  ] Passthrough: false)
   Assert.Is(true true)
   Log
   
   false
   Cond([
     {Is(true)} {Msg("Cond was true!!") | false}
-    {Is(false)} {Msg("Cond was false!") | true}] Passthrough: false)
+    {Is(false)} {Msg("Cond was false!") | true}
+  ] Passthrough: false)
   Assert.Is(true true)
   Log
   
   false
   Cond([
     {Is(true)} {Msg("Cond was true!!") | false}
-    {Is(false) | And | IsNot(true)} {Msg("Cond was false!") | true}] Passthrough: false)
+    {Is(false) | And | IsNot(true)} {Msg("Cond was false!") | true}
+  ] Passthrough: false)
   Assert.Is(true true)
   Log
   
   false
   Cond([
     {Is(false) | And | IsNot(false)} {Assert.Is(none true)}
-    {Is(false)} {Msg("Cond was true!") | false}] Passthrough: false)
+    {Is(false)} {Msg("Cond was true!") | false}
+  ] Passthrough: false)
   Assert.Is(false true)
   Log
   
   10
   Cond([
     {true} {Msg("Cond was true!!") | false}
-    {Is(10)} {Msg("Cond was false!") | true}] Threading: true Passthrough: false)
+    {Is(10)} {Msg("Cond was false!") | true}
+  ] Threading: true Passthrough: false)
   Assert.Is(true true)
   Log
   
   10
   Cond([
     {true} {Msg("Cond was true!!") | false}
-    {Is(10)} {Msg("Cond was false!") | true}] Threading: false Passthrough: false)
+    {Is(10)} {Msg("Cond was false!") | true}
+  ] Threading: false Passthrough: false)
   Assert.Is(false true)
   Log
   
@@ -784,7 +792,11 @@
   Assert.Is([0 1 2 3 4 5] true)
   Log
   
-  #("." | FS.Absolute | Log("jj")) = test-path
+  #("." | FS.Absolute | Log("jj"))
+  If({@platform | Is("emscripten")} {
+    "/tfs/shards/tests/" // there is a bug in emscripten/system/lib/wasmfs/file.cpp - getName
+    // The core issue: mounted directories (created via wasmfs_create_directory) have their names stored only in the dcache, not the backend's entries. So getName() fails to find them, causing malformed paths like //shards/tests/..
+  } Pass) = test-path
   
   test-path | FS.Iterate(Recursive: false) | Log
   Take(4) | FS.Extension | Log
@@ -908,7 +920,7 @@
   Get(s1)
   Is(s2)
   Assert.Is(true true)
-
+  
   4 | Push(s1)
   5 | Push(s1)
   
@@ -1205,21 +1217,21 @@
   @i3(6 6 6) | Flatten | Assert.Is([6 6 6] true) >> i3s
   i3s | Flatten | Assert.Is([3 3 3 6 6 6] true)
   Log
-
+  
   @i2(1 2) | Add(@i2(1 2)) | Assert.Is(@i2(2 4) true)
   @i2(1 2) | Sub(@i2(1 2)) | Assert.Is(@i2(0 0) true)
   @i2(1 2) | Mul(@i2(1 2)) | Assert.Is(@i2(1 4) true)
   @i2(1 2) | Math.And(@i2(1 2)) | Assert.Is(@i2(1 2) true)
   @i2(1 2) | Math.Or(@i2(1 2)) | Assert.Is(@i2(1 2) true)
   @i2(1 2) | Math.Xor(@i2(1 2)) | Assert.Is(@i2(0 0) true)
-
+  
   @i3(1 2 3) | Add(@i3(1 2 3)) | Assert.Is(@i3(2 4 6) true)
   @i3(1 2 3) | Sub(@i3(1 2 3)) | Assert.Is(@i3(0 0 0) true)
   @i3(1 2 3) | Mul(@i3(1 2 3)) | Assert.Is(@i3(1 4 9) true)
   @i3(1 2 3) | Math.And(@i3(1 2 3)) | Assert.Is(@i3(1 2 3) true)
   @i3(1 2 3) | Math.Or(@i3(1 2 3)) | Assert.Is(@i3(1 2 3) true)
   @i3(1 2 3) | Math.Xor(@i3(1 2 3)) | Assert.Is(@i3(0 0 0) true)
-
+  
   @i4(1 2 3 4) | Add(@i4(1 2 3 4)) | Assert.Is(@i4(2 4 6 8) true)
   @i4(1 2 3 4) | Sub(@i4(1 2 3 4)) | Assert.Is(@i4(0 0 0 0) true)
   @i4(1 2 3 4) | Mul(@i4(1 2 3 4)) | Assert.Is(@i4(1 4 9 16) true)
