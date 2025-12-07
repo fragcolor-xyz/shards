@@ -322,3 +322,17 @@ test-wasm *tests:
 
   # Run the browser
   node ./run_browser.js
+# run test-runtime on wasm (simple - no browser needed)
+# Usage: just test-runtime-wasm
+test-runtime-wasm:
+  #!/bin/bash
+  set -e
+  
+  # Build test-runtime for wasm if needed
+  if [ ! -f "build/Wasm/test-runtime.js" ]; then
+    echo "Building test-runtime for wasm..."
+    cmake --build build/Wasm --target test-runtime
+  fi
+  
+  # Run with node
+  node -e "const test = require('./build/Wasm/test-runtime.js'); test().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })"

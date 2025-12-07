@@ -214,8 +214,11 @@ struct ContextMainOutput {
   void present() {
     shassert(wgpuCurrentTexture);
 
-    // Present is supported on both wgpu-native and emdawnwebgpu
+#if !SH_EMSCRIPTEN
+    // wgpuSurfacePresent is NOT supported in emdawnwebgpu - it calls abort()
+    // On web, frames are presented automatically via requestAnimationFrame
     wgpuSurfacePresent(wgpuSurface);
+#endif
 
     wgpuTextureRelease(wgpuCurrentTexture);
     wgpuCurrentTexture = nullptr;
