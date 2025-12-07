@@ -614,7 +614,11 @@ void Context::requestDevice() {
   // Store 'this' pointer for device lost callback
   Context *contextPtr = this;
   WGPUDeviceLostCallback deviceLostCallback = [](WGPUDevice const *device, WGPUDeviceLostReason reason, WGPUStringView message, void *userdata1, void *userdata2) {
-    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ()", stringViewToString(message), magic_enum::enum_name(reason));
+    SPDLOG_LOGGER_WARN(logger, "Device lost: {} ({})", stringViewToString(message), magic_enum::enum_name(reason));
+    // Don't call deviceLost() if we intentionally destroyed the device - we're already in releaseDevice()
+    if (reason == WGPUDeviceLostReason_Destroyed) {
+      return;
+    }
     Context *context = static_cast<Context *>(userdata1);
     context->deviceLost();
   };
@@ -669,6 +673,12 @@ void Context::releaseDevice() {
   }
 
   WGPU_SAFE_RELEASE(wgpuQueueRelease, wgpuQueue);
+
+  // Must destroy device before release - this waits for pending GPU work to complete
+  // Critical on emscripten where there's no wgpuDevicePoll
+  if (wgpuDevice) {
+    wgpuDeviceDestroy(wgpuDevice);
+  }
   WGPU_SAFE_RELEASE(wgpuDeviceRelease, wgpuDevice);
 }
 
