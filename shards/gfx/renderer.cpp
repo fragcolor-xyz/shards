@@ -293,7 +293,8 @@ struct RendererImpl final : public ContextData {
     cmd.size = int2(textureData.size.width, textureData.size.height);
     auto &pixelFormatDesc = getTextureFormatDescription(textureData.format.pixelFormat);
 
-    size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
+    // pixelSize already includes numComponents, so don't multiply again
+    size_t rowSize = pixelFormatDesc.pixelSize * cmd.size.x;
     cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
     cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
     cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
