@@ -168,3 +168,22 @@ Shards supports WebAssembly builds via Emscripten. The wasm build uses **emdawnw
 - Add `"SHELL:-s ASSERTIONS=2"` to link options for better error messages
 - Check browser console for WebGPU errors
 - The `pollLogs` function in `index.html` polls shards log messages from wasm
+
+### Known Issues & Workarounds
+
+**wasmfs `FS.Absolute` returns malformed paths for mounted directories:**
+- Root cause: Mounted directories created via `wasmfs_create_directory` store names only in the dcache, not backend entries. The `getName()` function in wasmfs doesn't fall through to check dcache, returning empty strings.
+- Symptom: `#("." | FS.Absolute)` returns `//shards/tests/.` instead of `/tfs/shards/tests/.`
+- Upstream fix: https://github.com/nicolo-ribaudo/nicolo-nicolo-nicolo/pull/23756 (not yet in official emscripten)
+- Workaround: Use explicit full paths instead of `FS.Absolute` in wasm builds
+- Example in `general.shs`:
+  ```shards
+  #("." | FS.Absolute)
+  If({@platform | Is("emscripten")} {
+    "/tfs/shards/tests/"  // workaround: explicit path
+  } Pass) = test-path
+  ```
+
+**wasmfs fetch backend is read-only:**
+- Files under the HTTP-mounted `/tfs` directory cannot be written to
+- Workaround: A writable memory backend is mounted at `/tmp` for tests that need to write files
