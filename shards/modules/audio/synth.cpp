@@ -46,6 +46,10 @@ namespace Synth {
 
 static TableVar experimental{{Var("experimental"), Var(true)}};
 
+// Mathematical constants
+static constexpr double TWO_PI = 2.0 * M_PI;
+static constexpr float TWO_PI_F = float(TWO_PI);
+
 // Maximum samples per buffer to prevent OOM (1 million samples ~= 22 seconds at 44.1kHz)
 static constexpr size_t MAX_SAMPLES = 1000000;
 // Maximum channels to prevent unreasonable allocations
@@ -64,21 +68,11 @@ static constexpr float BROWN_NOISE_SCALE = 3.5f;
 inline void simdSinf(float *out, const float *in, size_t count) {
 #if defined(SYNTH_HAS_ACCELERATE)
   // Apple vForce - highly optimized for Apple Silicon and Intel
-  // Fast path for typical audio buffer sizes (avoids loop overhead)
-  if (count <= static_cast<size_t>(INT_MAX)) {
-    int n = static_cast<int>(count);
-    vvsinf(out, in, &n);
-  } else {
-    // Chunked processing for extremely large buffers (rare in practice)
-    constexpr size_t maxChunk = static_cast<size_t>(INT_MAX);
-    size_t offset = 0;
-    while (offset < count) {
-      size_t remaining = count - offset;
-      int n = static_cast<int>(std::min(remaining, maxChunk));
-      vvsinf(out + offset, in + offset, &n);
-      offset += n;
-    }
-  }
+  // NOTE: No INT_MAX guard needed here. Audio buffers are validated at allocation time
+  // (MAX_SAMPLES = 1M) and device buffers are typically 256-8192 samples. vvsinf takes
+  // int count which handles up to 2B samples - we'll never hit that in audio processing.
+  int n = static_cast<int>(count);
+  vvsinf(out, in, &n);
 #elif defined(SYNTH_HAS_SLEEF)
   size_t i = 0;
 #if defined(__AVX2__)
@@ -227,12 +221,11 @@ struct Oscillator {
 
   // Waveform generation from phase (0 to 2π) - templated for compile-time dispatch
   // NOTE: Triangle, Sawtooth, and Square use naive (non-bandlimited) generation.
-  // This may produce aliasing artifacts at higher frequencies. For most synthesis
-  // applications this is acceptable; consider BLIT/BLEP for anti-aliased waveforms.
+  // This may produce aliasing artifacts at higher frequencies (especially above sampleRate/4).
+  // For most synthesis applications this is acceptable; consider BLIT/BLEP for anti-aliased waveforms.
   template <Waveform W> inline float generateSample(float phase) {
-    constexpr float TWO_PI = float(2.0 * M_PI);
     // Normalize phase to 0-1 range
-    float t = phase / TWO_PI;
+    float t = phase / TWO_PI_F;
     t = t - std::floor(t); // Wrap to [0, 1)
 
     if constexpr (W == Waveform::Sine) {
@@ -281,7 +274,6 @@ struct Oscillator {
     _buffer.resize(channels * nsamples);
     _phaseBuffer.resize(nsamples);
 
-    constexpr double TWO_PI = 2.0 * M_PI;
     const double phaseInc = (TWO_PI * freq) / double(sampleRate);
 
     // Build phase array
@@ -290,11 +282,12 @@ struct Oscillator {
       _phaseBuffer[i] = float(phase);
       phase += phaseInc;
     }
-    // Wrap phase to prevent precision loss (more robust than fmod for long-running oscillators)
-    while (phase >= TWO_PI) {
-      phase -= TWO_PI;
-    }
-    _phase = phase;
+    // PHASE WRAPPING: Use fmod, not a while loop.
+    // At high frequencies (e.g., 20kHz @ 44.1kHz), phaseInc ≈ 2.85 rad/sample.
+    // After 1024 samples, phase ≈ 2920 radians. A while loop would need ~465 iterations.
+    // fmod is O(1) and handles any frequency. The "precision loss" concern is negligible
+    // for double-precision - fmod preserves mantissa bits just as well as subtraction.
+    _phase = std::fmod(phase, TWO_PI);
 
     // Generate waveform (output to first channel position)
     generateWaveform<W>(_buffer.data(), _phaseBuffer.data(), nsamples);
@@ -328,7 +321,6 @@ struct Oscillator {
     _phaseBuffer.resize(nsamples);
     _modPhaseBuffer.resize(nsamples);
 
-    constexpr double TWO_PI = 2.0 * M_PI;
     const double phaseInc = (TWO_PI * freq) / double(sampleRate);
 
     // Build base phase array once (shared across all channels)
@@ -337,11 +329,8 @@ struct Oscillator {
       _phaseBuffer[i] = float(phase);
       phase += phaseInc;
     }
-    // Wrap phase to prevent precision loss (more robust than fmod for long-running oscillators)
-    while (phase >= TWO_PI) {
-      phase -= TWO_PI;
-    }
-    _phase = phase;
+    // See comment in activateCarrier for why fmod is used here
+    _phase = std::fmod(phase, TWO_PI);
 
     // Process each channel
     for (uint32_t ch = 0; ch < channels; ch++) {
@@ -486,10 +475,12 @@ struct Noise {
     const float amp = float(_amplitude.get().payload.floatValue);
     _buffer.resize(channels * nsamples);
 
-    // Generate white noise with interleaved RNG calls for better channel independence
-    for (ma_uint64 i = 0; i < nsamples; i++) {
-      for (ma_uint32 ch = 0; ch < channels; ch++) {
-        _buffer[ch * nsamples + i] = amp * _dist(_rng);
+    // Generate white noise - planar writes for cache locality
+    // Each channel gets independent samples (decorrelated stereo)
+    for (ma_uint32 ch = 0; ch < channels; ch++) {
+      float *out = _buffer.data() + ch * nsamples;
+      for (ma_uint64 i = 0; i < nsamples; i++) {
+        out[i] = amp * _dist(_rng);
       }
     }
 
@@ -563,7 +554,9 @@ struct Noise {
       float white = _dist(_rng);
 
       _brown_last = (_brown_last + (0.02f * white)) / 1.02f;
-      // Clamp to prevent unbounded drift (may introduce slight distortion at extremes)
+      // Hard clamp to prevent unbounded drift. This is a nonlinearity that adds harmonics
+      // when signal approaches limits - acceptable for this experimental implementation.
+      // A DC-blocking highpass or soft limiter (tanh) would be more correct but heavier.
       _brown_last = std::clamp(_brown_last, -1.0f, 1.0f);
 
       float sample = amp * _brown_last * BROWN_NOISE_SCALE;
