@@ -112,10 +112,10 @@ inline void simdTanhf(float *out, const float *in, size_t count) {
   }
 #endif
   for (; i < count; ++i)
-    out[i] = std::tanhf(in[i]);
+    out[i] = std::tanh(in[i]);
 #else
   for (size_t i = 0; i < count; ++i)
-    out[i] = std::tanhf(in[i]);
+    out[i] = std::tanh(in[i]);
 #endif
 }
 
