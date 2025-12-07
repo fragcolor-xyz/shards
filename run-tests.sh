@@ -61,7 +61,6 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-audio     Skip audio tests"
             echo "  --skip-misc      Skip miscellaneous tests (ml, physics, crdts, etc.)"
             echo "  --skip-samples   Skip sample tests"
-            echo "  --skip-python    Skip Python/RustPython tests (py-embed.shs)"
             echo "  --with-cpu       Include CPU-only tests from CI (general, strings, network, etc.)"
             echo "  --shards-bin     Path to shards binary (default: shards)"
             echo "  --verbose, -v    Show full commands being run"
@@ -203,13 +202,6 @@ if [ "$SKIP_MISC" = false ]; then
         "shards/tests/crdts.shs||"
         "shards/tests/crdt-benchmarks.shs||"
         "shards/tests/physics.shs||"
-    )
-fi
-
-# Python/RustPython tests (requires ENABLE_RUSTPYTHON_EMBEDDED build option)
-if [ "$SKIP_PYTHON" = false ]; then
-    TESTS+=(
-        "shards/tests/py-embed.shs||"
     )
 fi
 
