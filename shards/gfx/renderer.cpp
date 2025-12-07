@@ -247,7 +247,7 @@ struct RendererImpl final : public ContextData {
     GpuTextureReadBufferPtr destination;
 
     std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
-    std::optional<void *> mappedBuffer;
+    std::optional<const void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
     int2 size{};
@@ -268,7 +268,7 @@ struct RendererImpl final : public ContextData {
     GpuReadBufferPtr destination;
 
     std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
-    std::optional<void *> mappedBuffer;
+    std::optional<const void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
     int2 size{};
@@ -339,8 +339,7 @@ struct RendererImpl final : public ContextData {
       // Use wgpuBufferGetConstMappedRange for both platforms
       // On wgpu-native: returns direct pointer to mapped GPU memory
       // On emdawnwebgpu: allocates WASM memory and copies data there
-      // wgpuBufferGetConstMappedRange returns const void*, cast for our optional<void*>
-      cmd.mappedBuffer = const_cast<void*>(wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize));
+      cmd.mappedBuffer = wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
     // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
@@ -376,8 +375,7 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)userdata1;
       if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-      // wgpuBufferGetConstMappedRange returns const void*, cast for our optional<void*>
-      cmd.mappedBuffer = const_cast<void*>(wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize));
+      cmd.mappedBuffer = wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
     // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
