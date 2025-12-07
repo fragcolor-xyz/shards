@@ -43,9 +43,9 @@ endif()
 # endif()
 
 # SIMD optimizations for synth.cpp
-# Apple uses Accelerate framework, others use SLEEF, WASM uses scalar fallback
+# Apple uses Accelerate framework, others use SLEEF if available, WASM uses scalar fallback
 if(APPLE)
   target_link_libraries(shards-module-audio "-framework Accelerate")
-elseif(NOT EMSCRIPTEN)
+elseif(NOT EMSCRIPTEN AND TARGET sleef)
   target_link_libraries(shards-module-audio sleef)
 endif()

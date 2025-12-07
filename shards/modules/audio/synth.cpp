@@ -39,29 +39,36 @@ namespace Audio {
 
 // Forward declare Device and accessor functions from audio.cpp
 struct Device;
-uint32_t getDeviceBufferSize(void *device);
-uint32_t getDeviceSampleRate(void *device);
+uint32_t getDeviceBufferSize(const Device *device);
+uint32_t getDeviceSampleRate(const Device *device);
 
 namespace Synth {
 
-static TableVar experimental{{Var("experimental"), Var(true)}};
+// Mathematical constants
+static constexpr double TWO_PI = 2.0 * M_PI;
+static constexpr float TWO_PI_F = float(TWO_PI);
+
+// Maximum samples per buffer to prevent OOM (1 million samples ~= 22 seconds at 44.1kHz)
+static constexpr size_t MAX_SAMPLES = 1000000;
+// Maximum channels to prevent unreasonable allocations
+static constexpr uint32_t MAX_CHANNELS = 32;
+
+// Noise amplitude scaling factors (calibrated for approximately equal perceived loudness)
+// Pink noise has higher RMS than white due to filter accumulation, scale down to prevent clipping
+static constexpr float PINK_NOISE_SCALE = 0.11f;
+// Brown noise needs boost to match white noise perceived loudness level
+static constexpr float BROWN_NOISE_SCALE = 3.5f;
 
 // =============================================================================
-// SIMD-optimized sin function for audio buffers
+// SIMD-optimized transcendental functions for audio buffers
+// NOTE: No INT_MAX guards needed. Audio buffers are validated at allocation time
+// (MAX_SAMPLES = 1M) and device buffers are typically 256-8192 samples.
 // =============================================================================
 
 inline void simdSinf(float *out, const float *in, size_t count) {
 #if defined(SYNTH_HAS_ACCELERATE)
-  // Apple vForce - highly optimized for Apple Silicon and Intel
-  // Process in chunks of INT_MAX to avoid overflow
-  constexpr size_t maxChunk = static_cast<size_t>(INT_MAX);
-  size_t offset = 0;
-  while (offset < count) {
-    size_t remaining = count - offset;
-    int n = static_cast<int>(std::min(remaining, maxChunk));
-    vvsinf(out + offset, in + offset, &n);
-    offset += n;
-  }
+  int n = static_cast<int>(count);
+  vvsinf(out, in, &n);
 #elif defined(SYNTH_HAS_SLEEF)
   size_t i = 0;
 #if defined(__AVX2__)
@@ -77,13 +84,38 @@ inline void simdSinf(float *out, const float *in, size_t count) {
     vst1q_f32(out + i, vr);
   }
 #endif
-  // Scalar fallback for remainder
   for (; i < count; ++i)
     out[i] = std::sin(in[i]);
 #else
-  // Pure scalar fallback
   for (size_t i = 0; i < count; ++i)
     out[i] = std::sin(in[i]);
+#endif
+}
+
+inline void simdTanhf(float *out, const float *in, size_t count) {
+#if defined(SYNTH_HAS_ACCELERATE)
+  int n = static_cast<int>(count);
+  vvtanhf(out, in, &n);
+#elif defined(SYNTH_HAS_SLEEF)
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(in + i);
+    __m256 vr = Sleef_tanhf8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(in + i);
+    float32x4_t vr = Sleef_tanhf4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = std::tanh(in[i]);
+#else
+  for (size_t i = 0; i < count; ++i)
+    out[i] = std::tanh(in[i]);
 #endif
 }
 
@@ -142,7 +174,6 @@ struct Oscillator {
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The generated or modulated audio signal."); }
 
-  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -209,10 +240,12 @@ struct Oscillator {
   }
 
   // Waveform generation from phase (0 to 2π) - templated for compile-time dispatch
+  // NOTE: Triangle, Sawtooth, and Square use naive (non-bandlimited) generation.
+  // This may produce aliasing artifacts at higher frequencies (especially above sampleRate/4).
+  // For most synthesis applications this is acceptable; consider BLIT/BLEP for anti-aliased waveforms.
   template <Waveform W> inline float generateSample(float phase) {
-    constexpr float TWO_PI = float(2.0 * M_PI);
     // Normalize phase to 0-1 range
-    float t = phase / TWO_PI;
+    float t = phase / TWO_PI_F;
     t = t - std::floor(t); // Wrap to [0, 1)
 
     if constexpr (W == Waveform::Sine) {
@@ -250,13 +283,18 @@ struct Oscillator {
       sampleRate = getDeviceSampleRate(_device);
     }
 
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Oscillator: buffer size exceeds limits");
+    }
+
     const double freq = _frequency.get().payload.floatValue;
     const float amp = float(_amplitude.get().payload.floatValue);
 
     _buffer.resize(channels * nsamples);
     _phaseBuffer.resize(nsamples);
 
-    const double phaseInc = (2.0 * M_PI * freq) / double(sampleRate);
+    const double phaseInc = (TWO_PI * freq) / double(sampleRate);
 
     // Build phase array
     double phase = _phase;
@@ -264,8 +302,12 @@ struct Oscillator {
       _phaseBuffer[i] = float(phase);
       phase += phaseInc;
     }
-    // Wrap phase to prevent precision loss
-    _phase = std::fmod(phase, 2.0 * M_PI);
+    // PHASE WRAPPING: Use fmod, not a while loop.
+    // At high frequencies (e.g., 20kHz @ 44.1kHz), phaseInc ≈ 2.85 rad/sample.
+    // After 1024 samples, phase ≈ 2920 radians. A while loop would need ~465 iterations.
+    // fmod is O(1) and handles any frequency. The "precision loss" concern is negligible
+    // for double-precision - fmod preserves mantissa bits just as well as subtraction.
+    _phase = std::fmod(phase, TWO_PI);
 
     // Generate waveform (output to first channel position)
     generateWaveform<W>(_buffer.data(), _phaseBuffer.data(), nsamples);
@@ -275,9 +317,11 @@ struct Oscillator {
       _buffer[i] *= amp;
     }
 
-    // Copy to other channels if needed (planar format)
-    for (ma_uint32 ch = 1; ch < channels; ch++) {
-      std::memcpy(_buffer.data() + ch * nsamples, _buffer.data(), nsamples * sizeof(float));
+    // Copy to other channels if needed (planar format) - skip for mono
+    if (channels > 1) {
+      for (ma_uint32 ch = 1; ch < channels; ch++) {
+        std::memcpy(_buffer.data() + ch * nsamples, _buffer.data(), nsamples * sizeof(float));
+      }
     }
 
     return Var(makeAudio(_buffer.data(), uint32_t(nsamples), sampleRate, uint8_t(channels)));
@@ -293,11 +337,17 @@ struct Oscillator {
     const float modIndex = float(_index.get().payload.floatValue);
 
     const uint32_t channels = audio.channels;
+
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Oscillator: buffer size exceeds limits");
+    }
+
     _buffer.resize(channels * nsamples);
     _phaseBuffer.resize(nsamples);
     _modPhaseBuffer.resize(nsamples);
 
-    const double phaseInc = (2.0 * M_PI * freq) / double(sampleRate);
+    const double phaseInc = (TWO_PI * freq) / double(sampleRate);
 
     // Build base phase array once (shared across all channels)
     double phase = _phase;
@@ -305,8 +355,8 @@ struct Oscillator {
       _phaseBuffer[i] = float(phase);
       phase += phaseInc;
     }
-    // Wrap phase to prevent precision loss
-    _phase = std::fmod(phase, 2.0 * M_PI);
+    // See comment in activateCarrier for why fmod is used here
+    _phase = std::fmod(phase, TWO_PI);
 
     // Process each channel
     for (uint32_t ch = 0; ch < channels; ch++) {
@@ -376,7 +426,9 @@ struct Noise {
 
   static SHOptionalString help() {
     return SHCCSTR("Generates noise signals. Supports white noise (flat spectrum), pink noise (1/f spectrum), "
-                   "and brown/Brownian noise (1/f^2 spectrum).");
+                   "and brown/Brownian noise (1/f^2 spectrum). "
+                   "Note: White noise generates independent samples per channel (decorrelated stereo), "
+                   "while pink and brown noise use the same signal for all channels (coherent stereo).");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
@@ -384,7 +436,6 @@ struct Noise {
   static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
   static SHOptionalString outputHelp() { return SHCCSTR("The generated noise signal."); }
 
-  static const SHTable *properties() { return &experimental.payload.tableValue; }
 
   PARAM_REQUIRED_VARIABLES();
 
@@ -441,10 +492,16 @@ struct Noise {
       sampleRate = getDeviceSampleRate(_device);
     }
 
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Noise: buffer size exceeds limits");
+    }
+
     const float amp = float(_amplitude.get().payload.floatValue);
     _buffer.resize(channels * nsamples);
 
-    // Generate white noise for each channel (sequential RNG calls, slight correlation)
+    // Generate white noise - planar writes for cache locality
+    // Each channel gets independent samples (decorrelated stereo)
     for (ma_uint32 ch = 0; ch < channels; ch++) {
       float *out = _buffer.data() + ch * nsamples;
       for (ma_uint64 i = 0; i < nsamples; i++) {
@@ -465,6 +522,11 @@ struct Noise {
       sampleRate = getDeviceSampleRate(_device);
     }
 
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Noise: buffer size exceeds limits");
+    }
+
     const float amp = float(_amplitude.get().payload.floatValue);
     _buffer.resize(channels * nsamples);
 
@@ -483,7 +545,7 @@ struct Noise {
       float pink = _pink_b0 + _pink_b1 + _pink_b2 + _pink_b3 + _pink_b4 + _pink_b5 + _pink_b6 + white * 0.5362f;
       _pink_b6 = white * 0.115926f;
 
-      float sample = amp * pink * 0.11f;
+      float sample = amp * pink * PINK_NOISE_SCALE;
 
       // Write to all channels
       for (ma_uint32 ch = 0; ch < channels; ch++) {
@@ -504,6 +566,11 @@ struct Noise {
       sampleRate = getDeviceSampleRate(_device);
     }
 
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Noise: buffer size exceeds limits");
+    }
+
     const float amp = float(_amplitude.get().payload.floatValue);
     _buffer.resize(channels * nsamples);
 
@@ -511,10 +578,11 @@ struct Noise {
     for (ma_uint64 i = 0; i < nsamples; i++) {
       float white = _dist(_rng);
 
-      _brown_last = (_brown_last + (0.02f * white)) / 1.02f;
-      _brown_last = std::clamp(_brown_last, -1.0f, 1.0f);
+      // Leaky integrator with tanh soft limiting - prevents audible clicks from hard clipping
+      // while keeping the signal bounded. tanh is smooth and fast (SIMD-optimized on most platforms).
+      _brown_last = std::tanh((_brown_last + (0.02f * white)) / 1.02f);
 
-      float sample = amp * _brown_last * 3.5f;
+      float sample = amp * _brown_last * BROWN_NOISE_SCALE;
 
       // Write to all channels
       for (ma_uint32 ch = 0; ch < channels; ch++) {
