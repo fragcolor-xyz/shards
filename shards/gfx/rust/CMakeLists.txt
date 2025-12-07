@@ -42,7 +42,9 @@ add_rust_library(
 )
 
 if(WIN32)
-  target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler runtimeobject)
+  # propsys: windows-core PropVariant functions
+  # runtimeobject: windows-result RoOriginateErrorW
+  target_link_libraries(gfx-rust INTERFACE Userenv ws2_32 Bcrypt d3d12 d3dcompiler propsys runtimeobject)
 endif()
 
 # Headers only to wgpu-native
