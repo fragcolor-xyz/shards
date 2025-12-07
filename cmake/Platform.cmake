@@ -140,6 +140,7 @@ if(NOT ARCH)
       set(ARCH "broadwell")
     endif()
   endif()
+  # ARM64 doesn't need -march, the compiler defaults are fine
 endif()
 
 if(ARCH)
