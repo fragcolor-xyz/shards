@@ -194,6 +194,12 @@
     const returnValuePtr = mod._malloc(4); // Allocate memory for return value
     function pollLogs() {
       const mod = instance.module;
+      // Defensive check: ensure module and HEAP32 are valid before proceeding
+      if (!mod || !mod.HEAP32 || !mod._shardsLockLogBuffer) {
+        console.warn('pollLogs: Module not ready or crashed, skipping this poll');
+        setTimeout(pollLogs, 5000);
+        return;
+      }
       mod._shardsLockLogBuffer();
       try {
         const messagesPtr = mod._shardsGetLogMessages(countPtr);

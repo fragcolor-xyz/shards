@@ -76,14 +76,6 @@ void gfxWgpuDeviceGetLimits(WGPUDevice device, WGPULimits *outLimits);
 // When copying textures into buffers the bytesPerRow should be aligned to this number
 inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
-#if !WEBGPU_NATIVE
-extern "C" {
-// Custom function implemented in javascript that reads a mapped buffer directly into the given address
-// faster that the default implementation that copies the data into a temporary buffer
-void gfxWgpuBufferReadInto(WGPUBuffer buffer, void *dst, size_t offset, size_t size);
-}
-#endif
-
 #if WEBGPU_NATIVE && !RUST_BINDGEN
 #include "rust/gfx/bindings.hpp"
 #endif

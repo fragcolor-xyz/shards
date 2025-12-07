@@ -200,3 +200,125 @@ build-wasm: configure-wasm
 # quick build wasm (skips configure if already done)
 build-wasm-quick:
   cmake --build build/Wasm --target shards
+
+# setup wasm test dependencies (npm install, puppeteer)
+setup-wasm-tests:
+  #!/bin/bash
+  set -e
+  pushd shards/tests/web
+  npm install
+  npx puppeteer browsers install chrome@latest
+  popd
+  echo "Wasm test dependencies installed"
+
+# run wasm tests locally (requires: build, build-wasm, setup-wasm-tests)
+# Usage: just test-wasm                    # run all tests
+#        just test-wasm gfx-cube.shs       # run single test
+test-wasm *tests:
+  #!/bin/bash
+  set -e
+
+  # Check for host shards binary
+  if [ -f "build/Debug/shards" ]; then
+    export shards=$(pwd)/build/Debug/shards
+  elif [ -f "build/Release/shards" ]; then
+    export shards=$(pwd)/build/Release/shards
+  else
+    echo "Error: No host shards binary found. Run 'just build' first."
+    exit 1
+  fi
+
+  # Check for wasm build
+  if [ ! -f "build/Wasm/shards-mt.js" ]; then
+    echo "Error: No wasm build found. Run 'just build-wasm' first."
+    exit 1
+  fi
+  export SHARDS_BUILD=$(pwd)/build/Wasm
+
+  # Check for node_modules
+  if [ ! -d "shards/tests/web/node_modules" ]; then
+    echo "Error: Node modules not installed. Run 'just setup-wasm-tests' first."
+    exit 1
+  fi
+
+  pushd shards/tests/web
+
+  source ./shared
+
+  function queue_test() {
+    control action:run data:shards/tests/$1
+  }
+
+  # Spawn the test server in background
+  ./run_server &
+  SERVER_PID=$!
+  trap "kill $SERVER_PID 2>/dev/null" EXIT
+
+  sleep 2
+
+  # Queue tests in background
+  (
+    if [ -n "{{ tests }}" ]; then
+      # Run specific tests
+      for test in {{ tests }}; do
+        queue_test $test
+      done
+    else
+      # Run all standard tests
+      queue_test gfx-cube.shs
+      queue_test gfx-texture.shs
+      queue_test gfx-gltf.shs
+      queue_test gfx-gltf-pack.shs
+      queue_test gfx-gltf-anim.shs
+      queue_test gfx-shader-translator-0.shs
+      queue_test gfx-shader-translator-1.shs
+      queue_test gfx-shader-translator-2.shs
+      queue_test gfx-shader-translator-3.shs
+      queue_test gfx-shader-translator-4.shs
+      queue_test gfx-queue.shs
+      queue_test gfx-read-texture.shs
+      queue_test gfx-pbr.shs
+      queue_test ui-0.shs
+      queue_test ui-1.shs
+      queue_test ui-2.shs
+      queue_test general.shs@/tmp
+      queue_test zip-map.shs
+      queue_test strings.shs
+      queue_test table-compose.shs
+      queue_test variables.shs
+      queue_test subwires.shs@/tmp
+      queue_test linalg.shs
+      queue_test math.shs
+      queue_test math_audio.shs
+      queue_test network-ws.shs
+      queue_test struct.shs
+      queue_test flows.shs
+      queue_test channels.shs
+      queue_test imaging.shs
+      queue_test http.shs@/tmp
+      queue_test bigint.shs
+      queue_test brotli.shs
+      queue_test snappy.shs
+      queue_test expect.shs
+      queue_test rust.shs
+      queue_test crypto.shs
+      queue_test wire-macro.shs
+      queue_test branch.shs
+      queue_test audio2.shs
+      queue_test events.shs
+      queue_test complex-deserialize.shs
+      queue_test db.shs@/tmp
+      queue_test suspend-resume.shs
+      queue_test whendone.shs
+      queue_test return.shs
+      queue_test table-seq-push.shs
+      queue_test failures.shs@/tmp
+      queue_test traits.shs
+    fi
+    control action:shutdown
+  ) &
+
+  sleep 3
+
+  # Run the browser
+  node ./run_browser.js

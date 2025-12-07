@@ -147,7 +147,6 @@ if(EMSCRIPTEN)
   target_link_options(gfx-core-obj PUBLIC "--use-port=emdawnwebgpu")
   target_compile_options(gfx-headers INTERFACE "--use-port=emdawnwebgpu")
 
-  em_link_js_library(gfx-core-obj gfx_wgpu.js)
   em_link_js_library(gfx-core-obj gfx_events.js)
 
   # Use CPM-downloaded SDL3 headers

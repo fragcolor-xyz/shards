@@ -336,12 +336,11 @@ struct RendererImpl final : public ContextData {
       DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)userdata1;
       if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-#if WEBGPU_NATIVE
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
-#else
-      // Emscripten uses gfxWgpuBufferReadInto to read buffer data directly
-      cmd.mappedBuffer = nullptr;
-#endif
+      // Use wgpuBufferGetConstMappedRange for both platforms
+      // On wgpu-native: returns direct pointer to mapped GPU memory
+      // On emdawnwebgpu: allocates WASM memory and copies data there
+      // wgpuBufferGetConstMappedRange returns const void*, cast for our optional<void*>
+      cmd.mappedBuffer = const_cast<void*>(wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize));
     };
     // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
@@ -353,16 +352,12 @@ struct RendererImpl final : public ContextData {
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
   }
 
-  // Poll for mapped bugfer and copy data to target, returns true when completed
+  // Poll for mapped buffer and copy data to target, returns true when completed
   bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
 
-#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
-#else
-      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
-#endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
@@ -381,12 +376,8 @@ struct RendererImpl final : public ContextData {
       DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)userdata1;
       if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-#if WEBGPU_NATIVE
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
-#else
-      // Emscripten uses gfxWgpuBufferReadInto to read buffer data directly
-      cmd.mappedBuffer = nullptr;
-#endif
+      // wgpuBufferGetConstMappedRange returns const void*, cast for our optional<void*>
+      cmd.mappedBuffer = const_cast<void*>(wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize));
     };
     // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
     WGPUBufferMapCallbackInfo callbackInfo{
@@ -398,16 +389,12 @@ struct RendererImpl final : public ContextData {
     wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
   }
 
-  // Poll for mapped bugfer and copy data to target, returns true when completed
+  // Poll for mapped buffer and copy data to target, returns true when completed
   bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
 
-#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
-#else
-      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
-#endif
 
       wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
