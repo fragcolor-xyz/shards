@@ -343,43 +343,43 @@ struct Device {
     for (auto &[nbus, channelKinds] : device->channels) {
       if (nbus != 0)
         continue; // Only device output bus
-      for (auto &[kind, channels] : channelKinds) {
-        if (channels.empty())
-          continue;
-        auto *channelData = channels[0];
-        if (channelData->outChannels.empty())
-          continue;
-
-        // Get the output buffer for this channel configuration (planar layout)
-        auto &channelOutput = channelData->outputBuffer;
-        if (!channelOutput)
-          continue;
-
-        auto channelOutCount = channelData->outChannels.size();
-        auto requiredBufferSize = channelOutCount * frameCount;
-        if (channelData->outputBufferSize < requiredBufferSize) {
-          SHLOG_ERROR("Channel output buffer too small: {} < {}", channelData->outputBufferSize, requiredBufferSize);
-          continue;
-        }
-
-        // Map each channel's planar output to the correct interleaved device output channel
-        for (size_t c = 0; c < channelOutCount; c++) {
-          auto deviceChannel = channelData->outChannels[c];
-          if (deviceChannel >= outChannels)
+      for (auto &[kind, channelGroup] : channelKinds) {
+        // Iterate ALL channels in the group (they may have different output configurations)
+        for (auto *channelData : channelGroup) {
+          if (channelData->outChannels.empty())
             continue;
 
-          // Source is planar: channel c data is at channelOutput + c * frameCount
-          const float *src = channelOutput + c * frameCount;
-          for (ma_uint32 i = 0; i < frameCount; i++) {
-            // Add to interleaved device output (mixing)
-            fOutput[i * outChannels + deviceChannel] += src[i];
+          // Get the output buffer for this channel configuration (planar layout)
+          auto &channelOutput = channelData->outputBuffer;
+          if (!channelOutput)
+            continue;
+
+          auto channelOutCount = channelData->outChannels.size();
+          auto requiredBufferSize = channelOutCount * frameCount;
+          if (channelData->outputBufferSize < requiredBufferSize) {
+            SHLOG_ERROR("Channel output buffer too small: {} < {}", channelData->outputBufferSize, requiredBufferSize);
+            continue;
+          }
+
+          // Map each channel's planar output to the correct interleaved device output channel
+          for (size_t c = 0; c < channelOutCount; c++) {
+            auto deviceChannel = channelData->outChannels[c];
+            if (deviceChannel >= outChannels)
+              continue;
+
+            // Source is planar: channel c data is at channelOutput + c * frameCount
+            const float *src = channelOutput + c * frameCount;
+            for (ma_uint32 i = 0; i < frameCount; i++) {
+              // Add to interleaved device output (mixing)
+              fOutput[i * outChannels + deviceChannel] += src[i];
+            }
           }
         }
       }
     }
 
     // Apply soft clipping to final output
-    for (size_t i = 0; i < numSamples; i++) {
+    for (size_t i = 0; i < size_t(numSamples); i++) {
       fOutput[i] = softClip(fOutput[i]);
     }
   }
@@ -1221,6 +1221,85 @@ struct WriteFile {
   }
 };
 
+struct Remix {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard converts audio between different channel counts (e.g., mono to stereo or stereo to mono).");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Audio data to remix to a different channel count."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Audio data with the specified number of channels."); }
+
+  static const SHTable *properties() { return &experimental.payload.tableValue; }
+
+  PARAM_VAR(_channels, "Channels", "The desired number of output channels.", {CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_channels));
+
+  void setup() { _channels = Var(2); }
+
+  std::vector<float> _buffer;
+
+  PARAM_REQUIRED_VARIABLES()
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &audio = input.payload.audioValue;
+    uint8_t inChannels = audio.channels;
+    uint8_t outChannels = uint8_t(_channels.payload.intValue);
+    uint32_t nsamples = audio.nsamples;
+    uint32_t sampleRate = audioGetSampleRate(audio);
+
+    // No conversion needed
+    if (inChannels == outChannels) {
+      return input;
+    }
+
+    _buffer.resize(nsamples * outChannels);
+
+    if (inChannels == 1 && outChannels == 2) {
+      // Mono to stereo: duplicate channel
+      const float *mono = audio.samples;
+      float *left = _buffer.data();
+      float *right = _buffer.data() + nsamples;
+      for (uint32_t i = 0; i < nsamples; i++) {
+        left[i] = mono[i];
+        right[i] = mono[i];
+      }
+    } else if (inChannels == 2 && outChannels == 1) {
+      // Stereo to mono: average channels
+      const float *left = audio.samples;
+      const float *right = audio.samples + nsamples;
+      float *mono = _buffer.data();
+      for (uint32_t i = 0; i < nsamples; i++) {
+        mono[i] = (left[i] + right[i]) * 0.5f;
+      }
+    } else if (outChannels > inChannels) {
+      // Upmix: copy existing channels, zero the rest
+      for (uint8_t c = 0; c < inChannels; c++) {
+        memcpy(_buffer.data() + c * nsamples, audio.samples + c * nsamples, nsamples * sizeof(float));
+      }
+      for (uint8_t c = inChannels; c < outChannels; c++) {
+        memset(_buffer.data() + c * nsamples, 0, nsamples * sizeof(float));
+      }
+    } else {
+      // Downmix: just take first outChannels channels
+      for (uint8_t c = 0; c < outChannels; c++) {
+        memcpy(_buffer.data() + c * nsamples, audio.samples + c * nsamples, nsamples * sizeof(float));
+      }
+    }
+
+    return Var(makeAudio(_buffer.data(), nsamples, sampleRate, outChannels));
+  }
+};
+
 struct Resample {
   ma_resampler _resampler;
   bool _initialized{false};
@@ -1958,6 +2037,7 @@ SHARDS_REGISTER_FN(audio) {
   REGISTER_SHARD("Audio.ReadFileBytes", shards::Audio::ReadFileBytes);
   REGISTER_SHARD("Audio.WriteFile", shards::Audio::WriteFile);
   REGISTER_SHARD("Audio.Resample", shards::Audio::Resample);
+  REGISTER_SHARD("Audio.Remix", shards::Audio::Remix);
 
   REGISTER_SHARD("Audio.Engine", shards::Audio::Engine);
 
