@@ -1536,17 +1536,6 @@ SHComposeResult composeWire(const Shards wire, SHInstanceData data) {
   return composeWire(shards, data);
 }
 
-SHComposeResult composeWire(const SHSeq wire, SHInstanceData data) {
-  std::vector<ShardPtr> shards;
-  for (uint32_t i = 0; wire.len > i; i++) {
-    auto shard = wire.elements[i].payload.shardValue;
-    if (shard == nullptr)
-      break; // stop at null terminator
-    shards.push_back(shard);
-  }
-  return composeWire(shards, data);
-}
-
 void freeComposeResult(SHComposeResult &result) {
   shards::arrayFree(result.exposedInfo);
   shards::arrayFree(result.requiredInfo);
