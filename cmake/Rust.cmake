@@ -357,6 +357,14 @@ function(add_rust_library)
   # Pass CMAKE_BINARY_DIR so Rust build scripts can find CPM dependencies
   list(APPEND _RUST_ENVIRONMENT "CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}")
 
+  # Pass SDL3 include path for bindgen to find SDL headers
+  # Try SDL3_SOURCE_DIR first, fall back to CPM cache variable
+  if(SDL3_SOURCE_DIR)
+    list(APPEND _RUST_ENVIRONMENT "SDL3_INCLUDE_PATH=${SDL3_SOURCE_DIR}/include")
+  elseif(CPM_PACKAGE_SDL3_SOURCE_DIR)
+    list(APPEND _RUST_ENVIRONMENT "SDL3_INCLUDE_PATH=${CPM_PACKAGE_SDL3_SOURCE_DIR}/include")
+  endif()
+
   if(APPLE)
     if(IOS)
       list(APPEND _RUST_ENVIRONMENT "IPHONEOS_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")

@@ -253,7 +253,7 @@ TEST_CASE("Format conversion", "[RenderGraph]") {
     auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
     step.overlay = true;
     auto &f = step.features.emplace_back(std::make_shared<Feature>());
-    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+    f->state.set_colorWrite(WGPUColorWriteMask_None);
   }
 
   // Dummy pass that doesn't write colors
@@ -265,7 +265,7 @@ TEST_CASE("Format conversion", "[RenderGraph]") {
     auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
     step.overlay = true;
     auto &f = step.features.emplace_back(std::make_shared<Feature>());
-    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+    f->state.set_colorWrite(WGPUColorWriteMask_None);
   }
 
   // Dummy pass that doesn't write colors
@@ -277,7 +277,7 @@ TEST_CASE("Format conversion", "[RenderGraph]") {
     auto &step = std::get<RenderFullscreenStep>(*steps.back().get());
     step.overlay = true;
     auto &f = step.features.emplace_back(std::make_shared<Feature>());
-    f->state.set_colorWrite(WGPUColorWriteMask::WGPUColorWriteMask_None);
+    f->state.set_colorWrite(WGPUColorWriteMask_None);
   }
 
   TEST_RENDER_LOOP(testRenderer) { renderer.render(view, steps); };

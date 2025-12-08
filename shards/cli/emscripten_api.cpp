@@ -169,6 +169,10 @@ protected:
 };
 
 SHCore *core{};
+static backend_t fetchBackend{};
+static backend_t memBackend{};  // Writable memory backend for /tmp
+static std::atomic_bool fetchBackendReady{false};
+
 extern "C" {
 EMSCRIPTEN_KEEPALIVE void shardsInit() {
   // Add log buffer sink
@@ -181,20 +185,30 @@ EMSCRIPTEN_KEEPALIVE void shardsInit() {
   asyncRunner.start();
   shards::EmMainProxy::instance = &emMainProxy;
 
+  // Create a writable memory backend for /tmp - needed for tests that write files
+  // The fetch backend is read-only, so file writes would fail without this
+  memBackend = wasmfs_create_memory_backend();
+  int r = wasmfs_create_directory("/tmp", 0777, memBackend);
+  if (r != 0) {
+    SPDLOG_ERROR("Failed to create /tmp with memory backend ({})", r);
+  } else {
+    SPDLOG_INFO("Created /tmp with memory backend");
+  }
+
   SPDLOG_INFO("Test log entry");
 }
 
 // Needs to be polled on the main thread for audio and other stuff that needs to be run on the main browser thread
 EMSCRIPTEN_KEEPALIVE void shardsPollMainProxy() { emMainProxy.poll(); }
 
-static backend_t fetchBackend{};
-static std::atomic_bool fetchBackendReady{false};
 EMSCRIPTEN_KEEPALIVE void shardsFSMountHTTP(const char *target_, const char *baseUrl_) {
   std::string target{target_};
   std::string baseUrl{baseUrl_};
   asyncRunner.post([target, baseUrl]() {
     SPDLOG_INFO("Mounting HTTP FS at {} with base URL {}", target, baseUrl);
-    fetchBackend = wasmfs_create_fetch_backend(baseUrl.c_str());
+    // Use large chunk size (100MB) to force whole-file downloads
+    // wasmfs chunked Range-request fetching corrupts binary data
+    fetchBackend = wasmfs_create_fetch_backend(baseUrl.c_str(), 100 * 1024 * 1024);
     int r = wasmfs_create_directory(target.c_str(), 0777, fetchBackend);
     if (r != 0) {
       SPDLOG_ERROR("Failed to mount HTTP FS at {} with base URL {} ({})", target, baseUrl, r);
@@ -312,6 +326,10 @@ EMSCRIPTEN_KEEPALIVE void shardsLoadScript(Instance **outInstance, const char *c
 
     core->setRootPath(basePath);
 
+    // Set CWD to basePath BEFORE eval so #() compile-time expressions see correct paths
+    SPDLOG_INFO("Setting CWD to basePath for compile-time evaluation: {}", basePath);
+    fs::current_path(basePath);
+
     SHLWire shlWire{};
     DEFER(shards_free_wire(&shlWire));
     if (!shards_eval_ast(&astRes.ast, "script"_swl, &shlWire)) {
@@ -322,7 +340,9 @@ EMSCRIPTEN_KEEPALIVE void shardsLoadScript(Instance **outInstance, const char *c
 
     // Change CWD on request
     if (execWorkingDir) {
+      SPDLOG_INFO("Changing working directory to: {}", execWorkingDir);
       fs::current_path(execWorkingDir);
+      SPDLOG_INFO("Current working directory is now: {}", fs::current_path().string());
     }
 
     auto wire = SHWire::sharedFromRef(*shlWire.wire);

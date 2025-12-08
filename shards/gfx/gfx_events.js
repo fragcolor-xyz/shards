@@ -40,6 +40,19 @@ var LibraryGFXEvents = {
     const eh = this.getEventHandler();
     this.eventHandlerSetCanvas(eh, canvas.id, canvasContainer.id);
 
+    // Send initial display format synchronously before graphics starts
+    // IMPORTANT: Must set canvas.width/height (intrinsic size) for WebGPU surface
+    // The CSS size (getBoundingClientRect) is only for layout; WebGPU uses intrinsic size
+    {
+      const rect = canvasContainer.getBoundingClientRect();
+      const pixelRatio = window.devicePixelRatio;
+      let canvasWidth = rect.width * pixelRatio;
+      let canvasHeight = rect.height * pixelRatio;
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
+    }
+
     canvasContainer.onmousemove = (e) => {
       e.type_ = 0;
 
@@ -129,9 +142,12 @@ var LibraryGFXEvents = {
         if (lastW !== rect.width || lastH !== rect.height || lastPixelRatio !== pixelRatio) {
           let canvasWidth = rect.width * pixelRatio;
           let canvasHeight = rect.height * pixelRatio;
+          // Update canvas intrinsic size for WebGPU surface
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
           // HACK: FORCE THIS TO RUN NON-ASYNC
           let t = Asyncify.currData;
-          Asyncify.currData = 0;  
+          Asyncify.currData = 0;
           this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
           Asyncify.currData = t;
           lastW = rect.width;

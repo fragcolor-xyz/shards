@@ -84,7 +84,6 @@ set(
   -I${SHARDS_DIR}/deps/pdqsort
   -I${SHARDS_DIR}/deps/filesystem/include
   -I${SHARDS_DIR}/deps/miniaudio
-  -I${SHARDS_DIR}/deps/wasm3/source
   -I${SHARDS_DIR}/deps/linalg
   )
 

@@ -186,6 +186,8 @@ if(NOT SHARDS_NO_SDL)
     # Create interface library for headers
     add_library(SDL3-headers INTERFACE)
     target_include_directories(SDL3-headers INTERFACE ${SDL3_SOURCE_DIR}/include)
+    # Cache SDL3_SOURCE_DIR for use by Rust build scripts
+    set(SDL3_SOURCE_DIR ${SDL3_SOURCE_DIR} CACHE INTERNAL "SDL3 source directory")
   else()
     # Build SDL3 for other platforms
     set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -204,6 +206,8 @@ if(NOT SHARDS_NO_SDL)
       GITHUB_REPOSITORY shards-lang/SDL-org
       GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
     )
+    # Cache SDL3_SOURCE_DIR for use by Rust build scripts
+    set(SDL3_SOURCE_DIR ${SDL3_SOURCE_DIR} CACHE INTERNAL "SDL3 source directory")
   endif()
 endif()
 

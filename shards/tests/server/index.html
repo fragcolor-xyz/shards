@@ -182,6 +182,37 @@
       }
     }
 
+    // Test direct fetch vs wasmfs - check for corruption
+    async function testDirectFetch() {
+      const testPath = '/tfs/external/glTF-Sample-Assets/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb';
+      console.log('Testing direct fetch:', testPath);
+      const resp = await fetch(testPath);
+      const buf = await resp.arrayBuffer();
+      const arr = new Uint8Array(buf);
+
+      // Size check
+      console.log(`JS fetch size: ${buf.byteLength}`);
+      log(`JS fetch size: ${buf.byteLength}`);
+
+      // SHA-256 hash using Web Crypto API
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      const hashArr = new Uint8Array(hashBuf);
+      const hashHex = Array.from(hashArr).map(b => b.toString(16).padStart(2, '0')).join('');
+      console.log(`JS fetch SHA-256: ${hashHex}`);
+      log(`JS fetch SHA-256: ${hashHex}`);
+
+      // First 32 bytes as hex
+      const first32 = Array.from(arr.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join('');
+      console.log(`First 32 bytes: ${first32}`);
+      log(`First 32 bytes: ${first32}`);
+
+      // Last 32 bytes as hex
+      const last32 = Array.from(arr.slice(-32)).map(b => b.toString(16).padStart(2, '0')).join('');
+      console.log(`Last 32 bytes: ${last32}`);
+      log(`Last 32 bytes: ${last32}`);
+    }
+    await testDirectFetch();
+
     log("Loading shards...");
     await loadShards();
     const mod = instance.module;
@@ -194,6 +225,12 @@
     const returnValuePtr = mod._malloc(4); // Allocate memory for return value
     function pollLogs() {
       const mod = instance.module;
+      // Defensive check: ensure module and HEAP32 are valid before proceeding
+      if (!mod || !mod.HEAP32 || !mod._shardsLockLogBuffer) {
+        console.warn('pollLogs: Module not ready or crashed, skipping this poll');
+        setTimeout(pollLogs, 5000);
+        return;
+      }
       mod._shardsLockLogBuffer();
       try {
         const messagesPtr = mod._shardsGetLogMessages(countPtr);

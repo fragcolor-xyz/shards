@@ -65,7 +65,7 @@ tests:
   build/Debug/shards shards/tests/hello.shs
 
 run-all-tests mode="Release":
-  sh run-macos-gpu-tests.sh --with-cpu --shards-bin build/{{mode}}/shards
+  sh run-tests.sh --with-cpu --shards-bin build/{{mode}}/shards
 
 format:
   sh format.sh
@@ -148,3 +148,199 @@ coverage-rust-reset:
   echo "Resetting Rust coverage data..."
   find build/Coverage -name "*.profraw" -delete 2>/dev/null || true
   echo "Rust coverage data reset"
+
+# ==================== Emscripten Build ====================
+# Path to emsdk - override with: just emsdk_path=/path/to/emsdk configure-wasm
+emsdk_path := env_var_or_default("EMSDK_PATH", "../emsdk")
+# emsdk 4.0.10+ required for --use-port=emdawnwebgpu (modern WebGPU API matching wgpu v27)
+emsdk_version := "4.0.10"
+
+# configure cmake for emscripten/wasm build
+configure-wasm:
+  #!/bin/bash
+  set -e
+
+  # Check emsdk exists
+  if [ ! -d "{{ emsdk_path }}" ]; then
+    echo "Error: emsdk not found at {{ emsdk_path }}"
+    echo "Clone it with: git clone https://github.com/emscripten-core/emsdk.git {{ emsdk_path }}"
+    exit 1
+  fi
+
+  # Setup emsdk (4.0.10+ required for emdawnwebgpu port)
+  pushd "{{ emsdk_path }}"
+  ./emsdk install {{ emsdk_version }}
+  ./emsdk activate {{ emsdk_version }}
+  source ./emsdk_env.sh
+  export EM_CONFIG=$PWD/.emscripten
+  export EMSCRIPTEN_ROOT=$PWD/upstream/emscripten
+  popd
+
+  # Setup rust target
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
+  rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
+  rustup +$RUSTUP_TOOLCHAIN component add rust-src
+
+  # Setup host toolchain for cross-compilation
+  export HOST_CC=$(which cc)
+  export HOST_AR=$(which ar)
+
+  cmake -Bbuild/Wasm -GNinja \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DSKIP_HEAVY_INLINE=1 \
+    -DUSE_LTO=0 \
+    -DRUST_USE_LTO=0 \
+    -DEMSCRIPTEN_PTHREADS=ON \
+    -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake
+
+# build shards for wasm (configures first if needed)
+build-wasm: configure-wasm
+  cmake --build build/Wasm --target shards
+
+# quick build wasm (skips configure if already done)
+build-wasm-quick:
+  cmake --build build/Wasm --target shards
+
+# setup wasm test dependencies (npm install, puppeteer)
+setup-wasm-tests:
+  #!/bin/bash
+  set -e
+  pushd shards/tests/web
+  npm install
+  npx puppeteer browsers install chrome@latest
+  popd
+  echo "Wasm test dependencies installed"
+
+# run wasm tests locally (requires: build, build-wasm, setup-wasm-tests)
+# Usage: just test-wasm                    # run all tests
+#        just test-wasm gfx-cube.shs       # run single test
+test-wasm *tests:
+  #!/bin/bash
+  set -e
+
+  # Check for host shards binary
+  if [ -f "build/Debug/shards" ]; then
+    export shards=$(pwd)/build/Debug/shards
+  elif [ -f "build/Release/shards" ]; then
+    export shards=$(pwd)/build/Release/shards
+  else
+    echo "Error: No host shards binary found. Run 'just build' first."
+    exit 1
+  fi
+
+  # Check for wasm build
+  if [ ! -f "build/Wasm/shards-mt.js" ]; then
+    echo "Error: No wasm build found. Run 'just build-wasm' first."
+    exit 1
+  fi
+  export SHARDS_BUILD=$(pwd)/build/Wasm
+
+  # Check for node_modules
+  if [ ! -d "shards/tests/web/node_modules" ]; then
+    echo "Error: Node modules not installed. Run 'just setup-wasm-tests' first."
+    exit 1
+  fi
+
+  pushd shards/tests/web
+
+  source ./shared
+
+  function queue_test() {
+    echo ">>> Queuing test: $1"
+    control action:run data:shards/tests/$1
+  }
+
+  # Spawn the test server in background
+  ./run_server &
+  SERVER_PID=$!
+  trap "kill $SERVER_PID 2>/dev/null" EXIT
+
+  sleep 2
+
+  # Queue tests in background
+  (
+    if [ -n "{{ tests }}" ]; then
+      # Run specific tests
+      for test in {{ tests }}; do
+        queue_test $test
+      done
+    else
+      # Run all standard tests
+      queue_test gfx-cube.shs
+      queue_test gfx-texture.shs
+      queue_test gfx-gltf.shs
+      queue_test gfx-gltf-pack.shs
+      queue_test gfx-gltf-anim.shs
+      queue_test gfx-shader-translator-0.shs
+      queue_test gfx-shader-translator-1.shs
+      queue_test gfx-shader-translator-2.shs
+      queue_test gfx-shader-translator-3.shs
+      queue_test gfx-shader-translator-4.shs
+      queue_test gfx-queue.shs
+      queue_test gfx-read-texture.shs
+      queue_test gfx-pbr.shs
+      queue_test ui-0.shs
+      queue_test ui-1.shs
+      queue_test ui-2.shs
+      queue_test general.shs@/tmp
+      queue_test zip-map.shs
+      queue_test strings.shs
+      queue_test table-compose.shs
+      queue_test variables.shs
+      queue_test subwires.shs@/tmp
+      queue_test linalg.shs
+      queue_test math.shs
+      queue_test math_audio.shs
+      queue_test network-ws.shs
+      queue_test struct.shs
+      queue_test flows.shs
+      queue_test channels.shs
+      queue_test imaging.shs
+      queue_test http.shs@/tmp
+      queue_test bigint.shs
+      queue_test brotli.shs
+      queue_test snappy.shs
+      queue_test expect.shs
+      queue_test rust.shs
+      queue_test crypto.shs
+      queue_test wire-macro.shs
+      queue_test branch.shs
+      queue_test audio2.shs
+      queue_test events.shs
+      queue_test complex-deserialize.shs
+      queue_test db.shs@/tmp
+      queue_test suspend-resume.shs
+      queue_test whendone.shs
+      queue_test return.shs
+      queue_test table-seq-push.shs
+      queue_test failures.shs@/tmp
+      queue_test traits.shs
+    fi
+    control action:shutdown
+  ) &
+
+  sleep 3
+
+  # Run the browser
+  node ./run_browser.js
+
+# run wasm tests in debug mode (keeps browser open on error, DevTools auto-open)
+# Usage: just test-wasm-debug                    # run all tests
+#        just test-wasm-debug gfx-cube.shs       # run single test
+test-wasm-debug *tests:
+  DEBUG_WASM=1 just test-wasm {{ tests }}
+
+# run test-runtime on wasm (simple - no browser needed)
+# Usage: just test-runtime-wasm
+test-runtime-wasm:
+  #!/bin/bash
+  set -e
+  
+  # Build test-runtime for wasm if needed
+  if [ ! -f "build/Wasm/test-runtime.js" ]; then
+    echo "Building test-runtime for wasm..."
+    cmake --build build/Wasm --target test-runtime
+  fi
+  
+  # Run with node
+  node -e "const test = require('./build/Wasm/test-runtime.js'); test().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })"

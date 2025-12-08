@@ -10,9 +10,8 @@ naga = { path = "../wgpu/naga", features = ["wgsl-out", "serialize", "deserializ
 bitflags = { version = "2.3.3" }
 
 [patch.crates-io]
-tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 naga = { path = "../wgpu/naga" }
-profiling = { path = "../profiling" } # Until updates tracy-client to 0.15.0 (https://github.com/aclysma/profiling/pull/44)
+profiling = { path = "../profiling" } # Custom profiling fork for Tracy integration
 
 [build-dependencies]
 cbindgen = "0.24.0"

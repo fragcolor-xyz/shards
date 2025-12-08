@@ -1570,12 +1570,14 @@ pub mod native {
     type Error = ConversionError;
 
     fn try_from(e: EarlyDepthTest) -> Result<naga::EarlyDepthTest, Self::Error> {
-      let conservative = if e.has_conservative {
-        Some(e.conservative.try_into()?)
+      // In naga v27, EarlyDepthTest is now an enum
+      if e.has_conservative {
+        Ok(naga::EarlyDepthTest::Allow {
+          conservative: e.conservative.try_into()?,
+        })
       } else {
-        None
-      };
-      Ok(naga::EarlyDepthTest { conservative })
+        Ok(naga::EarlyDepthTest::Force)
+      }
     }
   }
 
@@ -1802,7 +1804,7 @@ pub mod native {
         StorageFormat::Rgba8Uint => naga::StorageFormat::Rgba8Uint,
         StorageFormat::Rgba8Sint => naga::StorageFormat::Rgba8Sint,
         StorageFormat::Rgb10a2Unorm => naga::StorageFormat::Rgb10a2Unorm,
-        StorageFormat::Rg11b10Float => naga::StorageFormat::Rg11b10Float,
+        StorageFormat::Rg11b10Float => naga::StorageFormat::Rg11b10Ufloat,
         StorageFormat::Rg32Uint => naga::StorageFormat::Rg32Uint,
         StorageFormat::Rg32Sint => naga::StorageFormat::Rg32Sint,
         StorageFormat::Rg32Float => naga::StorageFormat::Rg32Float,
@@ -1938,8 +1940,8 @@ pub mod native {
           class: class.try_into()?,
         },
         TypeInner::Sampler { comparison } => naga::TypeInner::Sampler { comparison },
-        TypeInner::AccelerationStructure => naga::TypeInner::AccelerationStructure,
-        TypeInner::RayQuery => naga::TypeInner::RayQuery,
+        TypeInner::AccelerationStructure => naga::TypeInner::AccelerationStructure { vertex_return: false },
+        TypeInner::RayQuery => naga::TypeInner::RayQuery { vertex_return: false },
         TypeInner::BindingArray { base, size } => naga::TypeInner::BindingArray {
           base: base.into(),
           size: size.try_into()?,
@@ -1976,7 +1978,7 @@ pub mod native {
           has_sampling,
         } => naga::Binding::Location {
           location,
-          second_blend_source,
+          blend_src: if second_blend_source { Some(1) } else { None },
           interpolation: if has_interpolation {
             Some(interpolation.try_into()?)
           } else {
@@ -2256,7 +2258,9 @@ pub mod native {
           value: if has_value { Some(value.into()) } else { None },
         },
         Statement::Kill => naga::Statement::Kill,
-        Statement::Barrier(barrier) => naga::Statement::Barrier(barrier.try_into()?),
+        // In naga v27, Barrier was split into ControlBarrier and MemoryBarrier
+        // The old Barrier semantics map to MemoryBarrier
+        Statement::Barrier(barrier) => naga::Statement::MemoryBarrier(barrier.try_into()?),
         Statement::Store { pointer, value } => naga::Statement::Store {
           pointer: pointer.into(),
           value: value.into(),
@@ -2487,8 +2491,8 @@ pub mod native {
         MathFunction::ReverseBits => naga::MathFunction::ReverseBits,
         MathFunction::ExtractBits => naga::MathFunction::ExtractBits,
         MathFunction::InsertBits => naga::MathFunction::InsertBits,
-        MathFunction::FindLsb => naga::MathFunction::FindLsb,
-        MathFunction::FindMsb => naga::MathFunction::FindMsb,
+        MathFunction::FindLsb => naga::MathFunction::FirstTrailingBit,
+        MathFunction::FindMsb => naga::MathFunction::FirstLeadingBit,
         MathFunction::Pack4x8snorm => naga::MathFunction::Pack4x8snorm,
         MathFunction::Pack4x8unorm => naga::MathFunction::Pack4x8unorm,
         MathFunction::Pack2x16snorm => naga::MathFunction::Pack2x16snorm,
@@ -2616,6 +2620,7 @@ pub mod native {
           } else {
             None
           },
+          clamp_to_edge: false,
         },
         Expression::ImageLoad {
           image,
@@ -2917,6 +2922,7 @@ pub unsafe extern "C" fn nagaAddEntryPoint(
     function: ctx.fun,
     stage: desc.stage.try_into().expect("Invalid stage"),
     workgroup_size: desc.workgroup_size,
+    workgroup_size_overrides: None,
   });
 }
 

@@ -1,5 +1,10 @@
 const puppeteer = require('puppeteer');
 
+// Debug mode: DEBUG_WASM=1 just test-wasm ...
+// - Opens DevTools automatically
+// - Keeps browser open on error (won't auto-close)
+// - Pauses on uncaught exceptions
+const DEBUG_MODE = process.env.DEBUG_WASM === '1';
 
 (async () => {
   try {
@@ -8,24 +13,43 @@ const puppeteer = require('puppeteer');
         '--no-sandbox',
         '--disable-web-security',
         '--autoplay-policy=no-user-gesture-required',
-        '--auto-accept-camera-and-microphone-capture'
+        '--auto-accept-camera-and-microphone-capture',
+        ...(DEBUG_MODE ? ['--auto-open-devtools-for-tabs'] : []),
       ],
       headless: false,
+      devtools: DEBUG_MODE,
     });
+
+    if (DEBUG_MODE) {
+      console.log('## DEBUG MODE: Browser will stay open on errors. Use F12 DevTools to debug.');
+    }
 
     const cmdHandler = {
       'shutdown': () => {
-        browser.close();
-        process.exit(0);
+        if (DEBUG_MODE) {
+          console.log('## DEBUG MODE: Test finished. Browser staying open for inspection.');
+          // Don't close - let user inspect
+        } else {
+          browser.close();
+          process.exit(0);
+        }
       },
       'error': (error) => {
         console.error('## Test failed:', error);
-        browser.process().kill();
-        process.exit(1);
+        if (DEBUG_MODE) {
+          console.log('## DEBUG MODE: Browser staying open for debugging. Close manually when done.');
+          // Don't close - let user debug
+        } else {
+          browser.process().kill();
+          process.exit(1);
+        }
       }
     };
 
     const page = await browser.newPage();
+
+    // Disable browser cache to ensure fresh file fetches
+    await page.setCacheEnabled(false);
 
     // Listen for console messages
     page.on('console', msg => {
@@ -52,16 +76,24 @@ const puppeteer = require('puppeteer');
     // Listen for page errors
     page.on('pageerror', error => {
       console.error('## Page error:', error);
-      browser.close();
-      process.exit(1);
+      if (DEBUG_MODE) {
+        console.log('## DEBUG MODE: Page error occurred. Browser staying open for debugging.');
+      } else {
+        browser.close();
+        process.exit(1);
+      }
     });
 
     // Listen for worker errors
     page.on('workercreated', worker => {
       worker.on('error', error => {
         console.error('## Worker error:', error);
-        browser.close();
-        process.exit(1);
+        if (DEBUG_MODE) {
+          console.log('## DEBUG MODE: Worker error occurred. Browser staying open for debugging.');
+        } else {
+          browser.close();
+          process.exit(1);
+        }
       });
     });
 
@@ -74,9 +106,19 @@ const puppeteer = require('puppeteer');
     });
 
     await page.goto('http://localhost:3000');
+
+    // In debug mode, give user time to open DevTools and set breakpoints
+    if (DEBUG_MODE) {
+      console.log('## DEBUG MODE: Page loaded. DevTools should be open.');
+      console.log('## Set breakpoints in Sources tab, then tests will run automatically.');
+    }
   } catch (error) {
     console.error('## Navigation failed:', error);
-    browser.process().kill();
-    process.exit(1);
+    if (DEBUG_MODE) {
+      console.log('## DEBUG MODE: Navigation failed. Browser staying open for debugging.');
+    } else {
+      browser.process().kill();
+      process.exit(1);
+    }
   }
 })();

@@ -1,12 +1,10 @@
 pub use naga_native as nn;
-use wgn::utils::ptr_into_label;
 pub use wgpu_native as wgn;
 pub use wgpu_native::native as wgnn;
 
 use std::ffi::{c_void, CString};
 use std::os::raw::c_char;
 use std::sync::Arc;
-use wgc::gfx_select;
 use wgpu_core as wgc;
 use wgpu_types as wgt;
 
@@ -47,17 +45,21 @@ pub unsafe extern "C" fn gfxDeviceCreateShaderModule(
 
   let descriptor = descriptor.expect("invalid descriptor");
 
-  let label = ptr_into_label(descriptor.label);
+  let label = if descriptor.label.is_null() {
+    None
+  } else {
+    std::ffi::CStr::from_ptr(descriptor.label).to_str().ok().map(|s| std::borrow::Cow::Borrowed(s))
+  };
 
   let desc = wgc::pipeline::ShaderModuleDescriptor {
-    label: label,
-    shader_bound_checks: wgt::ShaderBoundChecks::default(),
+    label,
+    runtime_checks: wgt::ShaderRuntimeChecks::default(),
   };
 
   let cstr = std::ffi::CStr::from_ptr(descriptor.wgsl);
 
-  let (id, error) = gfx_select!(device => context.device_create_shader_module(device, &desc,
-        wgc::pipeline::ShaderModuleSource::Wgsl(cstr.to_string_lossy()), None));
+  let (id, error) = context.device_create_shader_module(device, &desc,
+        wgc::pipeline::ShaderModuleSource::Wgsl(cstr.to_string_lossy()), None);
 
   if let Some(error) = error {
     let err_str = format!("{}\n{:?}", error, error);

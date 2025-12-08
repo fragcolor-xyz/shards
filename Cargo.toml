@@ -25,7 +25,6 @@ members = [
     "shards/modules/network",
     "shards/modules/candle",
     "shards/modules/pdf",
-    "shards/modules/py",
     "shards/modules/random",
     "shards/modules/ssh",
     "shards/modules/svg",
@@ -80,8 +79,7 @@ onig_sys = { git = "https://github.com/shards-lang/rust-onig.git", version = "=6
 nix = { git = "https://github.com/fragcolor-xyz/nix.git", version = "=0.30.1", rev = "268c07f13fa64e1d493c883c5c860f08fbcbd9b3" }
 memmap2 = { git = "https://github.com/sinkingsugar/memmap2-rs.git", version = "=0.9.8", rev = "d0cbc3362908617fd6adcac8d84dddbbee91d4c0" }
 
-# Graphics patches
+# objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
 objc = { git = "https://github.com/shards-lang/rust-objc.git", version = "=0.2.7", branch = "shards-0.2.7" }
-metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.0", branch = "shards-0.29.0" }
 
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }

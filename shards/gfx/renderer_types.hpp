@@ -300,7 +300,7 @@ struct VertexStateBuilder {
     vertex.bufferCount = 1;
     vertex.buffers = &vertexLayout;
     vertex.constantCount = 0;
-    vertex.entryPoint = "vertex_main";
+    vertex.entryPoint = wgpuMakeStringView("vertex_main");
     vertex.module = shaderModule;
   }
 };

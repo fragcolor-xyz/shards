@@ -140,9 +140,13 @@ if(GFX_CAN_USE_DATA_PATH AND GFX_USE_DATA_PATH)
 endif()
 
 if(EMSCRIPTEN)
-  target_link_options(gfx-core-obj PUBLIC "-sUSE_WEBGPU=1")
+  # Use emdawnwebgpu for modern WebGPU API (WGPUStringView, etc.) matching wgpu-native v27
+  # Requires emsdk 4.0.10+
+  # Add to both gfx-core-obj and gfx-headers so all dependent targets get the WebGPU headers
+  target_compile_options(gfx-core-obj PUBLIC "--use-port=emdawnwebgpu")
+  target_link_options(gfx-core-obj PUBLIC "--use-port=emdawnwebgpu")
+  target_compile_options(gfx-headers INTERFACE "--use-port=emdawnwebgpu")
 
-  em_link_js_library(gfx-core-obj gfx_wgpu.js)
   em_link_js_library(gfx-core-obj gfx_events.js)
 
   # Use CPM-downloaded SDL3 headers

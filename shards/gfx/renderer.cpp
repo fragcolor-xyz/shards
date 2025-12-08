@@ -247,7 +247,7 @@ struct RendererImpl final : public ContextData {
     GpuTextureReadBufferPtr destination;
 
     std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
-    std::optional<void *> mappedBuffer;
+    std::optional<const void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
     int2 size{};
@@ -268,7 +268,7 @@ struct RendererImpl final : public ContextData {
     GpuReadBufferPtr destination;
 
     std::shared_ptr<PooledWGPUBuffer> stagingBuffer;
-    std::optional<void *> mappedBuffer;
+    std::optional<const void *> mappedBuffer;
     size_t rowSizeAligned{};
     size_t bufferSize{};
     int2 size{};
@@ -293,17 +293,18 @@ struct RendererImpl final : public ContextData {
     cmd.size = int2(textureData.size.width, textureData.size.height);
     auto &pixelFormatDesc = getTextureFormatDescription(textureData.format.pixelFormat);
 
-    size_t rowSize = pixelFormatDesc.pixelSize * pixelFormatDesc.numComponents * cmd.size.x;
+    // pixelSize already includes numComponents, so don't multiply again
+    size_t rowSize = pixelFormatDesc.pixelSize * cmd.size.x;
     cmd.rowSizeAligned = alignTo(rowSize, WGPU_COPY_BYTES_PER_ROW_ALIGNMENT);
     cmd.bufferSize = cmd.rowSizeAligned * cmd.size.y;
     cmd.stagingBuffer = storage.mapReadCopyDstBufferPool.allocateBuffer(cmd.bufferSize);
 
-    WGPUImageCopyTexture srcDesc{
+    WGPUTexelCopyTextureInfo srcDesc{
         .texture = textureData.texture,
         .mipLevel = cmd.texture.mipIndex,
         .origin = {.x = 0, .y = 0, .z = cmd.texture.faceIndex},
     };
-    WGPUImageCopyBuffer dstDesc{
+    WGPUTexelCopyBufferInfo dstDesc{
         .layout = {.offset = 0, .bytesPerRow = uint32_t(cmd.rowSizeAligned), .rowsPerImage = uint32_t(cmd.size.y)},
         .buffer = cmd.stagingBuffer->buffer,
     };
@@ -331,33 +332,31 @@ struct RendererImpl final : public ContextData {
   }
 
   void queueTextureReadBufferMap(DeferredTextureReadCommand &cmd) {
-    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
-      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)ud;
-      if (status != WGPUBufferMapAsyncStatus_Success)
+    auto bufferMapped = [](WGPUMapAsyncStatus status, WGPUStringView message, void *userdata1, void *userdata2) {
+      DeferredTextureReadCommand &cmd = *(DeferredTextureReadCommand *)userdata1;
+      if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-#if WEBGPU_NATIVE
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
-#else
-      cmd.mappedBuffer = nullptr;
-#endif
+      // Use wgpuBufferGetConstMappedRange for both platforms
+      // On wgpu-native: returns direct pointer to mapped GPU memory
+      // On emdawnwebgpu: allocates WASM memory and copies data there
+      cmd.mappedBuffer = wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
-#if WEBGPU_NATIVE
-    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#else
-    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#endif
+    // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
+    WGPUBufferMapCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = bufferMapped,
+        .userdata1 = &cmd,
+        .userdata2 = nullptr,
+    };
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
   }
 
-  // Poll for mapped bugfer and copy data to target, returns true when completed
+  // Poll for mapped buffer and copy data to target, returns true when completed
   bool pollQueuedTextureReadCommand(DeferredTextureReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
 
-#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
-#else
-      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
-#endif
 
       cmd.destination->stride = cmd.rowSizeAligned;
       cmd.destination->size = cmd.size;
@@ -372,33 +371,28 @@ struct RendererImpl final : public ContextData {
   }
 
   void queueBufferReadBufferMap(DeferredBufferReadCommand &cmd) {
-    auto bufferMapped = [](WGPUBufferMapAsyncStatus status, void *ud) {
-      DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)ud;
-      if (status != WGPUBufferMapAsyncStatus_Success)
+    auto bufferMapped = [](WGPUMapAsyncStatus status, WGPUStringView message, void *userdata1, void *userdata2) {
+      DeferredBufferReadCommand &cmd = *(DeferredBufferReadCommand *)userdata1;
+      if (status != WGPUMapAsyncStatus_Success)
         throw formatException("Failed to map buffer: {}", magic_enum::enum_name(status));
-#if WEBGPU_NATIVE
-      cmd.mappedBuffer = wgpuBufferGetMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
-#else
-      cmd.mappedBuffer = nullptr;
-#endif
+      cmd.mappedBuffer = wgpuBufferGetConstMappedRange(cmd.stagingBuffer->buffer, 0, cmd.bufferSize);
     };
-#if WEBGPU_NATIVE
-    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#else
-    gfxWgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, bufferMapped, &cmd);
-#endif
+    // Modern buffer map API - works on both wgpu-native and emdawnwebgpu
+    WGPUBufferMapCallbackInfo callbackInfo{
+        .mode = WGPUCallbackMode_AllowSpontaneous,
+        .callback = bufferMapped,
+        .userdata1 = &cmd,
+        .userdata2 = nullptr,
+    };
+    wgpuBufferMapAsync(cmd.stagingBuffer->buffer, WGPUMapMode_Read, 0, cmd.bufferSize, callbackInfo);
   }
 
-  // Poll for mapped bugfer and copy data to target, returns true when completed
+  // Poll for mapped buffer and copy data to target, returns true when completed
   bool pollQueuedBufferReadCommand(DeferredBufferReadCommand &cmd) {
     if (cmd.mappedBuffer) {
       cmd.destination->data.resize(cmd.bufferSize);
 
-#if WEBGPU_NATIVE
       memcpy(cmd.destination->data.data(), cmd.mappedBuffer.value(), cmd.bufferSize);
-#else
-      gfxWgpuBufferReadInto(cmd.stagingBuffer->buffer, cmd.destination->data.data(), 0, cmd.bufferSize);
-#endif
 
       wgpuBufferUnmap(cmd.stagingBuffer->buffer);
       cmd.mappedBuffer.reset();
@@ -600,26 +594,14 @@ struct RendererImpl final : public ContextData {
     WGPUGlobalReport report{};
     wgpuGenerateReport(context.wgpuInstance, &report);
 
-    WGPUHubReport *hubReport{};
-    switch (context.getBackendType()) {
-    case WGPUBackendType_Vulkan:
-      hubReport = &report.vulkan;
-      break;
-    case WGPUBackendType_D3D12:
-      hubReport = &report.dx12;
-      break;
-    default:
-      break;
-    }
-
-    if (hubReport) {
-      TracyPlot("WGPU Buffers", int64_t(hubReport->buffers.numAllocated));
-      TracyPlot("WGPU BindGroups", int64_t(hubReport->bindGroups.numAllocated));
-      TracyPlot("WGPU BindGroupLayouts", int64_t(hubReport->bindGroupLayouts.numAllocated));
-      TracyPlot("WGPU CommandBuffers", int64_t(hubReport->commandBuffers.numAllocated));
-      TracyPlot("WGPU Queues", int64_t(hubReport->queues.numAllocated));
-      TracyPlot("WGPU Textures", int64_t(hubReport->textures.numAllocated));
-    }
+    // wgpu v27: Single hub report instead of per-backend reports
+    WGPUHubReport *hubReport = &report.hub;
+    TracyPlot("WGPU Buffers", int64_t(hubReport->buffers.numAllocated));
+    TracyPlot("WGPU BindGroups", int64_t(hubReport->bindGroups.numAllocated));
+    TracyPlot("WGPU BindGroupLayouts", int64_t(hubReport->bindGroupLayouts.numAllocated));
+    TracyPlot("WGPU CommandBuffers", int64_t(hubReport->commandBuffers.numAllocated));
+    TracyPlot("WGPU Queues", int64_t(hubReport->queues.numAllocated));
+    TracyPlot("WGPU Textures", int64_t(hubReport->textures.numAllocated));
 #endif
   }
 

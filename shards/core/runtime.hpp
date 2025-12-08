@@ -243,7 +243,6 @@ private:
 namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const std::vector<ShardPtr> &wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
-[[nodiscard]] SHComposeResult composeWire(const SHSeq wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);
 
 void freeComposeResult(SHComposeResult &result);

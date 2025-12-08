@@ -29,8 +29,6 @@ function preload_files() {
     "$ROOT_DIR/external/glTF-Sample-Assets/Models/Avocado"
     "$ROOT_DIR/external/glTF-Sample-Assets/Models/DamagedHelmet"
     "$ROOT_DIR/external/glTF-Sample-Assets/Models/PotOfCoals"
-    "$ROOT_DIR/deps/wasm3/test/wasi/simple"
-    "$ROOT_DIR/deps/wasm3/test/lang"
   )
   local exclude_paths=(
     "$ROOT_DIR/shards/tests/web"

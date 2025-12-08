@@ -275,7 +275,7 @@ void RenderGraphEvaluator::evaluate(const RenderGraph &graph, IRenderGraphEvalua
 
     WGPURenderPassDescriptor renderPassDesc = createRenderPassDescriptor(graph, context, node);
     std::string nameBuffer = getPipelineStepName(node.originalStep);
-    renderPassDesc.label = nameBuffer.c_str();
+    renderPassDesc.label = wgpuMakeStringView(nameBuffer.c_str());
     if (node.setupPass)
       node.setupPass(renderPassDesc);
     WgpuHandle<WGPURenderPassEncoder> renderPassEncoder(wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc));

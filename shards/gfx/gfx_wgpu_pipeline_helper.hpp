@@ -34,12 +34,12 @@ inline WgpuHandle<WGPUShaderModule> compileShaderFromWgsl(WGPUDevice device, con
   return std::move(result.handle);
 #else
   WGPUShaderModuleDescriptor moduleDesc = {};
-  WGPUShaderModuleWGSLDescriptor wgslModuleDesc = {};
-  moduleDesc.label = "pipeline";
-  moduleDesc.nextInChain = &wgslModuleDesc.chain;
+  WGPUShaderSourceWGSL wgslSource = {};
+  moduleDesc.label = {.data = "pipeline", .length = 8};
+  moduleDesc.nextInChain = &wgslSource.chain;
 
-  wgslModuleDesc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-  wgslModuleDesc.code = wgsl;
+  wgslSource.chain.sType = WGPUSType_ShaderSourceWGSL;
+  wgpuShaderSourceWGSLSetCode(wgslSource, wgsl);
 
   WGPUShaderModule module = wgpuDeviceCreateShaderModule(device, &moduleDesc);
   if (!module) {

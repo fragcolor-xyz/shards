@@ -27,13 +27,13 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
   union {
     WGPUChainedStruct chain;
 #if SH_EMSCRIPTEN
-    WGPUSurfaceDescriptorFromCanvasHTMLSelector html;
+    WGPUEmscriptenSurfaceSourceCanvasHTMLSelector html;
 #else
-    WGPUSurfaceDescriptorFromXlibWindow x11;
-    WGPUSurfaceDescriptorFromMetalLayer mtl;
-    WGPUSurfaceDescriptorFromWaylandSurface wayland;
-    WGPUSurfaceDescriptorFromWindowsHWND win;
-    WGPUSurfaceDescriptorFromAndroidNativeWindow android;
+    WGPUSurfaceSourceXlibWindow x11;
+    WGPUSurfaceSourceMetalLayer mtl;
+    WGPUSurfaceSourceWaylandSurface wayland;
+    WGPUSurfaceSourceWindowsHWND win;
+    WGPUSurfaceSourceAndroidNativeWindow android;
 #endif
   } platformDesc;
 
@@ -52,34 +52,34 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
     memset(this, 0, sizeof(WGPUPlatformSurfaceDescriptor));
 
 #if SH_WINDOWS
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
+    platformDesc.chain.sType = WGPUSType_SurfaceSourceWindowsHWND;
     platformDesc.win.hinstance = GetModuleHandle(nullptr);
     platformDesc.win.hwnd = (HWND)nativeSurfaceHandle;
 #elif SH_LINUX
     if (window->useWayland) {
-      platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromWaylandSurface;
+      platformDesc.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
       platformDesc.wayland.surface = nativeSurfaceHandle;
       auto waylandWindow =
           SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
       platformDesc.wayland.display = waylandWindow;
     } else {
-      platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromXlibWindow;
+      platformDesc.chain.sType = WGPUSType_SurfaceSourceXlibWindow;
       platformDesc.x11.window = uint64_t(nativeSurfaceHandle);
       auto x11Window = SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
       platformDesc.x11.display = x11Window;
     }
 #elif SH_ANDROID
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromAndroidNativeWindow;
+    platformDesc.chain.sType = WGPUSType_SurfaceSourceAndroidNativeWindow;
     platformDesc.android.window = nativeSurfaceHandle;
 #elif SH_APPLE
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromMetalLayer;
+    platformDesc.chain.sType = WGPUSType_SurfaceSourceMetalLayer;
     platformDesc.mtl.layer = nativeSurfaceHandle;
 #elif SH_EMSCRIPTEN
-    platformDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
+    platformDesc.chain.sType = WGPUSType_EmscriptenSurfaceSourceCanvasHTMLSelector;
     if (nativeSurfaceHandle)
-      platformDesc.html.selector = (const char *)nativeSurfaceHandle;
+      platformDesc.html.selector = wgpuMakeStringView((const char *)nativeSurfaceHandle);
     else
-      platformDesc.html.selector = "#canvas";
+      platformDesc.html.selector = wgpuMakeStringView("#canvas");
 #else
 #error "Unsupported platform"
 #endif

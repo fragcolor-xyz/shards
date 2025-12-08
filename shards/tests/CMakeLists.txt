@@ -13,6 +13,12 @@ if(SHARDS_BUILD_TESTS)
       "SHELL:-s MODULARIZE=1"
       "SHELL:-s EXPORT_NAME=test"
       "SHELL:-s NO_EXIT_RUNTIME=1"
+      "SHELL:-s INITIAL_MEMORY=536870912"
+      "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+      "SHELL:-s MAXIMUM_MEMORY=2147483648"
+      # Better error reporting
+      "SHELL:-s ASSERTIONS=2"
+      "SHELL:-s STACK_OVERFLOW_CHECK=2"
     )
   endif()
 endif()
