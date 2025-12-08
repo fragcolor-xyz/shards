@@ -744,6 +744,69 @@
   Msg("Audio.Noise math tests passed!")
 })
 
+@wire(test-audio-fm-exponential {
+  Msg("Testing Audio.Oscillator exponential FM mode...")
+
+  ; Basic exponential FM - modulator controls frequency exponentially
+  none | Audio.Oscillator(Frequency: 220.0 Amplitude: 1.0 Samples: 256)
+       | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 1.0 FMMode: FMMode::Exponential) = exp-fm
+  exp-fm | Log("Exponential FM (Index 1.0 = ±1 octave)")
+
+  ; Different modulation depths
+  none | Audio.Oscillator(Frequency: 110.0 Amplitude: 0.5 Samples: 256)
+       | Audio.Oscillator(Frequency: 440.0 Index: 0.5 FMMode: FMMode::Exponential) = exp-fm-half
+  exp-fm-half | Log("Exponential FM with Index 0.5 (±0.5 octave)")
+
+  none | Audio.Oscillator(Frequency: 110.0 Amplitude: 0.5 Samples: 256)
+       | Audio.Oscillator(Frequency: 440.0 Index: 2.0 FMMode: FMMode::Exponential) = exp-fm-wide
+  exp-fm-wide | Log("Exponential FM with Index 2.0 (±2 octaves)")
+
+  ; Compare linear vs exponential with same parameters
+  none | Audio.Oscillator(Frequency: 5.0 Amplitude: 1.0 Samples: 256) = slow-lfo
+
+  slow-lfo | Audio.Oscillator(Frequency: 440.0 Index: 1.0 FMMode: FMMode::Linear) = linear-vibrato
+  linear-vibrato | Log("Linear FM vibrato (phase mod)")
+
+  slow-lfo | Audio.Oscillator(Frequency: 440.0 Index: 0.1 FMMode: FMMode::Exponential) = exp-vibrato
+  exp-vibrato | Log("Exponential FM vibrato (pitch mod, ±0.1 octave)")
+
+  Msg("Audio.Oscillator exponential FM tests passed!")
+})
+
+@wire(test-audio-fm-exp-chain {
+  Msg("Testing exponential FM chains...")
+
+  ; 3-operator exponential FM chain
+  none | Audio.Oscillator(Frequency: 880.0 Amplitude: 0.3 Samples: 256)
+       | Audio.Oscillator(Frequency: 440.0 Index: 0.5 FMMode: FMMode::Exponential)
+       | Audio.Oscillator(Frequency: 220.0 Amplitude: 0.4 Index: 1.0 FMMode: FMMode::Exponential) = exp-3op
+  exp-3op | Log("3-operator exponential FM chain")
+
+  ; Mixed linear and exponential in chain
+  none | Audio.Oscillator(Frequency: 880.0 Amplitude: 0.5 Samples: 256)
+       | Audio.Oscillator(Frequency: 440.0 Index: 2.0 FMMode: FMMode::Linear)
+       | Audio.Oscillator(Frequency: 220.0 Index: 0.5 FMMode: FMMode::Exponential) = mixed-fm
+  mixed-fm | Log("Mixed FM: Linear then Exponential")
+
+  Msg("Exponential FM chain tests passed!")
+})
+
+@wire(test-audio-fm-exp-noise {
+  Msg("Testing exponential FM with noise...")
+
+  ; Noise as exponential FM modulator - creates pitch randomization
+  none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.1 Samples: 128)
+       | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 0.2 FMMode: FMMode::Exponential) = noise-exp-fm
+  noise-exp-fm | Log("Noise exponential FM (pitch wobble)")
+
+  ; Brown noise for slower pitch drift
+  none | Audio.Noise(Type: NoiseType::Brown Amplitude: 0.3 Samples: 128)
+       | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 0.1 FMMode: FMMode::Exponential) = brown-exp-fm
+  brown-exp-fm | Log("Brown noise exponential FM (slow pitch drift)")
+
+  Msg("Exponential FM noise tests passed!")
+})
+
 @wire(test-audio-fm-noise-combo {
   Msg("Testing FM + Noise combinations...")
 
@@ -1010,6 +1073,9 @@
 @schedule(main test-audio-noise-types)
 @schedule(main test-audio-noise-stereo)
 @schedule(main test-audio-noise-math)
+@schedule(main test-audio-fm-exponential)
+@schedule(main test-audio-fm-exp-chain)
+@schedule(main test-audio-fm-exp-noise)
 @schedule(main test-audio-fm-noise-combo)
 @schedule(main test-audio-remix-mono-to-stereo)
 @schedule(main test-audio-remix-stereo-to-mono)
