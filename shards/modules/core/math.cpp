@@ -89,4 +89,7 @@ SHARDS_REGISTER_FN(math) {
 
   REGISTER_SHARD("Math.Percentile", Percentile);
   REGISTER_SHARD_ALIAS("Percentile", "Math.Percentile", Percentile);
+
+  REGISTER_SHARD("Math.MultiplyAdd", MultiplyAdd);
+  REGISTER_SHARD_ALIAS("MulAdd", "Math.MultiplyAdd", MultiplyAdd);
 }

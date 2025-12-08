@@ -762,6 +762,228 @@
   Msg("FM + Noise combo tests passed!")
 })
 
+; ============================================================================
+; Audio.Remix Tests (Channel conversion: mono↔stereo, upmix, downmix)
+; ============================================================================
+
+@wire(test-audio-remix-mono-to-stereo {
+  Msg("Testing Audio.Remix mono to stereo...")
+
+  ; Create mono audio
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 256 Channels: 1) = mono-audio
+  mono-audio | Log("Original mono audio")
+
+  ; Convert mono to stereo (duplicates channel)
+  mono-audio | Audio.Remix(Channels: 2) = stereo-audio
+  stereo-audio | Log("Converted to stereo")
+
+  Msg("Audio.Remix mono to stereo test passed!")
+})
+
+@wire(test-audio-remix-stereo-to-mono {
+  Msg("Testing Audio.Remix stereo to mono...")
+
+  ; Create stereo audio
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 256 Channels: 2) = stereo-audio
+  stereo-audio | Log("Original stereo audio")
+
+  ; Convert stereo to mono (averages channels)
+  stereo-audio | Audio.Remix(Channels: 1) = mono-audio
+  mono-audio | Log("Converted to mono")
+
+  Msg("Audio.Remix stereo to mono test passed!")
+})
+
+@wire(test-audio-remix-upmix {
+  Msg("Testing Audio.Remix upmix (1 to 4 channels)...")
+
+  ; Create mono audio
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 1) = mono
+
+  ; Upmix to 4 channels
+  mono | Audio.Remix(Channels: 4) = quad-audio
+  quad-audio | Log("Upmixed to 4 channels")
+
+  ; Upmix stereo to 4 channels
+  none | Audio.Oscillator(Frequency: 880.0 SampleRate: 44100 Amplitude: 0.3 Samples: 128 Channels: 2) = stereo
+  stereo | Audio.Remix(Channels: 4) = stereo-to-quad
+  stereo-to-quad | Log("Stereo upmixed to 4 channels")
+
+  Msg("Audio.Remix upmix test passed!")
+})
+
+@wire(test-audio-remix-downmix {
+  Msg("Testing Audio.Remix downmix (4 to 2 channels)...")
+
+  ; Create 4-channel audio by upmixing
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 1)
+       | Audio.Remix(Channels: 4) = quad-audio
+
+  ; Downmix to stereo
+  quad-audio | Audio.Remix(Channels: 2) = stereo
+  stereo | Log("Downmixed to stereo")
+
+  ; Downmix to mono
+  quad-audio | Audio.Remix(Channels: 1) = mono
+  mono | Log("Downmixed to mono")
+
+  Msg("Audio.Remix downmix test passed!")
+})
+
+@wire(test-audio-remix-same-channels {
+  Msg("Testing Audio.Remix with same channel count...")
+
+  ; Should pass through (or copy) when channels match
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 2) = stereo
+  stereo | Audio.Remix(Channels: 2) = same-stereo
+  same-stereo | Log("Same channel count (passthrough)")
+
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 1) = mono
+  mono | Audio.Remix(Channels: 1) = same-mono
+  same-mono | Log("Same channel count mono (passthrough)")
+
+  Msg("Audio.Remix same channels test passed!")
+})
+
+@wire(test-audio-remix-chain {
+  Msg("Testing Audio.Remix chained operations...")
+
+  ; Mono -> Stereo -> Mono roundtrip
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 1) = original
+  original | Audio.Remix(Channels: 2) | Audio.Remix(Channels: 1) = roundtrip
+  roundtrip | Log("Mono->Stereo->Mono roundtrip")
+
+  ; Mono -> 4ch -> Stereo -> Mono
+  original | Audio.Remix(Channels: 4) | Audio.Remix(Channels: 2) | Audio.Remix(Channels: 1) = multi-roundtrip
+  multi-roundtrip | Log("Mono->4ch->Stereo->Mono")
+
+  Msg("Audio.Remix chain test passed!")
+})
+
+@wire(test-audio-remix-with-math {
+  Msg("Testing Audio.Remix combined with math operations...")
+
+  ; Convert mono to stereo, then apply math
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 1)
+       | Audio.Remix(Channels: 2)
+       | Math.Multiply(0.5) = processed-stereo
+  processed-stereo | Log("Remixed then scaled")
+
+  ; Apply math to mono, then convert to stereo
+  none | Audio.Oscillator(Frequency: 880.0 SampleRate: 44100 Amplitude: 1.0 Samples: 128 Channels: 1)
+       | Math.Tanh
+       | Audio.Remix(Channels: 2) = clipped-stereo
+  clipped-stereo | Log("Soft clipped then remixed to stereo")
+
+  Msg("Audio.Remix with math test passed!")
+})
+
+; ============================================================================
+; Math.MultiplyAdd (MulAdd) for Audio Tests
+; ============================================================================
+
+@wire(test-audio-muladd-basic {
+  Msg("Testing MulAdd with Audio type...")
+
+  ; Generate test audio
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 256) = audio1
+  none | Audio.Oscillator(Frequency: 880.0 SampleRate: 44100 Amplitude: 0.3 Samples: 256) = audio2
+
+  ; Basic audio FMA: audio1 * 0.5 + audio2
+  audio1 | MulAdd(Adding: audio2 Scalar: 0.5) = fma-result
+  fma-result | Log("Audio FMA: audio1 * 0.5 + audio2")
+
+  ; Scale only: audio1 * 2.0 + zeros
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.0 Samples: 256) = silence
+  audio1 | MulAdd(Adding: silence Scalar: 2.0) = scaled-audio
+  scaled-audio | Log("Audio scale: audio1 * 2.0")
+
+  Msg("MulAdd Audio basic test passed!")
+})
+
+@wire(test-audio-muladd-mixing {
+  Msg("Testing MulAdd for audio mixing workflow...")
+
+  ; Create multiple audio sources
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 1.0 Samples: 256) = source1
+  none | Audio.Oscillator(Frequency: 550.0 SampleRate: 44100 Amplitude: 1.0 Samples: 256) = source2
+  none | Audio.Oscillator(Frequency: 660.0 SampleRate: 44100 Amplitude: 1.0 Samples: 256) = source3
+
+  ; Create silence buffer for initial mix
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.0 Samples: 256) >= mix
+
+  ; Mix sources with different volumes using MulAdd accumulation pattern
+  ; mix = source1 * 0.3 + mix
+  source1 | MulAdd(mix Scalar: 0.3) > mix
+  mix | Log("After source1 (volume 0.3)")
+
+  ; mix = source2 * 0.5 + mix
+  source2 | MulAdd(mix Scalar: 0.5) > mix
+  mix | Log("After source2 (volume 0.5)")
+
+  ; mix = source3 * 0.2 + mix
+  source3 | MulAdd(mix Scalar: 0.2) > mix
+  mix | Log("Final mix (3 sources mixed)")
+
+  Msg("MulAdd Audio mixing test passed!")
+})
+
+@wire(test-audio-muladd-stereo {
+  Msg("Testing MulAdd with stereo Audio...")
+
+  ; Create stereo audio sources
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128 Channels: 2) = stereo1
+  none | Audio.Oscillator(Frequency: 880.0 SampleRate: 44100 Amplitude: 0.3 Samples: 128 Channels: 2) = stereo2
+
+  ; FMA on stereo: stereo1 * 0.7 + stereo2
+  stereo1 | MulAdd(Adding: stereo2 Scalar: 0.7) = stereo-fma
+  stereo-fma | Log("Stereo FMA result")
+
+  Msg("MulAdd stereo Audio test passed!")
+})
+
+@wire(test-audio-muladd-chain {
+  Msg("Testing MulAdd chained with other audio operations...")
+
+  ; Generate and process audio
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 1.0 Samples: 128) = carrier
+  none | Audio.Oscillator(Frequency: 220.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128) = modulator
+
+  ; Chain: modulator * 2.0 + carrier (similar to simple modulation)
+  modulator | MulAdd(Adding: carrier Scalar: 2.0) | Math.Tanh = modulated
+  modulated | Log("Modulated then soft-clipped")
+
+  ; FM + MulAdd combination
+  none | Audio.Oscillator(Frequency: 110.0 Amplitude: 1.0 Samples: 128)
+       | Audio.Oscillator(Frequency: 440.0 Index: 2.0 Amplitude: 0.5) = fm-audio
+  none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.1 Samples: 128) = noise
+
+  ; Mix FM with noise: fm * 0.8 + noise
+  fm-audio | MulAdd(Adding: noise Scalar: 0.8) = fm-with-noise
+  fm-with-noise | Log("FM audio mixed with noise via MulAdd")
+
+  Msg("MulAdd chain test passed!")
+})
+
+@wire(test-audio-muladd-variable-params {
+  Msg("Testing MulAdd with variable parameters...")
+
+  none | Audio.Oscillator(Frequency: 440.0 SampleRate: 44100 Amplitude: 0.5 Samples: 128) = audio1
+  none | Audio.Oscillator(Frequency: 880.0 SampleRate: 44100 Amplitude: 0.3 Samples: 128) >= audio-adding
+  0.7 >= volume-scalar
+
+  ; Use variables for both parameters
+  audio1 | MulAdd(Adding: audio-adding Scalar: volume-scalar) = var-result
+  var-result | Log("MulAdd with variable params")
+
+  ; Update scalar and re-apply
+  0.3 > volume-scalar
+  audio1 | MulAdd(Adding: audio-adding Scalar: volume-scalar) = updated-result
+  updated-result | Log("MulAdd with updated scalar (0.3)")
+
+  Msg("MulAdd variable params test passed!")
+})
+
 @mesh(main)
 @schedule(main test-audio-binary)
 @schedule(main test-audio-unary)
@@ -789,4 +1011,16 @@
 @schedule(main test-audio-noise-stereo)
 @schedule(main test-audio-noise-math)
 @schedule(main test-audio-fm-noise-combo)
+@schedule(main test-audio-remix-mono-to-stereo)
+@schedule(main test-audio-remix-stereo-to-mono)
+@schedule(main test-audio-remix-upmix)
+@schedule(main test-audio-remix-downmix)
+@schedule(main test-audio-remix-same-channels)
+@schedule(main test-audio-remix-chain)
+@schedule(main test-audio-remix-with-math)
+@schedule(main test-audio-muladd-basic)
+@schedule(main test-audio-muladd-mixing)
+@schedule(main test-audio-muladd-stereo)
+@schedule(main test-audio-muladd-chain)
+@schedule(main test-audio-muladd-variable-params)
 @run(main)

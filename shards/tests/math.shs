@@ -845,9 +845,155 @@
   Log("Edge cases test passed!")
 })
 
+@wire(test-math-muladd {
+  ; =========================================================================
+  ; Math.MultiplyAdd (MulAdd) - Fused multiply-add: output = input * Scalar + Adding
+  ; =========================================================================
+
+  ; =========================================================================
+  ; Float scalar
+  ; =========================================================================
+
+  ; Basic FMA: 2.0 * 3.0 + 1.0 = 7.0
+  2.0 | MulAdd(Adding: 1.0 Scalar: 3.0) | Log("MulAdd scalar") | Assert.Is(7.0 true)
+
+  ; Identity: 5.0 * 1.0 + 0.0 = 5.0
+  5.0 | MulAdd(Adding: 0.0 Scalar: 1.0) | Assert.Is(5.0 true)
+
+  ; Zero scalar: 5.0 * 0.0 + 3.0 = 3.0
+  5.0 | MulAdd(Adding: 3.0 Scalar: 0.0) | Assert.Is(3.0 true)
+
+  ; Negative values: -2.0 * 3.0 + 10.0 = 4.0
+  -2.0 | MulAdd(Adding: 10.0 Scalar: 3.0) | Assert.Is(4.0 true)
+
+  ; Negative scalar: 4.0 * -2.0 + 10.0 = 2.0
+  4.0 | MulAdd(Adding: 10.0 Scalar: -2.0) | Assert.Is(2.0 true)
+
+  ; Negative adding: 5.0 * 2.0 + -3.0 = 7.0
+  5.0 | MulAdd(Adding: -3.0 Scalar: 2.0) | Assert.Is(7.0 true)
+
+  ; =========================================================================
+  ; Float2 vectors
+  ; =========================================================================
+
+  ; Basic f2: (1.0, 2.0) * 2.0 + (10.0, 20.0) = (12.0, 24.0)
+  @f2(1.0 2.0) | MulAdd(Adding: @f2(10.0 20.0) Scalar: 2.0) | Log("MulAdd f2") | Assert.Is(@f2(12.0 24.0) true)
+
+  ; Identity: (3.0, 4.0) * 1.0 + (0.0, 0.0) = (3.0, 4.0)
+  @f2(3.0 4.0) | MulAdd(Adding: @f2(0.0 0.0) Scalar: 1.0) | Assert.Is(@f2(3.0 4.0) true)
+
+  ; Scale only: (2.0, 3.0) * 3.0 + (0.0, 0.0) = (6.0, 9.0)
+  @f2(2.0 3.0) | MulAdd(Adding: @f2(0.0 0.0) Scalar: 3.0) | Assert.Is(@f2(6.0 9.0) true)
+
+  ; Add only: (2.0, 3.0) * 1.0 + (5.0, 7.0) = (7.0, 10.0)
+  @f2(2.0 3.0) | MulAdd(Adding: @f2(5.0 7.0) Scalar: 1.0) | Assert.Is(@f2(7.0 10.0) true)
+
+  ; =========================================================================
+  ; Float3 vectors
+  ; =========================================================================
+
+  ; Basic f3: (1.0, 2.0, 3.0) * 2.0 + (10.0, 20.0, 30.0) = (12.0, 24.0, 36.0)
+  @f3(1.0 2.0 3.0) | MulAdd(Adding: @f3(10.0 20.0 30.0) Scalar: 2.0) | Log("MulAdd f3") | Assert.Is(@f3(12.0 24.0 36.0) true)
+
+  ; Half scale: (4.0, 6.0, 8.0) * 0.5 + (1.0, 2.0, 3.0) = (3.0, 5.0, 7.0)
+  @f3(4.0 6.0 8.0) | MulAdd(Adding: @f3(1.0 2.0 3.0) Scalar: 0.5) | Assert.Is(@f3(3.0 5.0 7.0) true)
+
+  ; =========================================================================
+  ; Float4 vectors
+  ; =========================================================================
+
+  ; Basic f4: (1.0, 2.0, 3.0, 4.0) * 2.0 + (10.0, 20.0, 30.0, 40.0) = (12.0, 24.0, 36.0, 48.0)
+  @f4(1.0 2.0 3.0 4.0) | MulAdd(Adding: @f4(10.0 20.0 30.0 40.0) Scalar: 2.0) | Log("MulAdd f4")
+  | Assert.Is(@f4(12.0 24.0 36.0 48.0) true)
+
+  ; Quarter scale: (4.0, 8.0, 12.0, 16.0) * 0.25 + (0.0, 0.0, 0.0, 0.0) = (1.0, 2.0, 3.0, 4.0)
+  @f4(4.0 8.0 12.0 16.0) | MulAdd(Adding: @f4(0.0 0.0 0.0 0.0) Scalar: 0.25)
+  | Assert.Is(@f4(1.0 2.0 3.0 4.0) true)
+
+  ; =========================================================================
+  ; Sequence operations
+  ; =========================================================================
+
+  ; Seq(Float) with Seq(Float) adding
+  [1.0 2.0 3.0] | MulAdd(Adding: [10.0 20.0 30.0] Scalar: 2.0) | Log("MulAdd seq")
+  | Assert.Is([12.0 24.0 36.0] true)
+
+  ; Seq with scalar adding (broadcast)
+  [1.0 2.0 3.0] | MulAdd(Adding: 10.0 Scalar: 2.0) | Log("MulAdd seq broadcast")
+  | Assert.Is([12.0 14.0 16.0] true)
+
+  ; =========================================================================
+  ; Context variable operands
+  ; =========================================================================
+
+  5.0 >= adding-var
+  2.0 >= scalar-var
+
+  ; Variable adding
+  3.0 | MulAdd(Adding: adding-var Scalar: 2.0) | Log("MulAdd var adding") | Assert.Is(11.0 true)
+
+  ; Variable scalar
+  3.0 | MulAdd(Adding: 5.0 Scalar: scalar-var) | Assert.Is(11.0 true)
+
+  ; Both variables
+  3.0 | MulAdd(Adding: adding-var Scalar: scalar-var) | Assert.Is(11.0 true)
+
+  ; Vector with variable scalar
+  @f2(2.0 3.0) | MulAdd(Adding: @f2(10.0 20.0) Scalar: scalar-var) | Assert.Is(@f2(14.0 26.0) true)
+
+  ; =========================================================================
+  ; Accumulation pattern (common use case for mixing)
+  ; =========================================================================
+
+  0.0 >= mix
+  ; First source: mix = 10.0 * 0.5 + 0.0 = 5.0
+  10.0 | MulAdd(mix Scalar: 0.5) > mix
+  mix | Assert.Is(5.0 true)
+
+  ; Second source: mix = 20.0 * 0.5 + 5.0 = 15.0
+  20.0 | MulAdd(mix Scalar: 0.5) > mix
+  mix | Assert.Is(15.0 true)
+
+  ; Third source: mix = 30.0 * 0.5 + 15.0 = 30.0
+  30.0 | MulAdd(mix Scalar: 0.5) > mix
+  mix | Assert.Is(30.0 true)
+
+  ; Vector accumulation
+  @f2(0.0 0.0) >= vec-mix
+  @f2(10.0 20.0) | MulAdd(vec-mix Scalar: 0.5) > vec-mix
+  vec-mix | Assert.Is(@f2(5.0 10.0) true)
+  @f2(10.0 20.0) | MulAdd(vec-mix Scalar: 0.5) > vec-mix
+  vec-mix | Assert.Is(@f2(10.0 20.0) true)
+
+  ; =========================================================================
+  ; Edge cases
+  ; =========================================================================
+
+  ; Zero input
+  0.0 | MulAdd(Adding: 5.0 Scalar: 100.0) | Assert.Is(5.0 true)
+
+  ; Large values
+  1000000.0 | MulAdd(Adding: 1000000.0 Scalar: 2.0) | Assert.Is(3000000.0 true)
+
+  ; Small values
+  0.001 | MulAdd(Adding: 0.001 Scalar: 2.0) | @assert-almost(0.003 0.0001)
+
+  ; Chained MulAdd operations
+  1.0 | MulAdd(Adding: 0.0 Scalar: 2.0)  ; = 2.0
+      | MulAdd(Adding: 1.0 Scalar: 3.0)  ; = 2.0 * 3.0 + 1.0 = 7.0
+      | MulAdd(Adding: 3.0 Scalar: 2.0)  ; = 7.0 * 2.0 + 3.0 = 17.0
+  | Assert.Is(17.0 true)
+
+  ; MulAdd alias works same as Math.MultiplyAdd
+  2.0 | Math.MultiplyAdd(Adding: 1.0 Scalar: 3.0) | Assert.Is(7.0 true)
+
+  Log("MulAdd operations test passed!")
+})
+
 @mesh(main)
 @schedule(main test-math-unary)
 @schedule(main test-math-binary)
 @schedule(main test-math-special)
 @schedule(main test-math-edge-cases)
+@schedule(main test-math-muladd)
 @run(main)

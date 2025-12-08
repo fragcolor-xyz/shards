@@ -919,6 +919,224 @@ struct Atan2 : public BinaryOperation<BasicBinaryOperation<Atan2Op>> {
   }
 };
 
+// =============================================================================
+// MultiplyAdd - Fused multiply-add: output = input * scalar + adding
+// =============================================================================
+
+// SIMD fused multiply-add: D = A * B + C (matches vDSP_vsma signature)
+inline void applyAudioFMA(float *__restrict out, const float *__restrict a, float scalar, const float *__restrict c,
+                          size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  // vDSP_vsma: D = A * B + C where B is scalar
+  vDSP_vsma(a, 1, &scalar, c, 1, out, 1, count);
+#else
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vc = _mm256_loadu_ps(c + i);
+    _mm256_storeu_ps(out + i, _mm256_fmadd_ps(va, vs, vc));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vc = vld1q_f32(c + i);
+    vst1q_f32(out + i, vfmaq_f32(vc, va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = a[i] * scalar + c[i];
+#endif
+}
+
+struct MultiplyAdd : public Base {
+  static inline Types FloatOrAudioTypes{{CoreInfo::FloatType, CoreInfo::Float2Type, CoreInfo::Float3Type, CoreInfo::Float4Type,
+                                         CoreInfo::AudioType, CoreInfo::AnySeqType}};
+
+  static inline Types FloatOrAudioTypesOrVar{
+      {CoreInfo::FloatType,    CoreInfo::FloatVarType,  CoreInfo::Float2Type,   CoreInfo::Float2VarType,
+       CoreInfo::Float3Type,   CoreInfo::Float3VarType, CoreInfo::Float4Type,   CoreInfo::Float4VarType,
+       CoreInfo::AudioType,    CoreInfo::AudioVarType,  CoreInfo::AnySeqType,   CoreInfo::AnyVarSeqType}};
+
+  static inline Types ScalarTypes{{CoreInfo::FloatType, CoreInfo::FloatVarType}};
+
+  ParamVar _adding{shards::Var(0.0)};
+  ParamVar _scalar{shards::Var(1.0)};
+  ExposedInfo _requiredInfo{};
+  SHType _dispatchType{SHType::None};
+
+  static SHOptionalString help() {
+    return SHCCSTR("Performs fused multiply-add: output = input * Scalar + Adding. "
+                   "Useful for mixing audio signals or weighted accumulation.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The values to multiply by the scalar."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("The result of input * Scalar + Adding."); }
+
+  static SHTypesInfo inputTypes() { return FloatOrAudioTypes; }
+  static SHTypesInfo outputTypes() { return FloatOrAudioTypes; }
+
+  static SHParametersInfo parameters() {
+    static ParamsInfo params(
+        ParamsInfo::Param("Adding", SHCCSTR("The values to add after multiplication."), FloatOrAudioTypesOrVar),
+        ParamsInfo::Param("Scalar", SHCCSTR("The scalar multiplier for the input."), ScalarTypes));
+    return SHParametersInfo(params);
+  }
+
+  SHExposedTypesInfo requiredVariables() {
+    _requiredInfo = ExposedInfo();
+    SHVar addingSpec = _adding;
+    if (addingSpec.valueType == SHType::ContextVar) {
+      _requiredInfo.push_back(
+          ExposedInfo::Variable(addingSpec.payload.stringValue, SHCCSTR("The values to add."), CoreInfo::AnyType));
+    }
+    SHVar scalarSpec = _scalar;
+    if (scalarSpec.valueType == SHType::ContextVar) {
+      _requiredInfo.push_back(
+          ExposedInfo::Variable(scalarSpec.payload.stringValue, SHCCSTR("The scalar multiplier."), CoreInfo::FloatType));
+    }
+    return SHExposedTypesInfo(_requiredInfo);
+  }
+
+  void setParam(int index, const SHVar &value) {
+    if (index == 0)
+      _adding = value;
+    else
+      _scalar = value;
+  }
+
+  SHVar getParam(int index) { return index == 0 ? SHVar(_adding) : SHVar(_scalar); }
+
+  void warmup(SHContext *context) {
+    _adding.warmup(context);
+    _scalar.warmup(context);
+  }
+
+  void cleanup(SHContext *context) {
+    _adding.cleanup();
+    _scalar.cleanup();
+  }
+
+  SHTypeInfo composeV2(const SHInstanceData &data) {
+    _dispatchType = data.inputType.basicType;
+
+    // For Audio type, set up optimized activate
+    if (data.inputType.basicType == SHType::Audio) {
+      data.shard->activate = static_cast<SHActivateProc>([](Shard *b, SHContext *ctx, const SHVar *v) -> const SHVar * {
+        auto wrapper = reinterpret_cast<shards::ShardWrapper<MultiplyAdd> *>(b);
+        try {
+          auto adding = wrapper->shard._adding.get();
+          auto scalar = wrapper->shard._scalar.get();
+          const auto &inAudio = v->payload.audioValue;
+          const auto &addAudio = adding.payload.audioValue;
+
+          if (inAudio.nsamples != addAudio.nsamples || inAudio.channels != addAudio.channels) {
+            throw ActivationError(fmt::format("Audio dimension mismatch: {}x{} vs {}x{}", inAudio.nsamples, inAudio.channels,
+                                              addAudio.nsamples, addAudio.channels));
+          }
+
+          size_t total = size_t(inAudio.nsamples) * inAudio.channels;
+          auto &result = wrapper->shard._result;
+          size_t resultCapacity = result.valueType == SHType::Audio ? SHVAR_AUDIO_GET_CAPACITY(result) : 0;
+
+          // Reallocate if needed
+          if (result.valueType != SHType::Audio || total > resultCapacity) {
+            destroyVar(result);
+            result.valueType = SHType::Audio;
+            result.payload.audioValue.samples = new float[total];
+            SHVAR_AUDIO_SET_CAPACITY(result, total);
+          }
+
+          // Apply FMA: result = input * scalar + adding
+          float scalarVal = float(scalar.payload.floatValue);
+          applyAudioFMA(result.payload.audioValue.samples, inAudio.samples, scalarVal, addAudio.samples, total);
+
+          result.payload.audioValue.nsamples = inAudio.nsamples;
+          result.payload.audioValue.sampleRate = inAudio.sampleRate;
+          result.payload.audioValue.channels = inAudio.channels;
+          result.payload.audioValue.reserved = 0;
+          return &result;
+        } catch (std::exception &e) {
+          shards::abortWire(ctx, e.what());
+          return &wrapper->shard._result;
+        }
+      });
+    }
+
+    return data.inputType;
+  }
+
+  ALWAYS_INLINE const SHVar &activate(SHContext *context, const SHVar &input) {
+    const auto adding = _adding.get();
+    const auto scalar = _scalar.get();
+    float scalarVal = float(scalar.payload.floatValue);
+
+    switch (input.valueType) {
+    case SHType::Float:
+      _result.valueType = SHType::Float;
+      _result.payload.floatValue = input.payload.floatValue * scalarVal + adding.payload.floatValue;
+      break;
+    case SHType::Float2:
+      _result.valueType = SHType::Float2;
+      _result.payload.float2Value =
+          input.payload.float2Value * static_cast<double>(scalarVal) + adding.payload.float2Value;
+      break;
+    case SHType::Float3:
+      _result.valueType = SHType::Float3;
+      for (int i = 0; i < 3; i++) {
+        _result.payload.float3Value[i] = input.payload.float3Value[i] * scalarVal + adding.payload.float3Value[i];
+      }
+      break;
+    case SHType::Float4:
+      _result.valueType = SHType::Float4;
+      for (int i = 0; i < 4; i++) {
+        _result.payload.float4Value[i] = input.payload.float4Value[i] * scalarVal + adding.payload.float4Value[i];
+      }
+      break;
+    case SHType::Seq: {
+      // Handle Seq(Float) - element-wise FMA
+      auto &inSeq = input.payload.seqValue;
+      auto &addSeq = adding.payload.seqValue;
+
+      if (_result.valueType != SHType::Seq) {
+        destroyVar(_result);
+        _result.valueType = SHType::Seq;
+        _result.payload.seqValue = {};
+      }
+
+      shards::arrayResize(_result.payload.seqValue, inSeq.len);
+
+      // Handle adding as either Seq or scalar
+      if (adding.valueType == SHType::Seq) {
+        for (uint32_t i = 0; i < inSeq.len && i < addSeq.len; i++) {
+          auto &out = _result.payload.seqValue.elements[i];
+          out.valueType = SHType::Float;
+          out.payload.floatValue =
+              inSeq.elements[i].payload.floatValue * scalarVal + addSeq.elements[i].payload.floatValue;
+        }
+      } else {
+        // Scalar adding broadcasted to all elements
+        float addVal = float(adding.payload.floatValue);
+        for (uint32_t i = 0; i < inSeq.len; i++) {
+          auto &out = _result.payload.seqValue.elements[i];
+          out.valueType = SHType::Float;
+          out.payload.floatValue = inSeq.elements[i].payload.floatValue * scalarVal + addVal;
+        }
+      }
+      break;
+    }
+    default:
+      // Audio handled by compose override
+      break;
+    }
+
+    return _result;
+  }
+};
+
 } // namespace Math
 } // namespace shards
 
