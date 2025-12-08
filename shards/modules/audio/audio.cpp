@@ -5,6 +5,7 @@
 #include <shards/core/runtime.hpp>
 #include <shards/core/params.hpp>
 #include <shards/core/platform.hpp>
+#include <shards/modules/core/math_base.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <shards/log/log.hpp>
 
@@ -14,7 +15,6 @@
 
 #ifdef __APPLE__
 #define MA_NO_RUNTIME_LINKING
-#include <Accelerate/Accelerate.h>
 #endif
 
 // #ifndef NDEBUG
@@ -305,17 +305,8 @@ struct Device {
             // Only write to output buffer if we have output channels
             if (channel->outChannels.size() > 0) {
               auto &a = output.payload.audioValue;
-              auto count = a.channels * a.nsamples;
-#ifdef __APPLE__
-              // vDSP_vsma: C = A * scalar + C (vector scalar multiply and add)
               float volume = float(channel->volume.get().payload.floatValue);
-              vDSP_vsma(a.samples, 1, &volume, channel->outputBuffer, 1, channel->outputBuffer, 1, count);
-#else
-              auto volume = channel->volume.get().payload.floatValue;
-              for (uint32_t i = 0; i < count; i++) {
-                channel->outputBuffer[i] += a.samples[i] * volume;
-              }
-#endif
+              shards::Math::applyAudioMultiplyAccumulate(channel->outputBuffer, a.samples, volume, a.channels * a.nsamples);
             }
           }
         }
@@ -379,12 +370,11 @@ struct Device {
             // Source is planar: channel c data is at channelOutput + c * frameCount
             const float *src = channelOutput + c * frameCount;
             float *dst = fOutput + deviceChannel;
-#ifdef __APPLE__
-            // vDSP_vadd with strides: dst[i*strideD] += src[i*strideS]
+#ifdef SHARDS_HAS_ACCELERATE
+            // vDSP_vadd with strides for planar-to-interleaved accumulation
             vDSP_vadd(src, 1, dst, outChannels, dst, outChannels, frameCount);
 #else
             for (ma_uint32 i = 0; i < frameCount; i++) {
-              // Add to interleaved device output (mixing)
               dst[i * outChannels] += src[i];
             }
 #endif

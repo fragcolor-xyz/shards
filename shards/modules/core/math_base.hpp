@@ -348,6 +348,33 @@ template <> inline void applyBinaryAudioScalarOp<DivideOp>(float *out, const flo
   applyBinaryAudioDivideScalar(out, a, scalar, count);
 }
 
+// Multiply-accumulate: out += a * scalar (fused multiply-add)
+inline void applyAudioMultiplyAccumulate(float *__restrict out, const float *__restrict a, float scalar, size_t count) {
+#ifdef SHARDS_HAS_ACCELERATE
+  // vDSP_vsma: D = A * B + C where B is scalar
+  vDSP_vsma(a, 1, &scalar, out, 1, out, 1, count);
+#else
+  size_t i = 0;
+#if defined(__AVX2__)
+  __m256 vs = _mm256_set1_ps(scalar);
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(a + i);
+    __m256 vout = _mm256_loadu_ps(out + i);
+    _mm256_storeu_ps(out + i, _mm256_fmadd_ps(va, vs, vout));
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  float32x4_t vs = vdupq_n_f32(scalar);
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(a + i);
+    float32x4_t vout = vld1q_f32(out + i);
+    vst1q_f32(out + i, vfmaq_f32(vout, va, vs));
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] += a[i] * scalar;
+#endif
+}
+
 // Unary audio op - scalar loop (compiler may auto-vectorize for simple ops)
 template <typename TOp> inline void applyUnaryAudioOp(float *out, const float *a, size_t count) {
   TOp op{};
