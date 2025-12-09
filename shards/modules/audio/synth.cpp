@@ -725,9 +725,11 @@ struct Envelope {
   PARAM_PARAMVAR(_sustain, "Sustain", "Sustain level (0.0 to 1.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_release, "Release", "Release time in seconds (0.001 to 10.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_VAR(_curve, "Curve", "Envelope curve type (Linear or Exponential).", {EnvelopeCurveEnumInfo::Type});
+  PARAM_PARAMVAR(_retrigger, "Retrigger", "If true, retrigger envelope on gate even during Decay/Sustain stages. If false (default), "
+                                          "only retrigger from Idle/Release (legato behavior).", {CoreInfo::BoolType, CoreInfo::BoolVarType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_attack), PARAM_IMPL_FOR(_decay), PARAM_IMPL_FOR(_sustain), PARAM_IMPL_FOR(_release),
-             PARAM_IMPL_FOR(_curve));
+             PARAM_IMPL_FOR(_curve), PARAM_IMPL_FOR(_retrigger));
 
   // Per-channel state
   struct ChannelState {
@@ -747,6 +749,7 @@ struct Envelope {
     _sustain = Var(0.7);  // 70% sustain level
     _release = Var(0.3);  // 300ms release
     _curve = Var::Enum(Curve::Exponential, CoreCC, EnvelopeCurveEnumInfo::TypeId);
+    _retrigger = Var(false);  // Default to legato behavior
   }
 
   static SHOptionalString help() {
@@ -801,11 +804,12 @@ struct Envelope {
     const double decay = std::max(0.001, _decay.get().payload.floatValue);
     const double sustain = std::clamp(_sustain.get().payload.floatValue, 0.0, 1.0);
     const double release = std::max(0.001, _release.get().payload.floatValue);
+    const bool retrigger = _retrigger.get().payload.boolValue;
 
-    // Calculate samples for each stage
-    const uint64_t attackSamples = uint64_t(attack * sampleRate);
-    const uint64_t decaySamples = uint64_t(decay * sampleRate);
-    const uint64_t releaseSamples = uint64_t(release * sampleRate);
+    // Calculate samples for each stage (round to nearest, minimum 1 sample to avoid div-by-zero)
+    const uint64_t attackSamples = std::max(uint64_t(1), uint64_t(std::round(attack * sampleRate)));
+    const uint64_t decaySamples = std::max(uint64_t(1), uint64_t(std::round(decay * sampleRate)));
+    const uint64_t releaseSamples = std::max(uint64_t(1), uint64_t(std::round(release * sampleRate)));
 
     // Validate buffer size
     if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
@@ -824,7 +828,11 @@ struct Envelope {
         bool gateOn = gateSamples[i] > 0.0f;
 
         // Handle gate transitions
-        if (gateOn && (state.stage == Stage::Idle || state.stage == Stage::Release)) {
+        // Default (legato): only retrigger from Idle/Release
+        // With Retrigger=true: also retrigger from Decay/Sustain (polyphonic style)
+        bool canRetrigger = (state.stage == Stage::Idle || state.stage == Stage::Release) ||
+                            (retrigger && (state.stage == Stage::Decay || state.stage == Stage::Sustain));
+        if (gateOn && canRetrigger) {
           // Gate on - start attack from current level (smooth retrigger)
           state.stage = Stage::Attack;
           state.attackStartLevel = state.level;  // Remember where we're starting from
@@ -1044,9 +1052,13 @@ struct Filter {
     float32x4_t v2 = vdupq_n_f32(2.0f);
     float32x4_t denom = vdupq_n_f32(1.0f / (1.0f + g * (g + k)));
 
+    // Temp buffer for gather operation (outside loop to avoid repeated stack allocation)
+    alignas(16) float tmp[4];
+
     for (uint32_t i = 0; i < nsamples; i++) {
       // Gather sample i from each channel
-      float32x4_t v0 = {in0[i], in1[i], in2[i], in3[i]};
+      tmp[0] = in0[i]; tmp[1] = in1[i]; tmp[2] = in2[i]; tmp[3] = in3[i];
+      float32x4_t v0 = vld1q_f32(tmp);
 
       // SVF equations (all 4 channels in parallel):
       // v1 = (ic1eq + g * (v0 - ic2eq)) / (1 + g * (g + k))

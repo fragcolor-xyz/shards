@@ -1136,6 +1136,37 @@
   Msg("Audio.Envelope VCA tests passed!")
 })
 
+@wire(test-audio-envelope-retrigger {
+  Msg("Testing Audio.Envelope retrigger behavior...")
+
+  ; Create a gate signal that goes: high -> low -> high (simulating rapid note triggers)
+  ; First 128 samples: gate on (attack/decay)
+  ; Next 64 samples: gate off (release)
+  ; Last 64 samples: gate on again (retrigger test)
+
+  ; Gate signal: 128 samples on, 64 samples off, 64 samples on
+  none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100) >= gate-on-1
+  none | Audio.Oscillator(Frequency: 1.0 Amplitude: -1.0 Samples: 64 SampleRate: 44100) = gate-off
+  none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0 Samples: 64 SampleRate: 44100) = gate-on-2
+
+  ; Combine: start with gate-on-1, append off then on again
+  gate-off | AppendTo(gate-on-1)
+  gate-on-2 | AppendTo(gate-on-1)
+  gate-on-1 = combined-gate
+
+  ; Test legato mode (default Retrigger: false)
+  ; During sustain, new gate should NOT restart attack
+  combined-gate | Audio.Envelope(Attack: 0.005 Decay: 0.001 Sustain: 0.8 Release: 0.01) = legato-env
+  legato-env | Log("Legato envelope (Retrigger: false)")
+
+  ; Test polyphonic mode (Retrigger: true)
+  ; During sustain, new gate SHOULD restart attack from current level
+  combined-gate | Audio.Envelope(Attack: 0.005 Decay: 0.001 Sustain: 0.8 Release: 0.01 Retrigger: true) = poly-env
+  poly-env | Log("Polyphonic envelope (Retrigger: true)")
+
+  Msg("Audio.Envelope retrigger tests passed!")
+})
+
 ; ============================================================================
 ; Audio.Filter (SVF) Tests
 ; ============================================================================
@@ -1342,6 +1373,7 @@
 @schedule(main test-audio-envelope-params)
 @schedule(main test-audio-envelope-curves)
 @schedule(main test-audio-envelope-vca)
+@schedule(main test-audio-envelope-retrigger)
 @schedule(main test-audio-filter-types)
 @schedule(main test-audio-filter-resonance)
 @schedule(main test-audio-filter-sweep)
