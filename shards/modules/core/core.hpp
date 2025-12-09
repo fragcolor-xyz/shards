@@ -1462,36 +1462,12 @@ struct Set : public SetUpdateBase {
 };
 
 struct Ref : public SetBase {
-  bool _overwrite{false};
-
   static SHOptionalString help() {
     return SHCCSTR("Creates an immutable reference variable. Once created this variable cannot be changed.");
   }
 
-  static inline Parameters getParamsInfo{
-      getterParams,
-      {{"Overwrite", SHCCSTR("If the variable should be overwritten if it already exists."), {CoreInfo::BoolType}}}};
-
-  static SHParametersInfo parameters() { return getParamsInfo; }
-
-  void setParam(int index, const SHVar &value) {
-    if (index < variableParamsInfoLen)
-      VariableBase::setParam(index, value);
-    else if (index == variableParamsInfoLen + 0) {
-      _overwrite = value.payload.boolValue;
-    }
-  }
-
-  SHVar getParam(int index) {
-    if (index < variableParamsInfoLen)
-      return VariableBase::getParam(index);
-    else if (index == variableParamsInfoLen + 0)
-      return Var(_overwrite);
-    throw SHException("Param index out of range.");
-  }
-
   SHTypeInfo composeV2(const SHInstanceData &data) {
-    setBaseCompose(data, false, true, _overwrite);
+    setBaseCompose(data, false, true, false);
 
     // bake exposed types
     if (_isTable) {
