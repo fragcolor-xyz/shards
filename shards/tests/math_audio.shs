@@ -1205,6 +1205,27 @@
   Msg("Audio.Filter sweep tests passed!")
 })
 
+@wire(test-audio-filter-multichannel {
+  Msg("Testing Audio.Filter multi-channel SIMD...")
+
+  ; Test with 4 channels (triggers SIMD path)
+  none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.5 Samples: 256 SampleRate: 44100 Channels: 4) = quad-audio
+  quad-audio | Audio.Filter(Type: FilterType::Lowpass Cutoff: 1000.0 Resonance: 0.6) = quad-filtered
+  quad-filtered | Log("4-channel filter (SIMD path)")
+
+  ; Test with 5 channels (4 SIMD + 1 scalar)
+  none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.5 Samples: 256 SampleRate: 44100 Channels: 5) = five-ch
+  five-ch | Audio.Filter(Type: FilterType::Highpass Cutoff: 500.0 Resonance: 0.4) = five-filtered
+  five-filtered | Log("5-channel filter (4 SIMD + 1 scalar)")
+
+  ; Test with 8 channels (2x SIMD batches)
+  none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.5 Samples: 256 SampleRate: 44100 Channels: 8) = octo-audio
+  octo-audio | Audio.Filter(Type: FilterType::Bandpass Cutoff: 800.0 Resonance: 0.7) = octo-filtered
+  octo-filtered | Log("8-channel filter (2x SIMD batches)")
+
+  Msg("Audio.Filter multi-channel tests passed!")
+})
+
 @wire(test-audio-filter-chain {
   Msg("Testing Audio.Filter chained operations...")
 
@@ -1324,6 +1345,7 @@
 @schedule(main test-audio-filter-types)
 @schedule(main test-audio-filter-resonance)
 @schedule(main test-audio-filter-sweep)
+@schedule(main test-audio-filter-multichannel)
 @schedule(main test-audio-filter-chain)
 @schedule(main test-audio-synth-workflow)
 @run(main)

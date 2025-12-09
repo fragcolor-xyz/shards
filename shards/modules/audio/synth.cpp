@@ -15,13 +15,13 @@
 #define SYNTH_HAS_ACCELERATE 1
 #endif
 
-// SIMD headers for non-Apple platforms
-#if !defined(SYNTH_HAS_ACCELERATE)
+// SIMD headers - needed for both Apple and non-Apple (multi-channel filter processing)
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #include <arm_neon.h>
+#define SYNTH_HAS_NEON 1
 #elif defined(__AVX2__) || defined(__SSE__)
 #include <immintrin.h>
-#endif
+#define SYNTH_HAS_SSE 1
 #endif
 
 // SLEEF for vectorized transcendentals (non-Apple platforms)
@@ -958,7 +958,7 @@ struct Envelope {
 };
 
 // =============================================================================
-// State Variable Filter (SVF)
+// State Variable Filter (SVF) - with SIMD multi-channel processing
 // =============================================================================
 
 struct Filter {
@@ -972,12 +972,13 @@ struct Filter {
 
   PARAM_IMPL(PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_cutoff), PARAM_IMPL_FOR(_resonance));
 
-  // Per-channel SVF state (Cytomic/Vadim Zavalishin style)
-  struct SVFState {
-    double ic1eq{0.0}; // Integrator 1 state
-    double ic2eq{0.0}; // Integrator 2 state
-  };
-  std::array<SVFState, MAX_CHANNELS> _svfStates{};
+  // SVF state stored as aligned arrays for SIMD access
+  // We process up to 4 channels in parallel using SIMD
+  static constexpr uint32_t SIMD_WIDTH = 4;
+
+  // State arrays aligned for SIMD (padded to multiple of SIMD_WIDTH)
+  alignas(16) std::array<float, MAX_CHANNELS> _ic1eq{};
+  alignas(16) std::array<float, MAX_CHANNELS> _ic2eq{};
 
   std::vector<float> _buffer;
 
@@ -992,7 +993,8 @@ struct Filter {
 
   static SHOptionalString help() {
     return SHCCSTR("State Variable Filter (SVF) with Lowpass, Highpass, Bandpass, and Notch modes. "
-                   "Cutoff and Resonance can be modulated for filter sweeps and effects.");
+                   "Cutoff and Resonance can be modulated for filter sweeps and effects. "
+                   "Uses SIMD acceleration for multi-channel audio.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
@@ -1032,9 +1034,8 @@ struct Filter {
     }
 
     // Reset filter states
-    for (auto &state : _svfStates) {
-      state = SVFState{};
-    }
+    _ic1eq.fill(0.0f);
+    _ic2eq.fill(0.0f);
   }
 
   void cleanup(SHContext *context) {
@@ -1047,21 +1048,156 @@ struct Filter {
     }
   }
 
-  // SVF core processing (Cytomic/Vadim Zavalishin TPT implementation)
-  // Returns: lowpass, highpass, bandpass outputs via reference
-  inline void processSVF(double v0, double g, double k, SVFState &state, double &lowpass, double &highpass, double &bandpass) {
-    // TPT SVF equations
-    double v1 = (state.ic1eq + g * (v0 - state.ic2eq)) / (1.0 + g * (g + k));
-    double v2 = state.ic2eq + g * v1;
+#if defined(SYNTH_HAS_NEON)
+  // NEON SIMD: Process 4 channels simultaneously for one sample
+  // Input: v0 contains sample i from channels 0-3
+  // Output: writes to out channels 0-3 at sample i
+  template <FilterType Type>
+  inline void processSVF_NEON_4ch(const float *in0, const float *in1, const float *in2, const float *in3,
+                                   float *out0, float *out1, float *out2, float *out3,
+                                   uint32_t nsamples, float g, float k, uint32_t chBase) {
+    // Load state for 4 channels
+    float32x4_t ic1 = vld1q_f32(&_ic1eq[chBase]);
+    float32x4_t ic2 = vld1q_f32(&_ic2eq[chBase]);
 
-    // Update state
-    state.ic1eq = 2.0 * v1 - state.ic1eq;
-    state.ic2eq = 2.0 * v2 - state.ic2eq;
+    // Precompute constants
+    float32x4_t vg = vdupq_n_f32(g);
+    float32x4_t vk = vdupq_n_f32(k);
+    float32x4_t v2 = vdupq_n_f32(2.0f);
+    float32x4_t denom = vdupq_n_f32(1.0f / (1.0f + g * (g + k)));
 
-    // Outputs
-    lowpass = v2;
-    bandpass = v1;
-    highpass = v0 - k * v1 - v2;
+    for (uint32_t i = 0; i < nsamples; i++) {
+      // Gather sample i from each channel
+      float32x4_t v0 = {in0[i], in1[i], in2[i], in3[i]};
+
+      // SVF equations (all 4 channels in parallel):
+      // v1 = (ic1eq + g * (v0 - ic2eq)) / (1 + g * (g + k))
+      float32x4_t v1 = vmulq_f32(vaddq_f32(ic1, vmulq_f32(vg, vsubq_f32(v0, ic2))), denom);
+
+      // v2_out = ic2eq + g * v1
+      float32x4_t v2_out = vaddq_f32(ic2, vmulq_f32(vg, v1));
+
+      // Update state: ic1eq = 2*v1 - ic1eq, ic2eq = 2*v2 - ic2eq
+      ic1 = vsubq_f32(vmulq_f32(v2, v1), ic1);
+      ic2 = vsubq_f32(vmulq_f32(v2, v2_out), ic2);
+
+      // Compute output based on filter type
+      float32x4_t result;
+      if constexpr (Type == FilterType::Lowpass) {
+        result = v2_out;
+      } else if constexpr (Type == FilterType::Highpass) {
+        // hp = v0 - k*v1 - v2
+        result = vsubq_f32(vsubq_f32(v0, vmulq_f32(vk, v1)), v2_out);
+      } else if constexpr (Type == FilterType::Bandpass) {
+        result = v1;
+      } else if constexpr (Type == FilterType::Notch) {
+        // notch = lp + hp = v2 + (v0 - k*v1 - v2) = v0 - k*v1
+        result = vsubq_f32(v0, vmulq_f32(vk, v1));
+      }
+
+      // Scatter result to each channel's output buffer
+      out0[i] = vgetq_lane_f32(result, 0);
+      out1[i] = vgetq_lane_f32(result, 1);
+      out2[i] = vgetq_lane_f32(result, 2);
+      out3[i] = vgetq_lane_f32(result, 3);
+    }
+
+    // Store state back
+    vst1q_f32(&_ic1eq[chBase], ic1);
+    vst1q_f32(&_ic2eq[chBase], ic2);
+  }
+#endif
+
+#if defined(SYNTH_HAS_SSE)
+  // SSE SIMD: Process 4 channels simultaneously for one sample
+  template <FilterType Type>
+  inline void processSVF_SSE_4ch(const float *in0, const float *in1, const float *in2, const float *in3,
+                                  float *out0, float *out1, float *out2, float *out3,
+                                  uint32_t nsamples, float g, float k, uint32_t chBase) {
+    // Load state for 4 channels
+    __m128 ic1 = _mm_load_ps(&_ic1eq[chBase]);
+    __m128 ic2 = _mm_load_ps(&_ic2eq[chBase]);
+
+    // Precompute constants
+    __m128 vg = _mm_set1_ps(g);
+    __m128 vk = _mm_set1_ps(k);
+    __m128 v2 = _mm_set1_ps(2.0f);
+    __m128 denom = _mm_set1_ps(1.0f / (1.0f + g * (g + k)));
+
+    for (uint32_t i = 0; i < nsamples; i++) {
+      // Gather sample i from each channel
+      __m128 v0 = _mm_set_ps(in3[i], in2[i], in1[i], in0[i]);
+
+      // SVF equations:
+      // v1 = (ic1eq + g * (v0 - ic2eq)) / (1 + g * (g + k))
+      __m128 v1 = _mm_mul_ps(_mm_add_ps(ic1, _mm_mul_ps(vg, _mm_sub_ps(v0, ic2))), denom);
+
+      // v2_out = ic2eq + g * v1
+      __m128 v2_out = _mm_add_ps(ic2, _mm_mul_ps(vg, v1));
+
+      // Update state
+      ic1 = _mm_sub_ps(_mm_mul_ps(v2, v1), ic1);
+      ic2 = _mm_sub_ps(_mm_mul_ps(v2, v2_out), ic2);
+
+      // Compute output based on filter type
+      __m128 result;
+      if constexpr (Type == FilterType::Lowpass) {
+        result = v2_out;
+      } else if constexpr (Type == FilterType::Highpass) {
+        result = _mm_sub_ps(_mm_sub_ps(v0, _mm_mul_ps(vk, v1)), v2_out);
+      } else if constexpr (Type == FilterType::Bandpass) {
+        result = v1;
+      } else if constexpr (Type == FilterType::Notch) {
+        result = _mm_sub_ps(v0, _mm_mul_ps(vk, v1));
+      }
+
+      // Scatter result to each channel's output buffer
+      alignas(16) float tmp[4];
+      _mm_store_ps(tmp, result);
+      out0[i] = tmp[0];
+      out1[i] = tmp[1];
+      out2[i] = tmp[2];
+      out3[i] = tmp[3];
+    }
+
+    // Store state back
+    _mm_store_ps(&_ic1eq[chBase], ic1);
+    _mm_store_ps(&_ic2eq[chBase], ic2);
+  }
+#endif
+
+  // Scalar fallback: process single channel
+  template <FilterType Type>
+  inline void processSVF_Scalar(const float *in, float *out, uint32_t nsamples, float g, float k, uint32_t ch) {
+    float ic1 = _ic1eq[ch];
+    float ic2 = _ic2eq[ch];
+    const float denom = 1.0f / (1.0f + g * (g + k));
+
+    for (uint32_t i = 0; i < nsamples; i++) {
+      float v0 = in[i];
+
+      // SVF equations
+      float v1 = (ic1 + g * (v0 - ic2)) * denom;
+      float v2_out = ic2 + g * v1;
+
+      // Update state
+      ic1 = 2.0f * v1 - ic1;
+      ic2 = 2.0f * v2_out - ic2;
+
+      // Output based on filter type
+      if constexpr (Type == FilterType::Lowpass) {
+        out[i] = v2_out;
+      } else if constexpr (Type == FilterType::Highpass) {
+        out[i] = v0 - k * v1 - v2_out;
+      } else if constexpr (Type == FilterType::Bandpass) {
+        out[i] = v1;
+      } else if constexpr (Type == FilterType::Notch) {
+        out[i] = v0 - k * v1;
+      }
+    }
+
+    _ic1eq[ch] = ic1;
+    _ic2eq[ch] = ic2;
   }
 
   template <FilterType Type> SHVar processFilter(SHContext *context, const SHVar &input) {
@@ -1071,15 +1207,12 @@ struct Filter {
     const uint32_t channels = audio.channels;
 
     // Get parameters
-    const double cutoff = std::clamp(_cutoff.get().payload.floatValue, 20.0, double(sampleRate) * 0.49);
-    const double resonance = std::clamp(_resonance.get().payload.floatValue, 0.0, 1.0);
+    const float cutoff = float(std::clamp(_cutoff.get().payload.floatValue, 20.0, double(sampleRate) * 0.49));
+    const float resonance = float(std::clamp(_resonance.get().payload.floatValue, 0.0, 1.0));
 
-    // SVF coefficients
-    // g = tan(π * cutoff / sampleRate)
-    const double g = std::tan(M_PI * cutoff / double(sampleRate));
-    // k = 2.0 - 2.0 * resonance (resonance 0 -> k=2, resonance 1 -> k=0)
-    // k=0 gives self-oscillation, we clamp to avoid instability
-    const double k = 2.0 - 2.0 * resonance * 0.99;
+    // SVF coefficients (float for SIMD)
+    const float g = std::tan(float(M_PI) * cutoff / float(sampleRate));
+    const float k = 2.0f - 2.0f * resonance * 0.99f;
 
     // Validate buffer size
     if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
@@ -1088,29 +1221,34 @@ struct Filter {
 
     _buffer.resize(channels * nsamples);
 
-    // Process each channel independently
-    for (uint32_t ch = 0; ch < channels; ch++) {
+    uint32_t ch = 0;
+
+#if defined(SYNTH_HAS_NEON) || defined(SYNTH_HAS_SSE)
+    // Process groups of 4 channels using SIMD
+    for (; ch + 4 <= channels; ch += 4) {
+      const float *in0 = audio.samples + ch * nsamples;
+      const float *in1 = audio.samples + (ch + 1) * nsamples;
+      const float *in2 = audio.samples + (ch + 2) * nsamples;
+      const float *in3 = audio.samples + (ch + 3) * nsamples;
+
+      float *out0 = _buffer.data() + ch * nsamples;
+      float *out1 = _buffer.data() + (ch + 1) * nsamples;
+      float *out2 = _buffer.data() + (ch + 2) * nsamples;
+      float *out3 = _buffer.data() + (ch + 3) * nsamples;
+
+#if defined(SYNTH_HAS_NEON)
+      processSVF_NEON_4ch<Type>(in0, in1, in2, in3, out0, out1, out2, out3, nsamples, g, k, ch);
+#elif defined(SYNTH_HAS_SSE)
+      processSVF_SSE_4ch<Type>(in0, in1, in2, in3, out0, out1, out2, out3, nsamples, g, k, ch);
+#endif
+    }
+#endif
+
+    // Process remaining channels with scalar code
+    for (; ch < channels; ch++) {
       const float *inSamples = audio.samples + ch * nsamples;
       float *outSamples = _buffer.data() + ch * nsamples;
-      SVFState &state = _svfStates[ch];
-
-      for (uint32_t i = 0; i < nsamples; i++) {
-        double v0 = double(inSamples[i]);
-        double lowpass, highpass, bandpass;
-        processSVF(v0, g, k, state, lowpass, highpass, bandpass);
-
-        // Select output based on filter type (compile-time dispatch)
-        if constexpr (Type == FilterType::Lowpass) {
-          outSamples[i] = float(lowpass);
-        } else if constexpr (Type == FilterType::Highpass) {
-          outSamples[i] = float(highpass);
-        } else if constexpr (Type == FilterType::Bandpass) {
-          outSamples[i] = float(bandpass);
-        } else if constexpr (Type == FilterType::Notch) {
-          // Notch = lowpass + highpass
-          outSamples[i] = float(lowpass + highpass);
-        }
-      }
+      processSVF_Scalar<Type>(inSamples, outSamples, nsamples, g, k, ch);
     }
 
     return Var(makeAudio(_buffer.data(), nsamples, sampleRate, uint8_t(channels)));
