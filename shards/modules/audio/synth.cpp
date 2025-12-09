@@ -733,15 +733,13 @@ struct Envelope {
   struct ChannelState {
     Stage stage{Stage::Idle};
     double level{0.0};
+    double attackStartLevel{0.0};  // For smooth retrigger - where attack starts from
     double releaseStartLevel{0.0};
     uint64_t stageSamples{0};
   };
   std::array<ChannelState, MAX_CHANNELS> _channelStates{};
 
   std::vector<float> _buffer;
-
-  SHVar *_deviceVar{nullptr};
-  Device *_device{nullptr};
 
   Envelope() {
     _attack = Var(0.01);  // 10ms default attack
@@ -782,11 +780,6 @@ struct Envelope {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _deviceVar = referenceVariable(context, "Audio.Device");
-    if (_deviceVar->valueType == SHType::Object) {
-      _device = reinterpret_cast<Device *>(_deviceVar->payload.objectValue);
-    }
-
     // Reset all channel states
     for (auto &state : _channelStates) {
       state = ChannelState{};
@@ -795,12 +788,6 @@ struct Envelope {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
-
-    if (_deviceVar) {
-      releaseVariable(_deviceVar);
-      _deviceVar = nullptr;
-      _device = nullptr;
-    }
   }
 
   template <typename ProcessFunc> SHVar processEnvelope(const SHVar &input, ProcessFunc processFunc) {
@@ -838,10 +825,10 @@ struct Envelope {
 
         // Handle gate transitions
         if (gateOn && (state.stage == Stage::Idle || state.stage == Stage::Release)) {
-          // Gate on - start attack (retrigger support)
+          // Gate on - start attack from current level (smooth retrigger)
           state.stage = Stage::Attack;
+          state.attackStartLevel = state.level;  // Remember where we're starting from
           state.stageSamples = 0;
-          // level continues from current value for smooth retrigger
         } else if (!gateOn && state.stage != Stage::Idle && state.stage != Stage::Release) {
           // Gate off - start release
           state.stage = Stage::Release;
@@ -866,7 +853,8 @@ struct Envelope {
       switch (state.stage) {
       case Stage::Attack: {
         double t = double(state.stageSamples) / double(attackSamples);
-        state.level = t;
+        // Linear interpolation from attackStartLevel to 1.0 (smooth retrigger)
+        state.level = state.attackStartLevel + t * (1.0 - state.attackStartLevel);
         if (state.stageSamples >= attackSamples) {
           state.stage = Stage::Decay;
           state.stageSamples = 0;
@@ -907,14 +895,18 @@ struct Envelope {
   SHVar activateExponential(SHContext *context, const SHVar &input) {
     return processEnvelope(input, [](ChannelState &state, double sustain, uint64_t attackSamples, uint64_t decaySamples,
                                      uint64_t releaseSamples) {
-      // Exponential curve coefficient (higher = faster curve, 5.0 gives natural envelope feel)
+      // Exponential curve coefficient: 5.0 means the curve reaches ~99.3% (1 - e^-5) of its
+      // target at t=1.0. This gives a natural-sounding envelope with most movement in the
+      // early portion of each stage, mimicking capacitor charge/discharge behavior.
       constexpr double EXP_COEFF = 5.0;
 
       switch (state.stage) {
       case Stage::Attack: {
         double t = double(state.stageSamples) / double(attackSamples);
-        // Exponential attack: 1 - e^(-kt)
-        state.level = 1.0 - std::exp(-EXP_COEFF * t);
+        // Exponential attack from attackStartLevel to 1.0 (smooth retrigger)
+        // Uses asymptotic approach: level = start + (target - start) * (1 - e^(-kt))
+        double attackRange = 1.0 - state.attackStartLevel;
+        state.level = state.attackStartLevel + attackRange * (1.0 - std::exp(-EXP_COEFF * t));
         if (state.stageSamples >= attackSamples) {
           state.stage = Stage::Decay;
           state.stageSamples = 0;
@@ -982,9 +974,6 @@ struct Filter {
 
   std::vector<float> _buffer;
 
-  SHVar *_deviceVar{nullptr};
-  Device *_device{nullptr};
-
   Filter() {
     _type = Var::Enum(FilterType::Lowpass, CoreCC, FilterTypeEnumInfo::TypeId);
     _cutoff = Var(1000.0);   // 1kHz default cutoff
@@ -1028,11 +1017,6 @@ struct Filter {
   void warmup(SHContext *context) {
     PARAM_WARMUP(context);
 
-    _deviceVar = referenceVariable(context, "Audio.Device");
-    if (_deviceVar->valueType == SHType::Object) {
-      _device = reinterpret_cast<Device *>(_deviceVar->payload.objectValue);
-    }
-
     // Reset filter states
     _ic1eq.fill(0.0f);
     _ic2eq.fill(0.0f);
@@ -1040,12 +1024,6 @@ struct Filter {
 
   void cleanup(SHContext *context) {
     PARAM_CLEANUP(context);
-
-    if (_deviceVar) {
-      releaseVariable(_deviceVar);
-      _deviceVar = nullptr;
-      _device = nullptr;
-    }
   }
 
 #if defined(SYNTH_HAS_NEON)
@@ -1207,11 +1185,16 @@ struct Filter {
     const uint32_t channels = audio.channels;
 
     // Get parameters
-    const float cutoff = float(std::clamp(_cutoff.get().payload.floatValue, 20.0, double(sampleRate) * 0.49));
+    // Clamp cutoff to 0.45 * Nyquist to prevent numerical instability from tan() approaching infinity
+    // At 0.45, tan(π * 0.45) ≈ 3.08 which is well-behaved. At 0.49, tan(π * 0.49) ≈ 27.3
+    const float cutoff = float(std::clamp(_cutoff.get().payload.floatValue, 20.0, double(sampleRate) * 0.45));
     const float resonance = float(std::clamp(_resonance.get().payload.floatValue, 0.0, 1.0));
 
     // SVF coefficients (float for SIMD)
     const float g = std::tan(float(M_PI) * cutoff / float(sampleRate));
+    // k controls damping: k=2 is critically damped, k approaching 0 gives self-oscillation.
+    // We allow resonance up to 0.99 which gives k=0.02, allowing near self-oscillation
+    // for creative filter effects (acid bass lines, etc). The filter remains stable.
     const float k = 2.0f - 2.0f * resonance * 0.99f;
 
     // Validate buffer size
