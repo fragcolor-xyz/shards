@@ -38,19 +38,34 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            Please review this pull request. Use the repository's CLAUDE.md for guidance on style and conventions.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            ## Review Focus
+            - Actual bugs that can occur in realistic usage scenarios
+            - Security concerns with real attack vectors
+            - Performance issues with measurable impact
+            - Code quality and adherence to project patterns
 
-            Avoid suggesting to document limitations, things should be fixed and complete before merge.
-            Avoid caring about backward compatibility too much, consider this software is pre-release.
+            ## Before Flagging Issues
+            - Verify the bug can actually occur (check the math, trace the logic)
+            - Consider if the edge case is realistic (don't flag 1Hz sample rates, negative buffer sizes, etc.)
+            - Distinguish between "will cause problems" vs "theoretically possible"
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            ## Do NOT Flag
+            - Theoretical edge cases requiring impossible/nonsensical inputs
+            - Floating-point precision issues where the math is inherently bounded
+            - "Nice to have" improvements as critical issues
+            - Missing documentation for internal implementation details
+            - Backward compatibility concerns (this is pre-release software)
+
+            ## Issue Severity
+            Rate each issue with confidence:
+            - CRITICAL: Verified bug that will cause problems in normal usage
+            - HIGH: Likely bug, logic appears flawed
+            - MEDIUM: Potential issue worth investigating
+            - LOW: Theoretical concern or style suggestion
+
+            Be concise and actionable. Use `gh pr comment` to leave your review.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
