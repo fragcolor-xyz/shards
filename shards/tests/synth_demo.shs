@@ -1,7 +1,11 @@
-; Synth Demo - Audio.Oscillator and Audio.Noise playback demo
+; Synth Demo - Audio.Oscillator, Audio.Noise, Audio.Envelope, Audio.Filter playback demo
 ; Run with: shards run shards/tests/synth_demo.shs
 
 @mesh(main)
+
+; ============================================================================
+; OSCILLATOR DEMOS
+; ============================================================================
 
 ; Simple FM carrier - pure sine tone
 @wire(demo-fm-simple {
@@ -14,6 +18,42 @@
 })
 
 @schedule(main demo-fm-simple)
+@run(main)
+
+; Different waveforms
+@wire(demo-waveforms {
+  Msg("Playing different waveforms...")
+
+  Msg("  Sine wave (smooth)")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Sine Amplitude: 0.25)
+  })
+  Pause(1.0)
+
+  Msg("  Triangle wave (mellow)")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Triangle Amplitude: 0.25)
+  })
+  Pause(1.0)
+
+  Msg("  Sawtooth wave (bright, buzzy)")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Sawtooth Amplitude: 0.2)
+  })
+  Pause(1.0)
+
+  Msg("  Square wave (hollow, reedy)")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Square Amplitude: 0.2)
+  })
+  Pause(1.0)
+})
+
+@schedule(main demo-waveforms)
 @run(main)
 
 ; FM with modulation - classic FM sound
@@ -47,9 +87,28 @@
 @schedule(main demo-fm-chain)
 @run(main)
 
+; Exponential FM - modular synth style vibrato
+@wire(demo-exp-fm {
+  Msg("Playing exponential FM (1V/oct style vibrato)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Slow LFO modulating pitch exponentially
+    none | Audio.Oscillator(Frequency: 5.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.3 Index: 0.1 FMMode: FMMode::Exponential)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-exp-fm)
+@run(main)
+
+; ============================================================================
+; NOISE DEMOS
+; ============================================================================
+
 ; White noise
 @wire(demo-noise-white {
-  Msg("Playing white noise...")
+  Msg("Playing white noise (bright, hissy)...")
   Audio.Device
   Audio.Channel(Shards: {
     none | Audio.Noise(Type: NoiseType::White Amplitude: 0.15)
@@ -62,7 +121,7 @@
 
 ; Pink noise
 @wire(demo-noise-pink {
-  Msg("Playing pink noise (warmer)...")
+  Msg("Playing pink noise (warmer, natural)...")
   Audio.Device
   Audio.Channel(Shards: {
     none | Audio.Noise(Type: NoiseType::Pink Amplitude: 0.2)
@@ -84,6 +143,281 @@
 })
 
 @schedule(main demo-noise-brown)
+@run(main)
+
+; ============================================================================
+; FILTER DEMOS
+; ============================================================================
+
+; Lowpass filter on noise
+@wire(demo-filter-lowpass {
+  Msg("Playing filtered noise (lowpass at 500Hz)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Noise(Type: NoiseType::White Amplitude: 0.3)
+         | Audio.Filter(Type: FilterType::Lowpass Cutoff: 500.0 Resonance: 0.6)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-filter-lowpass)
+@run(main)
+
+; Highpass filter on noise
+@wire(demo-filter-highpass {
+  Msg("Playing filtered noise (highpass at 2kHz)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Noise(Type: NoiseType::White Amplitude: 0.2)
+         | Audio.Filter(Type: FilterType::Highpass Cutoff: 2000.0 Resonance: 0.5)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-filter-highpass)
+@run(main)
+
+; Resonant filter sweep on sawtooth
+@wire(demo-filter-resonant {
+  Msg("Playing resonant filter on sawtooth...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.4)
+         | Audio.Filter(Type: FilterType::Lowpass Cutoff: 800.0 Resonance: 0.85)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-filter-resonant)
+@run(main)
+
+; Bandpass filter for vocal-like formant
+@wire(demo-filter-bandpass {
+  Msg("Playing bandpass filter (formant-like)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.4)
+         | Audio.Filter(Type: FilterType::Bandpass Cutoff: 700.0 Resonance: 0.8)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-filter-bandpass)
+@run(main)
+
+; ============================================================================
+; ENVELOPE DEMOS (stateless - envelope applied to constant gate)
+; ============================================================================
+
+; Note: Audio.Envelope is stateful and tracks gate on/off transitions.
+; In a looped Audio.Channel, we generate a constant gate signal per buffer.
+; The envelope will progress through its stages across multiple buffers.
+
+; Percussive pluck sound
+@wire(demo-envelope-pluck {
+  Msg("Playing percussive envelope (pluck)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate signal (constant high)
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; VCO - sawtooth
+    none | Audio.Oscillator(Frequency: 330.0 Waveform: Waveform::Sawtooth Amplitude: 0.5) = vco
+
+    ; VCA envelope - fast attack, quick decay, no sustain
+    gate | Audio.Envelope(Attack: 0.001 Decay: 0.3 Sustain: 0.0 Release: 0.1) = env
+
+    ; VCO * VCA
+    vco | Math.Multiply(env)
+  })
+  Pause(1.5)
+})
+
+@schedule(main demo-envelope-pluck)
+@run(main)
+
+; Pad sound with slow attack
+@wire(demo-envelope-pad {
+  Msg("Playing pad envelope (slow attack)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate signal
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; VCO - sine for smooth pad
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Sine Amplitude: 0.4) = vco
+
+    ; Slow attack envelope
+    gate | Audio.Envelope(Attack: 0.8 Decay: 0.2 Sustain: 0.7 Release: 0.5) = env
+
+    vco | Math.Multiply(env)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-envelope-pad)
+@run(main)
+
+; ============================================================================
+; COMPLETE SYNTH PATCHES
+; ============================================================================
+
+; Classic subtractive bass
+@wire(demo-subtractive-bass {
+  Msg("Playing subtractive bass (VCO -> VCF -> VCA)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; VCO - sawtooth bass
+    none | Audio.Oscillator(Frequency: 55.0 Waveform: Waveform::Sawtooth Amplitude: 0.6) = vco
+
+    ; VCF - lowpass with resonance
+    vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 400.0 Resonance: 0.6) = vcf
+
+    ; VCA envelope - punchy bass
+    gate | Audio.Envelope(Attack: 0.005 Decay: 0.2 Sustain: 0.4 Release: 0.3) = vca-env
+
+    vcf | Math.Multiply(vca-env)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-subtractive-bass)
+@run(main)
+
+; FM electric piano
+@wire(demo-fm-epiano {
+  Msg("Playing FM electric piano...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; FM operators - 2:1 ratio for bell-like tone
+    none | Audio.Oscillator(Frequency: 880.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 2.5) = vco
+
+    ; Percussive envelope
+    gate | Audio.Envelope(Attack: 0.001 Decay: 0.8 Sustain: 0.0 Release: 0.2) = env
+
+    vco | Math.Multiply(env)
+  })
+  Pause(2.0)
+})
+
+@schedule(main demo-fm-epiano)
+@run(main)
+
+; Hi-hat
+@wire(demo-hihat {
+  Msg("Playing hi-hat (noise + HP filter + envelope)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Noise source
+    none | Audio.Noise(Type: NoiseType::White Amplitude: 0.5) = noise
+
+    ; Highpass filter for tinny hi-hat sound
+    noise | Audio.Filter(Type: FilterType::Highpass Cutoff: 7000.0 Resonance: 0.3) = filtered
+
+    ; Very short percussive envelope
+    gate | Audio.Envelope(Attack: 0.001 Decay: 0.08 Sustain: 0.0 Release: 0.05) = env
+
+    filtered | Math.Multiply(env)
+  })
+  Pause(1.0)
+})
+
+@schedule(main demo-hihat)
+@run(main)
+
+; Snare drum
+@wire(demo-snare {
+  Msg("Playing snare drum (noise + tone + envelope)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Noise component
+    none | Audio.Noise(Type: NoiseType::White Amplitude: 0.4)
+         | Audio.Filter(Type: FilterType::Highpass Cutoff: 2000.0 Resonance: 0.2) = noise
+
+    ; Tone component (low sine for body)
+    none | Audio.Oscillator(Frequency: 180.0 Waveform: Waveform::Sine Amplitude: 0.5) = tone
+
+    ; Mix noise and tone
+    noise | Math.Add(tone) = mix
+
+    ; Short envelope
+    gate | Audio.Envelope(Attack: 0.001 Decay: 0.15 Sustain: 0.0 Release: 0.1) = env
+
+    mix | Math.Multiply(env)
+  })
+  Pause(1.0)
+})
+
+@schedule(main demo-snare)
+@run(main)
+
+; Kick drum
+@wire(demo-kick {
+  Msg("Playing kick drum (sine + pitch envelope)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Low sine for kick body
+    none | Audio.Oscillator(Frequency: 55.0 Waveform: Waveform::Sine Amplitude: 0.7) = vco
+
+    ; Punchy envelope
+    gate | Audio.Envelope(Attack: 0.001 Decay: 0.25 Sustain: 0.0 Release: 0.1) = env
+
+    vco | Math.Multiply(env)
+  })
+  Pause(1.0)
+})
+
+@schedule(main demo-kick)
+@run(main)
+
+; Atmospheric drone
+@wire(demo-drone {
+  Msg("Playing atmospheric drone (layered oscillators + filter)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Layer 1 - fundamental
+    none | Audio.Oscillator(Frequency: 55.0 Waveform: Waveform::Sawtooth Amplitude: 0.3) = osc1
+
+    ; Layer 2 - detuned for thickness
+    none | Audio.Oscillator(Frequency: 55.5 Waveform: Waveform::Sawtooth Amplitude: 0.3) = osc2
+
+    ; Layer 3 - octave up
+    none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Triangle Amplitude: 0.2) = osc3
+
+    ; Mix oscillators
+    osc1 | Math.Add(osc2) | Math.Add(osc3) = mix
+
+    ; Lowpass filter
+    mix | Audio.Filter(Type: FilterType::Lowpass Cutoff: 600.0 Resonance: 0.4) = filtered
+
+    ; Slow envelope
+    gate | Audio.Envelope(Attack: 1.5 Decay: 0.5 Sustain: 0.8 Release: 1.0) = env
+
+    filtered | Math.Multiply(env)
+  })
+  Pause(4.0)
+})
+
+@schedule(main demo-drone)
 @run(main)
 
 ; FM + Noise combo - synth pad with breath

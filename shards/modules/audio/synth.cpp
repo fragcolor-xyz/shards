@@ -709,6 +709,421 @@ struct Noise {
   SHVar activate(SHContext *context, const SHVar &input) { return activateWhite(context, input); }
 };
 
+// =============================================================================
+// ADSR Envelope Generator
+// =============================================================================
+
+struct Envelope {
+  enum class Stage { Idle, Attack, Decay, Sustain, Release };
+
+  enum class Curve { Linear, Exponential };
+  DECL_ENUM_INFO(Curve, EnvelopeCurve, "Envelope curve type.", 'ecur');
+
+  // Parameters
+  PARAM_PARAMVAR(_attack, "Attack", "Attack time in seconds (0.001 to 10.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_decay, "Decay", "Decay time in seconds (0.001 to 10.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_sustain, "Sustain", "Sustain level (0.0 to 1.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_release, "Release", "Release time in seconds (0.001 to 10.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_VAR(_curve, "Curve", "Envelope curve type (Linear or Exponential).", {EnvelopeCurveEnumInfo::Type});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_attack), PARAM_IMPL_FOR(_decay), PARAM_IMPL_FOR(_sustain), PARAM_IMPL_FOR(_release),
+             PARAM_IMPL_FOR(_curve));
+
+  // Per-channel state
+  struct ChannelState {
+    Stage stage{Stage::Idle};
+    double level{0.0};
+    double releaseStartLevel{0.0};
+    uint64_t stageSamples{0};
+  };
+  std::array<ChannelState, MAX_CHANNELS> _channelStates{};
+
+  std::vector<float> _buffer;
+
+  SHVar *_deviceVar{nullptr};
+  Device *_device{nullptr};
+
+  Envelope() {
+    _attack = Var(0.01);  // 10ms default attack
+    _decay = Var(0.1);    // 100ms default decay
+    _sustain = Var(0.7);  // 70% sustain level
+    _release = Var(0.3);  // 300ms release
+    _curve = Var::Enum(Curve::Exponential, CoreCC, EnvelopeCurveEnumInfo::TypeId);
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("ADSR envelope generator. Takes a gate signal (audio or trigger) as input, "
+                   "where values > 0 indicate gate on and values <= 0 indicate gate off. "
+                   "Outputs an envelope signal from 0.0 to 1.0 that can be multiplied with "
+                   "an oscillator for amplitude modulation (VCA).");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() {
+    return SHCCSTR("Gate signal where > 0 is gate on, <= 0 is gate off.");
+  }
+  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Envelope values from 0.0 to 1.0."); }
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    Curve curve = Curve(_curve.payload.enumValue);
+    if (curve == Curve::Linear) {
+      OVERRIDE_ACTIVATE(data, activateLinear);
+    } else {
+      OVERRIDE_ACTIVATE(data, activateExponential);
+    }
+    return CoreInfo::AudioType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    _deviceVar = referenceVariable(context, "Audio.Device");
+    if (_deviceVar->valueType == SHType::Object) {
+      _device = reinterpret_cast<Device *>(_deviceVar->payload.objectValue);
+    }
+
+    // Reset all channel states
+    for (auto &state : _channelStates) {
+      state = ChannelState{};
+    }
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
+    if (_deviceVar) {
+      releaseVariable(_deviceVar);
+      _deviceVar = nullptr;
+      _device = nullptr;
+    }
+  }
+
+  template <typename ProcessFunc> SHVar processEnvelope(const SHVar &input, ProcessFunc processFunc) {
+    const auto &audio = input.payload.audioValue;
+    const uint32_t nsamples = audio.nsamples;
+    const uint32_t sampleRate = audioGetSampleRate(audio);
+    const uint32_t channels = audio.channels;
+
+    // Get parameters
+    const double attack = std::max(0.001, _attack.get().payload.floatValue);
+    const double decay = std::max(0.001, _decay.get().payload.floatValue);
+    const double sustain = std::clamp(_sustain.get().payload.floatValue, 0.0, 1.0);
+    const double release = std::max(0.001, _release.get().payload.floatValue);
+
+    // Calculate samples for each stage
+    const uint64_t attackSamples = uint64_t(attack * sampleRate);
+    const uint64_t decaySamples = uint64_t(decay * sampleRate);
+    const uint64_t releaseSamples = uint64_t(release * sampleRate);
+
+    // Validate buffer size
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Envelope: buffer size exceeds limits");
+    }
+
+    _buffer.resize(channels * nsamples);
+
+    // Process each channel independently
+    for (uint32_t ch = 0; ch < channels; ch++) {
+      const float *gateSamples = audio.samples + ch * nsamples;
+      float *outSamples = _buffer.data() + ch * nsamples;
+      ChannelState &state = _channelStates[ch];
+
+      for (uint32_t i = 0; i < nsamples; i++) {
+        bool gateOn = gateSamples[i] > 0.0f;
+
+        // Handle gate transitions
+        if (gateOn && (state.stage == Stage::Idle || state.stage == Stage::Release)) {
+          // Gate on - start attack (retrigger support)
+          state.stage = Stage::Attack;
+          state.stageSamples = 0;
+          // level continues from current value for smooth retrigger
+        } else if (!gateOn && state.stage != Stage::Idle && state.stage != Stage::Release) {
+          // Gate off - start release
+          state.stage = Stage::Release;
+          state.releaseStartLevel = state.level;
+          state.stageSamples = 0;
+        }
+
+        // Process current stage
+        processFunc(state, sustain, attackSamples, decaySamples, releaseSamples);
+
+        outSamples[i] = float(state.level);
+        state.stageSamples++;
+      }
+    }
+
+    return Var(makeAudio(_buffer.data(), nsamples, sampleRate, uint8_t(channels)));
+  }
+
+  SHVar activateLinear(SHContext *context, const SHVar &input) {
+    return processEnvelope(input, [](ChannelState &state, double sustain, uint64_t attackSamples, uint64_t decaySamples,
+                                     uint64_t releaseSamples) {
+      switch (state.stage) {
+      case Stage::Attack: {
+        double t = double(state.stageSamples) / double(attackSamples);
+        state.level = t;
+        if (state.stageSamples >= attackSamples) {
+          state.stage = Stage::Decay;
+          state.stageSamples = 0;
+          state.level = 1.0;
+        }
+        break;
+      }
+      case Stage::Decay: {
+        double t = double(state.stageSamples) / double(decaySamples);
+        state.level = 1.0 - t * (1.0 - sustain);
+        if (state.stageSamples >= decaySamples) {
+          state.stage = Stage::Sustain;
+          state.stageSamples = 0;
+          state.level = sustain;
+        }
+        break;
+      }
+      case Stage::Sustain:
+        state.level = sustain;
+        break;
+      case Stage::Release: {
+        double t = double(state.stageSamples) / double(releaseSamples);
+        state.level = state.releaseStartLevel * (1.0 - t);
+        if (state.stageSamples >= releaseSamples) {
+          state.stage = Stage::Idle;
+          state.stageSamples = 0;
+          state.level = 0.0;
+        }
+        break;
+      }
+      case Stage::Idle:
+        state.level = 0.0;
+        break;
+      }
+    });
+  }
+
+  SHVar activateExponential(SHContext *context, const SHVar &input) {
+    return processEnvelope(input, [](ChannelState &state, double sustain, uint64_t attackSamples, uint64_t decaySamples,
+                                     uint64_t releaseSamples) {
+      // Exponential curve coefficient (higher = faster curve, 5.0 gives natural envelope feel)
+      constexpr double EXP_COEFF = 5.0;
+
+      switch (state.stage) {
+      case Stage::Attack: {
+        double t = double(state.stageSamples) / double(attackSamples);
+        // Exponential attack: 1 - e^(-kt)
+        state.level = 1.0 - std::exp(-EXP_COEFF * t);
+        if (state.stageSamples >= attackSamples) {
+          state.stage = Stage::Decay;
+          state.stageSamples = 0;
+          state.level = 1.0;
+        }
+        break;
+      }
+      case Stage::Decay: {
+        double t = double(state.stageSamples) / double(decaySamples);
+        // Exponential decay from 1.0 to sustain
+        state.level = sustain + (1.0 - sustain) * std::exp(-EXP_COEFF * t);
+        if (state.stageSamples >= decaySamples) {
+          state.stage = Stage::Sustain;
+          state.stageSamples = 0;
+          state.level = sustain;
+        }
+        break;
+      }
+      case Stage::Sustain:
+        state.level = sustain;
+        break;
+      case Stage::Release: {
+        double t = double(state.stageSamples) / double(releaseSamples);
+        // Exponential release from releaseStartLevel to 0
+        state.level = state.releaseStartLevel * std::exp(-EXP_COEFF * t);
+        if (state.stageSamples >= releaseSamples) {
+          state.stage = Stage::Idle;
+          state.stageSamples = 0;
+          state.level = 0.0;
+        }
+        break;
+      }
+      case Stage::Idle:
+        state.level = 0.0;
+        break;
+      }
+    });
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return activateExponential(context, input); }
+};
+
+// =============================================================================
+// State Variable Filter (SVF)
+// =============================================================================
+
+struct Filter {
+  enum class FilterType { Lowpass, Highpass, Bandpass, Notch };
+  DECL_ENUM_INFO(FilterType, FilterType, "Type of filter response.", 'filt');
+
+  // Parameters
+  PARAM_VAR(_type, "Type", "Filter type (Lowpass, Highpass, Bandpass, Notch).", {FilterTypeEnumInfo::Type});
+  PARAM_PARAMVAR(_cutoff, "Cutoff", "Cutoff frequency in Hz.", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_PARAMVAR(_resonance, "Resonance", "Resonance amount (0.0 to 1.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_type), PARAM_IMPL_FOR(_cutoff), PARAM_IMPL_FOR(_resonance));
+
+  // Per-channel SVF state (Cytomic/Vadim Zavalishin style)
+  struct SVFState {
+    double ic1eq{0.0}; // Integrator 1 state
+    double ic2eq{0.0}; // Integrator 2 state
+  };
+  std::array<SVFState, MAX_CHANNELS> _svfStates{};
+
+  std::vector<float> _buffer;
+
+  SHVar *_deviceVar{nullptr};
+  Device *_device{nullptr};
+
+  Filter() {
+    _type = Var::Enum(FilterType::Lowpass, CoreCC, FilterTypeEnumInfo::TypeId);
+    _cutoff = Var(1000.0);   // 1kHz default cutoff
+    _resonance = Var(0.5);   // 50% resonance
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("State Variable Filter (SVF) with Lowpass, Highpass, Bandpass, and Notch modes. "
+                   "Cutoff and Resonance can be modulated for filter sweeps and effects.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Audio signal to filter."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Filtered audio signal."); }
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+
+    FilterType type = FilterType(_type.payload.enumValue);
+    switch (type) {
+    case FilterType::Lowpass:
+      OVERRIDE_ACTIVATE(data, activateLowpass);
+      break;
+    case FilterType::Highpass:
+      OVERRIDE_ACTIVATE(data, activateHighpass);
+      break;
+    case FilterType::Bandpass:
+      OVERRIDE_ACTIVATE(data, activateBandpass);
+      break;
+    case FilterType::Notch:
+      OVERRIDE_ACTIVATE(data, activateNotch);
+      break;
+    }
+    return CoreInfo::AudioType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    _deviceVar = referenceVariable(context, "Audio.Device");
+    if (_deviceVar->valueType == SHType::Object) {
+      _device = reinterpret_cast<Device *>(_deviceVar->payload.objectValue);
+    }
+
+    // Reset filter states
+    for (auto &state : _svfStates) {
+      state = SVFState{};
+    }
+  }
+
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+
+    if (_deviceVar) {
+      releaseVariable(_deviceVar);
+      _deviceVar = nullptr;
+      _device = nullptr;
+    }
+  }
+
+  // SVF core processing (Cytomic/Vadim Zavalishin TPT implementation)
+  // Returns: lowpass, highpass, bandpass outputs via reference
+  inline void processSVF(double v0, double g, double k, SVFState &state, double &lowpass, double &highpass, double &bandpass) {
+    // TPT SVF equations
+    double v1 = (state.ic1eq + g * (v0 - state.ic2eq)) / (1.0 + g * (g + k));
+    double v2 = state.ic2eq + g * v1;
+
+    // Update state
+    state.ic1eq = 2.0 * v1 - state.ic1eq;
+    state.ic2eq = 2.0 * v2 - state.ic2eq;
+
+    // Outputs
+    lowpass = v2;
+    bandpass = v1;
+    highpass = v0 - k * v1 - v2;
+  }
+
+  template <FilterType Type> SHVar processFilter(SHContext *context, const SHVar &input) {
+    const auto &audio = input.payload.audioValue;
+    const uint32_t nsamples = audio.nsamples;
+    const uint32_t sampleRate = audioGetSampleRate(audio);
+    const uint32_t channels = audio.channels;
+
+    // Get parameters
+    const double cutoff = std::clamp(_cutoff.get().payload.floatValue, 20.0, double(sampleRate) * 0.49);
+    const double resonance = std::clamp(_resonance.get().payload.floatValue, 0.0, 1.0);
+
+    // SVF coefficients
+    // g = tan(π * cutoff / sampleRate)
+    const double g = std::tan(M_PI * cutoff / double(sampleRate));
+    // k = 2.0 - 2.0 * resonance (resonance 0 -> k=2, resonance 1 -> k=0)
+    // k=0 gives self-oscillation, we clamp to avoid instability
+    const double k = 2.0 - 2.0 * resonance * 0.99;
+
+    // Validate buffer size
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Filter: buffer size exceeds limits");
+    }
+
+    _buffer.resize(channels * nsamples);
+
+    // Process each channel independently
+    for (uint32_t ch = 0; ch < channels; ch++) {
+      const float *inSamples = audio.samples + ch * nsamples;
+      float *outSamples = _buffer.data() + ch * nsamples;
+      SVFState &state = _svfStates[ch];
+
+      for (uint32_t i = 0; i < nsamples; i++) {
+        double v0 = double(inSamples[i]);
+        double lowpass, highpass, bandpass;
+        processSVF(v0, g, k, state, lowpass, highpass, bandpass);
+
+        // Select output based on filter type (compile-time dispatch)
+        if constexpr (Type == FilterType::Lowpass) {
+          outSamples[i] = float(lowpass);
+        } else if constexpr (Type == FilterType::Highpass) {
+          outSamples[i] = float(highpass);
+        } else if constexpr (Type == FilterType::Bandpass) {
+          outSamples[i] = float(bandpass);
+        } else if constexpr (Type == FilterType::Notch) {
+          // Notch = lowpass + highpass
+          outSamples[i] = float(lowpass + highpass);
+        }
+      }
+    }
+
+    return Var(makeAudio(_buffer.data(), nsamples, sampleRate, uint8_t(channels)));
+  }
+
+  SHVar activateLowpass(SHContext *context, const SHVar &input) { return processFilter<FilterType::Lowpass>(context, input); }
+  SHVar activateHighpass(SHContext *context, const SHVar &input) { return processFilter<FilterType::Highpass>(context, input); }
+  SHVar activateBandpass(SHContext *context, const SHVar &input) { return processFilter<FilterType::Bandpass>(context, input); }
+  SHVar activateNotch(SHContext *context, const SHVar &input) { return processFilter<FilterType::Notch>(context, input); }
+
+  SHVar activate(SHContext *context, const SHVar &input) { return activateLowpass(context, input); }
+};
+
 } // namespace Synth
 } // namespace Audio
 } // namespace shards
@@ -718,6 +1133,10 @@ SHARDS_REGISTER_FN(synth) {
   REGISTER_ENUM(Oscillator::WaveformEnumInfo);
   REGISTER_ENUM(Oscillator::FMModeEnumInfo);
   REGISTER_ENUM(Noise::NoiseTypeEnumInfo);
+  REGISTER_ENUM(Envelope::EnvelopeCurveEnumInfo);
+  REGISTER_ENUM(Filter::FilterTypeEnumInfo);
   REGISTER_SHARD("Audio.Oscillator", Oscillator);
   REGISTER_SHARD("Audio.Noise", Noise);
+  REGISTER_SHARD("Audio.Envelope", Envelope);
+  REGISTER_SHARD("Audio.Filter", Filter);
 }

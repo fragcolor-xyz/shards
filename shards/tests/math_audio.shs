@@ -1047,6 +1047,234 @@
   Msg("MulAdd variable params test passed!")
 })
 
+; ============================================================================
+; Audio.Envelope (ADSR) Tests
+; ============================================================================
+
+@wire(test-audio-envelope-basic {
+  Msg("Testing Audio.Envelope basic functionality...")
+
+  ; Create a simple gate signal (all positive = gate on for entire buffer)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100) = gate-on
+
+  ; Apply envelope with defaults
+  gate-on | Audio.Envelope = envelope-result
+  envelope-result | Log("Basic envelope with gate on")
+
+  ; Create gate off signal (all zeros)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.0 Samples: 256 SampleRate: 44100) = gate-off
+  gate-off | Audio.Envelope = release-result
+  release-result | Log("Envelope with gate off (release)")
+
+  Msg("Audio.Envelope basic tests passed!")
+})
+
+@wire(test-audio-envelope-params {
+  Msg("Testing Audio.Envelope parameter variations...")
+
+  ; Generate gate signal
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100) = gate
+
+  ; Fast attack, slow release
+  gate | Audio.Envelope(Attack: 0.001 Decay: 0.05 Sustain: 0.8 Release: 1.0) = fast-attack
+  fast-attack | Log("Fast attack (1ms), slow release (1s)")
+
+  ; Slow attack, fast release
+  gate | Audio.Envelope(Attack: 0.5 Decay: 0.1 Sustain: 0.5 Release: 0.01) = slow-attack
+  slow-attack | Log("Slow attack (500ms), fast release (10ms)")
+
+  ; Percussive (no sustain)
+  gate | Audio.Envelope(Attack: 0.001 Decay: 0.2 Sustain: 0.0 Release: 0.1) = percussive
+  percussive | Log("Percussive envelope (0 sustain)")
+
+  ; Full sustain (organ-like)
+  gate | Audio.Envelope(Attack: 0.01 Decay: 0.0 Sustain: 1.0 Release: 0.1) = organ
+  organ | Log("Organ envelope (full sustain)")
+
+  Msg("Audio.Envelope parameter tests passed!")
+})
+
+@wire(test-audio-envelope-curves {
+  Msg("Testing Audio.Envelope curve types...")
+
+  ; Generate gate signal
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100) = gate
+
+  ; Linear curve
+  gate | Audio.Envelope(Attack: 0.1 Decay: 0.1 Sustain: 0.7 Release: 0.2 Curve: EnvelopeCurve::Linear) = linear
+  linear | Log("Linear envelope curve")
+
+  ; Exponential curve (default)
+  gate | Audio.Envelope(Attack: 0.1 Decay: 0.1 Sustain: 0.7 Release: 0.2 Curve: EnvelopeCurve::Exponential) = exponential
+  exponential | Log("Exponential envelope curve")
+
+  Msg("Audio.Envelope curve tests passed!")
+})
+
+@wire(test-audio-envelope-vca {
+  Msg("Testing Audio.Envelope as VCA...")
+
+  ; Generate oscillator and gate
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100) = oscillator
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100) = gate
+
+  ; Generate envelope
+  gate | Audio.Envelope(Attack: 0.01 Decay: 0.1 Sustain: 0.7 Release: 0.3) = envelope
+
+  ; Apply envelope to oscillator (VCA)
+  oscillator | Math.Multiply(envelope) = shaped-sound
+  shaped-sound | Log("Oscillator shaped by ADSR envelope")
+
+  ; FM synthesis with envelope
+  none | Audio.Oscillator(Frequency: 220.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100)
+       | Audio.Oscillator(Frequency: 440.0 Index: 3.0) = fm-audio
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100)
+       | Audio.Envelope(Attack: 0.005 Decay: 0.2 Sustain: 0.0 Release: 0.1) = fm-envelope
+  fm-audio | Math.Multiply(fm-envelope) = fm-with-envelope
+  fm-with-envelope | Log("FM audio shaped by percussive envelope")
+
+  Msg("Audio.Envelope VCA tests passed!")
+})
+
+; ============================================================================
+; Audio.Filter (SVF) Tests
+; ============================================================================
+
+@wire(test-audio-filter-types {
+  Msg("Testing Audio.Filter types...")
+
+  ; Generate white noise for filtering (shows filter response clearly)
+  none | Audio.Noise(Type: NoiseType::White Amplitude: 0.5 Samples: 256 SampleRate: 44100) = noise
+
+  ; Lowpass filter
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 1000.0 Resonance: 0.5) = lowpass
+  lowpass | Log("Lowpass filter at 1kHz")
+
+  ; Highpass filter
+  noise | Audio.Filter(Type: FilterType::Highpass Cutoff: 1000.0 Resonance: 0.5) = highpass
+  highpass | Log("Highpass filter at 1kHz")
+
+  ; Bandpass filter
+  noise | Audio.Filter(Type: FilterType::Bandpass Cutoff: 1000.0 Resonance: 0.7) = bandpass
+  bandpass | Log("Bandpass filter at 1kHz")
+
+  ; Notch filter
+  noise | Audio.Filter(Type: FilterType::Notch Cutoff: 1000.0 Resonance: 0.5) = notch
+  notch | Log("Notch filter at 1kHz")
+
+  Msg("Audio.Filter type tests passed!")
+})
+
+@wire(test-audio-filter-resonance {
+  Msg("Testing Audio.Filter resonance...")
+
+  ; Generate noise
+  none | Audio.Noise(Type: NoiseType::White Amplitude: 0.5 Samples: 256 SampleRate: 44100) = noise
+
+  ; Low resonance
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 500.0 Resonance: 0.1) = low-res
+  low-res | Log("Lowpass with low resonance (0.1)")
+
+  ; Medium resonance
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 500.0 Resonance: 0.5) = mid-res
+  mid-res | Log("Lowpass with medium resonance (0.5)")
+
+  ; High resonance (near self-oscillation)
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 500.0 Resonance: 0.95) = high-res
+  high-res | Log("Lowpass with high resonance (0.95)")
+
+  Msg("Audio.Filter resonance tests passed!")
+})
+
+@wire(test-audio-filter-sweep {
+  Msg("Testing Audio.Filter with modulated cutoff...")
+
+  ; Generate noise
+  none | Audio.Noise(Type: NoiseType::White Amplitude: 0.5 Samples: 256 SampleRate: 44100) = noise
+
+  ; Different cutoff frequencies
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 200.0 Resonance: 0.6) = low-cutoff
+  low-cutoff | Log("Lowpass at 200Hz")
+
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 2000.0 Resonance: 0.6) = mid-cutoff
+  mid-cutoff | Log("Lowpass at 2kHz")
+
+  noise | Audio.Filter(Type: FilterType::Lowpass Cutoff: 8000.0 Resonance: 0.6) = high-cutoff
+  high-cutoff | Log("Lowpass at 8kHz")
+
+  Msg("Audio.Filter sweep tests passed!")
+})
+
+@wire(test-audio-filter-chain {
+  Msg("Testing Audio.Filter chained operations...")
+
+  ; Generate oscillator
+  none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 0.5 Samples: 256 SampleRate: 44100) = saw
+
+  ; Classic subtractive synth: Oscillator -> Lowpass
+  saw | Audio.Filter(Type: FilterType::Lowpass Cutoff: 800.0 Resonance: 0.7) = filtered-saw
+  filtered-saw | Log("Sawtooth through lowpass (subtractive)")
+
+  ; Double filter (12dB/oct -> 24dB/oct effective slope)
+  saw | Audio.Filter(Type: FilterType::Lowpass Cutoff: 600.0 Resonance: 0.3)
+      | Audio.Filter(Type: FilterType::Lowpass Cutoff: 600.0 Resonance: 0.3) = double-filtered
+  double-filtered | Log("Double lowpass (steeper slope)")
+
+  ; Lowpass then highpass (bandpass effect)
+  none | Audio.Noise(Type: NoiseType::White Amplitude: 0.5 Samples: 256 SampleRate: 44100)
+       | Audio.Filter(Type: FilterType::Lowpass Cutoff: 2000.0 Resonance: 0.3)
+       | Audio.Filter(Type: FilterType::Highpass Cutoff: 500.0 Resonance: 0.3) = band-limited
+  band-limited | Log("LP then HP filter chain")
+
+  Msg("Audio.Filter chain tests passed!")
+})
+
+; ============================================================================
+; Complete Synth Workflow Test (Oscillator + Envelope + Filter)
+; ============================================================================
+
+@wire(test-audio-synth-workflow {
+  Msg("Testing complete synth workflow (VCO + VCF + VCA)...")
+
+  ; Classic subtractive synth patch:
+  ; VCO (sawtooth) -> VCF (lowpass with envelope) -> VCA (amplitude envelope)
+
+  ; Generate sawtooth oscillator (VCO)
+  none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Sawtooth Amplitude: 1.0 Samples: 1024 SampleRate: 44100) = vco
+
+  ; Generate gate
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 1024 SampleRate: 44100) = gate
+
+  ; Generate VCA envelope (amplitude)
+  gate | Audio.Envelope(Attack: 0.01 Decay: 0.2 Sustain: 0.6 Release: 0.5) = vca-env
+  vca-env | Log("VCA envelope")
+
+  ; VCO -> VCF (static filter for this test)
+  vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 1200.0 Resonance: 0.6) = vcf-out
+  vcf-out | Log("VCO -> VCF output")
+
+  ; VCF -> VCA
+  vcf-out | Math.Multiply(vca-env) = synth-out
+  synth-out | Log("Complete synth output (VCO->VCF->VCA)")
+
+  ; FM synth with filter and envelope
+  none | Audio.Oscillator(Frequency: 220.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100)
+       | Audio.Oscillator(Frequency: 440.0 Index: 2.0 Amplitude: 0.8) = fm-vco
+  fm-vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 2000.0 Resonance: 0.4)
+         | Math.Multiply(vca-env | Slice(To: 512)) = fm-synth
+  fm-synth | Log("FM synth with filter and envelope")
+
+  ; Noise + filter for hi-hat style sound
+  none | Audio.Noise(Type: NoiseType::White Amplitude: 0.8 Samples: 256 SampleRate: 44100) = noise-vco
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100)
+       | Audio.Envelope(Attack: 0.001 Decay: 0.05 Sustain: 0.0 Release: 0.05) = hihat-env
+  noise-vco | Audio.Filter(Type: FilterType::Highpass Cutoff: 6000.0 Resonance: 0.3)
+            | Math.Multiply(hihat-env) = hihat
+  hihat | Log("Hi-hat (noise + HP filter + percussive envelope)")
+
+  Msg("Complete synth workflow tests passed!")
+})
+
 @mesh(main)
 @schedule(main test-audio-binary)
 @schedule(main test-audio-unary)
@@ -1089,4 +1317,13 @@
 @schedule(main test-audio-muladd-stereo)
 @schedule(main test-audio-muladd-chain)
 @schedule(main test-audio-muladd-variable-params)
+@schedule(main test-audio-envelope-basic)
+@schedule(main test-audio-envelope-params)
+@schedule(main test-audio-envelope-curves)
+@schedule(main test-audio-envelope-vca)
+@schedule(main test-audio-filter-types)
+@schedule(main test-audio-filter-resonance)
+@schedule(main test-audio-filter-sweep)
+@schedule(main test-audio-filter-chain)
+@schedule(main test-audio-synth-workflow)
 @run(main)
