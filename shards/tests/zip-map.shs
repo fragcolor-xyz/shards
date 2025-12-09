@@ -84,3 +84,6 @@ TypeOf({Zip([t [@f4(0.0) @f4(1.0)]] Keys: ["a" "b"])}) | Log("t") | Assert.Is(@t
 
 ; String manipulation
 {greeting: "hello" name: "world"} | Map({String.ToUpper}) | Assert.Is({greeting: "HELLO" name: "WORLD"})
+
+; Heterogeneous table values (mixed types)
+{count: 42 name: "test" value: 3.14} | Map({ToString}) | Assert.Is({count: "42" name: "test" value: "3.14"})

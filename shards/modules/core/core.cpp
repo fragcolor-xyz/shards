@@ -1190,46 +1190,25 @@ struct Entries {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  void destroy() { destroyVar(_output); }
-
   SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
 
-  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
-
-  void cleanup(SHContext *ctx) {
-    // Clear sequence elements but keep the array allocated for reuse
-    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
-      destroyVar(_output.payload.seqValue.elements[i]);
-    }
-    _output.payload.seqValue.len = 0;
-  }
+  // Reset to empty SeqVar to fully release memory on wire cleanup
+  void cleanup(SHContext *ctx) { _output = {}; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &seq = _output.payload.seqValue;
+    _output.clear();
+
     const auto &table = input.payload.tableValue;
-    uint32_t tableSize = table.api->tableSize(table);
-
-    // Resize to match table size
-    if (seq.len > tableSize) {
-      // Destroy excess elements
-      for (uint32_t i = tableSize; i < seq.len; i++) {
-        destroyVar(seq.elements[i]);
-      }
-    }
-    arrayResize(seq, tableSize);
-
-    uint32_t i = 0;
     for (auto &[k, v] : table) {
       _pair[0] = k;
       _pair[1] = v;
-      cloneVar(seq.elements[i], Var(_pair));
-      i++;
+      _output.push_back(Var(_pair));
     }
     return _output;
   }
 
 private:
-  SHVar _output{};
+  SeqVar _output{};
   std::array<SHVar, 2> _pair;
 };
 
@@ -1245,41 +1224,22 @@ struct Keys {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  void destroy() { destroyVar(_output); }
-
   SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
 
-  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
-
-  void cleanup(SHContext *ctx) {
-    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
-      destroyVar(_output.payload.seqValue.elements[i]);
-    }
-    _output.payload.seqValue.len = 0;
-  }
+  void cleanup(SHContext *ctx) { _output = {}; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &seq = _output.payload.seqValue;
+    _output.clear();
+
     const auto &table = input.payload.tableValue;
-    uint32_t tableSize = table.api->tableSize(table);
-
-    if (seq.len > tableSize) {
-      for (uint32_t i = tableSize; i < seq.len; i++) {
-        destroyVar(seq.elements[i]);
-      }
-    }
-    arrayResize(seq, tableSize);
-
-    uint32_t i = 0;
     for (auto &[k, v] : table) {
-      cloneVar(seq.elements[i], k);
-      i++;
+      _output.push_back(k);
     }
     return _output;
   }
 
 private:
-  SHVar _output{};
+  SeqVar _output{};
 };
 
 // Values: Extracts all values from a table as a sequence
@@ -1294,41 +1254,22 @@ struct Values {
   static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
 
-  void destroy() { destroyVar(_output); }
-
   SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
 
-  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
-
-  void cleanup(SHContext *ctx) {
-    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
-      destroyVar(_output.payload.seqValue.elements[i]);
-    }
-    _output.payload.seqValue.len = 0;
-  }
+  void cleanup(SHContext *ctx) { _output = {}; }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto &seq = _output.payload.seqValue;
+    _output.clear();
+
     const auto &table = input.payload.tableValue;
-    uint32_t tableSize = table.api->tableSize(table);
-
-    if (seq.len > tableSize) {
-      for (uint32_t i = tableSize; i < seq.len; i++) {
-        destroyVar(seq.elements[i]);
-      }
-    }
-    arrayResize(seq, tableSize);
-
-    uint32_t i = 0;
     for (auto &[k, v] : table) {
-      cloneVar(seq.elements[i], v);
-      i++;
+      _output.push_back(v);
     }
     return _output;
   }
 
 private:
-  SHVar _output{};
+  SeqVar _output{};
 };
 
 struct Fold {
