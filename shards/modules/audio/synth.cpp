@@ -5,6 +5,7 @@
 #include <shards/core/params.hpp>
 #include <miniaudio.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <random>
 
@@ -120,6 +121,37 @@ inline void simdTanhf(float *out, const float *in, size_t count) {
 }
 
 // =============================================================================
+// SIMD-optimized exp2 for exponential FM
+// =============================================================================
+
+inline void simdExp2f(float *out, const float *in, size_t count) {
+#if defined(SYNTH_HAS_ACCELERATE)
+  int n = static_cast<int>(count);
+  vvexp2f(out, in, &n);
+#elif defined(SYNTH_HAS_SLEEF)
+  size_t i = 0;
+#if defined(__AVX2__)
+  for (; i + 8 <= count; i += 8) {
+    __m256 va = _mm256_loadu_ps(in + i);
+    __m256 vr = Sleef_exp2f8_u10avx2(va);
+    _mm256_storeu_ps(out + i, vr);
+  }
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+  for (; i + 4 <= count; i += 4) {
+    float32x4_t va = vld1q_f32(in + i);
+    float32x4_t vr = Sleef_exp2f4_u10advsimd(va);
+    vst1q_f32(out + i, vr);
+  }
+#endif
+  for (; i < count; ++i)
+    out[i] = std::exp2(in[i]);
+#else
+  for (size_t i = 0; i < count; ++i)
+    out[i] = std::exp2(in[i]);
+#endif
+}
+
+// =============================================================================
 // Oscillator with FM support and multiple waveforms
 // =============================================================================
 
@@ -127,24 +159,31 @@ struct Oscillator {
   enum class Waveform { Sine, Triangle, Sawtooth, Square };
   DECL_ENUM_INFO(Waveform, Waveform, "Type of waveform for the oscillator output.", 'wave');
 
+  enum class FMMode { Linear, Exponential };
+  DECL_ENUM_INFO(FMMode, FMMode, "FM synthesis mode: Linear (phase modulation) or Exponential (1V/oct style).", 'fmmd');
+
   // Parameters using PARAM macros
   PARAM_VAR(_waveform, "Waveform", "The waveform type (Sine, Triangle, Sawtooth, Square).", {WaveformEnumInfo::Type});
   PARAM_PARAMVAR(_frequency, "Frequency", "The base frequency in Hz.", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_amplitude, "Amplitude", "Output amplitude (0.0 to 1.0).", {CoreInfo::FloatType, CoreInfo::FloatVarType});
   PARAM_PARAMVAR(_index, "Index", "Modulation index - controls FM depth when audio input is provided.",
                  {CoreInfo::FloatType, CoreInfo::FloatVarType});
+  PARAM_VAR(_fmMode, "FMMode", "FM synthesis mode: Linear (phase modulation, DX7-style) or Exponential (1V/oct, modular-style).",
+            {FMModeEnumInfo::Type});
   PARAM_VAR(_channels, "Channels", "Number of output channels.", {CoreInfo::IntType});
   PARAM_VAR(_sampleRate, "SampleRate", "Sample rate in Hz. Ignored if inside Audio.Channel.", {CoreInfo::IntType});
   PARAM_VAR(_samples, "Samples", "Number of samples per buffer. Ignored if inside Audio.Channel.", {CoreInfo::IntType});
 
   PARAM_IMPL(PARAM_IMPL_FOR(_waveform), PARAM_IMPL_FOR(_frequency), PARAM_IMPL_FOR(_amplitude), PARAM_IMPL_FOR(_index),
-             PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_samples));
+             PARAM_IMPL_FOR(_fmMode), PARAM_IMPL_FOR(_channels), PARAM_IMPL_FOR(_sampleRate), PARAM_IMPL_FOR(_samples));
 
   // Internal state
-  double _phase{0.0};
+  double _phase{0.0};                                // For carrier mode (all channels share)
+  std::array<double, MAX_CHANNELS> _channelPhases{}; // For modulated modes (per-channel)
   std::vector<float> _buffer;
   std::vector<float> _phaseBuffer;
   std::vector<float> _modPhaseBuffer;
+  std::vector<float> _freqScaleBuffer; // For exponential FM: stores 2^(modIndex * modulator)
 
   SHVar *_deviceVar{nullptr};
   Device *_device{nullptr};
@@ -154,6 +193,7 @@ struct Oscillator {
     _frequency = Var(440.0);
     _amplitude = Var(1.0);
     _index = Var(1.0);
+    _fmMode = Var::Enum(FMMode::Linear, CoreCC, FMModeEnumInfo::TypeId);
     _channels = Var(1);
     _sampleRate = Var(44100);
     _samples = Var(1024);
@@ -162,7 +202,8 @@ struct Oscillator {
   static SHOptionalString help() {
     return SHCCSTR("Audio oscillator with multiple waveforms and FM synthesis support. "
                    "When input is None, generates a waveform at the specified frequency. "
-                   "When input is Audio, uses that signal as phase modulation (FM synthesis). "
+                   "When input is Audio, uses it for FM synthesis. Linear mode (default) adds modulator to phase (DX7-style). "
+                   "Exponential mode scales frequency by 2^(Index*modulator) for 1V/oct modular-style FM. "
                    "Multiple oscillators can be chained for complex FM patches.");
   }
 
@@ -200,20 +241,32 @@ struct Oscillator {
         break;
       }
     } else {
+      const FMMode fmMode = FMMode(_fmMode.payload.enumValue);
+      const bool isLinear = (fmMode == FMMode::Linear);
+
+// Dispatch macro for Waveform × FMMode combinations
+#define DISPATCH_MODULATED(W)                                                                                                      \
+  if (isLinear) {                                                                                                                  \
+    OVERRIDE_ACTIVATE(data, activateModulatedLinear<W>);                                                                           \
+  } else {                                                                                                                         \
+    OVERRIDE_ACTIVATE(data, activateModulatedExp<W>);                                                                              \
+  }
+
       switch (waveform) {
       case Waveform::Sine:
-        OVERRIDE_ACTIVATE(data, activateModulated<Waveform::Sine>);
+        DISPATCH_MODULATED(Waveform::Sine);
         break;
       case Waveform::Triangle:
-        OVERRIDE_ACTIVATE(data, activateModulated<Waveform::Triangle>);
+        DISPATCH_MODULATED(Waveform::Triangle);
         break;
       case Waveform::Sawtooth:
-        OVERRIDE_ACTIVATE(data, activateModulated<Waveform::Sawtooth>);
+        DISPATCH_MODULATED(Waveform::Sawtooth);
         break;
       case Waveform::Square:
-        OVERRIDE_ACTIVATE(data, activateModulated<Waveform::Square>);
+        DISPATCH_MODULATED(Waveform::Square);
         break;
       }
+#undef DISPATCH_MODULATED
     }
     return CoreInfo::AudioType;
   }
@@ -227,6 +280,7 @@ struct Oscillator {
     }
 
     _phase = 0.0;
+    _channelPhases.fill(0.0);
   }
 
   void cleanup(SHContext *context) {
@@ -327,12 +381,13 @@ struct Oscillator {
     return Var(makeAudio(_buffer.data(), uint32_t(nsamples), sampleRate, uint8_t(channels)));
   }
 
-  // Phase modulation from input audio - templated for compile-time waveform dispatch
-  template <Waveform W> SHVar activateModulated(SHContext *context, const SHVar &input) {
+  // Linear FM (phase modulation) from input audio - templated for compile-time waveform dispatch
+  // This is the classic DX7-style FM where modulator is added directly to phase
+  template <Waveform W> SHVar activateModulatedLinear(SHContext *context, const SHVar &input) {
     const auto &audio = input.payload.audioValue;
     const uint32_t nsamples = audio.nsamples;
     const uint32_t sampleRate = audioGetSampleRate(audio);
-    const double freq = _frequency.get().payload.floatValue;
+    const double baseFreq = _frequency.get().payload.floatValue;
     const float amp = float(_amplitude.get().payload.floatValue);
     const float modIndex = float(_index.get().payload.floatValue);
 
@@ -347,7 +402,7 @@ struct Oscillator {
     _phaseBuffer.resize(nsamples);
     _modPhaseBuffer.resize(nsamples);
 
-    const double phaseInc = (TWO_PI * freq) / double(sampleRate);
+    const double phaseInc = (TWO_PI * baseFreq) / double(sampleRate);
 
     // Build base phase array once (shared across all channels)
     double phase = _phase;
@@ -367,6 +422,64 @@ struct Oscillator {
       for (uint32_t i = 0; i < nsamples; i++) {
         _modPhaseBuffer[i] = _phaseBuffer[i] + modIndex * modSamples[i];
       }
+
+      // Generate waveform
+      generateWaveform<W>(outSamples, _modPhaseBuffer.data(), nsamples);
+
+      // Apply amplitude
+      for (uint32_t i = 0; i < nsamples; i++) {
+        outSamples[i] *= amp;
+      }
+    }
+
+    return Var(makeAudio(_buffer.data(), nsamples, sampleRate, uint8_t(channels)));
+  }
+
+  // Exponential FM from input audio - templated for compile-time waveform dispatch
+  // This is modular/analog-style FM where modulator scales frequency exponentially (1V/oct style)
+  // freq(t) = baseFreq * 2^(modIndex * modulator(t))
+  template <Waveform W> SHVar activateModulatedExp(SHContext *context, const SHVar &input) {
+    const auto &audio = input.payload.audioValue;
+    const uint32_t nsamples = audio.nsamples;
+    const uint32_t sampleRate = audioGetSampleRate(audio);
+    const double baseFreq = _frequency.get().payload.floatValue;
+    const float amp = float(_amplitude.get().payload.floatValue);
+    const float modIndex = float(_index.get().payload.floatValue);
+
+    const uint32_t channels = audio.channels;
+
+    // Validate buffer size to prevent OOM
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.Oscillator: buffer size exceeds limits");
+    }
+
+    _buffer.resize(channels * nsamples);
+    _modPhaseBuffer.resize(nsamples);
+    _freqScaleBuffer.resize(nsamples);
+
+    const double invSampleRate = 1.0 / double(sampleRate);
+
+    // Process each channel independently with per-channel phase tracking
+    // This matches linear FM behavior where each channel is modulated independently
+    for (uint32_t ch = 0; ch < channels; ch++) {
+      const float *modSamples = audio.samples + ch * nsamples;
+      float *outSamples = _buffer.data() + ch * nsamples;
+
+      // Compute frequency scale factors: 2^(modIndex * modulator)
+      // Clamp exponent to ±10 octaves to prevent extreme frequencies and numerical instability
+      for (uint32_t i = 0; i < nsamples; i++) {
+        _freqScaleBuffer[i] = std::clamp(modIndex * modSamples[i], -10.0f, 10.0f);
+      }
+      simdExp2f(_freqScaleBuffer.data(), _freqScaleBuffer.data(), nsamples);
+
+      // Accumulate phase with variable frequency using per-channel phase state
+      double phase = _channelPhases[ch];
+      for (uint32_t i = 0; i < nsamples; i++) {
+        _modPhaseBuffer[i] = float(phase);
+        double freq = baseFreq * double(_freqScaleBuffer[i]);
+        phase += TWO_PI * freq * invSampleRate;
+      }
+      _channelPhases[ch] = std::fmod(phase, TWO_PI);
 
       // Generate waveform
       generateWaveform<W>(outSamples, _modPhaseBuffer.data(), nsamples);
@@ -603,6 +716,7 @@ struct Noise {
 SHARDS_REGISTER_FN(synth) {
   using namespace shards::Audio::Synth;
   REGISTER_ENUM(Oscillator::WaveformEnumInfo);
+  REGISTER_ENUM(Oscillator::FMModeEnumInfo);
   REGISTER_ENUM(Noise::NoiseTypeEnumInfo);
   REGISTER_SHARD("Audio.Oscillator", Oscillator);
   REGISTER_SHARD("Audio.Noise", Noise);
