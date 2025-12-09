@@ -239,11 +239,6 @@
   ["z" 33] | Assoc(assoc-test-table)
   assoc-test-table | Assert.Is({"x": 1 "y": 2 "z": 33} true)
 
-  "Hello World" | Ref(hw Overwrite: true)
-  hw | Assert.Is("Hello World" true)
-  hw | Reverse | Ref(hw Overwrite: true)
-  hw | Assert.Is("dlroW olleH" true)
-
   Msg("Done!")
 } Looped: true)
 

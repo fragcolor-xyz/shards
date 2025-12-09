@@ -977,9 +977,10 @@ private:
 struct Map {
   static SHOptionalString help() {
     return SHCCSTR(
-        "Processes each element of a sequence or key-value pair of a table using the shards specified in the `Apply` parameter "
-        "and outputs the modified sequence or table. Note that this shard is able to use the $0 and $1 internal variables, "
-        "as well as $i for the current index.");
+        "Processes each element of a sequence or value of a table using the shards specified in the `Apply` parameter "
+        "and outputs the modified sequence or table. For sequences, $0 contains the current element and $i the index. "
+        "For tables, $0 contains the key, $1 the value, and $i the index. The action receives the value and should return "
+        "the transformed value.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The sequence or table to process."); }
@@ -988,7 +989,7 @@ struct Map {
 
   SHTypesInfo inputTypes() { return ForEachShard::_types; }
 
-  SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+  SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
 
   SHParametersInfo parameters() { return _params; }
 
@@ -1016,29 +1017,41 @@ struct Map {
       }
     }
 
-    if (data.inputType.basicType == SHType::Seq) {
+    _isTableInput = data.inputType.basicType == SHType::Table;
+
+    if (!_isTableInput) {
       if (data.inputType.seqTypes.len == 1) {
         dataCopy.inputType = data.inputType.seqTypes.elements[0];
       } else {
         dataCopy.inputType = CoreInfo::AnyType;
       }
       OVERRIDE_ACTIVATE(data, activateSeq);
-    } else { // Table
-      dataCopy.inputType = CoreInfo::AnySeqType;
-      OVERRIDE_ACTIVATE(data, activateTable);
-    }
-
-    // Add special variables
-    if (data.inputType.basicType == SHType::Seq) {
+      // $0 is the element
       _tmpInfo0.exposedType = dataCopy.inputType;
       arrayPush(dataCopy.shared, _tmpInfo0);
-    } else {
-      _tmpInfo0.exposedType = CoreInfo::AnyType;
+    } else { // Table
+      // For tables, input to action is the value
+      // Check if all value types are the same
+      if (data.inputType.table.types.len > 0) {
+        dataCopy.inputType = data.inputType.table.types.elements[0];
+        bool allSame = true;
+        for (uint32_t i = 1; i < data.inputType.table.types.len; i++) {
+          if (!matchTypes(dataCopy.inputType, data.inputType.table.types.elements[i], true, true, true)) {
+            allSame = false;
+            break;
+          }
+        }
+        if (!allSame) {
+          dataCopy.inputType = CoreInfo::AnyType;
+        }
+      } else {
+        dataCopy.inputType = CoreInfo::AnyType;
+      }
+      OVERRIDE_ACTIVATE(data, activateTable);
+      // $0 is the key, $1 is the value
+      _tmpInfo0.exposedType = CoreInfo::AnyType; // key type
       arrayPush(dataCopy.shared, _tmpInfo0);
-    }
-    // $1 always any type as it's always for table case
-    if (data.inputType.basicType == SHType::Table) {
-      _tmpInfo1.exposedType = CoreInfo::AnyType;
+      _tmpInfo1.exposedType = dataCopy.inputType; // value type
       arrayPush(dataCopy.shared, _tmpInfo1);
     }
 
@@ -1048,22 +1061,34 @@ struct Map {
 
     auto innerRes = _shards.compose(dataCopy);
     _outputSingleType = innerRes.outputType;
-    _outputType = {SHType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
+
+    if (_isTableInput) {
+      // For tables, output is a table with transformed values
+      _outputType = CoreInfo::AnyTableType;
+    } else {
+      _outputType = {SHType::Seq, {.seqTypes = {&_outputSingleType, 1, 0}}};
+    }
     return _outputType;
   }
 
   void warmup(SHContext *ctx) {
-    _output.valueType = SHType::Seq; // We need this to be set here to avoid undefined behavior when input is empty!
+    if (_isTableInput) {
+      // Initialize as table
+      _output.valueType = SHType::Table;
+      _output.payload.tableValue.api = &GetGlobals().TableInterface;
+      _output.payload.tableValue.opaque = new SHMap();
+    } else {
+      _output.valueType = SHType::Seq;
+    }
     _tmp0 = referenceVariable(ctx, "$0");
     _tmp1 = referenceVariable(ctx, "$1");
-    _tmpIndex = referenceVariable(ctx, "$i"); // New reference for index
+    _tmpIndex = referenceVariable(ctx, "$i");
     _shards.warmup(ctx);
   }
 
   void cleanup(SHContext *context) {
     _shards.cleanup(context);
     if (_tmp0) {
-      // _tmp0 is a reference, so we need to cleaning up like we do in Ref
       const auto rc = _tmp0->refcount;
       const auto flags = _tmp0->flags;
       memset(_tmp0, 0x0, sizeof(SHVar));
@@ -1073,7 +1098,6 @@ struct Map {
       _tmp0 = nullptr;
     }
     if (_tmp1) {
-      // _tmp1 is a reference, so we need to cleaning up like we do in Ref
       const auto rc = _tmp1->refcount;
       const auto flags = _tmp1->flags;
       memset(_tmp1, 0x0, sizeof(SHVar));
@@ -1099,7 +1123,7 @@ struct Map {
     for (uint32_t i = 0; i < input.payload.seqValue.len; i++) {
       auto &item = input.payload.seqValue.elements[i];
       assignVariableValue(*_tmp0, item);
-      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
+      assignVariableValue(*_tmpIndex, Var(int64_t(i)));
       auto state = _shards.activate<true>(context, item, output);
       if (state != SHWireState::Continue)
         break;
@@ -1112,22 +1136,23 @@ struct Map {
 
   SHVar activateTable(SHContext *context, const SHVar &input) {
     SHVar output{};
-    arrayResize(_output.payload.seqValue, 0);
-    const auto &table = input.payload.tableValue;
+    // Clear the output table
+    auto *outputTable = static_cast<SHMap *>(_output.payload.tableValue.opaque);
+    outputTable->clear();
+
+    const auto &inputTable = input.payload.tableValue;
     uint32_t i = 0;
-    for (auto &[k, v] : table) {
+    for (auto &[k, v] : inputTable) {
       assignVariableValue(*_tmp0, k);
       assignVariableValue(*_tmp1, v);
-      assignVariableValue(*_tmpIndex, Var(int64_t(i))); // Assign current index
-      _tableItem[0] = k;
-      _tableItem[1] = v;
-      const auto item = Var(_tableItem);
-      auto state = _shards.activate<true>(context, item, output);
+      assignVariableValue(*_tmpIndex, Var(int64_t(i)));
+      // Input to action is the value
+      auto state = _shards.activate<true>(context, v, output);
       if (state != SHWireState::Continue)
         break;
-      size_t index = _output.payload.seqValue.len;
-      arrayResize(_output.payload.seqValue, index + 1);
-      cloneVar(_output.payload.seqValue.elements[index], output);
+      // Insert key -> transformed value into output table
+      auto fk = shards::OwnedVar::Foreign(k);
+      outputTable->insert_or_assign(fk, output);
       i++;
     }
     return _output;
@@ -1137,7 +1162,7 @@ struct Map {
 
 private:
   static inline Parameters _params{{"Apply",
-                                    SHCCSTR("The function to apply to each item of the sequence or key-value pair of the table."),
+                                    SHCCSTR("The function to apply to each element of the sequence or value of the table."),
                                     {CoreInfo::Shards}}};
 
   SHVar _output{};
@@ -1146,11 +1171,164 @@ private:
   Type _outputType{};
   SHVar *_tmp0 = nullptr;
   SHVar *_tmp1 = nullptr;
-  SHVar *_tmpIndex = nullptr; // New member for index reference
+  SHVar *_tmpIndex = nullptr;
   SHExposedTypeInfo _tmpInfo0{"$0"};
   SHExposedTypeInfo _tmpInfo1{"$1"};
-  SHExposedTypeInfo _tmpInfoIndex{"$i"}; // New exposed info for index
-  std::array<SHVar, 2> _tableItem;
+  SHExposedTypeInfo _tmpInfoIndex{"$i"};
+  bool _isTableInput = false;
+};
+
+// Entries: Converts a table to a sequence of [key, value] pairs
+struct Entries {
+  static SHOptionalString help() {
+    return SHCCSTR("Converts a table to a sequence of [key, value] pairs.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The table to convert."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence of [key, value] pairs."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  void destroy() { destroyVar(_output); }
+
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
+
+  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
+
+  void cleanup(SHContext *ctx) {
+    // Clear sequence elements but keep the array allocated for reuse
+    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
+      destroyVar(_output.payload.seqValue.elements[i]);
+    }
+    _output.payload.seqValue.len = 0;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seq = _output.payload.seqValue;
+    const auto &table = input.payload.tableValue;
+    uint32_t tableSize = table.api->tableSize(table);
+
+    // Resize to match table size
+    if (seq.len > tableSize) {
+      // Destroy excess elements
+      for (uint32_t i = tableSize; i < seq.len; i++) {
+        destroyVar(seq.elements[i]);
+      }
+    }
+    arrayResize(seq, tableSize);
+
+    uint32_t i = 0;
+    for (auto &[k, v] : table) {
+      _pair[0] = k;
+      _pair[1] = v;
+      cloneVar(seq.elements[i], Var(_pair));
+      i++;
+    }
+    return _output;
+  }
+
+private:
+  SHVar _output{};
+  std::array<SHVar, 2> _pair;
+};
+
+// Keys: Extracts all keys from a table as a sequence
+struct Keys {
+  static SHOptionalString help() {
+    return SHCCSTR("Extracts all keys from a table as a sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The table to extract keys from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing all the keys from the table."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  void destroy() { destroyVar(_output); }
+
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
+
+  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
+
+  void cleanup(SHContext *ctx) {
+    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
+      destroyVar(_output.payload.seqValue.elements[i]);
+    }
+    _output.payload.seqValue.len = 0;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seq = _output.payload.seqValue;
+    const auto &table = input.payload.tableValue;
+    uint32_t tableSize = table.api->tableSize(table);
+
+    if (seq.len > tableSize) {
+      for (uint32_t i = tableSize; i < seq.len; i++) {
+        destroyVar(seq.elements[i]);
+      }
+    }
+    arrayResize(seq, tableSize);
+
+    uint32_t i = 0;
+    for (auto &[k, v] : table) {
+      cloneVar(seq.elements[i], k);
+      i++;
+    }
+    return _output;
+  }
+
+private:
+  SHVar _output{};
+};
+
+// Values: Extracts all values from a table as a sequence
+struct Values {
+  static SHOptionalString help() {
+    return SHCCSTR("Extracts all values from a table as a sequence.");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("The table to extract values from."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing all the values from the table."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnyTableType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  void destroy() { destroyVar(_output); }
+
+  SHTypeInfo compose(const SHInstanceData &data) { return CoreInfo::AnySeqType; }
+
+  void warmup(SHContext *ctx) { _output.valueType = SHType::Seq; }
+
+  void cleanup(SHContext *ctx) {
+    for (uint32_t i = 0; i < _output.payload.seqValue.len; i++) {
+      destroyVar(_output.payload.seqValue.elements[i]);
+    }
+    _output.payload.seqValue.len = 0;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    auto &seq = _output.payload.seqValue;
+    const auto &table = input.payload.tableValue;
+    uint32_t tableSize = table.api->tableSize(table);
+
+    if (seq.len > tableSize) {
+      for (uint32_t i = tableSize; i < seq.len; i++) {
+        destroyVar(seq.elements[i]);
+      }
+    }
+    arrayResize(seq, tableSize);
+
+    uint32_t i = 0;
+    for (auto &[k, v] : table) {
+      cloneVar(seq.elements[i], v);
+      i++;
+    }
+    return _output;
+  }
+
+private:
+  SHVar _output{};
 };
 
 struct Fold {
@@ -3697,6 +3875,9 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("IntRange", IntRangeShard);
 
   REGISTER_SHARD("Map", Map);
+  REGISTER_SHARD("Entries", Entries);
+  REGISTER_SHARD("Keys", Keys);
+  REGISTER_SHARD("Values", Values);
   REGISTER_SHARD("Fold", Fold);
   REGISTER_SHARD_ALIAS("Reduce", "Fold", Fold);
   REGISTER_SHARD("Erase", Erase);
