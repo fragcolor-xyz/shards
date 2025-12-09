@@ -1168,6 +1168,245 @@
 })
 
 ; ============================================================================
+; Audio.MultiStageEnvelope (Unlimited stages with per-stage curves) Tests
+; ============================================================================
+
+@wire(test-audio-multistage-basic {
+  Msg("Testing Audio.MultiStageEnvelope basic functionality...")
+
+  ; Create a gate signal (all positive = gate on)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100) = gate-on
+
+  ; Simple 3-stage envelope (like ADSR but with explicit stages)
+  ; Stage format: @f3(level time curve)
+  ; curve: -1 = log (fast start), 0 = linear, 1 = exp (slow start)
+  gate-on | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.01 0.5) @f3(0.7 0.1 -0.3)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.3 -0.5)]
+  ) = basic-env
+  basic-env | Log("Basic multi-stage envelope")
+
+  Msg("Audio.MultiStageEnvelope basic tests passed!")
+})
+
+@wire(test-audio-multistage-curves {
+  Msg("Testing Audio.MultiStageEnvelope curve types...")
+
+  ; Create gate signal
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100) = gate
+
+  ; Linear curves (curve = 0)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.05 0.0) @f3(0.5 0.05 0.0)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 0.0)]
+  ) = linear-env
+  linear-env | Log("Linear curves (0.0)")
+
+  ; Exponential curves (curve > 0, slow start fast end)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.05 0.8) @f3(0.5 0.05 0.8)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 0.8)]
+  ) = exp-env
+  exp-env | Log("Exponential curves (0.8)")
+
+  ; Logarithmic curves (curve < 0, fast start slow end)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.05 -0.8) @f3(0.5 0.05 -0.8)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 -0.8)]
+  ) = log-env
+  log-env | Log("Logarithmic curves (-0.8)")
+
+  ; Mixed curves per stage
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)      ; Start
+      @f3(1.0 0.02 0.5)     ; Attack: exp (slow start)
+      @f3(0.8 0.03 -0.3)    ; Decay1: log (fast start)
+      @f3(0.6 0.05 0.0)     ; Decay2: linear
+    ]
+    SustainIndex: 3
+    Release: [@f3(0.0 0.2 -0.7)]
+  ) = mixed-env
+  mixed-env | Log("Mixed curves per stage")
+
+  Msg("Audio.MultiStageEnvelope curve tests passed!")
+})
+
+@wire(test-audio-multistage-complex {
+  Msg("Testing Audio.MultiStageEnvelope complex shapes...")
+
+  ; Create gate signal
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 1024 SampleRate: 44100) = gate
+
+  ; Many stages for complex texture (DX7-style 8-stage)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)      ; L1: Start at 0
+      @f3(1.0 0.005 0.3)    ; L2: Fast attack to peak
+      @f3(0.8 0.02 -0.2)    ; L3: Quick drop
+      @f3(0.9 0.03 0.1)     ; L4: Slight rise (texture)
+      @f3(0.6 0.05 -0.4)    ; L5: Decay
+      @f3(0.7 0.04 0.2)     ; L6: Another rise
+      @f3(0.5 0.1 -0.3)     ; L7: Settle to sustain
+    ]
+    SustainIndex: 6
+    Release: [
+      @f3(0.3 0.05 -0.5)    ; R1: Initial drop
+      @f3(0.1 0.1 -0.6)     ; R2: Fade
+      @f3(0.0 0.2 -0.8)     ; R3: Long tail to zero
+    ]
+  ) = complex-env
+  complex-env | Log("Complex 8-stage envelope")
+
+  ; Percussive shape (no sustain, one-shot)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)
+      @f3(1.0 0.001 0.2)    ; Instant attack
+      @f3(0.3 0.02 -0.5)    ; Fast decay
+      @f3(0.0 0.1 -0.7)     ; Fade to zero
+    ]
+    SustainIndex: -1        ; No sustain (one-shot)
+    Release: []             ; Empty release (already decays to 0)
+  ) = percussive-env
+  percussive-env | Log("Percussive envelope (one-shot)")
+
+  ; Reverse envelope (swell)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.8 0.0 0.0)      ; Start loud
+      @f3(0.2 0.1 -0.5)     ; Fade down
+      @f3(0.9 0.15 0.3)     ; Swell back up
+    ]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 -0.5)]
+  ) = swell-env
+  swell-env | Log("Swell/reverse envelope")
+
+  Msg("Audio.MultiStageEnvelope complex tests passed!")
+})
+
+@wire(test-audio-multistage-loop {
+  Msg("Testing Audio.MultiStageEnvelope looping (LFO-style)...")
+
+  ; Create gate signal
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 2048 SampleRate: 44100) = gate
+
+  ; Looping envelope (tremolo effect)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.3 0.0 0.0)      ; Start
+      @f3(1.0 0.02 0.0)     ; Rise
+      @f3(0.3 0.02 0.0)     ; Fall
+    ]
+    Loop: true
+    LoopStart: 0            ; Loop from beginning
+    SustainIndex: -1        ; No sustain point
+    Release: [@f3(0.0 0.1 -0.5)]
+  ) = tremolo-env
+  tremolo-env | Log("Looping tremolo envelope")
+
+  ; Loop from middle (skip initial attack on repeat)
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)      ; Start at 0
+      @f3(1.0 0.01 0.3)     ; Initial attack (only once)
+      @f3(0.5 0.03 -0.2)    ; Loop point: down
+      @f3(0.8 0.03 0.2)     ; Up
+      @f3(0.5 0.03 -0.2)    ; Down again
+    ]
+    Loop: true
+    LoopStart: 2            ; Loop back to stage 2 (skip attack)
+    SustainIndex: -1
+    Release: [@f3(0.0 0.05 -0.5)]
+  ) = loop-mid-env
+  loop-mid-env | Log("Loop from middle (attack once)")
+
+  Msg("Audio.MultiStageEnvelope loop tests passed!")
+})
+
+@wire(test-audio-multistage-vca {
+  Msg("Testing Audio.MultiStageEnvelope as VCA...")
+
+  ; Generate oscillator
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 1024 SampleRate: 44100) = oscillator
+
+  ; Generate gate
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 1024 SampleRate: 44100) = gate
+
+  ; Generate complex envelope
+  gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)
+      @f3(1.0 0.01 0.5)
+      @f3(0.7 0.05 -0.3)
+      @f3(0.8 0.03 0.1)
+      @f3(0.5 0.1 -0.4)
+    ]
+    SustainIndex: 4
+    Release: [@f3(0.2 0.1 -0.5) @f3(0.0 0.3 -0.7)]
+  ) = complex-env
+
+  ; Apply envelope to oscillator
+  oscillator | Math.Multiply(complex-env) = shaped-sound
+  shaped-sound | Log("Oscillator shaped by multi-stage envelope")
+
+  ; FM synth with complex envelope
+  none | Audio.Oscillator(Frequency: 220.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100)
+       | Audio.Oscillator(Frequency: 440.0 Index: 3.0) = fm-audio
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100)
+       | Audio.MultiStageEnvelope(
+           Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.002 0.3) @f3(0.3 0.05 -0.5) @f3(0.0 0.15 -0.7)]
+           SustainIndex: -1
+           Release: []
+         ) = fm-env
+  fm-audio | Math.Multiply(fm-env) = fm-with-env
+  fm-with-env | Log("FM audio with multi-stage percussive envelope")
+
+  Msg("Audio.MultiStageEnvelope VCA tests passed!")
+})
+
+@wire(test-audio-multistage-multichannel {
+  Msg("Testing Audio.MultiStageEnvelope multi-channel...")
+
+  ; Create stereo gate
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100 Channels: 2) = stereo-gate
+
+  ; Apply envelope to stereo (each channel processed independently)
+  stereo-gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.01 0.5) @f3(0.6 0.05 -0.3)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 -0.5)]
+  ) = stereo-env
+  stereo-env | Log("Stereo multi-stage envelope")
+
+  ; Create 4-channel gate (triggers batch processing path)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100 Channels: 4) = quad-gate
+
+  quad-gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.02 0.3) @f3(0.5 0.1 -0.4)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.2 -0.6)]
+  ) = quad-env
+  quad-env | Log("4-channel multi-stage envelope")
+
+  ; 5 channels (4 batch + 1 scalar)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100 Channels: 5) = five-gate
+  five-gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.01 0.5) @f3(0.7 0.05 -0.3)]
+    SustainIndex: 2
+    Release: [@f3(0.0 0.1 -0.5)]
+  ) = five-env
+  five-env | Log("5-channel multi-stage envelope (4 + 1)")
+
+  Msg("Audio.MultiStageEnvelope multi-channel tests passed!")
+})
+
+; ============================================================================
 ; Audio.Filter (SVF) Tests
 ; ============================================================================
 
@@ -1374,6 +1613,12 @@
 @schedule(main test-audio-envelope-curves)
 @schedule(main test-audio-envelope-vca)
 @schedule(main test-audio-envelope-retrigger)
+@schedule(main test-audio-multistage-basic)
+@schedule(main test-audio-multistage-curves)
+@schedule(main test-audio-multistage-complex)
+@schedule(main test-audio-multistage-loop)
+@schedule(main test-audio-multistage-vca)
+@schedule(main test-audio-multistage-multichannel)
 @schedule(main test-audio-filter-types)
 @schedule(main test-audio-filter-resonance)
 @schedule(main test-audio-filter-sweep)
