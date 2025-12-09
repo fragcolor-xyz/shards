@@ -6,20 +6,24 @@ Zip([t r]) | Log("zip0") | Map({
 }) | Assert.Is([
   {translation: @f3(0.0) rotation: @f4(0.0)}
   {translation: @f3(0.0) rotation: @f4(0.0)}
-  {translation: @f3(0.0) rotation: @f4(0.0)}])
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+])
 
 Zip([t r] Keys: ["t"]) | Log("zip1") | Assert.Is([
   {t: @f3(0.0) $1: @f4(0.0)}
   {t: @f3(0.0) $1: @f4(0.0)}
-  {t: @f3(0.0) $1: @f4(0.0)}])
+  {t: @f3(0.0) $1: @f4(0.0)}
+])
 
 Zip([t r] Keys: ["translation" "rotation"]) | Log("zip2") | Assert.Is([
   {translation: @f3(0.0) rotation: @f4(0.0)}
   {translation: @f3(0.0) rotation: @f4(0.0)}
-  {translation: @f3(0.0) rotation: @f4(0.0)}])
+  {translation: @f3(0.0) rotation: @f4(0.0)}
+])
 
 Zip([[@f3(1.0)] r] Keys: ["translation" "rotation"]) | Log("zip3") | Assert.Is([
-  {translation: @f3(1.0) rotation: @f4(0.0)}])
+  {translation: @f3(1.0) rotation: @f4(0.0)}
+])
 
 // Type checks
 TypeOf({Zip([t r])}) | Log("t") | Assert.Is(@type([[Type::Float3 Type::Float4]]))
@@ -27,63 +31,72 @@ TypeOf({Zip([t [@f3(0.0) @f3(1.0)]])}) | Log("t") | Assert.Is(@type([[Type::Floa
 TypeOf({Zip([t [@f3(0.0) @f3(1.0)]] Keys: ["a"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 "$1": Type::Float3}]))
 TypeOf({Zip([t [@f4(0.0) @f4(1.0)]] Keys: ["a" "b"])}) | Log("t") | Assert.Is(@type([{a: Type::Float3 b: Type::Float4}]))
 
-; ============================================
-; Test Values shard
-; ============================================
-; Note: Table iteration is sorted by key (boost::flat_map)
+// ============================================
+// Test Values shard
+// ============================================
+// Note: Table iteration is sorted by key (boost::flat_map)
 {a: 1 b: 2 c: 3} | Values | Assert.Is([1 2 3])
 {a: 1 b: 2.0 c: 3} | Values | Assert.Is([1 2.0 3])
-; Single element table
+// Single element table
 {only: 42} | Values | Assert.Is([42])
-; String values (sorted by key: city < name)
+// String values (sorted by key: city < name)
 {name: "alice" city: "boston"} | Values | Assert.Is(["boston" "alice"])
-; Empty table
+// Empty table
 {} | Values | Assert.Is([])
 
-; ============================================
-; Test Keys shard
-; ============================================
+// ============================================
+// Test Keys shard
+// ============================================
 {a: 1 b: 2.0 c: 3} | Keys | Assert.Is(["a" "b" "c"])
-; Single element table
+// Single element table
 {single: 99} | Keys | Assert.Is(["single"])
-; Empty table
+// Empty table
 {} | Keys | Assert.Is([])
 
-; ============================================
-; Test Entries shard
-; ============================================
+// ============================================
+// Test Entries shard
+// ============================================
 {a: 1 b: 2} | Entries | Assert.Is([["a" 1] ["b" 2]])
-; Single element
+// Single element
 {x: 100} | Entries | Assert.Is([["x" 100]])
-; Mixed types (sorted: count < name)
+// Mixed types (sorted: count < name)
 {name: "test" count: 5} | Entries | Assert.Is([["count" 5] ["name" "test"]])
-; Empty table
+// Empty table
 {} | Entries | Assert.Is([])
 
-; ============================================
-; Test Map on tables - should preserve table structure
-; ============================================
-; Basic arithmetic transformation
+// ============================================
+// Test Map on tables - should preserve table structure
+// ============================================
+// Basic arithmetic transformation
 {a: 1 b: 2 c: 3} | Map({Add(10)}) | Assert.Is({a: 11 b: 12 c: 13})
 {x: 10 y: 20} | Map({Mul(2)}) | Assert.Is({x: 20 y: 40})
 
-; $0 is key, $1 is value in table Map
+// $0 is key, $1 is value in table Map
 {a: 1 b: 2} | Map({[$0 $1] | String.Format}) | Assert.Is({a: "a1" b: "b2"})
 
-; $i is the index (sorted order: first < second < third)
+// $i is the index (sorted order: first < second < third)
 {first: 100 second: 200 third: 300} | Map({Add($i)}) | Assert.Is({first: 100 second: 201 third: 302})
 
-; Identity map (passthrough value)
+// Identity map (passthrough value)
 {keep: "same" also: "unchanged"} | Map({Pass}) | Assert.Is({also: "unchanged" keep: "same"})
 
-; Type conversion
+// Type conversion
 {a: 1 b: 2 c: 3} | Map({ToString}) | Assert.Is({a: "1" b: "2" c: "3"})
 
-; Single element table
+// Single element table
 {only: 5} | Map({Mul(10)}) | Assert.Is({only: 50})
 
-; String manipulation
+// String manipulation
 {greeting: "hello" name: "world"} | Map({String.ToUpper}) | Assert.Is({greeting: "HELLO" name: "WORLD"})
 
-; Heterogeneous table values (mixed types)
+// Heterogeneous table values (mixed types)
 {count: 42 name: "test" value: 3.14} | Map({ToString}) | Assert.Is({count: "42" name: "test" value: "3.14"})
+
+// ============================================
+// Test nested Map - $0, $1, $i should be restored
+// ============================================
+[[1 2] [3 4]] | Map({
+  $0 | Log("Inner Value") | Map({ // explicitly use $0 to test it's valid
+    $0 | Mul(10) // explicitly use $0 to test it's valid
+  })
+}) | Assert.Is([[10 20] [30 40]])
