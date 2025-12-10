@@ -65,6 +65,10 @@ jobs:
             - MEDIUM: Potential issue worth investigating
             - LOW: Theoretical concern or style suggestion
 
+            ## Code Examples
+            - When showing code examples with Shards language syntax (e.g., @f3, @f2), use backticks or code blocks to prevent accidental GitHub @-mentions
+            - Be mindful that @ symbols in code snippets may notify users with matching usernames
+
             Be concise and actionable. Use `gh pr comment` to leave your review.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
