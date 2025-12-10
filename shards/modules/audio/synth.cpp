@@ -1087,13 +1087,27 @@ struct MultiStageEnvelope {
 
     _sustainIdx = int32_t(_sustainIndex.get().payload.intValue);
     _looping = _loop.get().payload.boolValue;
-    _loopStartIdx = uint32_t(_loopStart.get().payload.intValue);
+    _loopStartIdx = uint32_t(std::max(0, int32_t(_loopStart.get().payload.intValue)));
+
+    // Validate sustain index - clamp to valid range or -1 (no sustain)
+    if (_sustainIdx >= int32_t(_stagesCache.size())) {
+      _sustainIdx = -1;  // Treat as no-sustain if out of bounds
+    }
+
+    // Validate loop start index - clamp to valid range
+    if (_looping && !_stagesCache.empty() && _loopStartIdx >= _stagesCache.size()) {
+      _loopStartIdx = 0;  // Default to start if out of bounds
+    }
   }
 
   // Curve interpolation: t in [0,1], curve in [-1,1]
   // curve < 0: logarithmic (fast start, slow end)
   // curve = 0: linear
   // curve > 0: exponential (slow start, fast end)
+  // Internally uses power function with exponent range [1.0, 4.0] for musical response:
+  //   curve=-1 → t^(-2) equivalent (fast attack)
+  //   curve=0  → t^1 (linear)
+  //   curve=1  → t^4 (slow attack, fast end)
   static inline float applyCurve(float t, float curve) {
     if (std::abs(curve) < 0.001f) {
       return t;  // Linear
@@ -1109,37 +1123,6 @@ struct MultiStageEnvelope {
     }
   }
 
-#if defined(SYNTH_HAS_NEON)
-  // SIMD curve calculation for 4 values
-  static inline float32x4_t applyCurve_NEON(float32x4_t t, float32x4_t curve) {
-    // For SIMD, we use a polynomial approximation that handles the full curve range
-    // This is an approximation but works well for audio envelopes
-    alignas(16) float t_arr[4], curve_arr[4], result[4];
-    vst1q_f32(t_arr, t);
-    vst1q_f32(curve_arr, curve);
-
-    for (int i = 0; i < 4; i++) {
-      result[i] = applyCurve(t_arr[i], curve_arr[i]);
-    }
-
-    return vld1q_f32(result);
-  }
-#endif
-
-#if defined(SYNTH_HAS_SSE)
-  static inline __m128 applyCurve_SSE(__m128 t, __m128 curve) {
-    alignas(16) float t_arr[4], curve_arr[4], result[4];
-    _mm_store_ps(t_arr, t);
-    _mm_store_ps(curve_arr, curve);
-
-    for (int i = 0; i < 4; i++) {
-      result[i] = applyCurve(t_arr[i], curve_arr[i]);
-    }
-
-    return _mm_load_ps(result);
-  }
-#endif
-
   // Process single channel (scalar)
   void processChannel(const float *gate, float *out, uint32_t nsamples, uint32_t sampleRate, uint32_t ch) {
     ChannelState &state = _channelStates[ch];
@@ -1154,6 +1137,7 @@ struct MultiStageEnvelope {
         state.currentStage = 0;
         state.startLevel = state.level;
         state.stageSamples = 0;
+        state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_stagesCache.empty()) {
           state.totalStageSamples =
               std::max(uint64_t(1), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
@@ -1164,6 +1148,7 @@ struct MultiStageEnvelope {
         state.currentStage = 0;
         state.startLevel = state.level;
         state.stageSamples = 0;
+        state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_stagesCache.empty()) {
           state.totalStageSamples =
               std::max(uint64_t(1), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
@@ -1174,6 +1159,7 @@ struct MultiStageEnvelope {
         state.currentStage = 0;
         state.startLevel = state.level;
         state.stageSamples = 0;
+        state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_releaseCache.empty()) {
           state.totalStageSamples =
               std::max(uint64_t(1), uint64_t(std::round(_releaseCache[0].time * sampleRate)));
@@ -1281,35 +1267,17 @@ struct MultiStageEnvelope {
     }
   }
 
-#if defined(SYNTH_HAS_NEON)
-  // Process 4 channels in parallel using NEON
-  void processChannels_NEON(const float *gate0, const float *gate1, const float *gate2, const float *gate3, float *out0,
+  // Process 4 channels - batched for cache-friendly access patterns
+  // Note: Envelope state machine logic is inherently serial per-channel,
+  // so we process channels independently rather than true SIMD vectorization
+  void processChannelsBatch(const float *gate0, const float *gate1, const float *gate2, const float *gate3, float *out0,
                             float *out1, float *out2, float *out3, uint32_t nsamples, uint32_t sampleRate,
                             uint32_t chBase) {
-    // For envelope processing, the state machine logic is complex and hard to vectorize effectively
-    // The main benefit of SIMD here is processing 4 independent envelopes simultaneously
-    // We process each sample across 4 channels, but the state transitions are still per-channel
-
-    // Use scalar processing for each channel - the SIMD benefit comes from
-    // cache-friendly access patterns and potential compiler auto-vectorization of the math
     processChannel(gate0, out0, nsamples, sampleRate, chBase);
     processChannel(gate1, out1, nsamples, sampleRate, chBase + 1);
     processChannel(gate2, out2, nsamples, sampleRate, chBase + 2);
     processChannel(gate3, out3, nsamples, sampleRate, chBase + 3);
   }
-#endif
-
-#if defined(SYNTH_HAS_SSE)
-  void processChannels_SSE(const float *gate0, const float *gate1, const float *gate2, const float *gate3, float *out0,
-                           float *out1, float *out2, float *out3, uint32_t nsamples, uint32_t sampleRate,
-                           uint32_t chBase) {
-    // Same approach as NEON - process channels independently
-    processChannel(gate0, out0, nsamples, sampleRate, chBase);
-    processChannel(gate1, out1, nsamples, sampleRate, chBase + 1);
-    processChannel(gate2, out2, nsamples, sampleRate, chBase + 2);
-    processChannel(gate3, out3, nsamples, sampleRate, chBase + 3);
-  }
-#endif
 
   SHVar activate(SHContext *context, const SHVar &input) {
     const auto &audio = input.payload.audioValue;
@@ -1326,8 +1294,7 @@ struct MultiStageEnvelope {
 
     uint32_t ch = 0;
 
-#if defined(SYNTH_HAS_NEON) || defined(SYNTH_HAS_SSE)
-    // Process groups of 4 channels
+    // Process groups of 4 channels for cache-friendly access
     for (; ch + 4 <= channels; ch += 4) {
       const float *gate0 = audio.samples + ch * nsamples;
       const float *gate1 = audio.samples + (ch + 1) * nsamples;
@@ -1339,13 +1306,8 @@ struct MultiStageEnvelope {
       float *out2 = _buffer.data() + (ch + 2) * nsamples;
       float *out3 = _buffer.data() + (ch + 3) * nsamples;
 
-#if defined(SYNTH_HAS_NEON)
-      processChannels_NEON(gate0, gate1, gate2, gate3, out0, out1, out2, out3, nsamples, sampleRate, ch);
-#elif defined(SYNTH_HAS_SSE)
-      processChannels_SSE(gate0, gate1, gate2, gate3, out0, out1, out2, out3, nsamples, sampleRate, ch);
-#endif
+      processChannelsBatch(gate0, gate1, gate2, gate3, out0, out1, out2, out3, nsamples, sampleRate, ch);
     }
-#endif
 
     // Process remaining channels with scalar code
     for (; ch < channels; ch++) {
