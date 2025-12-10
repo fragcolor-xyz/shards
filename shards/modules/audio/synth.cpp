@@ -1034,7 +1034,9 @@ struct MultiStageEnvelope {
                    "Each stage is defined as [level, time, curve] where curve ranges from -1 (logarithmic) "
                    "through 0 (linear) to 1 (exponential). Supports sustain at any stage, looping for "
                    "LFO-like behavior, and separate release stages. Retriggering from any phase restarts "
-                   "attack from current level (no discontinuities). Parameters can be changed dynamically.");
+                   "attack from current level (no discontinuities). Parameters can be changed dynamically. "
+                   "Note: Stage times should be >= 0.001 seconds to avoid clicks. When looping, ensure the "
+                   "final stage level matches the loop start level for smooth transitions.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
@@ -1107,9 +1109,9 @@ struct MultiStageEnvelope {
   // curve = 0: linear
   // curve > 0: exponential (slow start, fast end)
   // Internally uses power function with exponent range [1.0, 4.0] for musical response:
-  //   curve=-1 → t^(-2) equivalent (fast attack)
-  //   curve=0  → t^1 (linear)
-  //   curve=1  → t^4 (slow attack, fast end)
+  //   curve=-1 → 1-(1-t)^4 (fast start, logarithmic)
+  //   curve=0  → t (linear)
+  //   curve=1  → t^4 (slow start, exponential)
   static inline float applyCurve(float t, float curve) {
     if (std::abs(curve) < 0.001f) {
       return t;  // Linear
@@ -1144,8 +1146,9 @@ struct MultiStageEnvelope {
         state.stageSamples = 0;
         state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_stagesCache.empty()) {
+          // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
           state.totalStageSamples =
-              std::max(uint64_t(1), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
+              std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
         }
       } else if (fallingEdge && (state.phase == ChannelState::Phase::Attack || state.phase == ChannelState::Phase::Sustain)) {
         // Falling edge - start release
@@ -1155,8 +1158,9 @@ struct MultiStageEnvelope {
         state.stageSamples = 0;
         state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_releaseCache.empty()) {
+          // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
           state.totalStageSamples =
-              std::max(uint64_t(1), uint64_t(std::round(_releaseCache[0].time * sampleRate)));
+              std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_releaseCache[0].time * sampleRate)));
         }
       }
 
@@ -1198,12 +1202,13 @@ struct MultiStageEnvelope {
             if (state.currentStage >= _stagesCache.size()) {
               // End of stages
               if (_looping && _loopStartIdx < _stagesCache.size()) {
-                // Loop back
+                // Loop back - start from current level to prevent discontinuity
                 state.currentStage = _loopStartIdx;
                 state.startLevel = state.level;
                 state.stageSamples = 0;
+                // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
                 state.totalStageSamples =
-                    std::max(uint64_t(1), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
+                    std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
               } else {
                 // Stay at final level (no sustain index set)
                 state.phase = ChannelState::Phase::Sustain;
@@ -1211,8 +1216,9 @@ struct MultiStageEnvelope {
             } else {
               state.startLevel = state.level;
               state.stageSamples = 0;
+              // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
               state.totalStageSamples =
-                  std::max(uint64_t(1), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
+                  std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
             }
           }
         }
@@ -1252,8 +1258,9 @@ struct MultiStageEnvelope {
           } else {
             state.startLevel = state.level;
             state.stageSamples = 0;
+            // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
             state.totalStageSamples =
-                std::max(uint64_t(1), uint64_t(std::round(_releaseCache[state.currentStage].time * sampleRate)));
+                std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_releaseCache[state.currentStage].time * sampleRate)));
           }
         }
         break;
