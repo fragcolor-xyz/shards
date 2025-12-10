@@ -1169,9 +1169,9 @@ struct MultiStageEnvelope {
         break;
 
       case ChannelState::Phase::Attack: {
-        if (_stagesCache.empty()) {
-          state.phase = ChannelState::Phase::Idle;
-          state.level = 0.0;
+        if (_stagesCache.empty() || state.currentStage >= _stagesCache.size()) {
+          // Stages reduced dynamically or empty - go to sustain at current level
+          state.phase = ChannelState::Phase::Sustain;
           break;
         }
 
@@ -1224,7 +1224,8 @@ struct MultiStageEnvelope {
         break;
 
       case ChannelState::Phase::Release: {
-        if (_releaseCache.empty()) {
+        if (_releaseCache.empty() || state.currentStage >= _releaseCache.size()) {
+          // Release stages reduced dynamically or empty - go to idle
           state.phase = ChannelState::Phase::Idle;
           state.level = 0.0;
           break;
