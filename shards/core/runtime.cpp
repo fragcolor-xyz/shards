@@ -3106,13 +3106,14 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   };
 
   result->schedule = [](SHMeshRef mesh, SHWireRef wire, SHBool compose) noexcept {
+    auto w = SHWire::sharedFromRef(wire);
     try {
       auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
-      (*smesh)->schedule(SHWire::sharedFromRef(wire), shards::Var::Empty, compose);
+      (*smesh)->schedule(w, shards::Var::Empty, compose);
     } catch (const std::exception &e) {
-      SHLOG_ERROR("Errors while scheduling: {}", e.what());
+      SHLOG_ERROR("Errors while scheduling wire: {}: {}", w->name, e.what());
     } catch (...) {
-      SHLOG_ERROR("Errors while scheduling");
+      SHLOG_ERROR("Errors while scheduling wire: {}", w->name);
     }
   };
 

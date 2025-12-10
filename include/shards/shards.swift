@@ -812,6 +812,10 @@ class OwnedVar: Hashable, Equatable {
         v = SHVar()
         set(int: int)
     }
+    
+    func forget() {
+        borrowed = true
+    }
 
     deinit {
         if borrowed { return }
@@ -1167,6 +1171,11 @@ class ParamVar {
         self.parameter = parameter
     }
 
+    init(name: String) {
+        self.parameter = .init(string: name)
+        self.parameter.v.valueType = VarType.ContextVar.asSHType() // fixup the type to be ContextVar
+    }
+
     func compose(help: String, requiredType: TypeInfo) {
         if isVariable() {
             let reqInfo = ExposedTypeInfo(name: getName()!, help: help, exposedType: requiredType)
@@ -1242,8 +1251,14 @@ class ParamVar {
         parameter.v.valueType == VarType.NoValue.asSHType()
     }
 
-    func setName(name: String) {
-        parameter = .init(string: name)
+    func setName(name: String?) {
+        if let name {
+            parameter = .init(string: name)
+            parameter.v.valueType = VarType.ContextVar.asSHType() // fixup the type to be ContextVar
+        } else {
+            parameter = .init()
+            parameter.v.valueType = VarType.NoValue.asSHType() // fixup the type to be NoValue
+        }
     }
 
     func getName() -> String? {
