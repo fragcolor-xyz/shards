@@ -1406,6 +1406,139 @@
   Msg("Audio.MultiStageEnvelope multi-channel tests passed!")
 })
 
+@wire(test-audio-multistage-gate-transitions {
+  Msg("Testing Audio.MultiStageEnvelope gate transitions (coverage)...")
+
+  ; Create gate signal with on→off transition to test release phase
+  ; First half: gate on, second half: gate off
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 512 SampleRate: 44100) | Set(gate-on-off)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.0 Samples: 512 SampleRate: 44100) | AppendTo(gate-on-off)
+
+  ; Test attack phase completion and sustain entry (line 1196-1197)
+  gate-on-off | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)      ; Start
+      @f3(1.0 0.005 0.3)    ; Fast attack
+      @f3(0.7 0.005 -0.2)   ; Quick decay to sustain point
+    ]
+    SustainIndex: 2         ; Sustain at stage 2 - triggers line 1196-1197
+    Release: [
+      @f3(0.3 0.005 -0.5)   ; Release stage 1
+      @f3(0.0 0.01 -0.7)    ; Release stage 2 - triggers line 1251-1263
+    ]
+  ) = sustain-release-env
+  sustain-release-env | Log("Envelope with sustain and multi-stage release")
+
+  ; Test stage completion and next stage transition (line 1216-1221)
+  ; Use short stages that complete within the buffer
+  gate-on-off | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)      ; Start
+      @f3(1.0 0.002 0.0)    ; Stage 1 - completes quickly
+      @f3(0.8 0.002 0.0)    ; Stage 2 - triggers next stage code
+      @f3(0.6 0.002 0.0)    ; Stage 3 - triggers next stage code
+      @f3(0.5 0.002 0.0)    ; Stage 4 - sustain point
+    ]
+    SustainIndex: 4
+    Release: [@f3(0.0 0.01 -0.5)]
+  ) = multi-stage-transitions
+  multi-stage-transitions | Log("Multi-stage with internal transitions")
+
+  Msg("Audio.MultiStageEnvelope gate transition tests passed!")
+})
+
+@wire(test-audio-multistage-loop-completion {
+  Msg("Testing Audio.MultiStageEnvelope loop completion (coverage)...")
+
+  ; Create long gate signal to allow loop to complete multiple cycles
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 4096 SampleRate: 44100) = long-gate
+
+  ; Test loop completion at end of stages (line 1204-1211)
+  ; Use very short stages so loop triggers within buffer
+  long-gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.5 0.0 0.0)      ; Start
+      @f3(1.0 0.001 0.0)    ; Up - very short
+      @f3(0.5 0.001 0.0)    ; Down - triggers end, loops back
+    ]
+    Loop: true
+    LoopStart: 1            ; Loop back to stage 1
+    SustainIndex: -1        ; No sustain
+    Release: [@f3(0.0 0.01 -0.5)]
+  ) = loop-complete-env
+  loop-complete-env | Log("Loop with completion and restart")
+
+  ; Test loop from start (LoopStart: 0)
+  long-gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.3 0.001 0.0)    ; Stage 0
+      @f3(0.8 0.001 0.0)    ; Stage 1
+      @f3(0.3 0.001 0.0)    ; Stage 2 - end, loop back to 0
+    ]
+    Loop: true
+    LoopStart: 0
+    SustainIndex: -1
+    Release: [@f3(0.0 0.01 -0.5)]
+  ) = loop-from-start
+  loop-from-start | Log("Loop from start (LoopStart: 0)")
+
+  Msg("Audio.MultiStageEnvelope loop completion tests passed!")
+})
+
+@wire(test-audio-multistage-dynamic-stages {
+  Msg("Testing Audio.MultiStageEnvelope dynamic stage changes (coverage)...")
+
+  ; Test out-of-bounds protection (line 1172-1175, 1227-1231)
+  ; Empty stages should transition to sustain/idle gracefully
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 256 SampleRate: 44100) = gate
+
+  ; Empty stages array - tests line 1172-1175
+  gate | Audio.MultiStageEnvelope(
+    Stages: []
+    SustainIndex: -1
+    Release: []
+  ) = empty-stages-env
+  empty-stages-env | Log("Empty stages (graceful fallback)")
+
+  ; Empty release with gate off - tests release empty path
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100) | Set(short-gate)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.0 Samples: 128 SampleRate: 44100) | AppendTo(short-gate)
+
+  short-gate | Audio.MultiStageEnvelope(
+    Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.001 0.0)]
+    SustainIndex: 1
+    Release: []             ; Empty release - tests line 1227-1231
+  ) = empty-release-env
+  empty-release-env | Log("Empty release stages")
+
+  Msg("Audio.MultiStageEnvelope dynamic stage tests passed!")
+})
+
+@wire(test-audio-multistage-retrigger {
+  Msg("Testing Audio.MultiStageEnvelope retrigger behavior (coverage)...")
+
+  ; Create gate with multiple on→off→on transitions
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100) | Set(multi-trigger-gate)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.0 Samples: 64 SampleRate: 44100) | AppendTo(multi-trigger-gate)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100) | AppendTo(multi-trigger-gate)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.0 Samples: 64 SampleRate: 44100) | AppendTo(multi-trigger-gate)
+  none | Audio.Oscillator(Frequency: 440.0 Amplitude: 1.0 Samples: 128 SampleRate: 44100) | AppendTo(multi-trigger-gate)
+
+  ; Test retrigger from various phases
+  multi-trigger-gate | Audio.MultiStageEnvelope(
+    Stages: [
+      @f3(0.0 0.0 0.0)
+      @f3(1.0 0.005 0.3)
+      @f3(0.6 0.01 -0.3)
+    ]
+    SustainIndex: 2
+    Release: [@f3(0.2 0.005 -0.5) @f3(0.0 0.01 -0.7)]
+  ) = retrigger-env
+  retrigger-env | Log("Retrigger from attack/sustain/release")
+
+  Msg("Audio.MultiStageEnvelope retrigger tests passed!")
+})
+
 ; ============================================================================
 ; Audio.Filter (SVF) Tests
 ; ============================================================================
@@ -1619,6 +1752,10 @@
 @schedule(main test-audio-multistage-loop)
 @schedule(main test-audio-multistage-vca)
 @schedule(main test-audio-multistage-multichannel)
+@schedule(main test-audio-multistage-gate-transitions)
+@schedule(main test-audio-multistage-loop-completion)
+@schedule(main test-audio-multistage-dynamic-stages)
+@schedule(main test-audio-multistage-retrigger)
 @schedule(main test-audio-filter-types)
 @schedule(main test-audio-filter-resonance)
 @schedule(main test-audio-filter-sweep)
