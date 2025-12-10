@@ -997,6 +997,7 @@ struct MultiStageEnvelope {
     double startLevel{0.0};  // Level at start of current stage
     uint64_t stageSamples{0};
     uint64_t totalStageSamples{0};  // Total samples for current stage
+    bool prevGate{false};  // Previous gate state for edge detection
   };
 
   std::array<ChannelState, MAX_CHANNELS> _channelStates{};
@@ -1032,7 +1033,8 @@ struct MultiStageEnvelope {
     return SHCCSTR("Multi-stage envelope generator with unlimited stages and per-stage curve control. "
                    "Each stage is defined as [level, time, curve] where curve ranges from -1 (logarithmic) "
                    "through 0 (linear) to 1 (exponential). Supports sustain at any stage, looping for "
-                   "LFO-like behavior, and separate release stages. Uses SIMD for multi-channel processing.");
+                   "LFO-like behavior, and separate release stages. Retriggering from any phase restarts "
+                   "attack from current level (no discontinuities). Parameters can be changed dynamically.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
@@ -1129,32 +1131,24 @@ struct MultiStageEnvelope {
 
     for (uint32_t i = 0; i < nsamples; i++) {
       bool gateOn = gate[i] > 0.0f;
+      bool risingEdge = gateOn && !state.prevGate;  // Gate just turned on
+      bool fallingEdge = !gateOn && state.prevGate;  // Gate just turned off
 
       // Handle gate transitions
-      if (gateOn && state.phase == ChannelState::Phase::Idle) {
-        // Gate on from idle - start attack
+      if (risingEdge) {
+        // Rising edge detected - start/restart attack from current level
+        // This handles retrigger from any phase (Idle, Attack, Sustain, Release)
         state.phase = ChannelState::Phase::Attack;
         state.currentStage = 0;
-        state.startLevel = state.level;
+        state.startLevel = state.level;  // Start from current level (no discontinuity)
         state.stageSamples = 0;
         state.totalStageSamples = 1;  // Default to 1 sample if empty
         if (!_stagesCache.empty()) {
           state.totalStageSamples =
               std::max(uint64_t(1), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
         }
-      } else if (gateOn && state.phase == ChannelState::Phase::Release) {
-        // Retrigger from release - restart attack from current level
-        state.phase = ChannelState::Phase::Attack;
-        state.currentStage = 0;
-        state.startLevel = state.level;
-        state.stageSamples = 0;
-        state.totalStageSamples = 1;  // Default to 1 sample if empty
-        if (!_stagesCache.empty()) {
-          state.totalStageSamples =
-              std::max(uint64_t(1), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
-        }
-      } else if (!gateOn && (state.phase == ChannelState::Phase::Attack || state.phase == ChannelState::Phase::Sustain)) {
-        // Gate off - start release
+      } else if (fallingEdge && (state.phase == ChannelState::Phase::Attack || state.phase == ChannelState::Phase::Sustain)) {
+        // Falling edge - start release
         state.phase = ChannelState::Phase::Release;
         state.currentStage = 0;
         state.startLevel = state.level;
@@ -1165,6 +1159,8 @@ struct MultiStageEnvelope {
               std::max(uint64_t(1), uint64_t(std::round(_releaseCache[0].time * sampleRate)));
         }
       }
+
+      state.prevGate = gateOn;
 
       // Process current phase
       switch (state.phase) {
@@ -1289,6 +1285,9 @@ struct MultiStageEnvelope {
     if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
       throw ActivationError("Audio.MultiStageEnvelope: buffer size exceeds limits");
     }
+
+    // Re-cache stages each frame to support dynamic parameter changes
+    cacheStages();
 
     _buffer.resize(channels * nsamples);
 
