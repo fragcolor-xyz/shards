@@ -958,6 +958,376 @@ struct Envelope {
 };
 
 // =============================================================================
+// Multi-Stage Envelope Generator - Unlimited stages with per-stage curves
+// =============================================================================
+
+struct MultiStageEnvelope {
+  // Stage definition: [level, time, curve]
+  // - level: target level (0.0 to 1.0)
+  // - time: time to reach this level in seconds
+  // - curve: -1.0 (log) to 0.0 (linear) to 1.0 (exp)
+  static inline Types StageType{{CoreInfo::Float3Type}};
+  static inline Type StagesSeqType = Type::SeqOf(CoreInfo::Float3Type);
+  static inline Types StagesTypes{{StagesSeqType}};
+
+  // Parameters
+  PARAM_PARAMVAR(_stages, "Stages", "Sequence of [level, time, curve] stages. Each stage defines target level, "
+                                    "time to reach it, and curve shape (-1=log, 0=linear, 1=exp).",
+                 {StagesSeqType});
+  PARAM_PARAMVAR(_sustainIndex, "SustainIndex",
+                 "Index of stage to sustain at until gate off (-1 for one-shot, no sustain).",
+                 {CoreInfo::IntType, CoreInfo::IntVarType});
+  PARAM_PARAMVAR(_release, "Release", "Sequence of [level, time, curve] stages for release phase after gate off.",
+                 {StagesSeqType});
+  PARAM_PARAMVAR(_loop, "Loop", "If true, loop through stages (excluding release) for LFO-like behavior.",
+                 {CoreInfo::BoolType, CoreInfo::BoolVarType});
+  PARAM_PARAMVAR(_loopStart, "LoopStart", "Stage index to loop back to (default 0).",
+                 {CoreInfo::IntType, CoreInfo::IntVarType});
+
+  PARAM_IMPL(PARAM_IMPL_FOR(_stages), PARAM_IMPL_FOR(_sustainIndex), PARAM_IMPL_FOR(_release), PARAM_IMPL_FOR(_loop),
+             PARAM_IMPL_FOR(_loopStart));
+
+  // Per-channel state
+  struct ChannelState {
+    enum class Phase { Idle, Attack, Sustain, Release };
+
+    Phase phase{Phase::Idle};
+    uint32_t currentStage{0};
+    double level{0.0};
+    double startLevel{0.0};  // Level at start of current stage
+    uint64_t stageSamples{0};
+    uint64_t totalStageSamples{0};  // Total samples for current stage
+    bool prevGate{false};  // Previous gate state for edge detection
+  };
+
+  std::array<ChannelState, MAX_CHANNELS> _channelStates{};
+  std::vector<float> _buffer;
+
+  // Cached stage data for faster access
+  struct StageData {
+    float level;
+    float time;
+    float curve;
+  };
+  std::vector<StageData> _stagesCache;
+  std::vector<StageData> _releaseCache;
+  int32_t _sustainIdx{-1};
+  bool _looping{false};
+  uint32_t _loopStartIdx{0};
+
+  MultiStageEnvelope() {
+    // Default: simple ADSR-like shape
+    // Stages must be provided by user - we start with empty sequences
+    // Example in shards script:
+    //   Audio.MultiStageEnvelope(
+    //     Stages: [@f3(0.0 0.0 0.0) @f3(1.0 0.01 0.5) @f3(0.7 0.1 -0.3)]
+    //     SustainIndex: 2
+    //     Release: [@f3(0.0 0.3 -0.5)]
+    //   )
+    _sustainIndex = Var(-1);  // Default: no sustain (one-shot)
+    _loop = Var(false);
+    _loopStart = Var(0);
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Multi-stage envelope generator with unlimited stages and per-stage curve control. "
+                   "Each stage is defined as [level, time, curve] where curve ranges from -1 (logarithmic) "
+                   "through 0 (linear) to 1 (exponential). Supports sustain at any stage, looping for "
+                   "LFO-like behavior, and separate release stages. Retriggering from any phase restarts "
+                   "attack from current level (no discontinuities). Parameters can be changed dynamically. "
+                   "Note: Stage times should be >= 0.001 seconds to avoid clicks. When looping, ensure the "
+                   "final stage level matches the loop start level for smooth transitions.");
+  }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString inputHelp() { return SHCCSTR("Gate signal where > 0 is gate on, <= 0 is gate off."); }
+  static SHTypesInfo outputTypes() { return CoreInfo::AudioType; }
+  static SHOptionalString outputHelp() { return SHCCSTR("Envelope values from 0.0 to 1.0."); }
+
+  PARAM_REQUIRED_VARIABLES();
+
+  SHTypeInfo compose(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return CoreInfo::AudioType;
+  }
+
+  void warmup(SHContext *context) {
+    PARAM_WARMUP(context);
+
+    // Reset channel states
+    for (auto &state : _channelStates) {
+      state = ChannelState{};
+    }
+
+    // Cache stage data
+    cacheStages();
+  }
+
+  void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
+
+  void cacheStages() {
+    _stagesCache.clear();
+    _releaseCache.clear();
+
+    // Cache main stages
+    const auto &stagesVar = _stages.get();
+    if (stagesVar.valueType == SHType::Seq) {
+      auto &stagesSeq = stagesVar.payload.seqValue;
+      for (uint32_t i = 0; i < stagesSeq.len; i++) {
+        auto &stage = stagesSeq.elements[i];
+        _stagesCache.push_back({stage.payload.float3Value[0], stage.payload.float3Value[1], stage.payload.float3Value[2]});
+      }
+    }
+
+    // Cache release stages
+    const auto &releaseVar = _release.get();
+    if (releaseVar.valueType == SHType::Seq) {
+      auto &releaseSeq = releaseVar.payload.seqValue;
+      for (uint32_t i = 0; i < releaseSeq.len; i++) {
+        auto &stage = releaseSeq.elements[i];
+        _releaseCache.push_back({stage.payload.float3Value[0], stage.payload.float3Value[1], stage.payload.float3Value[2]});
+      }
+    }
+
+    _sustainIdx = int32_t(_sustainIndex.get().payload.intValue);
+    _looping = _loop.get().payload.boolValue;
+    _loopStartIdx = uint32_t(std::max(0, int32_t(_loopStart.get().payload.intValue)));
+
+    // Validate sustain index - clamp to valid range or -1 (no sustain)
+    if (_sustainIdx >= int32_t(_stagesCache.size())) {
+      _sustainIdx = -1;  // Treat as no-sustain if out of bounds
+    }
+
+    // Validate loop start index - clamp to valid range
+    if (_looping && !_stagesCache.empty() && _loopStartIdx >= _stagesCache.size()) {
+      _loopStartIdx = 0;  // Default to start if out of bounds
+    }
+  }
+
+  // Curve interpolation: t in [0,1], curve in [-1,1]
+  // curve < 0: logarithmic (fast start, slow end)
+  // curve = 0: linear
+  // curve > 0: exponential (slow start, fast end)
+  // Internally uses power function with exponent range [1.0, 4.0] for musical response:
+  //   curve=-1 → 1-(1-t)^4 (fast start, logarithmic)
+  //   curve=0  → t (linear)
+  //   curve=1  → t^4 (slow start, exponential)
+  static inline float applyCurve(float t, float curve) {
+    if (std::abs(curve) < 0.001f) {
+      return t;  // Linear
+    }
+    if (curve > 0.0f) {
+      // Exponential: slow start, fast end
+      // Using power function: t^(1 + curve*3) gives range from t^1 to t^4
+      return std::pow(t, 1.0f + curve * 3.0f);
+    } else {
+      // Logarithmic: fast start, slow end
+      // Inverse of exponential: 1 - (1-t)^(1 + |curve|*3)
+      return 1.0f - std::pow(1.0f - t, 1.0f - curve * 3.0f);
+    }
+  }
+
+  // Process single channel (scalar)
+  void processChannel(const float *gate, float *out, uint32_t nsamples, uint32_t sampleRate, uint32_t ch) {
+    ChannelState &state = _channelStates[ch];
+
+    for (uint32_t i = 0; i < nsamples; i++) {
+      bool gateOn = gate[i] > 0.0f;
+      bool risingEdge = gateOn && !state.prevGate;  // Gate just turned on
+      bool fallingEdge = !gateOn && state.prevGate;  // Gate just turned off
+
+      // Handle gate transitions
+      if (risingEdge) {
+        // Rising edge detected - start/restart attack from current level
+        // This handles retrigger from any phase (Idle, Attack, Sustain, Release)
+        state.phase = ChannelState::Phase::Attack;
+        state.currentStage = 0;
+        state.startLevel = state.level;  // Start from current level (no discontinuity)
+        state.stageSamples = 0;
+        state.totalStageSamples = 1;  // Default to 1 sample if empty
+        if (!_stagesCache.empty()) {
+          // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
+          state.totalStageSamples =
+              std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[0].time * sampleRate)));
+        }
+      } else if (fallingEdge && (state.phase == ChannelState::Phase::Attack || state.phase == ChannelState::Phase::Sustain)) {
+        // Falling edge - start release
+        state.phase = ChannelState::Phase::Release;
+        state.currentStage = 0;
+        state.startLevel = state.level;
+        state.stageSamples = 0;
+        state.totalStageSamples = 1;  // Default to 1 sample if empty
+        if (!_releaseCache.empty()) {
+          // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
+          state.totalStageSamples =
+              std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_releaseCache[0].time * sampleRate)));
+        }
+      }
+
+      state.prevGate = gateOn;
+
+      // Process current phase
+      switch (state.phase) {
+      case ChannelState::Phase::Idle:
+        state.level = 0.0;
+        break;
+
+      case ChannelState::Phase::Attack: {
+        if (_stagesCache.empty() || state.currentStage >= _stagesCache.size()) {
+          // Stages reduced dynamically or empty - go to sustain at current level
+          state.phase = ChannelState::Phase::Sustain;
+          break;
+        }
+
+        const auto &stage = _stagesCache[state.currentStage];
+        float t = float(state.stageSamples) / float(state.totalStageSamples);
+        t = std::clamp(t, 0.0f, 1.0f);
+
+        float curvedT = applyCurve(t, stage.curve);
+        state.level = state.startLevel + (double(stage.level) - state.startLevel) * curvedT;
+
+        state.stageSamples++;
+
+        // Check for stage completion
+        if (state.stageSamples >= state.totalStageSamples) {
+          state.level = stage.level;
+
+          // Check for sustain
+          if (_sustainIdx >= 0 && state.currentStage == uint32_t(_sustainIdx)) {
+            state.phase = ChannelState::Phase::Sustain;
+          } else {
+            // Move to next stage
+            state.currentStage++;
+
+            if (state.currentStage >= _stagesCache.size()) {
+              // End of stages
+              if (_looping && _loopStartIdx < _stagesCache.size()) {
+                // Loop back - start from current level to prevent discontinuity
+                state.currentStage = _loopStartIdx;
+                state.startLevel = state.level;
+                state.stageSamples = 0;
+                // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
+                state.totalStageSamples =
+                    std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
+              } else {
+                // Stay at final level (no sustain index set)
+                state.phase = ChannelState::Phase::Sustain;
+              }
+            } else {
+              state.startLevel = state.level;
+              state.stageSamples = 0;
+              // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
+              state.totalStageSamples =
+                  std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_stagesCache[state.currentStage].time * sampleRate)));
+            }
+          }
+        }
+        break;
+      }
+
+      case ChannelState::Phase::Sustain:
+        // Level stays constant until gate off
+        break;
+
+      case ChannelState::Phase::Release: {
+        if (_releaseCache.empty() || state.currentStage >= _releaseCache.size()) {
+          // Release stages reduced dynamically or empty - go to idle
+          state.phase = ChannelState::Phase::Idle;
+          state.level = 0.0;
+          break;
+        }
+
+        const auto &stage = _releaseCache[state.currentStage];
+        float t = float(state.stageSamples) / float(state.totalStageSamples);
+        t = std::clamp(t, 0.0f, 1.0f);
+
+        float curvedT = applyCurve(t, stage.curve);
+        state.level = state.startLevel + (double(stage.level) - state.startLevel) * curvedT;
+
+        state.stageSamples++;
+
+        // Check for stage completion
+        if (state.stageSamples >= state.totalStageSamples) {
+          state.level = stage.level;
+          state.currentStage++;
+
+          if (state.currentStage >= _releaseCache.size()) {
+            // Release complete
+            state.phase = ChannelState::Phase::Idle;
+            state.level = 0.0;
+          } else {
+            state.startLevel = state.level;
+            state.stageSamples = 0;
+            // Enforce minimum of ~2ms (88 samples at 44.1kHz) to prevent clicks from instant jumps
+            state.totalStageSamples =
+                std::max(uint64_t(sampleRate / 500), uint64_t(std::round(_releaseCache[state.currentStage].time * sampleRate)));
+          }
+        }
+        break;
+      }
+      }
+
+      out[i] = float(state.level);
+    }
+  }
+
+  // Process 4 channels - batched for cache-friendly access patterns
+  // Note: Envelope state machine logic is inherently serial per-channel,
+  // so we process channels independently rather than true SIMD vectorization
+  void processChannelsBatch(const float *gate0, const float *gate1, const float *gate2, const float *gate3, float *out0,
+                            float *out1, float *out2, float *out3, uint32_t nsamples, uint32_t sampleRate,
+                            uint32_t chBase) {
+    processChannel(gate0, out0, nsamples, sampleRate, chBase);
+    processChannel(gate1, out1, nsamples, sampleRate, chBase + 1);
+    processChannel(gate2, out2, nsamples, sampleRate, chBase + 2);
+    processChannel(gate3, out3, nsamples, sampleRate, chBase + 3);
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    const auto &audio = input.payload.audioValue;
+    const uint32_t nsamples = audio.nsamples;
+    const uint32_t sampleRate = audioGetSampleRate(audio);
+    const uint32_t channels = audio.channels;
+
+    // Validate buffer size
+    if (nsamples > MAX_SAMPLES || channels > MAX_CHANNELS) {
+      throw ActivationError("Audio.MultiStageEnvelope: buffer size exceeds limits");
+    }
+
+    // Re-cache stages each frame to support dynamic parameter changes
+    cacheStages();
+
+    _buffer.resize(channels * nsamples);
+
+    uint32_t ch = 0;
+
+    // Process groups of 4 channels for cache-friendly access
+    for (; ch + 4 <= channels; ch += 4) {
+      const float *gate0 = audio.samples + ch * nsamples;
+      const float *gate1 = audio.samples + (ch + 1) * nsamples;
+      const float *gate2 = audio.samples + (ch + 2) * nsamples;
+      const float *gate3 = audio.samples + (ch + 3) * nsamples;
+
+      float *out0 = _buffer.data() + ch * nsamples;
+      float *out1 = _buffer.data() + (ch + 1) * nsamples;
+      float *out2 = _buffer.data() + (ch + 2) * nsamples;
+      float *out3 = _buffer.data() + (ch + 3) * nsamples;
+
+      processChannelsBatch(gate0, gate1, gate2, gate3, out0, out1, out2, out3, nsamples, sampleRate, ch);
+    }
+
+    // Process remaining channels with scalar code
+    for (; ch < channels; ch++) {
+      const float *gateSamples = audio.samples + ch * nsamples;
+      float *outSamples = _buffer.data() + ch * nsamples;
+      processChannel(gateSamples, outSamples, nsamples, sampleRate, ch);
+    }
+
+    return Var(makeAudio(_buffer.data(), nsamples, sampleRate, uint8_t(channels)));
+  }
+};
+
+// =============================================================================
 // State Variable Filter (SVF) - with SIMD multi-channel processing
 // =============================================================================
 
@@ -1271,5 +1641,6 @@ SHARDS_REGISTER_FN(synth) {
   REGISTER_SHARD("Audio.Oscillator", Oscillator);
   REGISTER_SHARD("Audio.Noise", Noise);
   REGISTER_SHARD("Audio.Envelope", Envelope);
+  REGISTER_SHARD("Audio.MultiStageEnvelope", MultiStageEnvelope);
   REGISTER_SHARD("Audio.Filter", Filter);
 }

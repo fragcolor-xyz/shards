@@ -441,4 +441,183 @@
 @schedule(main demo-combo)
 @run(main)
 
+; ============================================================================
+; MULTI-STAGE ENVELOPE DEMOS
+; ============================================================================
+
+; Complex DX7-style envelope with texture
+@wire(demo-multistage-texture {
+  Msg("Playing multi-stage envelope (DX7-style texture)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; VCO - sawtooth
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Sawtooth Amplitude: 0.5) = vco
+
+    ; Complex multi-stage envelope with texture (rises and falls)
+    gate | Audio.MultiStageEnvelope(
+      Stages: [
+        @f3(0.0 0.0 0.0)      ; Start at 0
+        @f3(1.0 0.01 0.5)     ; Fast attack to peak (exp)
+        @f3(0.6 0.1 -0.3)     ; Quick drop (log)
+        @f3(0.8 0.15 0.2)     ; Rise back up (texture!)
+        @f3(0.5 0.2 -0.4)     ; Settle to sustain
+      ]
+      SustainIndex: 4
+      Release: [
+        @f3(0.2 0.1 -0.5)     ; Initial drop
+        @f3(0.0 0.4 -0.7)     ; Long tail
+      ]
+    ) = env
+
+    ; Filter
+    vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 1200.0 Resonance: 0.5)
+        | Math.Multiply(env)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-multistage-texture)
+@run(main)
+
+; Percussive one-shot (no sustain)
+@wire(demo-multistage-percussive {
+  Msg("Playing multi-stage percussive (one-shot, plucky)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; FM for bell-like tone
+    none | Audio.Oscillator(Frequency: 880.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 440.0 Amplitude: 0.5 Index: 3.0) = vco
+
+    ; Percussive envelope - fast attack, multi-stage decay
+    gate | Audio.MultiStageEnvelope(
+      Stages: [
+        @f3(0.0 0.0 0.0)      ; Start
+        @f3(1.0 0.001 0.3)    ; Instant attack
+        @f3(0.5 0.05 -0.5)    ; Fast initial decay
+        @f3(0.2 0.1 -0.6)     ; Slower mid decay
+        @f3(0.0 0.3 -0.8)     ; Long tail to zero
+      ]
+      SustainIndex: -1        ; No sustain (one-shot)
+      Release: []             ; Empty - already decays to 0
+    ) = env
+
+    vco | Math.Multiply(env)
+  })
+  Pause(1.5)
+})
+
+@schedule(main demo-multistage-percussive)
+@run(main)
+
+; Reverse/swell envelope
+@wire(demo-multistage-swell {
+  Msg("Playing multi-stage swell (reverse envelope)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Pad oscillator
+    none | Audio.Oscillator(Frequency: 110.0 Waveform: Waveform::Triangle Amplitude: 0.4) = osc1
+    none | Audio.Oscillator(Frequency: 110.5 Waveform: Waveform::Triangle Amplitude: 0.4) = osc2
+    osc1 | Math.Add(osc2) = vco
+
+    ; Reverse/swell envelope - starts loud, dips, swells back
+    gate | Audio.MultiStageEnvelope(
+      Stages: [
+        @f3(0.7 0.0 0.0)      ; Start at 70%
+        @f3(0.2 0.5 -0.4)     ; Fade down (log)
+        @f3(0.9 0.8 0.3)      ; Swell back up (exp)
+      ]
+      SustainIndex: 2
+      Release: [@f3(0.0 0.5 -0.6)]
+    ) = env
+
+    vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 800.0 Resonance: 0.3)
+        | Math.Multiply(env)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-multistage-swell)
+@run(main)
+
+; Looping tremolo envelope (LFO baked into envelope)
+@wire(demo-multistage-tremolo {
+  Msg("Playing multi-stage looping tremolo...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; Organ-like tone
+    none | Audio.Oscillator(Frequency: 220.0 Waveform: Waveform::Sine Amplitude: 0.3) = osc1
+    none | Audio.Oscillator(Frequency: 440.0 Waveform: Waveform::Sine Amplitude: 0.15) = osc2
+    osc1 | Math.Add(osc2) = vco
+
+    ; Looping tremolo envelope
+    gate | Audio.MultiStageEnvelope(
+      Stages: [
+        @f3(0.3 0.0 0.0)      ; Start
+        @f3(1.0 0.08 0.0)     ; Rise (linear)
+        @f3(0.3 0.08 0.0)     ; Fall (linear)
+      ]
+      Loop: true
+      LoopStart: 0
+      SustainIndex: -1
+      Release: [@f3(0.0 0.2 -0.5)]
+    ) = env
+
+    vco | Math.Multiply(env)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-multistage-tremolo)
+@run(main)
+
+; Complex synth patch with multi-stage envelope
+@wire(demo-multistage-synth {
+  Msg("Playing complex synth (FM + filter + multi-stage envelope)...")
+  Audio.Device
+  Audio.Channel(Shards: {
+    ; Gate
+    none | Audio.Oscillator(Frequency: 1.0 Amplitude: 1.0) = gate
+
+    ; FM synthesis for rich harmonics
+    none | Audio.Oscillator(Frequency: 330.0 Amplitude: 1.0)
+         | Audio.Oscillator(Frequency: 165.0 Amplitude: 0.6 Index: 2.0) = vco
+
+    ; Complex envelope with multiple decay stages
+    gate | Audio.MultiStageEnvelope(
+      Stages: [
+        @f3(0.0 0.0 0.0)      ; Start
+        @f3(1.0 0.005 0.4)    ; Fast attack
+        @f3(0.7 0.05 -0.3)    ; Initial decay
+        @f3(0.8 0.08 0.2)     ; Slight rise (adds character)
+        @f3(0.4 0.15 -0.5)    ; Decay to sustain
+      ]
+      SustainIndex: 4
+      Release: [
+        @f3(0.15 0.1 -0.4)    ; Initial release drop
+        @f3(0.0 0.5 -0.8)     ; Long reverb-like tail
+      ]
+    ) = env
+
+    ; Resonant filter
+    vco | Audio.Filter(Type: FilterType::Lowpass Cutoff: 1500.0 Resonance: 0.65)
+        | Math.Multiply(env)
+  })
+  Pause(3.0)
+})
+
+@schedule(main demo-multistage-synth)
+@run(main)
+
 Msg("Demo complete!")
