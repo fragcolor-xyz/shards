@@ -130,7 +130,50 @@ public:
   operator bool() const;
 };
 } // namespace shards
-#else // __EMSCRIPTEN__
+#elif defined(__EMSCRIPTEN__) && defined(SHARDS_USE_JSPI)
+// JSPI-based fiber implementation (Emscripten without Asyncify)
+// Uses JavaScript Promise Integration for suspension with manual stack management
+
+// JS function declarations from shards_fiber.js
+extern "C" {
+int shardsFiberCreate();
+void shardsFiberEnter(int fiberId);
+void shardsFiberSuspend(int fiberId);
+void shardsFiberResume(int fiberId);
+void shardsFiberExit(int fiberId);
+void shardsFiberDestroy(int fiberId);
+int shardsFiberIsCompleted(int fiberId);
+void shardsFiberStartEntry(int fiberId, void (*entryFunc)(void *), void *arg);
+int shardsFiberGetCurrent();
+}
+
+namespace shards {
+struct Fiber {
+  int fiberId{-1};
+  std::function<void()> func;
+
+  Fiber() = default;
+  Fiber(size_t) {} // Stack size ignored - JSPI uses growable stacks
+
+  Fiber(const Fiber &) = delete;
+  Fiber &operator=(const Fiber &) = delete;
+
+  ~Fiber() {
+    if (fiberId >= 0) {
+      shardsFiberDestroy(fiberId);
+      fiberId = -1;
+    }
+  }
+
+  void init(const std::function<void()> &func);
+  NO_INLINE void resume();
+  NO_INLINE void suspend();
+
+  operator bool() const { return fiberId >= 0 && !shardsFiberIsCompleted(fiberId); }
+};
+} // namespace shards
+
+#else // __EMSCRIPTEN__ with Asyncify (default)
 #include <emscripten/fiber.h>
 namespace shards {
 struct Fiber {
@@ -157,8 +200,8 @@ struct Fiber {
   uint8_t *c_stack{nullptr};
 };
 } // namespace shards
-#endif
-#endif
+#endif // SHARDS_USE_JSPI
+#endif // SH_USE_THREAD_FIBER
 
 namespace shards {
 using Coroutine = std::optional<Fiber>;

@@ -201,6 +201,60 @@ build-wasm: configure-wasm
 build-wasm-quick:
   cmake --build build/Wasm --target shards
 
+# ==================== JSPI Build (experimental) ====================
+# Uses JSPI instead of Asyncify for fiber support - requires Chrome 137+/Firefox 139+
+
+# configure cmake for JSPI wasm build
+configure-wasm-jspi:
+  #!/bin/bash
+  set -e
+
+  # Check emsdk exists
+  if [ ! -d "{{ emsdk_path }}" ]; then
+    echo "Error: emsdk not found at {{ emsdk_path }}"
+    echo "Clone it with: git clone https://github.com/emscripten-core/emsdk.git {{ emsdk_path }}"
+    exit 1
+  fi
+
+  # Setup emsdk (4.0.10+ required for emdawnwebgpu port)
+  pushd "{{ emsdk_path }}"
+  ./emsdk install {{ emsdk_version }}
+  ./emsdk activate {{ emsdk_version }}
+  source ./emsdk_env.sh
+  export EM_CONFIG=$PWD/.emscripten
+  export EMSCRIPTEN_ROOT=$PWD/upstream/emscripten
+  popd
+
+  # Setup rust target
+  export RUSTUP_TOOLCHAIN=`cat rust.version`
+  rustup +$RUSTUP_TOOLCHAIN target add wasm32-unknown-emscripten
+  rustup +$RUSTUP_TOOLCHAIN component add rust-src
+
+  # Setup host toolchain for cross-compilation
+  export HOST_CC=$(which cc)
+  export HOST_AR=$(which ar)
+
+  # NOTE: JSPI + pthreads have compatibility issues during static initialization.
+  # This build may fail at runtime with "trying to suspend without WebAssembly.promising"
+  # Keeping for experimental/future use when Emscripten fixes JSPI+pthreads.
+  # See: https://github.com/emscripten-core/emscripten/issues/19287
+  cmake -Bbuild/WasmJspi -GNinja \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DSKIP_HEAVY_INLINE=1 \
+    -DUSE_LTO=0 \
+    -DRUST_USE_LTO=0 \
+    -DEMSCRIPTEN_PTHREADS=ON \
+    -DSHARDS_USE_JSPI=ON \
+    -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake
+
+# build shards for wasm with JSPI (configures first if needed)
+build-wasm-jspi: configure-wasm-jspi
+  cmake --build build/WasmJspi --target shards
+
+# quick build wasm JSPI (skips configure if already done)
+build-wasm-jspi-quick:
+  cmake --build build/WasmJspi --target shards
+
 # setup wasm test dependencies (npm install, puppeteer)
 setup-wasm-tests:
   #!/bin/bash
@@ -228,12 +282,14 @@ test-wasm *tests:
     exit 1
   fi
 
-  # Check for wasm build
-  if [ ! -f "build/Wasm/shards-mt.js" ]; then
-    echo "Error: No wasm build found. Run 'just build-wasm' first."
+  # Check for wasm build (use SHARDS_BUILD if set, otherwise default to build/Wasm)
+  if [ -z "$SHARDS_BUILD" ]; then
+    export SHARDS_BUILD=$(pwd)/build/Wasm
+  fi
+  if [ ! -f "$SHARDS_BUILD/shards-mt.js" ]; then
+    echo "Error: No wasm build found at $SHARDS_BUILD. Run 'just build-wasm' first."
     exit 1
   fi
-  export SHARDS_BUILD=$(pwd)/build/Wasm
 
   # Check for node_modules
   if [ ! -d "shards/tests/web/node_modules" ]; then
@@ -329,6 +385,20 @@ test-wasm *tests:
 #        just test-wasm-debug gfx-cube.shs       # run single test
 test-wasm-debug *tests:
   DEBUG_WASM=1 just test-wasm {{ tests }}
+
+# run wasm tests with JSPI build (requires Chrome 137+/Firefox 139+)
+# Usage: just test-wasm-jspi                    # run all tests
+#        just test-wasm-jspi gfx-cube.shs       # run single test
+test-wasm-jspi *tests:
+  #!/bin/bash
+  # Find newest Chrome version in puppeteer cache (JSPI needs 137+)
+  CHROME_PATH=$(ls -d ~/.cache/puppeteer/chrome/mac_arm-*/chrome-mac-arm64/*.app/Contents/MacOS/* 2>/dev/null | sort -V | tail -1)
+  if [ -n "$CHROME_PATH" ]; then
+    echo "Using Chrome: $CHROME_PATH"
+    export PUPPETEER_EXECUTABLE_PATH="$CHROME_PATH"
+  fi
+  export SHARDS_BUILD=$(pwd)/build/WasmJspi
+  just test-wasm {{ tests }}
 
 # run test-runtime on wasm (simple - no browser needed)
 # Usage: just test-runtime-wasm

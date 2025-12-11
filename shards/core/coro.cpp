@@ -151,7 +151,54 @@ void Fiber::suspend() {
 }
 Fiber::operator bool() const { return continuation.has_value() && (bool)continuation.value(); }
 
-#else // __EMSCRIPTEN__
+#elif defined(__EMSCRIPTEN__) && defined(SHARDS_USE_JSPI)
+// JSPI-based fiber implementation (Emscripten without Asyncify)
+
+// Static entry function that JS can call via WebAssembly.promising
+static void jspiEntryAction(void *p) {
+  SH_FIBER_TRACE_LOG("JSPI FIBER ACTION RUN");
+  auto fiber = reinterpret_cast<Fiber *>(p);
+
+  // Notify JS that we're entering this fiber
+  shardsFiberEnter(fiber->fiberId);
+
+  try {
+    fiber->func();
+  } catch (std::exception &e) {
+    SHLOG_ERROR("JSPI fiber unhandled exception: {}", e.what());
+  } catch (...) {
+    SHLOG_ERROR("JSPI fiber unknown exception");
+  }
+
+  // Notify JS that fiber is exiting
+  shardsFiberExit(fiber->fiberId);
+
+  // Fiber should not return normally - the wire runner handles this
+  // by calling coroutineSuspend at the end
+}
+
+void Fiber::init(const std::function<void()> &func) {
+  SH_FIBER_TRACE_LOG("JSPI FIBER INIT");
+  this->func = func;
+
+  // Create the fiber context in JS
+  this->fiberId = shardsFiberCreate();
+
+  // Start the fiber - it will run until first suspension
+  shardsFiberStartEntry(fiberId, jspiEntryAction, this);
+}
+
+NO_INLINE void Fiber::resume() {
+  SH_FIBER_TRACE_LOG("JSPI FIBER RESUME id={}", fiberId);
+  shardsFiberResume(fiberId);
+}
+
+NO_INLINE void Fiber::suspend() {
+  SH_FIBER_TRACE_LOG("JSPI FIBER SUSPEND id={}", fiberId);
+  shardsFiberSuspend(fiberId);
+}
+
+#else // __EMSCRIPTEN__ with Asyncify (default)
 
 thread_local emscripten_fiber_t *em_local_coro{nullptr};
 thread_local emscripten_fiber_t em_main_coro{};

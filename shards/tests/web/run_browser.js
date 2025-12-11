@@ -6,19 +6,33 @@ const puppeteer = require('puppeteer');
 // - Pauses on uncaught exceptions
 const DEBUG_MODE = process.env.DEBUG_WASM === '1';
 
+// Custom browser path (for JSPI testing with newer Chrome)
+// Set PUPPETEER_EXECUTABLE_PATH to use a specific browser
+const BROWSER_PATH = process.env.PUPPETEER_EXECUTABLE_PATH;
+
 (async () => {
   try {
-    const browser = await puppeteer.launch({
+    const launchOptions = {
       args: [
         '--no-sandbox',
         '--disable-web-security',
         '--autoplay-policy=no-user-gesture-required',
         '--auto-accept-camera-and-microphone-capture',
+        // Enable JSPI for older Chrome versions (137+)
+        '--js-flags=--experimental-wasm-jspi',
         ...(DEBUG_MODE ? ['--auto-open-devtools-for-tabs'] : []),
       ],
       headless: false,
       devtools: DEBUG_MODE,
-    });
+    };
+
+    // Use specific browser if provided
+    if (BROWSER_PATH) {
+      console.log('## Using browser:', BROWSER_PATH);
+      launchOptions.executablePath = BROWSER_PATH;
+    }
+
+    const browser = await puppeteer.launch(launchOptions);
 
     if (DEBUG_MODE) {
       console.log('## DEBUG MODE: Browser will stay open on errors. Use F12 DevTools to debug.');

@@ -175,7 +175,32 @@ target_compile_options(shards-core
 if(EMSCRIPTEN)
   target_link_options(shards-core PUBLIC "-sLLD_REPORT_UNDEFINED")
 
-  if(NOT SHARDS_THREAD_FIBER)
+  option(SHARDS_USE_JSPI "Use JSPI instead of Asyncify for fiber support (requires Chrome 137+/Firefox 139+)" OFF)
+
+  if(SHARDS_USE_JSPI)
+    # JSPI-based fiber support (no Asyncify instrumentation)
+    message(STATUS "Shards: Using JSPI for fiber support (no Asyncify)")
+    target_compile_definitions(shards-core PUBLIC SHARDS_USE_JSPI=1)
+
+    # Link the JSPI fiber library
+    target_link_options(shards-core PUBLIC
+      "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/shards_fiber.js"
+    )
+
+    # Configure JSPI imports (suspending functions) and exports (promising functions)
+    target_link_options(shards-core PUBLIC
+      "-sJSPI=1"
+      "-sJSPI_IMPORTS=['shardsFiberSuspend']"
+      "-sJSPI_EXPORTS=['_main','_shardsTick','_shardsLoadScript']"
+    )
+
+    # Export runtime methods needed for fiber management
+    target_link_options(shards-core PUBLIC
+      "-sEXPORTED_RUNTIME_METHODS=['stackSave','stackRestore']"
+    )
+  elseif(NOT SHARDS_THREAD_FIBER)
+    # Asyncify-based fiber support (default for Emscripten)
+    message(STATUS "Shards: Using Asyncify for fiber support")
     target_link_options(shards-core PUBLIC "-sASYNCIFY=1")
   endif()
 

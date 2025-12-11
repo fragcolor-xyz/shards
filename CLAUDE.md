@@ -187,3 +187,35 @@ Shards supports WebAssembly builds via Emscripten. The wasm build uses **emdawnw
 **wasmfs fetch backend is read-only:**
 - Files under the HTTP-mounted `/tfs` directory cannot be written to
 - Workaround: A writable memory backend is mounted at `/tmp` for tests that need to write files
+
+### JSPI Fiber Implementation (Experimental)
+
+The codebase includes an experimental JSPI (JavaScript Promise Integration) based fiber implementation as an alternative to Asyncify. JSPI is a WebAssembly standard that allows Wasm to suspend and resume execution without the binary instrumentation overhead of Asyncify.
+
+**Status: NOT WORKING** - JSPI conflicts with pthreads during static initialization. See https://github.com/emscripten-core/emscripten/issues/19287
+
+**Files:**
+- `shards/core/shards_fiber.js` - JS fiber manager with manual stack save/restore
+- `shards/core/coro.hpp` / `coro.cpp` - JSPI Fiber struct (conditional on `SHARDS_USE_JSPI`)
+- `shards/core/CMakeLists.txt` - JSPI build flags (`-sJSPI=1`, `JSPI_IMPORTS`, `JSPI_EXPORTS`)
+
+**Just Commands (experimental):**
+- `just configure-wasm-jspi` - Configure cmake for JSPI wasm build
+- `just build-wasm-jspi` - Build with JSPI (will compile but fail at runtime)
+- `just test-wasm-jspi` - Run tests with JSPI build
+
+**The Problem:**
+JSPI and pthreads have compatibility issues. During C++ static initialization, pthread mutex operations trigger JSPI suspension, but this happens before any `WebAssembly.promising` context exists, causing:
+```
+Error: trying to suspend without WebAssembly.promising
+```
+
+**Why We Can't Disable Pthreads:**
+The codebase depends on `boost::thread` which requires pthreads. Disabling pthreads causes compilation failures.
+
+**When This Might Work:**
+- When Emscripten fixes JSPI+pthreads compatibility
+- Requires Chrome 137+ or Firefox 139+ for JSPI support
+
+**Key Insight (Shadow Stack Problem):**
+JSPI only handles the native Wasm stack. The linear memory stack (where C++ variables live) must be manually saved/restored. The implementation in `shards_fiber.js` handles this by copying the stack region to a buffer on suspend and restoring it on resume.

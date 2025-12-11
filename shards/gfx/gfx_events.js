@@ -2,6 +2,22 @@ var LibraryGFXEvents = {
   sleep: async function (ms) {
     await new Promise(done => setTimeout(done, ms));
   },
+
+  // Helper to call a function in non-async context
+  // With Asyncify: temporarily disable async state to prevent unwinding
+  // With JSPI: just call directly (JSPI only suspends at marked imports)
+  $callNonAsync__deps: [],
+  $callNonAsync: function(fn) {
+#if ASYNCIFY
+    let t = Asyncify.currData;
+    Asyncify.currData = 0;
+    fn();
+    Asyncify.currData = t;
+#else
+    // JSPI or no async - just call directly
+    fn();
+#endif
+  },
   gfxClipboardGet__proxy: 'async',
   gfxClipboardGet: function (dataPtrPtr, readyPtr) {
     console.log("Reading data from clipboard");
@@ -35,7 +51,7 @@ var LibraryGFXEvents = {
       }
     })();
   },
-  $gfxSetup__deps: ["$Browser", "$Asyncify"],
+  $gfxSetup__deps: ["$Browser", "$callNonAsync"],
   $gfxSetup(canvasContainer, canvas) {
     const eh = this.getEventHandler();
     this.eventHandlerSetCanvas(eh, canvas.id, canvasContainer.id);
@@ -55,19 +71,10 @@ var LibraryGFXEvents = {
 
     canvasContainer.onmousemove = (e) => {
       e.type_ = 0;
-
-      // HACK: FORCE THIS TO RUN NON-ASYNC
-      let t = Asyncify.currData;
-      Asyncify.currData = 0;
-      this.eventHandlerPostMouseEvent(eh, e);
-      Asyncify.currData = t;
+      callNonAsync(() => this.eventHandlerPostMouseEvent(eh, e));
     };
     const handleMouseEvent = (e) => {
-      // HACK: FORCE THIS TO RUN NON-ASYNC
-      let t = Asyncify.currData;
-      Asyncify.currData = 0;
-      this.eventHandlerPostMouseEvent(eh, e);
-      Asyncify.currData = t;
+      callNonAsync(() => this.eventHandlerPostMouseEvent(eh, e));
     };
     canvasContainer.onmousedown = (e) => {
       e.type_ = 1;
@@ -96,12 +103,7 @@ var LibraryGFXEvents = {
       } else {
         event.key_ = 0;
       }
-
-      // HACK: FORCE THIS TO RUN NON-ASYNC
-      let t = Asyncify.currData;
-      Asyncify.currData = 0;
-      this.eventHandlerPostKeyEvent(eh, event);
-      Asyncify.currData = t;
+      callNonAsync(() => this.eventHandlerPostKeyEvent(eh, event));
     };
     window.addEventListener('keydown', (event) => {
       if (trapKeyEvents(event.code)) {
@@ -126,11 +128,7 @@ var LibraryGFXEvents = {
       // Quantize to integer so that minimum scroll is at least +/- 1.
       deltaY = (deltaY == 0) ? 0 : (deltaY > 0 ? Math.max(deltaY, 1) : Math.min(deltaY, -1));
 
-      // HACK: FORCE THIS TO RUN NON-ASYNC
-      let t = Asyncify.currData;
-      Asyncify.currData = 0;  
-      this.eventHandlerPostWheelEvent(eh, { deltaY: deltaY });
-      Asyncify.currData = t;
+      callNonAsync(() => this.eventHandlerPostWheelEvent(eh, { deltaY: deltaY }));
     });
 
     (async function resizeCanvasLoop() {
@@ -145,11 +143,7 @@ var LibraryGFXEvents = {
           // Update canvas intrinsic size for WebGPU surface
           canvas.width = canvasWidth;
           canvas.height = canvasHeight;
-          // HACK: FORCE THIS TO RUN NON-ASYNC
-          let t = Asyncify.currData;
-          Asyncify.currData = 0;
-          this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
-          Asyncify.currData = t;
+          callNonAsync(() => this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio));
           lastW = rect.width;
           lastH = rect.height;
           lastPixelRatio = pixelRatio;
