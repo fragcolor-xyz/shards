@@ -405,12 +405,146 @@ test-wasm-jspi *tests:
 test-runtime-wasm:
   #!/bin/bash
   set -e
-  
+
   # Build test-runtime for wasm if needed
   if [ ! -f "build/Wasm/test-runtime.js" ]; then
     echo "Building test-runtime for wasm..."
     cmake --build build/Wasm --target test-runtime
   fi
-  
+
   # Run with node
   node -e "const test = require('./build/Wasm/test-runtime.js'); test().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })"
+
+# ==================== Zig Cross-Compilation ====================
+# Uses Zig as a C/C++ cross-compiler with Rust musl support
+# Common targets: aarch64-linux-musl, x86_64-linux-musl
+
+# configure cmake for zig cross-compilation (headless build)
+# Usage: just configure-zig aarch64-linux-musl
+configure-zig target:
+  #!/bin/bash
+  set -e
+
+  # Verify zig is available
+  if ! command -v zig &> /dev/null; then
+    echo "Error: zig not found in PATH"
+    echo "Install from https://ziglang.org/download/"
+    echo "Or set ZIG_PATH environment variable to the directory containing zig"
+    exit 1
+  fi
+
+  echo "Using zig: $(which zig)"
+  zig version
+
+  # Setup Rust target
+  export RUSTUP_TOOLCHAIN=$(cat rust.version)
+
+  # Determine Rust target from Zig target
+  TIER3_TARGET=""
+  case "{{ target }}" in
+    aarch64-linux-musl)
+      RUST_TARGET="aarch64-unknown-linux-musl"
+      ;;
+    x86_64-linux-musl)
+      RUST_TARGET="x86_64-unknown-linux-musl"
+      ;;
+    aarch64-linux-gnu)
+      RUST_TARGET="aarch64-unknown-linux-gnu"
+      ;;
+    x86_64-linux-gnu)
+      RUST_TARGET="x86_64-unknown-linux-gnu"
+      ;;
+    riscv64-linux-musl)
+      RUST_TARGET="riscv64gc-unknown-linux-musl"
+      ;;
+    riscv32-linux-musl)
+      # Tier 3 target - uses -Z build-std, no need to add via rustup
+      RUST_TARGET="riscv32gc-unknown-linux-musl"
+      TIER3_TARGET="yes"
+      ;;
+    *)
+      echo "Warning: Unknown Rust target mapping for {{ target }}"
+      echo "You may need to manually add the Rust target"
+      ;;
+  esac
+
+  if [ -n "$RUST_TARGET" ] && [ -z "$TIER3_TARGET" ]; then
+    echo "Adding Rust target: $RUST_TARGET"
+    rustup +$RUSTUP_TOOLCHAIN target add $RUST_TARGET || echo "Target may already be installed"
+  elif [ -n "$TIER3_TARGET" ]; then
+    echo "Tier 3 target: $RUST_TARGET (will use -Z build-std)"
+  fi
+
+  # Headless build - disable graphics/audio modules that won't work cross-compiled
+  # HTTP and Network use rustls (pure Rust TLS) for cross-compilation
+  # SSH still disabled (requires libssh2/OpenSSL)
+  cmake -Bbuild/Zig-{{ target }} -GNinja \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
+    -DZIG_TARGET={{ target }} \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DRUST_BUILD_TYPE=Small \
+    -DSHARDS_WITH_EVERYTHING=OFF \
+    -DSHARDS_WITH_LANGFFI=ON \
+    -DSHARDS_WITH_ASSERT=ON \
+    -DSHARDS_WITH_BROTLI=ON \
+    -DSHARDS_WITH_CHANNELS=ON \
+    -DSHARDS_WITH_CORE=ON \
+    -DSHARDS_WITH_DEBUG=ON \
+    -DSHARDS_WITH_FS=ON \
+    -DSHARDS_WITH_HTTP=ON \
+    -DSHARDS_WITH_JSON=ON \
+    -DSHARDS_WITH_NETWORK=ON \
+    -DSHARDS_WITH_OS=ON \
+    -DSHARDS_WITH_RANDOM=ON \
+    -DSHARDS_WITH_SNAPPY=ON \
+    -DSHARDS_WITH_SQLITE=ON \
+    -DSHARDS_WITH_TRACY=ON \
+    -DSHARDS_WITH_MARKDOWN=ON \
+    -DSHARDS_WITH_STRUCT=ON \
+    -DSHARDS_WITH_REFLECTION=ON \
+    -DSHARDS_WITH_BIGINT=ON \
+    -DSHARDS_WITH_CSV=ON \
+    -DSHARDS_WITH_RUN=ON
+
+# build shards for zig target (configures first if needed)
+# Usage: just build-zig aarch64-linux-musl
+build-zig target: (configure-zig target)
+  cmake --build build/Zig-{{ target }} --target shards
+
+# quick build zig (skips configure if already done)
+# Usage: just build-zig-quick aarch64-linux-musl
+build-zig-quick target:
+  cmake --build build/Zig-{{ target }} --target shards
+
+# strip zig-built binary (removes debug info, ~10x smaller)
+# Usage: just strip-zig aarch64-linux-musl
+strip-zig target:
+  #!/bin/bash
+  set -e
+  BINARY="build/Zig-{{ target }}/shards"
+
+  if [ ! -f "$BINARY" ]; then
+    echo "Error: $BINARY not found. Run 'just build-zig {{ target }}' first."
+    exit 1
+  fi
+
+  # macOS strip can't handle ELF, need llvm-strip
+  if command -v llvm-strip &> /dev/null; then
+    STRIP_CMD="llvm-strip"
+  elif [ -f "/opt/homebrew/opt/llvm/bin/llvm-strip" ]; then
+    STRIP_CMD="/opt/homebrew/opt/llvm/bin/llvm-strip"
+  elif [ -f "/opt/homebrew/Cellar/llvm@20/20.1.8/bin/llvm-strip" ]; then
+    STRIP_CMD="/opt/homebrew/Cellar/llvm@20/20.1.8/bin/llvm-strip"
+  else
+    echo "Error: llvm-strip not found. Install with: brew install llvm"
+    exit 1
+  fi
+
+  SIZE_BEFORE=$(ls -lh "$BINARY" | awk '{print $5}')
+  $STRIP_CMD "$BINARY"
+  SIZE_AFTER=$(ls -lh "$BINARY" | awk '{print $5}')
+  echo "Stripped $BINARY: $SIZE_BEFORE -> $SIZE_AFTER"
+
+# build and strip zig target
+# Usage: just build-zig-release aarch64-linux-musl
+build-zig-release target: (build-zig target) (strip-zig target)

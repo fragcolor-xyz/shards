@@ -174,8 +174,9 @@ endif()
 
 # SDL3 - download for all platforms, but only build for non-emscripten/non-watchOS
 # Emscripten needs SDL3 headers for structures and enums even though it doesn't use the library
+# Zig cross-compilation also only uses headers (no GUI support when cross-compiling)
 if(NOT SHARDS_NO_SDL)
-  if(EMSCRIPTEN OR WATCHOS)
+  if(EMSCRIPTEN OR WATCHOS OR ZIG_CROSSCOMPILE)
     # Download headers only for emscripten and watchOS
     CPMAddPackage(
       NAME SDL3
@@ -269,7 +270,8 @@ if(AUDIO_ENABLED)
 
   # SLEEF - vectorized math library for audio processing (non-Apple, non-WASM only)
   # Apple uses Accelerate framework, WASM uses scalar fallback
-  if(NOT APPLE AND NOT EMSCRIPTEN)
+  # Zig cross-compilation: sleef has host tool build issues, use scalar fallback
+  if(NOT APPLE AND NOT EMSCRIPTEN AND NOT ZIG_CROSSCOMPILE)
     set(SLEEF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(SLEEF_BUILD_DFT OFF CACHE BOOL "" FORCE)
     set(SLEEF_BUILD_QUAD OFF CACHE BOOL "" FORCE)

@@ -56,6 +56,24 @@ if(NOT RUST_CARGO_TARGET)
     set(RUST_CARGO_TARGET i686-pc-windows-gnu)
   elseif(WIN32)
     set(RUST_CARGO_TARGET x86_64-pc-windows-${WINDOWS_ABI})
+  elseif(ZIG_MUSL)
+    # Zig musl cross-compilation
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+      set(RUST_CARGO_TARGET aarch64-unknown-linux-musl)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+      set(RUST_CARGO_TARGET x86_64-unknown-linux-musl)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+      set(RUST_CARGO_TARGET riscv64gc-unknown-linux-musl)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32")
+      # Tier 3 target - requires -Z build-std
+      set(RUST_CARGO_TARGET riscv32gc-unknown-linux-musl)
+      set(RUST_RISCV32 TRUE)
+    else()
+      message(FATAL_ERROR "Unsupported Zig musl architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    # Static CRT for musl
+    list(APPEND RUST_FLAGS -Ctarget-feature=+crt-static)
+    message(STATUS "Zig musl Rust target: ${RUST_CARGO_TARGET}")
   elseif(DESKTOP_LINUX)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
       set(RUST_CARGO_TARGET x86_64-unknown-linux-gnu)
@@ -348,12 +366,6 @@ function(add_rust_library)
     endif()  
   endif()  
 
-  if(EXTRA_CLANG_ARGS)
-    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
-  else()
-    set(BINDGEN_EXTRA_CLANG_ARGS)
-  endif()
-
   set(_RUST_ENVIRONMENT ${RUST_ENVIRONMENT})
 
   # Pass CMAKE_BINARY_DIR so Rust build scripts can find CPM dependencies
@@ -399,6 +411,57 @@ function(add_rust_library)
       "TARGET_CC=${CMAKE_C_COMPILER}"
       "TARGET_AR=${CMAKE_AR}"
     )
+  endif()
+
+  # Zig cross-compilation: configure Rust to use Zig as linker
+  if(ZIG_MUSL AND ZIG_WRAPPER_DIR AND ZIG_EXE AND ZIG_TARGET)
+    # Configure Rust linker via CARGO_TARGET_<TARGET>_LINKER environment variable
+    string(TOUPPER "${RUST_CARGO_TARGET}" _ZIG_RUST_TARGET_UPPER)
+    string(REPLACE "-" "_" _ZIG_RUST_TARGET_UPPER "${_ZIG_RUST_TARGET_UPPER}")
+    list(APPEND _RUST_ENVIRONMENT
+      "CARGO_TARGET_${_ZIG_RUST_TARGET_UPPER}_LINKER=${ZIG_WRAPPER_DIR}/zig-cc.sh"
+      "ZIG_EXE=${ZIG_EXE}"
+      "ZIG_TARGET=${ZIG_TARGET}"
+      "CC=${ZIG_WRAPPER_DIR}/zig-cc.sh"
+      "CXX=${ZIG_WRAPPER_DIR}/zig-cxx.sh"
+      "AR=${ZIG_WRAPPER_DIR}/zig-ar.sh"
+    )
+
+    # Use ZIG_LIB_DIR from Zig.cmake (cached, extracted from 'zig env')
+    if(NOT ZIG_LIB_DIR)
+      message(FATAL_ERROR "ZIG_LIB_DIR not set - Zig.cmake must be loaded first")
+    endif()
+    set(_ZIG_LIB_DIR "${ZIG_LIB_DIR}")
+
+    # Map ZIG_ARCH to the correct include directory name
+    # Note: riscv64 uses "riscv-linux-any", not "riscv64-linux-any"
+    if(ZIG_ARCH STREQUAL "riscv64")
+      set(_ZIG_ARCH_ANY "riscv-linux-any")
+    elseif(ZIG_ARCH STREQUAL "riscv32")
+      set(_ZIG_ARCH_ANY "riscv-linux-any")
+    else()
+      set(_ZIG_ARCH_ANY "${ZIG_ARCH}-linux-any")
+    endif()
+
+    # Pass include paths to bindgen for Zig cross-compilation
+    # bindgen uses libclang, which defaults to host system headers
+    # We provide -nostdinc and explicit include paths for the target
+    # Note: Don't pass --target here, bindgen gets it from CARGO_CFG_TARGET
+    # Build the string directly to avoid CMake list/escaping issues
+    set(_ZIG_BINDGEN_ARGS "-nostdinc -isystem ${_ZIG_LIB_DIR}/include -isystem ${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET} -isystem ${_ZIG_LIB_DIR}/libc/include/generic-musl -isystem ${_ZIG_LIB_DIR}/libc/include/${_ZIG_ARCH_ANY} -isystem ${_ZIG_LIB_DIR}/libc/include/any-linux-any")
+    # Add to environment directly, bypassing the EXTRA_CLANG_ARGS list mechanism
+    list(APPEND _RUST_ENVIRONMENT "BINDGEN_EXTRA_CLANG_ARGS=${_ZIG_BINDGEN_ARGS}")
+    message(STATUS "Zig bindgen include paths configured for ${ZIG_TARGET}")
+  endif()
+
+  # Set BINDGEN_EXTRA_CLANG_ARGS after all platform-specific args are added (non-Zig)
+  if(NOT ZIG_MUSL AND EXTRA_CLANG_ARGS)
+    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
+  elseif(NOT ZIG_MUSL)
+    set(BINDGEN_EXTRA_CLANG_ARGS)
+  else()
+    # For Zig, BINDGEN_EXTRA_CLANG_ARGS is in _RUST_ENVIRONMENT
+    set(BINDGEN_EXTRA_CLANG_ARGS)
   endif()
 
   list(APPEND _RUST_ENVIRONMENT RUSTFLAGS="${RUST_FLAGS}")

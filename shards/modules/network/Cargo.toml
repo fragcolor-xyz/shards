@@ -9,12 +9,18 @@ edition = "2021"
 [lib]
 crate-type = ["rlib", "staticlib"]
 
+[features]
+# No default - must explicitly choose native-tls or rustls
+native-tls = ["tokio-tungstenite/native-tls", "tungstenite/native-tls"]
+rustls = ["tokio-tungstenite/rustls-tls-native-roots", "tungstenite/rustls-tls-native-roots"]
+
 [dependencies]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-tokio-tungstenite = {version = "^0.20.1", features = ["native-tls"]}
-tungstenite = {version = "^0.20.1", features = ["native-tls"]}
+# Need connect feature for connect_async, handshake for accept_async
+tokio-tungstenite = {version = "^0.20.1", default-features = false, features = ["connect", "handshake"]}
+tungstenite = {version = "^0.20.1", default-features = false, features = ["handshake"]}
 slotmap = "1.0"
 futures = "*"
 url = "*"
@@ -24,7 +30,7 @@ hyper-util = {version = "0.1.2", features = ["full"]}
 http-body-util = "0.1"
 http = "*"
 nanoid = "*"
-reqwest = "*"
+reqwest = { version = "*", default-features = false }
 log = "*"
 anyhow = "^1.0.70"
 

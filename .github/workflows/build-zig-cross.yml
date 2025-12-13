@@ -1,0 +1,133 @@
+name: Build (Zig Cross-Compile)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target triple'
+        required: true
+        default: 'aarch64-linux-musl'
+        type: choice
+        options:
+          - aarch64-linux-musl
+          - x86_64-linux-musl
+          - riscv64-linux-musl
+  push:
+    branches:
+      - feature/zig-cross-compilation
+    paths:
+      - 'cmake/Zig.cmake'
+      - 'cmake/Rust.cmake'
+      - 'justfile'
+  pull_request:
+    paths:
+      - 'cmake/Zig.cmake'
+      - 'cmake/Rust.cmake'
+      - 'justfile'
+
+jobs:
+  build-cross:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-linux-musl
+          - riscv64-linux-musl
+
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Maximize disk space
+        uses: shards-lang/maximize-build-space@master
+        with:
+          remove-dotnet: true
+          remove-android: true
+          remove-haskell: true
+          remove-codeql: true
+          remove-docker-images: true
+          root-reserve-mb: 10000
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential cmake ninja-build llvm
+
+      - name: Setup Rust
+        run: |
+          RUSTUP_TOOLCHAIN=$(cat rust.version)
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup component add rust-src --toolchain $RUSTUP_TOOLCHAIN
+
+      - name: Add Rust target
+        run: |
+          case "${{ matrix.target }}" in
+            aarch64-linux-musl)
+              rustup +$RUSTUP_TOOLCHAIN target add aarch64-unknown-linux-musl
+              ;;
+            x86_64-linux-musl)
+              rustup +$RUSTUP_TOOLCHAIN target add x86_64-unknown-linux-musl
+              ;;
+            riscv64-linux-musl)
+              rustup +$RUSTUP_TOOLCHAIN target add riscv64gc-unknown-linux-musl
+              ;;
+          esac
+
+      - name: Configure
+        run: |
+          cmake -Bbuild/Zig-${{ matrix.target }} -GNinja \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
+            -DZIG_TARGET=${{ matrix.target }} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DRUST_BUILD_TYPE=Small \
+            -DSHARDS_WITH_EVERYTHING=OFF \
+            -DSHARDS_WITH_LANGFFI=ON \
+            -DSHARDS_WITH_ASSERT=ON \
+            -DSHARDS_WITH_BROTLI=ON \
+            -DSHARDS_WITH_CHANNELS=ON \
+            -DSHARDS_WITH_CORE=ON \
+            -DSHARDS_WITH_DEBUG=ON \
+            -DSHARDS_WITH_FS=ON \
+            -DSHARDS_WITH_HTTP=ON \
+            -DSHARDS_WITH_JSON=ON \
+            -DSHARDS_WITH_NETWORK=ON \
+            -DSHARDS_WITH_OS=ON \
+            -DSHARDS_WITH_RANDOM=ON \
+            -DSHARDS_WITH_SNAPPY=ON \
+            -DSHARDS_WITH_SQLITE=ON \
+            -DSHARDS_WITH_TRACY=ON \
+            -DSHARDS_WITH_MARKDOWN=ON \
+            -DSHARDS_WITH_STRUCT=ON \
+            -DSHARDS_WITH_REFLECTION=ON \
+            -DSHARDS_WITH_BIGINT=ON \
+            -DSHARDS_WITH_CSV=ON \
+            -DSHARDS_WITH_RUN=ON
+
+      - name: Build
+        run: |
+          cmake --build build/Zig-${{ matrix.target }} --target shards
+
+      - name: Strip binary
+        run: |
+          llvm-strip build/Zig-${{ matrix.target }}/shards
+          ls -lh build/Zig-${{ matrix.target }}/shards
+          file build/Zig-${{ matrix.target }}/shards
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shards-${{ matrix.target }}
+          path: build/Zig-${{ matrix.target }}/shards
+          if-no-files-found: error
+          retention-days: 7

@@ -50,6 +50,13 @@ if(WITH_SQLITE_VEC)
   target_include_directories(sqlite-vec PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-vec-static)
   target_include_directories(sqlite-vec PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
+  # Musl libc fix: sqlite-vec tries to typedef uint*_t using BSD u_int*_t which
+  # doesn't exist in musl. Define __wasi__ to skip those broken typedefs since
+  # <stdint.h> is already included and defines these types properly.
+  if(ZIG_MUSL)
+    target_compile_definitions(sqlite-vec PRIVATE __wasi__)
+  endif()
+
   # Add architecture-specific compile definitions for SQLite vector extension
   if(ARM_NEON)
     target_compile_definitions(sqlite-vec PRIVATE SQLITE_VEC_ENABLE_NEON)

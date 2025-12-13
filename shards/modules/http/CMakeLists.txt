@@ -9,31 +9,44 @@ if(EMSCRIPTEN)
 endif()
 
 if(HTTP_SUPPORTED)
-  set(SOURCES
-    http.cpp
-  )
-  set(REGISTER_SHARDS_ARG http)
-
-  # The rust shards use reqwest, which can not run on emscripten
-  if(NOT EMSCRIPTEN)
+  # For Zig cross-compilation, use Rust-only implementation (no C++ Server shard)
+  # C++ http.cpp requires OpenSSL via Boost.Asio SSL
+  if(ZIG_MUSL)
+    # Rust-only build with rustls
     add_rust_library(NAME shards-http
-      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
-    set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
-    list(APPEND REGISTER_SHARDS_ARG rust)
-  endif()
+      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
+      FEATURES rustls)
 
-  add_shards_module(http SOURCES ${SOURCES}
-    ${RUST_TARGETS_ARG}
-    REGISTER_SHARDS ${REGISTER_SHARDS_ARG})
-
-  target_include_directories(shards-module-http PRIVATE ../core)
-
-  if(NOT EMSCRIPTEN)
-    target_link_libraries(shards-module-http Boost::beast Boost::asio Boost::context OpenSSL)
-    target_include_directories(shards-module-http PRIVATE $<TARGET_PROPERTY:OpenSSL,INTERFACE_INCLUDE_DIRECTORIES>)
+    add_shards_module(http
+      RUST_TARGETS shards-http-rust
+      REGISTER_SHARDS rust)
   else()
-    target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
-    target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
+    # Full build with C++ and Rust
+    set(SOURCES http.cpp)
+    set(REGISTER_SHARDS_ARG http)
+
+    # The rust shards use reqwest, which can not run on emscripten
+    if(NOT EMSCRIPTEN)
+      add_rust_library(NAME shards-http
+        PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
+        FEATURES native-tls)
+      set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
+      list(APPEND REGISTER_SHARDS_ARG rust)
+    endif()
+
+    add_shards_module(http SOURCES ${SOURCES}
+      ${RUST_TARGETS_ARG}
+      REGISTER_SHARDS ${REGISTER_SHARDS_ARG})
+
+    target_include_directories(shards-module-http PRIVATE ../core)
+
+    if(NOT EMSCRIPTEN)
+      target_link_libraries(shards-module-http Boost::beast Boost::asio Boost::context OpenSSL)
+      target_include_directories(shards-module-http PRIVATE $<TARGET_PROPERTY:OpenSSL,INTERFACE_INCLUDE_DIRECTORIES>)
+    else()
+      target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
+      target_include_directories(shards-module-http PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
+    endif()
   endif()
 
   if(WIN32)
