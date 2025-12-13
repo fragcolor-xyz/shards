@@ -440,6 +440,7 @@ configure-zig target:
   export RUSTUP_TOOLCHAIN=$(cat rust.version)
 
   # Determine Rust target from Zig target
+  TIER3_TARGET=""
   case "{{ target }}" in
     aarch64-linux-musl)
       RUST_TARGET="aarch64-unknown-linux-musl"
@@ -453,15 +454,25 @@ configure-zig target:
     x86_64-linux-gnu)
       RUST_TARGET="x86_64-unknown-linux-gnu"
       ;;
+    riscv64-linux-musl)
+      RUST_TARGET="riscv64gc-unknown-linux-musl"
+      ;;
+    riscv32-linux-musl)
+      # Tier 3 target - uses -Z build-std, no need to add via rustup
+      RUST_TARGET="riscv32gc-unknown-linux-musl"
+      TIER3_TARGET="yes"
+      ;;
     *)
       echo "Warning: Unknown Rust target mapping for {{ target }}"
       echo "You may need to manually add the Rust target"
       ;;
   esac
 
-  if [ -n "$RUST_TARGET" ]; then
+  if [ -n "$RUST_TARGET" ] && [ -z "$TIER3_TARGET" ]; then
     echo "Adding Rust target: $RUST_TARGET"
     rustup +$RUSTUP_TOOLCHAIN target add $RUST_TARGET || echo "Target may already be installed"
+  elif [ -n "$TIER3_TARGET" ]; then
+    echo "Tier 3 target: $RUST_TARGET (will use -Z build-std)"
   fi
 
   # Headless build - disable graphics/audio modules that won't work cross-compiled
