@@ -99,7 +99,9 @@ jobs:
             -DSHARDS_WITH_CORE=ON \
             -DSHARDS_WITH_DEBUG=ON \
             -DSHARDS_WITH_FS=ON \
+            -DSHARDS_WITH_HTTP=ON \
             -DSHARDS_WITH_JSON=ON \
+            -DSHARDS_WITH_NETWORK=ON \
             -DSHARDS_WITH_OS=ON \
             -DSHARDS_WITH_RANDOM=ON \
             -DSHARDS_WITH_SNAPPY=ON \

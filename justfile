@@ -476,7 +476,8 @@ configure-zig target:
   fi
 
   # Headless build - disable graphics/audio modules that won't work cross-compiled
-  # Also disable modules requiring OpenSSL (crypto, http, ssh, network) for now
+  # HTTP and Network use rustls (pure Rust TLS) for cross-compilation
+  # SSH still disabled (requires libssh2/OpenSSL)
   cmake -Bbuild/Zig-{{ target }} -GNinja \
     -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
     -DZIG_TARGET={{ target }} \
@@ -490,7 +491,9 @@ configure-zig target:
     -DSHARDS_WITH_CORE=ON \
     -DSHARDS_WITH_DEBUG=ON \
     -DSHARDS_WITH_FS=ON \
+    -DSHARDS_WITH_HTTP=ON \
     -DSHARDS_WITH_JSON=ON \
+    -DSHARDS_WITH_NETWORK=ON \
     -DSHARDS_WITH_OS=ON \
     -DSHARDS_WITH_RANDOM=ON \
     -DSHARDS_WITH_SNAPPY=ON \

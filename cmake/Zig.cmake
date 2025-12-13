@@ -137,13 +137,14 @@ set(ZIG_WRAPPER_DIR "${CMAKE_CURRENT_LIST_DIR}/zig-wrappers/${ZIG_TARGET}" CACHE
 # Only generate wrappers once (check if they exist and are correct)
 set(_ZIG_CC_WRAPPER "${ZIG_WRAPPER_DIR}/zig-cc.sh")
 set(_ZIG_WRAPPER_NEEDS_UPDATE FALSE)
+set(_ZIG_WRAPPER_VERSION "v2") # Increment to force regeneration
 
 if(NOT EXISTS "${_ZIG_CC_WRAPPER}")
   set(_ZIG_WRAPPER_NEEDS_UPDATE TRUE)
 else()
-  # Check if the zig path in the wrapper matches current ZIG_EXE
+  # Check if the zig path and version match
   file(READ "${_ZIG_CC_WRAPPER}" _ZIG_CC_CONTENT)
-  if(NOT _ZIG_CC_CONTENT MATCHES "${ZIG_EXE}")
+  if(NOT _ZIG_CC_CONTENT MATCHES "${ZIG_EXE}" OR NOT _ZIG_CC_CONTENT MATCHES "${_ZIG_WRAPPER_VERSION}")
     set(_ZIG_WRAPPER_NEEDS_UPDATE TRUE)
   endif()
 endif()
@@ -153,15 +154,33 @@ if(_ZIG_WRAPPER_NEEDS_UPDATE)
   file(MAKE_DIRECTORY "${ZIG_WRAPPER_DIR}")
 
   # Generate zig-cc wrapper
+  # Filter out --target= args since we set the target ourselves
+  # The cc crate may pass --target=aarch64-unknown-linux-musl which Zig doesn't understand
   file(WRITE "${ZIG_WRAPPER_DIR}/zig-cc.sh" "#!/bin/bash
-# Auto-generated Zig C compiler wrapper for ${ZIG_TARGET}
-exec \"${ZIG_EXE}\" cc --target=\"${ZIG_TARGET}\" \"$@\"
+# Auto-generated Zig C compiler wrapper for ${ZIG_TARGET} (${_ZIG_WRAPPER_VERSION})
+# Filter out --target= arguments that may conflict with Zig's target format
+args=()
+for arg in \"\$@\"; do
+  case \"\$arg\" in
+    --target=*) ;; # Skip --target args
+    *) args+=(\"\$arg\") ;;
+  esac
+done
+exec \"${ZIG_EXE}\" cc --target=\"${ZIG_TARGET}\" \"\${args[@]}\"
 ")
 
   # Generate zig-c++ wrapper
   file(WRITE "${ZIG_WRAPPER_DIR}/zig-cxx.sh" "#!/bin/bash
-# Auto-generated Zig C++ compiler wrapper for ${ZIG_TARGET}
-exec \"${ZIG_EXE}\" c++ --target=\"${ZIG_TARGET}\" \"$@\"
+# Auto-generated Zig C++ compiler wrapper for ${ZIG_TARGET} (${_ZIG_WRAPPER_VERSION})
+# Filter out --target= arguments that may conflict with Zig's target format
+args=()
+for arg in \"\$@\"; do
+  case \"\$arg\" in
+    --target=*) ;; # Skip --target args
+    *) args+=(\"\$arg\") ;;
+  esac
+done
+exec \"${ZIG_EXE}\" c++ --target=\"${ZIG_TARGET}\" \"\${args[@]}\"
 ")
 
   # Generate zig-ar wrapper

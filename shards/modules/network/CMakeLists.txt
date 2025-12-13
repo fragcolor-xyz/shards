@@ -13,12 +13,22 @@ if(NOT SHARDS_NO_WEBSOCKETS)
 
   # Need rust library for WebSocket implementation details
   if(NOT EMSCRIPTEN)
+    # Use rustls for Zig cross-compilation (no OpenSSL dependency)
+    # Use native-tls for regular builds (uses system TLS)
+    if(ZIG_MUSL)
+      set(NETWORK_TLS_FEATURE rustls)
+    else()
+      set(NETWORK_TLS_FEATURE native-tls)
+    endif()
+
     add_rust_library(NAME shards-network
-      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR})
+      PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
+      FEATURES ${NETWORK_TLS_FEATURE})
     list(APPEND NETWORK_RUST_TARGETS shards-network-rust)
   endif()
 
-  if(ANDROID OR DESKTOP_LINUX)
+  # Only need OpenSSL for native-tls builds (not Zig/rustls)
+  if((ANDROID OR DESKTOP_LINUX) AND NOT ZIG_MUSL)
     set(NEED_OPENSSL_SYS ON)
   endif()
 endif()
