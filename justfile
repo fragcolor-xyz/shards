@@ -501,3 +501,36 @@ build-zig target: (configure-zig target)
 # Usage: just build-zig-quick aarch64-linux-musl
 build-zig-quick target:
   cmake --build build/Zig-{{ target }} --target shards
+
+# strip zig-built binary (removes debug info, ~10x smaller)
+# Usage: just strip-zig aarch64-linux-musl
+strip-zig target:
+  #!/bin/bash
+  set -e
+  BINARY="build/Zig-{{ target }}/shards"
+
+  if [ ! -f "$BINARY" ]; then
+    echo "Error: $BINARY not found. Run 'just build-zig {{ target }}' first."
+    exit 1
+  fi
+
+  # macOS strip can't handle ELF, need llvm-strip
+  if command -v llvm-strip &> /dev/null; then
+    STRIP_CMD="llvm-strip"
+  elif [ -f "/opt/homebrew/opt/llvm/bin/llvm-strip" ]; then
+    STRIP_CMD="/opt/homebrew/opt/llvm/bin/llvm-strip"
+  elif [ -f "/opt/homebrew/Cellar/llvm@20/20.1.8/bin/llvm-strip" ]; then
+    STRIP_CMD="/opt/homebrew/Cellar/llvm@20/20.1.8/bin/llvm-strip"
+  else
+    echo "Error: llvm-strip not found. Install with: brew install llvm"
+    exit 1
+  fi
+
+  SIZE_BEFORE=$(ls -lh "$BINARY" | awk '{print $5}')
+  $STRIP_CMD "$BINARY"
+  SIZE_AFTER=$(ls -lh "$BINARY" | awk '{print $5}')
+  echo "Stripped $BINARY: $SIZE_BEFORE -> $SIZE_AFTER"
+
+# build and strip zig target
+# Usage: just build-zig-release aarch64-linux-musl
+build-zig-release target: (build-zig target) (strip-zig target)
