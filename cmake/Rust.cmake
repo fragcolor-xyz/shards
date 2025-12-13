@@ -366,12 +366,6 @@ function(add_rust_library)
     endif()  
   endif()  
 
-  if(EXTRA_CLANG_ARGS)
-    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS}")
-  else()
-    set(BINDGEN_EXTRA_CLANG_ARGS)
-  endif()
-
   set(_RUST_ENVIRONMENT ${RUST_ENVIRONMENT})
 
   # Pass CMAKE_BINARY_DIR so Rust build scripts can find CPM dependencies
@@ -433,20 +427,42 @@ function(add_rust_library)
       "AR=${ZIG_WRAPPER_DIR}/zig-ar.sh"
     )
 
-    # Get Zig's lib directory for bindgen sysroot
-    get_filename_component(_ZIG_BIN_DIR "${ZIG_EXE}" DIRECTORY)
-    get_filename_component(_ZIG_ROOT "${_ZIG_BIN_DIR}" DIRECTORY)
-    set(_ZIG_LIB_DIR "${_ZIG_ROOT}/lib/zig")
+    # Use ZIG_LIB_DIR from Zig.cmake (cached, extracted from 'zig env')
+    if(NOT ZIG_LIB_DIR)
+      message(FATAL_ERROR "ZIG_LIB_DIR not set - Zig.cmake must be loaded first")
+    endif()
+    set(_ZIG_LIB_DIR "${ZIG_LIB_DIR}")
 
-    # Pass target and sysroot to bindgen for Zig cross-compilation
-    # bindgen uses libclang, so we need to tell it where the musl headers are
-    list(APPEND EXTRA_CLANG_ARGS
-      "--target=${ZIG_TARGET}"
-      "--sysroot=${_ZIG_LIB_DIR}/libc"
-      "-I${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET}"
-      "-I${_ZIG_LIB_DIR}/libc/include/generic-musl"
-      "-I${_ZIG_LIB_DIR}/libc/include/any-linux-any"
-    )
+    # Map ZIG_ARCH to the correct include directory name
+    # Note: riscv64 uses "riscv-linux-any", not "riscv64-linux-any"
+    if(ZIG_ARCH STREQUAL "riscv64")
+      set(_ZIG_ARCH_ANY "riscv-linux-any")
+    elseif(ZIG_ARCH STREQUAL "riscv32")
+      set(_ZIG_ARCH_ANY "riscv-linux-any")
+    else()
+      set(_ZIG_ARCH_ANY "${ZIG_ARCH}-linux-any")
+    endif()
+
+    # Pass include paths to bindgen for Zig cross-compilation
+    # bindgen uses libclang, which defaults to host system headers
+    # We provide -nostdinc and explicit include paths for the target
+    # Note: Don't pass --target here, bindgen gets it from CARGO_CFG_TARGET
+    # Build the string directly to avoid CMake list/escaping issues
+    set(_ZIG_BINDGEN_ARGS "-nostdinc -isystem ${_ZIG_LIB_DIR}/include -isystem ${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET} -isystem ${_ZIG_LIB_DIR}/libc/include/generic-musl -isystem ${_ZIG_LIB_DIR}/libc/include/${_ZIG_ARCH_ANY} -isystem ${_ZIG_LIB_DIR}/libc/include/any-linux-any")
+    # Add to environment directly, bypassing the EXTRA_CLANG_ARGS list mechanism
+    list(APPEND _RUST_ENVIRONMENT "BINDGEN_EXTRA_CLANG_ARGS=${_ZIG_BINDGEN_ARGS}")
+    message(STATUS "Zig bindgen include paths configured for ${ZIG_TARGET}")
+  endif()
+
+  # Set BINDGEN_EXTRA_CLANG_ARGS after all platform-specific args are added (non-Zig)
+  if(NOT ZIG_MUSL AND EXTRA_CLANG_ARGS)
+    list(JOIN EXTRA_CLANG_ARGS " " EXTRA_CLANG_ARGS_STR)
+    set(BINDGEN_EXTRA_CLANG_ARGS BINDGEN_EXTRA_CLANG_ARGS="${EXTRA_CLANG_ARGS_STR}")
+  elseif(NOT ZIG_MUSL)
+    set(BINDGEN_EXTRA_CLANG_ARGS)
+  else()
+    # For Zig, BINDGEN_EXTRA_CLANG_ARGS is in _RUST_ENVIRONMENT
+    set(BINDGEN_EXTRA_CLANG_ARGS)
   endif()
 
   list(APPEND _RUST_ENVIRONMENT RUSTFLAGS="${RUST_FLAGS}")

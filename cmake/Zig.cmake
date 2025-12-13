@@ -114,6 +114,22 @@ execute_process(
 )
 message(STATUS "Zig version: ${ZIG_VERSION}")
 
+# Get zig lib directory (needed for bindgen sysroot)
+# Parse from 'zig env' output which returns JSON-like format
+execute_process(
+  COMMAND "${ZIG_EXE}" env
+  OUTPUT_VARIABLE _ZIG_ENV_OUTPUT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# Extract lib_dir from output: .lib_dir = "/path/to/lib/zig",
+string(REGEX MATCH "\\.lib_dir = \"([^\"]+)\"" _ZIG_LIB_MATCH "${_ZIG_ENV_OUTPUT}")
+if(_ZIG_LIB_MATCH)
+  set(ZIG_LIB_DIR "${CMAKE_MATCH_1}" CACHE PATH "Zig lib directory" FORCE)
+  message(STATUS "Zig lib dir: ${ZIG_LIB_DIR}")
+else()
+  message(WARNING "Could not determine Zig lib directory from 'zig env'")
+endif()
+
 # Use a stable wrapper directory based on source dir + target
 # This ensures try_compile uses the same wrappers
 set(ZIG_WRAPPER_DIR "${CMAKE_CURRENT_LIST_DIR}/zig-wrappers/${ZIG_TARGET}" CACHE PATH "Zig wrapper scripts directory" FORCE)
