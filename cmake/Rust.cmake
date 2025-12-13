@@ -56,6 +56,18 @@ if(NOT RUST_CARGO_TARGET)
     set(RUST_CARGO_TARGET i686-pc-windows-gnu)
   elseif(WIN32)
     set(RUST_CARGO_TARGET x86_64-pc-windows-${WINDOWS_ABI})
+  elseif(ZIG_MUSL)
+    # Zig musl cross-compilation
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+      set(RUST_CARGO_TARGET aarch64-unknown-linux-musl)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+      set(RUST_CARGO_TARGET x86_64-unknown-linux-musl)
+    else()
+      message(FATAL_ERROR "Unsupported Zig musl architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+    # Static CRT for musl
+    list(APPEND RUST_FLAGS -Ctarget-feature=+crt-static)
+    message(STATUS "Zig musl Rust target: ${RUST_CARGO_TARGET}")
   elseif(DESKTOP_LINUX)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
       set(RUST_CARGO_TARGET x86_64-unknown-linux-gnu)
@@ -398,6 +410,36 @@ function(add_rust_library)
       "--modify" "PATH=path_list_append:${EMSCRIPTEN_ROOT_PATH}"
       "TARGET_CC=${CMAKE_C_COMPILER}"
       "TARGET_AR=${CMAKE_AR}"
+    )
+  endif()
+
+  # Zig cross-compilation: configure Rust to use Zig as linker
+  if(ZIG_MUSL AND ZIG_WRAPPER_DIR AND ZIG_EXE AND ZIG_TARGET)
+    # Configure Rust linker via CARGO_TARGET_<TARGET>_LINKER environment variable
+    string(TOUPPER "${RUST_CARGO_TARGET}" _ZIG_RUST_TARGET_UPPER)
+    string(REPLACE "-" "_" _ZIG_RUST_TARGET_UPPER "${_ZIG_RUST_TARGET_UPPER}")
+    list(APPEND _RUST_ENVIRONMENT
+      "CARGO_TARGET_${_ZIG_RUST_TARGET_UPPER}_LINKER=${ZIG_WRAPPER_DIR}/zig-cc.sh"
+      "ZIG_EXE=${ZIG_EXE}"
+      "ZIG_TARGET=${ZIG_TARGET}"
+      "CC=${ZIG_WRAPPER_DIR}/zig-cc.sh"
+      "CXX=${ZIG_WRAPPER_DIR}/zig-cxx.sh"
+      "AR=${ZIG_WRAPPER_DIR}/zig-ar.sh"
+    )
+
+    # Get Zig's lib directory for bindgen sysroot
+    get_filename_component(_ZIG_BIN_DIR "${ZIG_EXE}" DIRECTORY)
+    get_filename_component(_ZIG_ROOT "${_ZIG_BIN_DIR}" DIRECTORY)
+    set(_ZIG_LIB_DIR "${_ZIG_ROOT}/lib/zig")
+
+    # Pass target and sysroot to bindgen for Zig cross-compilation
+    # bindgen uses libclang, so we need to tell it where the musl headers are
+    list(APPEND EXTRA_CLANG_ARGS
+      "--target=${ZIG_TARGET}"
+      "--sysroot=${_ZIG_LIB_DIR}/libc"
+      "-I${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET}"
+      "-I${_ZIG_LIB_DIR}/libc/include/generic-musl"
+      "-I${_ZIG_LIB_DIR}/libc/include/any-linux-any"
     )
   endif()
 

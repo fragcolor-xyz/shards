@@ -405,12 +405,99 @@ test-wasm-jspi *tests:
 test-runtime-wasm:
   #!/bin/bash
   set -e
-  
+
   # Build test-runtime for wasm if needed
   if [ ! -f "build/Wasm/test-runtime.js" ]; then
     echo "Building test-runtime for wasm..."
     cmake --build build/Wasm --target test-runtime
   fi
-  
+
   # Run with node
   node -e "const test = require('./build/Wasm/test-runtime.js'); test().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })"
+
+# ==================== Zig Cross-Compilation ====================
+# Uses Zig as a C/C++ cross-compiler with Rust musl support
+# Common targets: aarch64-linux-musl, x86_64-linux-musl
+
+# configure cmake for zig cross-compilation (headless build)
+# Usage: just configure-zig aarch64-linux-musl
+configure-zig target:
+  #!/bin/bash
+  set -e
+
+  # Verify zig is available
+  if ! command -v zig &> /dev/null; then
+    echo "Error: zig not found in PATH"
+    echo "Install from https://ziglang.org/download/"
+    echo "Or set ZIG_PATH environment variable to the directory containing zig"
+    exit 1
+  fi
+
+  echo "Using zig: $(which zig)"
+  zig version
+
+  # Setup Rust target
+  export RUSTUP_TOOLCHAIN=$(cat rust.version)
+
+  # Determine Rust target from Zig target
+  case "{{ target }}" in
+    aarch64-linux-musl)
+      RUST_TARGET="aarch64-unknown-linux-musl"
+      ;;
+    x86_64-linux-musl)
+      RUST_TARGET="x86_64-unknown-linux-musl"
+      ;;
+    aarch64-linux-gnu)
+      RUST_TARGET="aarch64-unknown-linux-gnu"
+      ;;
+    x86_64-linux-gnu)
+      RUST_TARGET="x86_64-unknown-linux-gnu"
+      ;;
+    *)
+      echo "Warning: Unknown Rust target mapping for {{ target }}"
+      echo "You may need to manually add the Rust target"
+      ;;
+  esac
+
+  if [ -n "$RUST_TARGET" ]; then
+    echo "Adding Rust target: $RUST_TARGET"
+    rustup +$RUSTUP_TOOLCHAIN target add $RUST_TARGET || echo "Target may already be installed"
+  fi
+
+  # Headless build - disable graphics/audio modules that won't work cross-compiled
+  # Also disable modules requiring OpenSSL (crypto, http, ssh, network) for now
+  cmake -Bbuild/Zig-{{ target }} -GNinja \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
+    -DZIG_TARGET={{ target }} \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DRUST_BUILD_TYPE=Small \
+    -DSHARDS_WITH_EVERYTHING=OFF \
+    -DSHARDS_WITH_LANGFFI=ON \
+    -DSHARDS_WITH_ASSERT=ON \
+    -DSHARDS_WITH_BROTLI=ON \
+    -DSHARDS_WITH_CHANNELS=ON \
+    -DSHARDS_WITH_CORE=ON \
+    -DSHARDS_WITH_DEBUG=ON \
+    -DSHARDS_WITH_FS=ON \
+    -DSHARDS_WITH_JSON=ON \
+    -DSHARDS_WITH_OS=ON \
+    -DSHARDS_WITH_RANDOM=ON \
+    -DSHARDS_WITH_SNAPPY=ON \
+    -DSHARDS_WITH_SQLITE=ON \
+    -DSHARDS_WITH_TRACY=ON \
+    -DSHARDS_WITH_MARKDOWN=ON \
+    -DSHARDS_WITH_STRUCT=ON \
+    -DSHARDS_WITH_REFLECTION=ON \
+    -DSHARDS_WITH_BIGINT=ON \
+    -DSHARDS_WITH_CSV=ON \
+    -DSHARDS_WITH_RUN=ON
+
+# build shards for zig target (configures first if needed)
+# Usage: just build-zig aarch64-linux-musl
+build-zig target: (configure-zig target)
+  cmake --build build/Zig-{{ target }} --target shards
+
+# quick build zig (skips configure if already done)
+# Usage: just build-zig-quick aarch64-linux-musl
+build-zig-quick target:
+  cmake --build build/Zig-{{ target }} --target shards

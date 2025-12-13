@@ -72,3 +72,4 @@ local/
 .claude/
 shards/rust_macro/Cargo.lock
 /coverage
+cmake/zig-wrappers/

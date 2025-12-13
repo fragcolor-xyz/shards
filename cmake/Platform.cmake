@@ -101,6 +101,28 @@ if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
   set(DESKTOP TRUE)
 endif()
 
+# Zig cross-compilation detection
+if(ZIG_TARGET)
+  set(ZIG_CROSSCOMPILE TRUE)
+
+  if(ZIG_TARGET MATCHES "musl")
+    set(ZIG_MUSL TRUE CACHE BOOL "Building with musl libc" FORCE)
+    set(GNU_STATIC_BUILD ON CACHE BOOL "Static build" FORCE)
+
+    # musl uses 64-bit types by default, tell code to use regular stat/fstat
+    # instead of stat64/fstat64 which don't exist in musl
+    add_compile_definitions(_FILE_OFFSET_BITS=64)
+    add_compile_definitions(_LARGEFILE64_SOURCE)
+  endif()
+
+  # For Zig Linux targets, treat as Linux for module detection
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(DESKTOP_LINUX TRUE)
+  endif()
+
+  message(STATUS "Zig cross-compilation enabled for target: ${ZIG_TARGET}")
+endif()
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" AND NOT EMSCRIPTEN)
   set(X86 TRUE)
   set(ARM FALSE)
@@ -110,14 +132,19 @@ else()
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm)|(ARM)|(aarch64)|(AARCH64)")
     set(ARM TRUE)
 
-    # Check for NEON support
-    include(CheckCXXCompilerFlag)
-    check_cxx_compiler_flag("-mfpu=neon" COMPILER_SUPPORTS_NEON)
+    # Check for NEON support (skip for Zig cross-compilation)
+    if(NOT ZIG_CROSSCOMPILE)
+      include(CheckCXXCompilerFlag)
+      check_cxx_compiler_flag("-mfpu=neon" COMPILER_SUPPORTS_NEON)
 
-    if(COMPILER_SUPPORTS_NEON)
-      set(ARM_NEON TRUE)
+      if(COMPILER_SUPPORTS_NEON)
+        set(ARM_NEON TRUE)
+      else()
+        set(ARM_NEON FALSE)
+      endif()
     else()
-      set(ARM_NEON FALSE)
+      # Assume NEON support for Zig ARM targets
+      set(ARM_NEON TRUE)
     endif()
   else()
     set(ARM FALSE)
@@ -353,7 +380,8 @@ if(USE_LLD)
   SET(CMAKE_RANLIB llvm-ranlib)
 endif()
 
-if(DESKTOP_LINUX)
+if(DESKTOP_LINUX AND NOT ZIG_CROSSCOMPILE)
+  # export-dynamic needed for plugin loading, but Zig's linker doesn't support it
   if(CLANG)
     add_link_options(-Wl,-export-dynamic)
   else()
