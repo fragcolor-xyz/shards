@@ -119,7 +119,34 @@ static bool checkForConsistentResumer() {
 }
 #endif
 
+#ifdef SH_USE_TSAN
+// Thread-local storage for the main TSAN fiber handle (the fiber that resumes coroutines)
+static thread_local void *tsan_main_fiber = nullptr;
+
+static ALWAYS_INLINE void *getTsanMainFiber() {
+  if (!tsan_main_fiber) {
+    tsan_main_fiber = __tsan_get_current_fiber();
+  }
+  return tsan_main_fiber;
+}
+#endif
+
 Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
+
+Fiber::~Fiber() {
+#ifdef SH_USE_TSAN
+  if (tsan_fiber) {
+    // Ensure we're not on this fiber's context before destroying
+    // (handles edge case where fiber function returned instead of suspending)
+    void *current_fiber = __tsan_get_current_fiber();
+    if (current_fiber == tsan_fiber) {
+      __tsan_switch_to_fiber(getTsanMainFiber(), 0);
+    }
+    __tsan_destroy_fiber(tsan_fiber);
+    tsan_fiber = nullptr;
+  }
+#endif
+}
 void Fiber::init(std::function<void()> fn) {
 #if SH_DEBUG_CONSISTENT_RESUMER
   consistentResumer.emplace(std::this_thread::get_id());
@@ -127,11 +154,77 @@ void Fiber::init(std::function<void()> fn) {
   creatorStack = getThreadNameStack();
 #endif
 #endif
+
+#ifdef SH_USE_ASAN
+  // Store stack information for ASAN
+  // Stack bottom is the base of the allocated memory (lowest address)
+  // Stack grows downward, so sp (stack pointer) points to the top (highest address)
+  asan_stack_bottom = allocator.mem;
+  asan_stack_size = allocator.size;
+
+  // Unpoison the entire fiber stack to support exception unwinding
+  // Without this, ASAN reports "stack-use-after-return" when exceptions
+  // are thrown because the unwinder accesses stack frames ASAN thinks are invalid
+  __asan_unpoison_memory_region(asan_stack_bottom, asan_stack_size);
+#endif
+
+#ifdef SH_USE_TSAN
+  // Ensure main fiber is captured before we create child fibers
+  getTsanMainFiber();
+
+  // Create TSAN fiber handle for this coroutine
+  // init() should only be called once per Fiber object
+  shassert(!tsan_fiber && "Fiber::init() called twice - this is not supported");
+  tsan_fiber = __tsan_create_fiber(0);
+#endif
+
+#ifdef SH_USE_ASAN
+  // Use a local for the initial switch, then store in member for the lambda
+  void *init_fake_stack = nullptr;
+
+  // Tell ASAN we're about to switch to the fiber's stack
+  __sanitizer_start_switch_fiber(&init_fake_stack, asan_stack_bottom, asan_stack_size);
+
+  // Store in member so lambda can access it safely (local would be dangling after init() returns)
+  asan_init_fake_stack = init_fake_stack;
+#endif
+
+#ifdef SH_USE_TSAN
+  // Switch TSAN tracking to this fiber
+  __tsan_switch_to_fiber(tsan_fiber, 0);
+#endif
+
   continuation.emplace(boost::context::callcc(std::allocator_arg, allocator, [this, fn](boost::context::continuation &&sink) {
     continuation.emplace(std::move(sink));
+
+#ifdef SH_USE_ASAN
+    // We just switched TO this fiber, finish the switch (use member, not captured local)
+    __sanitizer_finish_switch_fiber(asan_init_fake_stack, nullptr, nullptr);
+#endif
+
     fn();
+
+    // The fiber function should never return - it should always suspend
+    // But if it does, we need to clean up sanitizer state
+#ifdef SH_USE_ASAN
+    // Before returning, start switch back to caller (nullptr = main stack)
+    __sanitizer_start_switch_fiber(nullptr, nullptr, 0);
+#endif
+    // Note: TSAN switch is NOT done here - it's handled after callcc returns (line 229)
+    // to avoid duplicate switches when fiber returns vs suspends
+
     return std::move(continuation.value());
   }));
+
+#ifdef SH_USE_ASAN
+  // After callcc returns (fiber yielded back to us), finish the switch back to main stack
+  __sanitizer_finish_switch_fiber(init_fake_stack, nullptr, nullptr);
+#endif
+
+#ifdef SH_USE_TSAN
+  // Switch TSAN tracking back to main fiber after the initial yield
+  __tsan_switch_to_fiber(getTsanMainFiber(), 0);
+#endif
 }
 void Fiber::resume() {
   shassert(continuation);
@@ -139,7 +232,30 @@ void Fiber::resume() {
   if (checkForConsistentResumer() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
     throw std::runtime_error("Fiber::resume() called from different thread");
 #endif
+
+#ifdef SH_USE_ASAN
+  // Each context switch needs its own fake_stack (local variable on caller's stack)
+  void *fake_stack = nullptr;
+  // Tell ASAN we're about to switch to the fiber's stack
+  __sanitizer_start_switch_fiber(&fake_stack, asan_stack_bottom, asan_stack_size);
+#endif
+
+#ifdef SH_USE_TSAN
+  // Switch TSAN tracking to this fiber
+  __tsan_switch_to_fiber(tsan_fiber, 0);
+#endif
+
   continuation = continuation->resume();
+
+#ifdef SH_USE_ASAN
+  // Fiber yielded back to us, finish the switch back to main stack
+  __sanitizer_finish_switch_fiber(fake_stack, nullptr, nullptr);
+#endif
+
+#ifdef SH_USE_TSAN
+  // Switch TSAN tracking back to main fiber after fiber yields
+  __tsan_switch_to_fiber(getTsanMainFiber(), 0);
+#endif
 }
 void Fiber::suspend() {
   shassert(continuation);
@@ -147,7 +263,25 @@ void Fiber::suspend() {
   if (checkForConsistentResumer() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
     throw std::runtime_error("Fiber::suspend() called from different thread");
 #endif
+
+#ifdef SH_USE_ASAN
+  // Each context switch needs its own fake_stack (local variable on fiber's stack)
+  void *fake_stack = nullptr;
+  // Tell ASAN we're about to switch back to the main stack (nullptr = main stack)
+  __sanitizer_start_switch_fiber(&fake_stack, nullptr, 0);
+#endif
+
+#ifdef SH_USE_TSAN
+  // Switch TSAN tracking back to the main fiber
+  __tsan_switch_to_fiber(getTsanMainFiber(), 0);
+#endif
+
   continuation = continuation->resume();
+
+#ifdef SH_USE_ASAN
+  // We're back on the fiber's stack, finish the switch
+  __sanitizer_finish_switch_fiber(fake_stack, nullptr, nullptr);
+#endif
 }
 Fiber::operator bool() const { return continuation.has_value() && (bool)continuation.value(); }
 

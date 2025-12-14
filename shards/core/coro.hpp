@@ -87,6 +87,38 @@ using Fiber = ThreadFiber;
 #define SH_BOOST_COROUTINE 1
 #include <boost/context/continuation.hpp>
 #include <shards/log/log.hpp>
+
+// ASAN (Address Sanitizer) fiber support
+// These functions inform ASAN about stack switching so it can track the correct stack bounds
+#ifdef SH_USE_ASAN
+#include <sanitizer/asan_interface.h>
+extern "C" {
+// Called before switching to a new fiber stack
+// fake_stack_save: output parameter to save fake stack state (can be nullptr)
+// stack_bottom: bottom of the new fiber's stack
+// stack_size: size of the new fiber's stack
+void __sanitizer_start_switch_fiber(void **fake_stack_save, const void *stack_bottom, size_t stack_size);
+
+// Called after returning from a fiber switch
+// fake_stack_save: the value saved by start_switch_fiber
+// stack_bottom_old: output parameter for the old stack bottom (can be nullptr)
+// stack_size_old: output parameter for the old stack size (can be nullptr)
+void __sanitizer_finish_switch_fiber(void *fake_stack_save, const void **stack_bottom_old, size_t *stack_size_old);
+}
+#endif
+
+// TSAN (Thread Sanitizer) fiber support
+// These functions inform TSAN about fiber context switches to prevent false positive race reports
+#ifdef SH_USE_TSAN
+extern "C" {
+void *__tsan_get_current_fiber(void);
+void *__tsan_create_fiber(unsigned flags);
+void __tsan_destroy_fiber(void *fiber);
+void __tsan_switch_to_fiber(void *fiber, unsigned flags);
+void __tsan_set_fiber_name(void *fiber, const char *name);
+}
+#endif
+
 namespace shards {
 struct SHStackAllocator {
   size_t size{SH_BASE_STACK_SIZE};
@@ -120,8 +152,21 @@ private:
 #endif
 #endif
 
+#ifdef SH_USE_ASAN
+  // ASAN fiber state for stack tracking during context switches
+  const void *asan_stack_bottom{nullptr}; // Bottom of fiber's stack
+  size_t asan_stack_size{0};              // Size of fiber's stack
+  void *asan_init_fake_stack{nullptr};    // Fake stack for init() - accessed by lambda
+#endif
+
+#ifdef SH_USE_TSAN
+  // TSAN fiber handle for tracking fiber context switches
+  void *tsan_fiber{nullptr};
+#endif
+
 public:
   Fiber(SHStackAllocator allocator);
+  ~Fiber();
   Fiber(const Fiber &) = delete;
   Fiber &operator=(const Fiber &) = delete;
   void init(std::function<void()> fn);
