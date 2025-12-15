@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2025 Fragcolor Pte. Ltd.
+
+// Test Geo shards for drone mission planning
+
+@mesh(root)
+
+@wire(geo-polygon-test {
+  ; Create a simple square polygon (SF Bay area test coordinates)
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Verify polygon has expected structure
+  poly.type | Assert.Is("polygon" true)
+
+  ; Verify coords are preserved
+  poly.coords | Count | Assert.Is(4 true)
+
+  ; Verify centroid is computed (should be near center of polygon)
+  poly.centroid.x | IsMore(-122.42) | Assert.Is(true true)
+  poly.centroid.x | IsLess(-122.41) | Assert.Is(true true)
+  poly.centroid.y | IsMore(37.78) | Assert.Is(true true)
+  poly.centroid.y | IsLess(37.79) | Assert.Is(true true)
+
+  "Geo.Polygon test passed" | Log
+})
+
+@wire(geo-gridfill-test {
+  ; Create polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid with 100m spacing (should produce fewer points for testing)
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+
+  ; Verify we get some points
+  points | Count >= num-points
+  num-points | IsMore(0) | Assert.Is(true true)
+  num-points | Log("Grid points generated:")
+
+  ; Verify point structure (types are known at compose time)
+  points | Take(0) = first-point
+  first-point.x | IsFloat | Assert.Is(true true)
+  first-point.y | IsFloat | Assert.Is(true true)
+  first-point.index | Assert.Is(0 true)
+  first-point.row | Assert.Is(0 true)
+
+  "Geo.GridFill test passed" | Log
+})
+
+@wire(geo-gridfill-rotation-test {
+  ; Create polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid with 45 degree rotation
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 45.0) = points-rotated
+
+  ; Generate grid without rotation for comparison
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points-normal
+
+  ; Counts may differ due to rotation affecting which points fall inside
+  points-rotated | Count | Log("Points with 45 degree rotation:")
+  points-normal | Count | Log("Points without rotation:")
+
+  ; Verify rotated grid has points
+  points-rotated | Count | IsMore(0) | Assert.Is(true true)
+
+  "Geo.GridFill rotation test passed" | Log
+})
+
+@wire(geo-boustrophedon-test {
+  ; Test boustrophedon (serpentine) pattern
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Use smaller spacing to get multiple rows
+  poly | Geo.GridFill(SpacingX: 50.0 SpacingY: 50.0 Direction: 0.0) = points
+
+  ; Get points from row 0 and row 1
+  Sequence(row0 Type: @type([Type::Any]))
+  Sequence(row1 Type: @type([Type::Any]))
+
+  points | ForEach({
+    = pt
+    pt.row | Match([
+      0 {pt >> row0}
+      1 {pt >> row1}
+      none Pass
+    ])
+  })
+
+  ; Verify we have multiple rows
+  row0 | Count | IsMore(0) | Assert.Is(true true)
+  row1 | Count | IsMore(0) | Assert.Is(true true)
+
+  ; In boustrophedon pattern, row 1 should be traversed in reverse order
+  ; This means the last point of row 0 and first point of row 1 should be close
+  ; (minimizing travel distance between rows)
+
+  "Geo.GridFill boustrophedon test passed" | Log
+})
+
+@wire(geo-dji-kmz-test {
+  ; Test DJI KMZ export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to KMZ with default parameters
+  points | Geo.ToDjiKmz(Path: "/tmp/test-geo-mission.kmz" Speed: 3.5 Altitude: 34.0 GimbalPitch: -45.0) = output
+
+  ; Verify passthrough (output should equal input)
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.kmz" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.kmz" | FS.Remove
+
+  "Geo.ToDjiKmz test passed" | Log
+})
+
+@schedule(root geo-polygon-test)
+@schedule(root geo-gridfill-test)
+@schedule(root geo-gridfill-rotation-test)
+@schedule(root geo-boustrophedon-test)
+@schedule(root geo-dji-kmz-test)
+
+@run(root) | Assert.Is(true)

@@ -10,6 +10,7 @@ use std::fmt::Debug;
 use std::mem::transmute;
 use std::ops::{Index, IndexMut};
 
+#[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct SeqVar(pub Var);
 
@@ -35,6 +36,12 @@ impl AutoSeqVar {
   /// The `Var` will not be destroyed when it goes out of scope.
   pub fn leak(&mut self) -> Var {
     std::mem::replace(&mut self.0 .0, Var::default())
+  }
+
+  /// Converts the `AutoSeqVar` to a `ClonedVar`, transferring ownership.
+  /// The sequence will not be destroyed when the `AutoSeqVar` goes out of scope.
+  pub fn to_cloned(self) -> ClonedVar {
+    unsafe { std::mem::transmute(self) }
   }
 }
 
