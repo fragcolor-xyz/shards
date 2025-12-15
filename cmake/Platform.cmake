@@ -224,6 +224,9 @@ if(EMSCRIPTEN)
   # Enable web simd
   add_compile_options(-msimd128)
 
+  # Required when RTTI is disabled with embind
+  add_compile_definitions(EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0)
+
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("-sASSERTIONS=2")
     add_link_options(-gsource-map)
@@ -370,6 +373,8 @@ if(NOT MSVC)
 else()
   # Disable RTTI on MSVC
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/GR->)
+  # Required for Boost.Asio when RTTI is disabled
+  add_compile_definitions(BOOST_ASIO_NO_TYPEID)
 endif()
 
 if(WIN32 AND(CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND(CMAKE_BUILD_TYPE STREQUAL "Debug"))
