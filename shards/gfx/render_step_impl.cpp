@@ -193,7 +193,7 @@ void renderDrawables(RenderGraphEncodeContext &evaluateContext, DrawQueuePtr que
     if (storage.debug && queue->trace) {
       for (auto &drawable : drawables) {
         auto ptr = drawable->self();
-        if (auto debug = dynamic_cast<IDebugVisualize *>(const_cast<IDrawable *>(drawable))) {
+        if (auto debug = const_cast<IDrawable *>(drawable)->asDebugVisualize()) {
           storage.debugVisualize([ptr, debug](auto &sr) { debug->debugVisualize(sr); });
         }
       }

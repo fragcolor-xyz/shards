@@ -66,7 +66,8 @@ FeaturePtr Velocity::create(bool applyView, bool applyProjection) {
       auto &drawable = ctx.getDrawable(i);
 
       // Update cached data
-      if (const MeshDrawable *md = dynamic_cast<const MeshDrawable *>(&drawable)) {
+      if (drawable.getDrawableType() == DrawableType::Mesh) {
+        const MeshDrawable *md = static_cast<const MeshDrawable *>(&drawable);
         auto &entry = detail::getCacheEntry(cache->cache, drawable.getId());
         entry.touch(md->transform, ctx.frameCounter);
         if (md->previousTransform) {

@@ -38,10 +38,10 @@ struct SHDrawable {
   bool rootNodeWrapped{};
 
   void assign(const std::shared_ptr<IDrawable> &generic) {
-    if (auto mesh = std::dynamic_pointer_cast<MeshDrawable>(generic)) {
-      this->drawable = mesh;
-    } else if (auto meshTree = std::dynamic_pointer_cast<MeshTreeDrawable>(generic)) {
-      this->drawable = meshTree;
+    if (generic->getDrawableType() == DrawableType::Mesh) {
+      this->drawable = std::static_pointer_cast<MeshDrawable>(generic);
+    } else if (generic->getDrawableType() == DrawableType::MeshTree) {
+      this->drawable = std::static_pointer_cast<MeshTreeDrawable>(generic);
     } else {
       throw std::logic_error("unsupported");
     }

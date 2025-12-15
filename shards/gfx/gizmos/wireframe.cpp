@@ -75,15 +75,17 @@ void WireframeRenderer::reset(size_t frameCounter) {
   currentFrameCounter = frameCounter;
 }
 void WireframeRenderer::overlayWireframe(DrawQueue &queue, IDrawable &drawable, float4 color) {
-  if (MeshDrawable *meshDrawable = dynamic_cast<MeshDrawable *>(&drawable)) {
-    auto drawable = getWireframeDrawable(meshDrawable->mesh, color);
-    drawable->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
-    drawable->transform = meshDrawable->transform;
-    queue.add(drawable);
-  } else if (MeshTreeDrawable *treeDrawable = dynamic_cast<MeshTreeDrawable *>(&drawable)) {
+  if (drawable.getDrawableType() == DrawableType::Mesh) {
+    MeshDrawable *meshDrawable = static_cast<MeshDrawable *>(&drawable);
+    auto wireframeDrawable = getWireframeDrawable(meshDrawable->mesh, color);
+    wireframeDrawable->skin = meshDrawable->skin; // Make sure to copy source skin so the wireframe can be animated
+    wireframeDrawable->transform = meshDrawable->transform;
+    queue.add(wireframeDrawable);
+  } else if (drawable.getDrawableType() == DrawableType::MeshTree) {
+    MeshTreeDrawable *treeDrawable = static_cast<MeshTreeDrawable *>(&drawable);
     allocator->reset();
     TransformUpdaterCollector collector(*allocator.get());
-    collector.collector = [&](DrawablePtr drawable, const float4x4 &) { overlayWireframe(queue, *drawable.get(), color); };
+    collector.collector = [&](DrawablePtr d, const float4x4 &) { overlayWireframe(queue, *d.get(), color); };
     collector.update(*treeDrawable);
   }
 }

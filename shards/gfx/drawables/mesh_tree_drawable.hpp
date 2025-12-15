@@ -30,6 +30,9 @@ private:
   size_t lastUpdateVersion = size_t(~0);
 
 public:
+  DrawableType getDrawableType() const override { return DrawableType::MeshTree; }
+  IDebugVisualize* asDebugVisualize() override { return this; }
+
   std::vector<MeshDrawable::Ptr> drawables;
   float4x4 resolvedTransform;
   TRS trs;

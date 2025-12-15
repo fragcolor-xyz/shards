@@ -26,6 +26,8 @@ private:
   size_t version{};
 
 public:
+  DrawableType getDrawableType() const override { return DrawableType::Mesh; }
+
   MeshPtr mesh;
   MaterialPtr material;
   std::vector<FeaturePtr> features;

@@ -365,7 +365,11 @@ if(NOT MSVC)
     $<$<COMPILE_LANGUAGE:CXX>:-fno-finite-math-only>
     $<$<COMPILE_LANGUAGE:CXX>:-funroll-loops>
     $<$<COMPILE_LANGUAGE:CXX>:-Wno-multichar>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
   )
+else()
+  # Disable RTTI on MSVC
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/GR->)
 endif()
 
 if(WIN32 AND(CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND(CMAKE_BUILD_TYPE STREQUAL "Debug"))

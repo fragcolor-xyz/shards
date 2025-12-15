@@ -65,7 +65,8 @@ bool MeshTreeDrawable::expand(shards::pmr::vector<const IDrawable *> &outDrawabl
   TransformUpdaterCollector collector(alloc);
   collector.collector = [&](const DrawablePtr &drawable, const float4x4 &transform) {
     outDrawables.push_back(drawable.get());
-    if (MeshDrawable *md = dynamic_cast<MeshDrawable *>(drawable.get())) {
+    if (drawable->getDrawableType() == DrawableType::Mesh) {
+      MeshDrawable *md = static_cast<MeshDrawable *>(drawable.get());
       if (md->skin) {
         drawablesWithSkinsToUpdate.push_back(md);
       }

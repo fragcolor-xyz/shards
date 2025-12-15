@@ -18,8 +18,15 @@ struct PipelineHashCollector;
 
 typedef detail::DrawableProcessorPtr (*DrawableProcessorConstructor)(Context &);
 
+struct IDebugVisualize;
+
+enum class DrawableType { Unknown, Mesh, MeshTree };
+
 struct IDrawable {
   virtual ~IDrawable() = default;
+
+  virtual DrawableType getDrawableType() const { return DrawableType::Unknown; }
+  virtual IDebugVisualize* asDebugVisualize() { return nullptr; }
 
   // Duplicate self
   virtual DrawablePtr clone() const = 0;

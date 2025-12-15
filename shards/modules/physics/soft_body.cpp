@@ -308,7 +308,8 @@ struct SoftBodyBuilder {
     gfx::TransformUpdaterCollector collector(tempAllocator.getAllocator());
     collector.ignoreRootTransform = true;
     collector.collector = [&](const gfx::DrawablePtr &drawable, const float4x4 &worldTransform) {
-      if (gfx::MeshDrawable::Ptr ptr = std::dynamic_pointer_cast<gfx::MeshDrawable>(drawable)) {
+      if (drawable->getDrawableType() == gfx::DrawableType::Mesh) {
+        gfx::MeshDrawable::Ptr ptr = std::static_pointer_cast<gfx::MeshDrawable>(drawable);
         this->addDrawable(ptr, worldTransform);
       }
     };
