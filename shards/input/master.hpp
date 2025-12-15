@@ -16,6 +16,11 @@ struct Window;
 }
 
 namespace shards::input {
+
+namespace debug {
+struct IDebug;
+}
+
 struct FocusTracker {
   void *previous{};
   void *current{};
@@ -52,6 +57,7 @@ struct InputMaster;
 
 struct IInputHandler {
   virtual ~IInputHandler() = default;
+  virtual debug::IDebug* asDebug() { return nullptr; }
   virtual int getPriority() const { return 0; }
   virtual void handle(InputMaster &master) = 0;
 };

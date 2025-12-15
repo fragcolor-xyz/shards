@@ -34,7 +34,7 @@ size_t shards_input_eventType(shards::input::debug::OpaqueEvent opaque) {
   return evt.event.index();
 }
 const char *shards_input_layerName(shards::input::debug::OpaqueLayer opaque) {
-  auto layer = dynamic_cast<shards::input::debug::IDebug *>((shards::input::IInputHandler *)opaque);
+  auto layer = ((shards::input::IInputHandler *)opaque)->asDebug();
   if (layer) {
     return shards_strdup(layer->getDebugName());
   } else {
@@ -145,7 +145,7 @@ struct DebugUI {
       auto &layer = _layers.emplace_back();
       layer.priority = handler->getPriority();
 
-      if (debug::IDebug *debug = dynamic_cast<debug::IDebug *>(handler.get())) {
+      if (debug::IDebug *debug = handler->asDebug()) {
         auto &str = _strings.emplace_back(debug->getDebugName());
         layer.name = str.c_str();
         layer.hasFocus = master.getFocusTracker().hasFocus(handler.get());

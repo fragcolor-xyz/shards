@@ -102,7 +102,7 @@ struct DebugRenderer : public JPH::DebugRenderer {
     shassert(lodIdx >= 0 && lodIdx < inGeometry->mLODs.size() && "Invalid LOD index");
 
     auto lod = inGeometry->mLODs[lodIdx].mTriangleBatch;
-    GFXBatch *gfxBatch = dynamic_cast<GFXBatch *>(lod.GetPtr());
+    GFXBatch *gfxBatch = static_cast<GFXBatch *>(lod.GetPtr());
     float4x4 transform{
         toLinalg(inModelMatrix.GetColumn4(0)),
         toLinalg(inModelMatrix.GetColumn4(1)),

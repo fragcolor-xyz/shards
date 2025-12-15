@@ -161,6 +161,7 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
   }
 
   const char *getDebugName() override { return name.c_str(); }
+  debug::IDebug* asDebug() override { return this; }
 
   int getPriority() const override { return priority; }
 

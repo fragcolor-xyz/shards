@@ -14,16 +14,18 @@ on:
           - riscv64-linux-musl
   push:
     branches:
-      - feature/zig-cross-compilation
+      - devel
     paths:
       - 'cmake/Zig.cmake'
       - 'cmake/Rust.cmake'
       - 'justfile'
+      - '.github/workflows/build-zig-cross.yml'
   pull_request:
     paths:
       - 'cmake/Zig.cmake'
       - 'cmake/Rust.cmake'
       - 'justfile'
+      - '.github/workflows/build-zig-cross.yml'
 
 jobs:
   build-cross:

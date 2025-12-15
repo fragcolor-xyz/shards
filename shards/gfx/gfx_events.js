@@ -53,8 +53,25 @@ var LibraryGFXEvents = {
   },
   $gfxSetup__deps: ["$Browser", "$callNonAsync"],
   $gfxSetup(canvasContainer, canvas) {
-    const eh = this.getEventHandler();
-    this.eventHandlerSetCanvas(eh, canvas.id, canvasContainer.id);
+    // Use direct C function calls instead of embind
+    const eh = Module._gfxGetEventHandler();
+
+    // For strings, use ccall which handles string conversion
+    Module.ccall('gfxEventHandlerSetCanvas', null, ['number', 'string', 'string'], [eh, canvas.id, canvasContainer.id]);
+
+    // Helper functions that call C directly with individual parameters
+    const postKeyEvent = (type, domKey, key, ctrlKey, altKey, shiftKey, repeat) => {
+      Module._gfxEventHandlerPostKeyEvent(eh, type, domKey, key, ctrlKey ? 1 : 0, altKey ? 1 : 0, shiftKey ? 1 : 0, repeat ? 1 : 0);
+    };
+    const postMouseEvent = (type, x, y, button, movementX, movementY) => {
+      Module._gfxEventHandlerPostMouseEvent(eh, type, x, y, button, movementX, movementY);
+    };
+    const postWheelEvent = (deltaY) => {
+      Module._gfxEventHandlerPostWheelEvent(eh, deltaY);
+    };
+    const postDisplayFormat = (width, height, cwidth, cheight, pixelRatio) => {
+      Module._gfxEventHandlerPostDisplayFormat(eh, width, height, cwidth, cheight, pixelRatio);
+    };
 
     // Send initial display format synchronously before graphics starts
     // IMPORTANT: Must set canvas.width/height (intrinsic size) for WebGPU surface
@@ -66,23 +83,20 @@ var LibraryGFXEvents = {
       let canvasHeight = rect.height * pixelRatio;
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
-      this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
+      postDisplayFormat(rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio);
     }
 
     canvasContainer.onmousemove = (e) => {
-      e.type_ = 0;
-      callNonAsync(() => this.eventHandlerPostMouseEvent(eh, e));
+      callNonAsync(() => postMouseEvent(0, e.x, e.y, e.button, e.movementX, e.movementY));
     };
-    const handleMouseEvent = (e) => {
-      callNonAsync(() => this.eventHandlerPostMouseEvent(eh, e));
+    const handleMouseEvent = (e, type) => {
+      callNonAsync(() => postMouseEvent(type, e.x, e.y, e.button, e.movementX, e.movementY));
     };
     canvasContainer.onmousedown = (e) => {
-      e.type_ = 1;
-      handleMouseEvent(e);
+      handleMouseEvent(e, 1);
     };
     canvasContainer.onmouseup = (e) => {
-      e.type_ = 2;
-      handleMouseEvent(e);
+      handleMouseEvent(e, 2);
     };
     canvasContainer.oncontextmenu = (e) => {
       e.preventDefault();
@@ -96,25 +110,19 @@ var LibraryGFXEvents = {
       state.cursorInPage = true;
     };
     const trapKeyEvents = (code) => { return state.cursorInPage; };
-    const handleKeyEvent = (event) => {
-      event.domKey_ = event.keyCode;
-      if (event.key.length == 1) {
-        event.key_ = event.key.codePointAt(0);
-      } else {
-        event.key_ = 0;
-      }
-      callNonAsync(() => this.eventHandlerPostKeyEvent(eh, event));
+    const handleKeyEvent = (event, type) => {
+      const domKey = event.keyCode;
+      const key = (event.key.length == 1) ? event.key.codePointAt(0) : 0;
+      callNonAsync(() => postKeyEvent(type, domKey, key, event.ctrlKey, event.altKey, event.shiftKey, event.repeat));
     };
     window.addEventListener('keydown', (event) => {
       if (trapKeyEvents(event.code)) {
-        event.type_ = 0;
-        handleKeyEvent(event);
+        handleKeyEvent(event, 0);
         event.preventDefault();
       }
     }, true);
     window.addEventListener('keyup', (event) => {
-      event.type_ = 1;
-      handleKeyEvent(event);
+      handleKeyEvent(event, 1);
       if (trapKeyEvents(event.code)) {
         event.preventDefault();
       }
@@ -128,7 +136,7 @@ var LibraryGFXEvents = {
       // Quantize to integer so that minimum scroll is at least +/- 1.
       deltaY = (deltaY == 0) ? 0 : (deltaY > 0 ? Math.max(deltaY, 1) : Math.min(deltaY, -1));
 
-      callNonAsync(() => this.eventHandlerPostWheelEvent(eh, { deltaY: deltaY }));
+      callNonAsync(() => postWheelEvent(deltaY));
     });
 
     (async function resizeCanvasLoop() {
@@ -143,14 +151,14 @@ var LibraryGFXEvents = {
           // Update canvas intrinsic size for WebGPU surface
           canvas.width = canvasWidth;
           canvas.height = canvasHeight;
-          callNonAsync(() => this.eventHandlerPostDisplayFormat(eh, rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio));
+          callNonAsync(() => postDisplayFormat(rect.width, rect.height, canvasWidth, canvasHeight, pixelRatio));
           lastW = rect.width;
           lastH = rect.height;
           lastPixelRatio = pixelRatio;
         }
         await new Promise(done => setTimeout(done, 1));
       }
-    }.bind(this))();
+    })();
   }
 };
 
