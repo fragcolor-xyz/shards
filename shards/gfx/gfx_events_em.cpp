@@ -1,5 +1,5 @@
 #include "gfx_events_em.hpp"
-#include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
 namespace gfx::em {
@@ -27,32 +27,60 @@ void eventHandlerPostDisplayFormat(EventHandler *eh, int32_t width, int32_t heig
   SPDLOG_INFO("Display format: {}x{}, canvas: {}x{}, pixelRatio: {}", width, height, cwidth, cheight, pixelRatio);
 }
 
-EMSCRIPTEN_BINDINGS(gfx_events) {
-  emscripten::class_<EventHandler>("EventHandler");
-  emscripten::value_object<KeyEvent>("KeyEvent") //
-      .field("type_", &KeyEvent::type_)
-      .field("domKey_", &KeyEvent::domKey_)
-      .field("key_", &KeyEvent::key_)
-      .field("ctrlKey", &KeyEvent::ctrlKey)
-      .field("altKey", &KeyEvent::altKey)
-      .field("shiftKey", &KeyEvent::shiftKey)
-      .field("repeat", &KeyEvent::repeat);
-  emscripten::value_object<MouseEvent>("MouseEvent") //
-      .field("type_", &MouseEvent::type_)
-      .field("x", &MouseEvent::x)
-      .field("y", &MouseEvent::y)
-      .field("button", &MouseEvent::button)
-      .field("movementX", &MouseEvent::movementX)
-      .field("movementY", &MouseEvent::movementY);
-  emscripten::value_object<MouseWheelEvent>("MouseWheelEvent") //
-      .field("deltaY", &MouseWheelEvent::deltaY);
-
-  emscripten::function("getEventHandler", &getEventHandler, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerSetCanvas", &eventHandlerSetCanvas, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerPostKeyEvent", &eventHandlerPostKeyEvent, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerPostMouseEvent", &eventHandlerPostMouseEvent, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerPostWheelEvent", &eventHandlerPostWheelEvent, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerPostDisplayFormat", &eventHandlerPostDisplayFormat, emscripten::allow_raw_pointers());
-  emscripten::function("eventHandlerTryFlush", &eventHandlerTryFlush, emscripten::allow_raw_pointers());
-}
 } // namespace gfx::em
+
+// C API for JavaScript - replaces embind
+extern "C" {
+
+EMSCRIPTEN_KEEPALIVE
+gfx::em::EventHandler *gfxGetEventHandler() { return gfx::em::getEventHandler(); }
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerSetCanvas(gfx::em::EventHandler *eh, const char *canvasId, const char *containerId) {
+  gfx::em::eventHandlerSetCanvas(eh, canvasId, containerId);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerTryFlush(gfx::em::EventHandler *eh) { gfx::em::eventHandlerTryFlush(eh); }
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerPostKeyEvent(gfx::em::EventHandler *eh, int32_t type, int32_t domKey, uint32_t key,
+                                  bool ctrlKey, bool altKey, bool shiftKey, bool repeat) {
+  gfx::em::KeyEvent ke{};
+  ke.type_ = type;
+  ke.domKey_ = domKey;
+  ke.key_ = key;
+  ke.ctrlKey = ctrlKey;
+  ke.altKey = altKey;
+  ke.shiftKey = shiftKey;
+  ke.repeat = repeat;
+  gfx::em::eventHandlerPostKeyEvent(eh, ke);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerPostMouseEvent(gfx::em::EventHandler *eh, int32_t type, int32_t x, int32_t y,
+                                    int32_t button, int32_t movementX, int32_t movementY) {
+  gfx::em::MouseEvent me{};
+  me.type_ = type;
+  me.x = x;
+  me.y = y;
+  me.button = button;
+  me.movementX = movementX;
+  me.movementY = movementY;
+  gfx::em::eventHandlerPostMouseEvent(eh, me);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerPostWheelEvent(gfx::em::EventHandler *eh, float deltaY) {
+  gfx::em::MouseWheelEvent we{};
+  we.deltaY = deltaY;
+  gfx::em::eventHandlerPostWheelEvent(eh, we);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void gfxEventHandlerPostDisplayFormat(gfx::em::EventHandler *eh, int32_t width, int32_t height,
+                                       int32_t cwidth, int32_t cheight, float pixelRatio) {
+  gfx::em::eventHandlerPostDisplayFormat(eh, width, height, cwidth, cheight, pixelRatio);
+}
+
+}

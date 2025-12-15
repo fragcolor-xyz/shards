@@ -51,7 +51,6 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 
 #if SH_EMSCRIPTEN
 #include <emscripten.h>
-#include <emscripten/val.h>
 #endif
 
 #ifdef SH_USE_TSAN
@@ -1106,25 +1105,6 @@ template <typename L, typename V = std::enable_if_t<std::is_invocable_v<L>>> voi
     std::rethrow_exception(l.exp);
   }
 }
-
-#ifdef __EMSCRIPTEN__
-template <typename T> inline T emscripten_wait(SHContext *context, emscripten::val promise) {
-  const static emscripten::val futs = emscripten::val::global("ShardsBonder");
-  emscripten::val fut = futs.new_(promise);
-  fut.call<void>("run");
-
-  while (!fut["finished"].as<bool>()) {
-    suspend(context, 0.0);
-  }
-
-  if (fut["hadErrors"].as<bool>()) {
-    throw ActivationError("A javascript async task has failed, check the "
-                          "console for more informations.");
-  }
-
-  return fut["result"].as<T>();
-}
-#endif
 
 #if SH_IOS
 // such as: auto &container = entt::locator<UIViewControllerContainer>::value();

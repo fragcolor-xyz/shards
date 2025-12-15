@@ -224,9 +224,6 @@ if(EMSCRIPTEN)
   # Enable web simd
   add_compile_options(-msimd128)
 
-  # Required when RTTI is disabled with embind
-  add_compile_definitions(EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0)
-
   if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_link_options("-sASSERTIONS=2")
     add_link_options(-gsource-map)
@@ -247,7 +244,6 @@ if(EMSCRIPTEN)
   add_link_options("-sDISABLE_EXCEPTION_CATCHING=0")
 
   add_compile_definitions(NO_FORCE_INLINE)
-  add_link_options(-lembind)
 
   # # if we wanted thread support...
   if(EMSCRIPTEN_PTHREADS)

@@ -97,6 +97,19 @@ EM_JS(void, sh_emscripten_init, (), {
     };
   }
 });
+
+EM_JS(void, sh_setup_core_interface, (uintptr_t log, uintptr_t createMesh, uintptr_t destroyMesh,
+                                       uintptr_t schedule, uintptr_t unschedule, uintptr_t tick, uintptr_t sleep), {
+  Module["SHCore"] = {
+    log: log,
+    createMesh: createMesh,
+    destroyMesh: destroyMesh,
+    schedule: schedule,
+    unschedule: unschedule,
+    tick: tick,
+    sleep: sleep
+  };
+});
 // clang-format on
 #endif
 
@@ -2666,16 +2679,15 @@ void shInit() {
 #if SH_EMSCRIPTEN
   sh_emscripten_init();
   // fill up some interface so we don't need to know mem offsets JS side
-  EM_ASM({ Module["SHCore"] = {}; });
-  emscripten::val shInterface = emscripten::val::module_property("SHCore");
   SHCore *iface = shardsInterface(SHARDS_CURRENT_ABI);
-  shInterface.set("log", emscripten::val(reinterpret_cast<uintptr_t>(iface->log)));
-  shInterface.set("createMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->createMesh)));
-  shInterface.set("destroyMesh", emscripten::val(reinterpret_cast<uintptr_t>(iface->destroyMesh)));
-  shInterface.set("schedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->schedule)));
-  shInterface.set("unschedule", emscripten::val(reinterpret_cast<uintptr_t>(iface->unschedule)));
-  shInterface.set("tick", emscripten::val(reinterpret_cast<uintptr_t>(iface->tick)));
-  shInterface.set("sleep", emscripten::val(reinterpret_cast<uintptr_t>(iface->sleep)));
+  sh_setup_core_interface(
+    reinterpret_cast<uintptr_t>(iface->log),
+    reinterpret_cast<uintptr_t>(iface->createMesh),
+    reinterpret_cast<uintptr_t>(iface->destroyMesh),
+    reinterpret_cast<uintptr_t>(iface->schedule),
+    reinterpret_cast<uintptr_t>(iface->unschedule),
+    reinterpret_cast<uintptr_t>(iface->tick),
+    reinterpret_cast<uintptr_t>(iface->sleep));
   emscripten_get_now(); // force emscripten to link this call
 #endif
 }

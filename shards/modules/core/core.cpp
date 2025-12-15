@@ -3008,58 +3008,6 @@ SHVar emscriptenEvalActivation(const SHVar &input) {
   return Var(str);
 }
 
-/*
-using embind fails inside workers... that's why we implemented it using js
-yet using async in workers is still broken so let's use embind for now
-*/
-struct EmscriptenAsyncEval {
-  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-  static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-
-  SHVar activate(SHContext *context, const SHVar &input) {
-    static thread_local std::string str;
-    const static emscripten::val eval = emscripten::val::global("eval");
-    str = emscripten_wait<std::string>(context, eval(emscripten::val(input.payload.stringValue)));
-    return Var(str);
-  }
-};
-
-// struct EmscriptenAsyncEval {
-//   static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
-//   static SHTypesInfo outputTypes() { return CoreInfo::StringType; }
-
-//   SHVar activate(SHContext *context, const SHVar &input) {
-//     static thread_local std::string str;
-//     static thread_local size_t slots;
-
-//     size_t slot = ++slots;
-//     const auto startCheck = emEvalAsyncRun(input.payload.stringValue, slot);
-//     if (!startCheck) {
-//       throw ActivationError("Failed to start a javascript async task.");
-//     }
-
-//     while (true) {
-//       const auto runCheck = emEvalAsyncCheck(slot);
-//       if (runCheck == 0) {
-//         suspend(context, 0.0);
-//       } else if (runCheck == -1) {
-//         throw ActivationError("Failure on the javascript side, check
-//         console");
-//       } else {
-//         break;
-//       }
-//     }
-
-//     const auto res = emEvalAsyncGet(slot);
-//     str.clear();
-//     if (res) {
-//       str.assign(res);
-//       free(res);
-//     }
-//     return Var(str);
-//   }
-// };
-
 SHVar emscriptenBrowseActivation(const SHVar &input) {
   emBrowsePage(input.payload.stringValue);
   return Var(input);
@@ -3850,8 +3798,6 @@ SHARDS_REGISTER_FN(core) {
   using EmscriptenEvalShard = LambdaShard<emscriptenEvalActivation, CoreInfo::StringType, CoreInfo::StringType>;
   // _ prefix = internal shard
   REGISTER_SHARD("_Emscripten.Eval", EmscriptenEvalShard);
-  // _ prefix = internal shard
-  REGISTER_SHARD("_Emscripten.EvalAsync", EmscriptenAsyncEval);
   using EmscriptenBrowseShard = LambdaShard<emscriptenBrowseActivation, CoreInfo::StringType, CoreInfo::StringType>;
   REGISTER_SHARD("Browse", EmscriptenBrowseShard);
 #else
