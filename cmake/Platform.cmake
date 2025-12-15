@@ -369,10 +369,11 @@ if(NOT MSVC)
 else()
   # Disable RTTI on MSVC
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/GR->)
-  # Required for Boost.Asio when RTTI is disabled
-  # NO_TYPEID disables typeid usage, DISABLE_STD_ANY prevents std::any usage (requires RTTI)
-  add_compile_definitions(BOOST_ASIO_NO_TYPEID BOOST_ASIO_DISABLE_STD_ANY)
 endif()
+
+# Required for Boost.Asio when RTTI is disabled (all platforms)
+# NO_TYPEID disables typeid usage, DISABLE_STD_ANY prevents std::any usage (requires RTTI)
+add_compile_definitions(BOOST_ASIO_NO_TYPEID BOOST_ASIO_DISABLE_STD_ANY)
 
 if(WIN32 AND(CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND(CMAKE_BUILD_TYPE STREQUAL "Debug"))
   set(USE_LLD_DEFAULT ON)
