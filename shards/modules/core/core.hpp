@@ -1418,8 +1418,9 @@ struct Set : public SetUpdateBase {
         const_cast<Shard *>(_self)->inlineShardId = InlineShard::CoreSetUpdateRegular;
     }
 
-    if (_global) {
+    if (_global && !context->ephemeral) {
       // need to add metadata to the global variable in the mesh
+      // skip if ephemeral (e.g., WireRunner) to avoid polluting mesh metadata with transient wires
       std::shared_ptr<SHMesh> mesh = context->main->mesh.lock();
       if (!mesh) {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);

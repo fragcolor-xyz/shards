@@ -152,6 +152,7 @@ struct SHContext {
   std::vector<SHWire *> wireStack;
   bool onLastResume{false};
   bool onWorkerThread{false};
+  bool ephemeral{false}; // Set true during warmup of ephemeral wires (e.g., WireRunner)
   uint64_t stepCounter{};
   void *stackStart{nullptr};
 

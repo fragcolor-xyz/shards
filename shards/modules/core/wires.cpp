@@ -1224,6 +1224,8 @@ struct WireRunner : public BaseLoader<WireRunner> {
 
         _wireHash = wire->composedHash;
         _wirePtr = wire.get();
+        context->ephemeral = true;
+        DEFER(context->ephemeral = false);
         doWarmup(context);
       } catch (ExtendedError &e) {
         context->cancelFlow(e.error);
