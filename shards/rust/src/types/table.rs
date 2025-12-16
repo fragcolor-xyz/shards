@@ -17,6 +17,7 @@ use std::slice;
 
 pub const FRAG_CC: i32 = fourCharacterCode(*b"frag");
 
+#[repr(transparent)]
 pub struct TableVar(pub Var);
 
 impl TableVar {

@@ -1,0 +1,328 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2025 Fragcolor Pte. Ltd.
+
+// Test Geo shards for drone mission planning
+
+@mesh(root)
+
+@wire(geo-polygon-test {
+  ; Create a simple square polygon (SF Bay area test coordinates)
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Verify polygon has expected structure
+  poly.type | Assert.Is("polygon" true)
+
+  ; Verify coords are preserved
+  poly.coords | Count | Assert.Is(4 true)
+
+  ; Verify centroid is computed (should be near center of polygon)
+  poly.centroid.x | IsMore(-122.42) | Assert.Is(true true)
+  poly.centroid.x | IsLess(-122.41) | Assert.Is(true true)
+  poly.centroid.y | IsMore(37.78) | Assert.Is(true true)
+  poly.centroid.y | IsLess(37.79) | Assert.Is(true true)
+
+  "Geo.Polygon test passed" | Log
+})
+
+@wire(geo-buffer-test {
+  ; Create a simple square polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Get original coord count
+  poly.coords | Count = original-count
+
+  ; Expand by 50 meters
+  poly | Geo.Buffer(Distance: 50.0) = expanded
+
+  ; Verify it's still a polygon
+  expanded.type | Assert.Is("polygon" true)
+
+  ; Buffered polygon should have more vertices (corners become arcs/miters)
+  expanded.coords | Count | IsMoreEqual(original-count) | Assert.Is(true true)
+
+  ; Contract by 50 meters
+  poly | Geo.Buffer(Distance: -50.0) = contracted
+
+  ; Verify contracted polygon exists
+  contracted.type | Assert.Is("polygon" true)
+
+  "Geo.Buffer test passed" | Log
+})
+
+@wire(geo-gridfill-test {
+  ; Create polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid with 100m spacing (should produce fewer points for testing)
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+
+  ; Verify we get some points
+  points | Count >= num-points
+  num-points | IsMore(0) | Assert.Is(true true)
+  num-points | Log("Grid points generated:")
+
+  ; Verify point structure (types are known at compose time)
+  points | Take(0) = first-point
+  first-point.x | IsFloat | Assert.Is(true true)
+  first-point.y | IsFloat | Assert.Is(true true)
+  first-point.index | Assert.Is(0 true)
+  first-point.row | Assert.Is(0 true)
+
+  "Geo.GridFill test passed" | Log
+})
+
+@wire(geo-gridfill-rotation-test {
+  ; Create polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid with 45 degree rotation
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 45.0) = points-rotated
+
+  ; Generate grid without rotation for comparison
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points-normal
+
+  ; Counts may differ due to rotation affecting which points fall inside
+  points-rotated | Count | Log("Points with 45 degree rotation:")
+  points-normal | Count | Log("Points without rotation:")
+
+  ; Verify rotated grid has points
+  points-rotated | Count | IsMore(0) | Assert.Is(true true)
+
+  "Geo.GridFill rotation test passed" | Log
+})
+
+@wire(geo-boustrophedon-test {
+  ; Test boustrophedon (serpentine) pattern
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Use smaller spacing to get multiple rows
+  poly | Geo.GridFill(SpacingX: 50.0 SpacingY: 50.0 Direction: 0.0) = points
+
+  ; Get points from row 0 and row 1
+  Sequence(row0 Type: @type([Type::Any]))
+  Sequence(row1 Type: @type([Type::Any]))
+
+  points | ForEach({
+    = pt
+    pt.row | Match([
+      0 {pt >> row0}
+      1 {pt >> row1}
+      none Pass
+    ])
+  })
+
+  ; Verify we have multiple rows
+  row0 | Count | IsMore(0) | Assert.Is(true true)
+  row1 | Count | IsMore(0) | Assert.Is(true true)
+
+  ; In boustrophedon pattern, row 1 should be traversed in reverse order
+  ; This means the last point of row 0 and first point of row 1 should be close
+  ; (minimizing travel distance between rows)
+
+  "Geo.GridFill boustrophedon test passed" | Log
+})
+
+@wire(geo-dji-kmz-test {
+  ; Test DJI KMZ export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to KMZ with default parameters
+  points | Geo.ToDjiKmz(Path: "/tmp/test-geo-mission.kmz" Speed: 3.5 Altitude: 34.0 GimbalPitch: -45.0) = output
+
+  ; Verify passthrough (output should equal input)
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.kmz" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.kmz" | FS.Remove
+
+  "Geo.ToDjiKmz test passed" | Log
+})
+
+@wire(geo-google-earth-test {
+  ; Test Google Earth KML export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to KML for Google Earth preview
+  points | Geo.ToGoogleEarth(Path: "/tmp/test-geo-preview.kml" Altitude: 34.0) = output
+
+  ; Verify passthrough (output should equal input)
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-preview.kml" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-preview.kml" | FS.Remove
+
+  "Geo.ToGoogleEarth test passed" | Log
+})
+
+@wire(geo-geojson-test {
+  ; Test GeoJSON export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to GeoJSON
+  points | Geo.ToGeoJSON(Path: "/tmp/test-geo-mission.geojson" Altitude: 34.0) = output
+
+  ; Verify passthrough
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.geojson" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.geojson" | FS.Remove
+
+  "Geo.ToGeoJSON test passed" | Log
+})
+
+@wire(geo-litchi-csv-test {
+  ; Test Litchi CSV export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to Litchi CSV
+  points | Geo.ToLitchiCSV(Path: "/tmp/test-geo-mission.csv" Altitude: 34.0 Heading: 180.0 GimbalPitch: -45.0) = output
+
+  ; Verify passthrough
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.csv" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.csv" | FS.Remove
+
+  "Geo.ToLitchiCSV test passed" | Log
+})
+
+@wire(geo-filter-visible-test {
+  ; Test FilterVisible - filters waypoints based on camera look point
+  ; Create a larger area for waypoint generation
+  [[-122.42 37.78] [-122.40 37.78] [-122.40 37.80] [-122.42 37.80]] | Geo.Polygon = flight-area
+
+  ; Create a smaller target polygon (the property to photograph)
+  ; This is in the center of the flight area
+  [[-122.415 37.785] [-122.405 37.785] [-122.405 37.795] [-122.415 37.795]] | Geo.Polygon = target-area
+
+  ; Generate grid points over the larger flight area
+  ; At 34m altitude with -45° gimbal looking north (heading=0), camera looks 34m ahead
+  flight-area | Geo.GridFill(SpacingX: 200.0 SpacingY: 200.0 Direction: 0.0) = all-points
+
+  all-points | Count = total-points
+  total-points | Log("Total points before filter:")
+
+  ; Filter to keep only points where camera looks inside target area
+  ; Heading defaults to 0 (north), so camera looks 34m north of each waypoint
+  all-points | Geo.FilterVisible(Polygon: target-area Altitude: 34.0 GimbalPitch: -45.0) = filtered-points
+
+  filtered-points | Count = filtered-count
+  filtered-count | Log("Points after FilterVisible:")
+
+  ; Should have fewer points after filtering (or equal if all inside)
+  filtered-count | IsLessEqual(total-points) | Assert.Is(true true)
+
+  ; Filtered points should have valid structure
+  When({filtered-count | IsMore(0)} {
+    filtered-points | Take(0) = first
+    first.x | IsFloat | Assert.Is(true true)
+    first.y | IsFloat | Assert.Is(true true)
+    first.index | Assert.Is(0 true)  ; Re-indexed to 0
+  })
+
+  "Geo.FilterVisible test passed" | Log
+})
+
+@wire(geo-path-length-test {
+  ; Test PathLength - calculates total distance of waypoint path
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(1) | Assert.Is(true true)
+
+  ; Calculate path length
+  points | Geo.PathLength = path-length
+
+  ; Path length should be positive (multiple waypoints with spacing)
+  path-length | IsMore(0.0) | Assert.Is(true true)
+
+  ; Log the path length for verification
+  path-length | Log("Path length (meters):")
+
+  ; Calculate flight time at 5 m/s speed
+  path-length | Math.Divide(5.0) | Math.Divide(60.0) = flight-time-minutes
+  flight-time-minutes | Log("Estimated flight time (minutes) at 5 m/s:")
+
+  "Geo.PathLength test passed" | Log
+})
+
+@wire(geo-simplify-path-test {
+  ; Test SimplifyPath - reduces waypoints to turn points only
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate dense grid with many waypoints (boustrophedon pattern creates turns)
+  poly | Geo.GridFill(SpacingX: 50.0 SpacingY: 50.0 Direction: 0.0) = dense-points
+  dense-points | Count = original-count
+  original-count | Log("Original waypoint count:")
+
+  ; Simplify - should keep only turn points
+  dense-points | Geo.SimplifyPath(Tolerance: 1.0) = simplified-points
+  simplified-points | Count = simplified-count
+  simplified-count | Log("Simplified waypoint count:")
+
+  ; Should have significantly fewer points
+  simplified-count | IsLess(original-count) | Assert.Is(true true)
+
+  ; Should still have at least first and last
+  simplified-count | IsMoreEqual(2) | Assert.Is(true true)
+
+  ; First point should be preserved
+  simplified-points | Take(0) = first
+  first.index | Assert.Is(0 true)
+  first.x | IsFloat | Assert.Is(true true)
+  first.y | IsFloat | Assert.Is(true true)
+
+  ; Last point should be preserved with correct index
+  simplified-points | RTake(0) = last
+  last.index | Assert.Is(simplified-count | Sub(1) true)
+
+  ; Report reduction ratio
+  original-count | ToFloat | Div(simplified-count | ToFloat) = ratio
+  ratio | Log("Reduction ratio:")
+
+  "Geo.SimplifyPath test passed" | Log
+})
+
+@schedule(root geo-polygon-test)
+@schedule(root geo-buffer-test)
+@schedule(root geo-gridfill-test)
+@schedule(root geo-gridfill-rotation-test)
+@schedule(root geo-boustrophedon-test)
+@schedule(root geo-dji-kmz-test)
+@schedule(root geo-google-earth-test)
+@schedule(root geo-geojson-test)
+@schedule(root geo-litchi-csv-test)
+@schedule(root geo-filter-visible-test)
+@schedule(root geo-path-length-test)
+@schedule(root geo-simplify-path-test)
+
+@run(root) | Assert.Is(true)

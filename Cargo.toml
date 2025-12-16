@@ -18,6 +18,7 @@ members = [
     "shards/modules/egui",
     "shards/modules/fileops",
     "shards/modules/fs",
+    "shards/modules/geo",
     "shards/modules/http",
     "shards/modules/langffi",
     "shards/modules/localshell",
