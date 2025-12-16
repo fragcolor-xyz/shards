@@ -2407,32 +2407,46 @@ private:
 
 struct First {
   static SHOptionalString help() {
-    return SHCCSTR("Returns the first element from a sorted table or sequence. For tables, returns a [key, value] pair. Returns "
-                   "None if empty. "
+    return SHCCSTR("Returns the first element from a sequence or table. For tables, returns a [key, value] pair. "
+                   "Throws an error if empty. "
                    "Note: This operation is fast but unsafe unless the output is cloned (using Set instead of Ref) when combined "
                    "with await or suspended wire flow.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A table or sequence to get the first element from."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("For sequences: the first value. For tables: a [key, value] pair. Returns None if input is empty.");
+    return SHCCSTR("For sequences: the first value. For tables: a [key, value] pair.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::SeqOrTable; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Seq) {
+      // For sequences: return the element type (like Take(0) does)
+      if (data.inputType.seqTypes.len == 1) {
+        return data.inputType.seqTypes.elements[0];
+      }
+      return CoreInfo::AnyType;
+    } else if (data.inputType.basicType == SHType::Table) {
+      // For tables: we return [key, value] pair - best we can do is AnySeqType
+      return CoreInfo::AnySeqType;
+    }
+    throw shards::Error("First: Expected sequence or table input.");
+  }
 
   std::array<SHVar, 2> _tableItem;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.valueType == SHType::Seq) {
       if (input.payload.seqValue.len == 0) {
-        return Var::Empty;
+        throw ActivationError("First: Sequence is empty.");
       }
       return input.payload.seqValue.elements[0];
     } else if (input.valueType == SHType::Table) {
       SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
       if (table->empty()) {
-        return Var::Empty;
+        throw ActivationError("First: Table is empty.");
       }
 
       auto it = table->begin();
@@ -2447,32 +2461,46 @@ struct First {
 
 struct Last {
   static SHOptionalString help() {
-    return SHCCSTR("Returns the last element from a sorted table or sequence. For tables, returns a [key, value] pair. Returns "
-                   "None if empty. "
+    return SHCCSTR("Returns the last element from a sequence or table. For tables, returns a [key, value] pair. "
+                   "Throws an error if empty. "
                    "Note: This operation is fast but unsafe unless the output is cloned (using Set instead of Ref) when combined "
                    "with await or suspended wire flow.");
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A table or sequence to get the last element from."); }
   static SHOptionalString outputHelp() {
-    return SHCCSTR("For sequences: the last value. For tables: a [key, value] pair. Returns None if input is empty.");
+    return SHCCSTR("For sequences: the last value. For tables: a [key, value] pair.");
   }
 
   static SHTypesInfo inputTypes() { return CoreInfo::SeqOrTable; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    if (data.inputType.basicType == SHType::Seq) {
+      // For sequences: return the element type (like RTake(0) does)
+      if (data.inputType.seqTypes.len == 1) {
+        return data.inputType.seqTypes.elements[0];
+      }
+      return CoreInfo::AnyType;
+    } else if (data.inputType.basicType == SHType::Table) {
+      // For tables: we return [key, value] pair - best we can do is AnySeqType
+      return CoreInfo::AnySeqType;
+    }
+    throw shards::Error("Last: Expected sequence or table input.");
+  }
 
   std::array<SHVar, 2> _tableItem;
 
   SHVar activate(SHContext *context, const SHVar &input) {
     if (input.valueType == SHType::Seq) {
       if (input.payload.seqValue.len == 0) {
-        return Var::Empty;
+        throw ActivationError("Last: Sequence is empty.");
       }
       return input.payload.seqValue.elements[input.payload.seqValue.len - 1];
     } else if (input.valueType == SHType::Table) {
       SHMap *table = static_cast<SHMap *>(input.payload.tableValue.opaque);
       if (table->empty()) {
-        return Var::Empty;
+        throw ActivationError("Last: Table is empty.");
       }
 
       auto it = --table->end();
