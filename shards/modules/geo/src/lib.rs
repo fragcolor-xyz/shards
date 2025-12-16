@@ -98,8 +98,11 @@ lazy_static! {
 /// Maximum latitude for equirectangular projection (breaks near poles)
 const MAX_LATITUDE: f64 = 85.0;
 
-/// Equirectangular projection: convert lon/lat to meters relative to origin
-/// Note: This projection is only accurate for latitudes < 85 degrees
+/// Equirectangular projection: convert lon/lat to meters relative to origin.
+///
+/// This uses a fixed latitude (centroid) for longitude scaling, which introduces
+/// ~0.8% error per degree of latitude span. For typical drone missions (<1km),
+/// this error is negligible (<10m). For larger areas, consider using UTM projection.
 fn lonlat_to_meters(lon: f64, lat: f64, origin_lon: f64, origin_lat: f64) -> (f64, f64) {
   let meters_per_deg_lon = METERS_PER_DEG_LAT * origin_lat.to_radians().cos();
   (
@@ -128,9 +131,6 @@ fn validate_coordinates(coords: &[(f64, f64)]) -> Result<(), &'static str> {
     return Ok(());
   }
 
-  let mut min_lon = f64::INFINITY;
-  let mut max_lon = f64::NEG_INFINITY;
-
   for &(lon, lat) in coords {
     // Validate longitude range
     if lon < -180.0 || lon > 180.0 {
@@ -138,14 +138,16 @@ fn validate_coordinates(coords: &[(f64, f64)]) -> Result<(), &'static str> {
     }
     // Validate latitude for equirectangular projection
     validate_latitude(lat)?;
-
-    min_lon = min_lon.min(lon);
-    max_lon = max_lon.max(lon);
   }
 
-  // Check for antimeridian crossing (simple heuristic: lon span > 180° indicates crossing)
-  if max_lon - min_lon > 180.0 {
-    return Err("Polygon crosses antimeridian (±180°), which is not supported");
+  // Check for antimeridian crossing by examining consecutive edges
+  // An edge crosses the antimeridian if the longitude difference > 180°
+  for i in 0..coords.len() {
+    let (lon1, _) = coords[i];
+    let (lon2, _) = coords[(i + 1) % coords.len()];
+    if (lon2 - lon1).abs() > 180.0 {
+      return Err("Polygon edge crosses antimeridian (±180°), which is not supported");
+    }
   }
 
   Ok(())
@@ -395,9 +397,11 @@ impl Shard for GridFillShard {
     // Get bounding box of rotated polygon
     let bbox = rotated_poly.bounding_rect().ok_or("Failed to compute bounding box")?;
 
-    // Generate grid points within bounding box
-    // Use integer-based iteration to avoid floating-point accumulation errors
-    // floor() ensures we don't generate points beyond the bounding box
+    // Generate candidate grid points over the bounding box.
+    // Uses integer-based iteration to avoid floating-point accumulation errors.
+    // Points are generated up to and including the bbox boundary (0..=steps with floor),
+    // then filtered by polygon containment. This may generate a few candidates outside
+    // the polygon near edges, but ensures complete coverage.
     let mut rows: Vec<Vec<(f64, f64)>> = Vec::new();
     let y_steps = ((bbox.max().y - bbox.min().y) / spacing_y).floor() as usize;
     for i in 0..=y_steps {
@@ -496,7 +500,7 @@ struct ToDjiKmzShard {
   #[shard_param("GimbalPitch", "Default gimbal pitch angle (-90 to 0)", FLOAT_OR_VAR_TYPES)]
   gimbal_pitch: ParamVar,
 
-  #[shard_param("DroneEnum", "DJI drone enum value (default 68 for Mini 4 Pro)", FLOAT_OR_VAR_TYPES)]
+  #[shard_param("DroneEnum", "DJI drone enum value (default 68)", FLOAT_OR_VAR_TYPES)]
   drone_enum: ParamVar,
 
   #[shard_param("DroneSubEnum", "DJI drone sub-enum value (default 0)", FLOAT_OR_VAR_TYPES)]
