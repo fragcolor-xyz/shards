@@ -122,7 +122,37 @@ fn validate_latitude(lat: f64) -> Result<(), &'static str> {
   Ok(())
 }
 
+/// Validate longitude range and check for antimeridian crossing
+fn validate_coordinates(coords: &[(f64, f64)]) -> Result<(), &'static str> {
+  if coords.is_empty() {
+    return Ok(());
+  }
+
+  let mut min_lon = f64::INFINITY;
+  let mut max_lon = f64::NEG_INFINITY;
+
+  for &(lon, lat) in coords {
+    // Validate longitude range
+    if lon < -180.0 || lon > 180.0 {
+      return Err("Longitude must be between -180 and 180 degrees");
+    }
+    // Validate latitude for equirectangular projection
+    validate_latitude(lat)?;
+
+    min_lon = min_lon.min(lon);
+    max_lon = max_lon.max(lon);
+  }
+
+  // Check for antimeridian crossing (simple heuristic: lon span > 180° indicates crossing)
+  if max_lon - min_lon > 180.0 {
+    return Err("Polygon crosses antimeridian (±180°), which is not supported");
+  }
+
+  Ok(())
+}
+
 /// Parse a sequence of [lon, lat] sequences into Vec of (lon, lat) tuples
+/// Also validates all coordinates for longitude range, latitude range, and antimeridian crossing
 fn parse_coords(input: &Var) -> Result<Vec<(f64, f64)>, &'static str> {
   let seq: Seq = input.try_into().map_err(|_| "Expected sequence of coordinates")?;
   let mut coords = Vec::with_capacity(seq.len());
@@ -136,6 +166,9 @@ fn parse_coords(input: &Var) -> Result<Vec<(f64, f64)>, &'static str> {
     let lat: f64 = (&coord_seq[1]).try_into().map_err(|_| "Invalid latitude")?;
     coords.push((lon, lat));
   }
+
+  // Validate all coordinates (range, latitude limits, antimeridian)
+  validate_coordinates(&coords)?;
 
   Ok(coords)
 }
@@ -341,8 +374,7 @@ impl Shard for GridFillShard {
       .try_into()
       .map_err(|_| "Invalid centroid y")?;
 
-    // Validate latitude for equirectangular projection
-    validate_latitude(origin_lat)?;
+    // Note: All coordinates are already validated in parse_coords() including latitude
 
     // Convert coords to meters (equirectangular projection)
     let coords_meters: Vec<(f64, f64)> = coords
@@ -363,22 +395,23 @@ impl Shard for GridFillShard {
     let bbox = rotated_poly.bounding_rect().ok_or("Failed to compute bounding box")?;
 
     // Generate grid points within bounding box
+    // Use integer-based iteration to avoid floating-point accumulation errors
     let mut rows: Vec<Vec<(f64, f64)>> = Vec::new();
-    let mut y = bbox.min().y;
-    while y <= bbox.max().y {
+    let y_steps = ((bbox.max().y - bbox.min().y) / spacing_y).ceil() as usize;
+    for i in 0..=y_steps {
+      let y = bbox.min().y + (i as f64) * spacing_y;
       let mut row: Vec<(f64, f64)> = Vec::new();
-      let mut x = bbox.min().x;
-      while x <= bbox.max().x {
+      let x_steps = ((bbox.max().x - bbox.min().x) / spacing_x).ceil() as usize;
+      for j in 0..=x_steps {
+        let x = bbox.min().x + (j as f64) * spacing_x;
         let point = Point::new(x, y);
         if rotated_poly.contains(&point) {
           row.push((x, y));
         }
-        x += spacing_x;
       }
       if !row.is_empty() {
         rows.push(row);
       }
-      y += spacing_y;
     }
 
     // Build output with boustrophedon ordering
@@ -657,45 +690,23 @@ impl Shard for ToDjiKmzShard {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    // Get parameters
+    // Get parameters (defaults are already set in struct, unwrap_or handles invalid values)
     let path: &str = self.path.get().try_into().map_err(|_| "Invalid Path parameter")?;
-    let finish_action: &str = if self.finish_action.get().is_none() {
-      "goHome"
-    } else {
-      let action: &str = self.finish_action.get().try_into().unwrap_or("goHome");
-      match action {
-        "goHome" | "noAction" | "autoLand" => action,
-        _ => return Err("FinishAction must be 'goHome', 'noAction', or 'autoLand'"),
-      }
+
+    let finish_action: &str = self.finish_action.get().try_into().unwrap_or("goHome");
+    let finish_action = match finish_action {
+      "goHome" | "noAction" | "autoLand" => finish_action,
+      _ => return Err("FinishAction must be 'goHome', 'noAction', or 'autoLand'"),
     };
-    let default_speed: f64 = if self.speed.get().is_none() {
-      5.0
-    } else {
-      self.speed.get().try_into().unwrap_or(5.0)
-    };
-    let default_altitude: f64 = if self.altitude.get().is_none() {
-      30.0
-    } else {
-      self.altitude.get().try_into().unwrap_or(30.0)
-    };
-    let default_gimbal_pitch: f64 = if self.gimbal_pitch.get().is_none() {
-      -45.0
-    } else {
-      self.gimbal_pitch.get().try_into().unwrap_or(-45.0)
-    };
+
+    let default_speed: f64 = self.speed.get().try_into().unwrap_or(5.0);
+    let default_altitude: f64 = self.altitude.get().try_into().unwrap_or(30.0);
+    let default_gimbal_pitch: f64 = self.gimbal_pitch.get().try_into().unwrap_or(-45.0);
     if default_gimbal_pitch < -90.0 || default_gimbal_pitch > 0.0 {
       return Err("GimbalPitch must be between -90 and 0 degrees");
     }
-    let drone_enum: i64 = if self.drone_enum.get().is_none() {
-      68
-    } else {
-      self.drone_enum.get().try_into().unwrap_or(68.0) as i64
-    };
-    let drone_sub_enum: i64 = if self.drone_sub_enum.get().is_none() {
-      0
-    } else {
-      self.drone_sub_enum.get().try_into().unwrap_or(0.0) as i64
-    };
+    let drone_enum: i64 = self.drone_enum.get().try_into().unwrap_or(68.0) as i64;
+    let drone_sub_enum: i64 = self.drone_sub_enum.get().try_into().unwrap_or(0.0) as i64;
 
     // Parse input waypoints
     let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
@@ -738,9 +749,17 @@ impl Shard for ToDjiKmzShard {
         .get_static("speed")
         .and_then(|v| v.try_into().ok())
         .unwrap_or(default_speed);
+      // Validate gimbal pitch is in valid range, fall back to default if invalid
       let gimbal_pitch: f64 = table
         .get_static("gimbal_pitch")
-        .and_then(|v| v.try_into().ok())
+        .and_then(|v| {
+          let val: f64 = v.try_into().ok()?;
+          if val >= -90.0 && val <= 0.0 {
+            Some(val)
+          } else {
+            None
+          }
+        })
         .unwrap_or(default_gimbal_pitch);
       let heading: f64 = table
         .get_static("heading")
