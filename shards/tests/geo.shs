@@ -214,6 +214,67 @@
   "Geo.ToLitchiCSV test passed" | Log
 })
 
+@wire(geo-filter-visible-test {
+  ; Test FilterVisible - filters waypoints based on camera look point
+  ; Create a larger area for waypoint generation
+  [[-122.42 37.78] [-122.40 37.78] [-122.40 37.80] [-122.42 37.80]] | Geo.Polygon = flight-area
+
+  ; Create a smaller target polygon (the property to photograph)
+  ; This is in the center of the flight area
+  [[-122.415 37.785] [-122.405 37.785] [-122.405 37.795] [-122.415 37.795]] | Geo.Polygon = target-area
+
+  ; Generate grid points over the larger flight area
+  ; At 34m altitude with -45° gimbal looking north (heading=0), camera looks 34m ahead
+  flight-area | Geo.GridFill(SpacingX: 200.0 SpacingY: 200.0 Direction: 0.0) = all-points
+
+  all-points | Count = total-points
+  total-points | Log("Total points before filter:")
+
+  ; Filter to keep only points where camera looks inside target area
+  ; Heading defaults to 0 (north), so camera looks 34m north of each waypoint
+  all-points | Geo.FilterVisible(Polygon: target-area Altitude: 34.0 GimbalPitch: -45.0) = filtered-points
+
+  filtered-points | Count = filtered-count
+  filtered-count | Log("Points after FilterVisible:")
+
+  ; Should have fewer points after filtering (or equal if all inside)
+  filtered-count | IsLessEqual(total-points) | Assert.Is(true true)
+
+  ; Filtered points should have valid structure
+  When({filtered-count | IsMore(0)} {
+    filtered-points | Take(0) = first
+    first.x | IsFloat | Assert.Is(true true)
+    first.y | IsFloat | Assert.Is(true true)
+    first.index | Assert.Is(0 true)  ; Re-indexed to 0
+  })
+
+  "Geo.FilterVisible test passed" | Log
+})
+
+@wire(geo-path-length-test {
+  ; Test PathLength - calculates total distance of waypoint path
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(1) | Assert.Is(true true)
+
+  ; Calculate path length
+  points | Geo.PathLength = path-length
+
+  ; Path length should be positive (multiple waypoints with spacing)
+  path-length | IsMore(0.0) | Assert.Is(true true)
+
+  ; Log the path length for verification
+  path-length | Log("Path length (meters):")
+
+  ; Calculate flight time at 5 m/s speed
+  path-length | Math.Divide(5.0) | Math.Divide(60.0) = flight-time-minutes
+  flight-time-minutes | Log("Estimated flight time (minutes) at 5 m/s:")
+
+  "Geo.PathLength test passed" | Log
+})
+
 @schedule(root geo-polygon-test)
 @schedule(root geo-buffer-test)
 @schedule(root geo-gridfill-test)
@@ -223,5 +284,7 @@
 @schedule(root geo-google-earth-test)
 @schedule(root geo-geojson-test)
 @schedule(root geo-litchi-csv-test)
+@schedule(root geo-filter-visible-test)
+@schedule(root geo-path-length-test)
 
 @run(root) | Assert.Is(true)

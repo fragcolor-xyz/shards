@@ -5,8 +5,14 @@
 //!
 //! Provides shards for:
 //! - `Geo.Polygon` - Creates a polygon from coordinate sequence
+//! - `Geo.Buffer` - Expands or contracts a polygon by a distance in meters
 //! - `Geo.GridFill` - Fills a polygon with grid points in boustrophedon pattern
+//! - `Geo.FilterVisible` - Filters waypoints by camera visibility within a polygon
+//! - `Geo.PathLength` - Calculates total path length in meters (for flight time estimation)
 //! - `Geo.ToDjiKmz` - Exports waypoints to DJI Fly compatible KMZ files
+//! - `Geo.ToGoogleEarth` - Exports waypoints to Google Earth KML
+//! - `Geo.ToGeoJSON` - Exports waypoints to GeoJSON format
+//! - `Geo.ToLitchiCSV` - Exports waypoints to Litchi CSV format
 
 #[macro_use]
 extern crate shards;
@@ -32,6 +38,7 @@ use zip::ZipWriter;
 // ============================================================================
 
 const METERS_PER_DEG_LAT: f64 = 111_319.9;
+const EARTH_RADIUS_METERS: f64 = 6_371_000.0;
 
 // ============================================================================
 // Type Definitions
@@ -87,9 +94,16 @@ lazy_static! {
   static ref FLOAT_OR_VAR_TYPES: Vec<Type> = vec![common_type::float, common_type::float_var, common_type::none];
   static ref STRING_VAR_OR_NONE_TYPES: Vec<Type> = vec![common_type::string, common_type::string_var, common_type::none];
 
+  // Polygon parameter types (for accepting polygon as parameter)
+  static ref POLYGON_VAR_TYPE: Type = Type::context_variable(&POLYGON_OUTPUT_TYPES);
+  static ref POLYGON_VAR_TYPES: Vec<Type> = vec![*POLYGON_TABLE_TYPE, *POLYGON_VAR_TYPE];
+
   // Waypoint input types - accepts any sequence of tables
   static ref SEQ_OF_ANY_TABLE: Type = Type::seq(&[common_type::any_table]);
   static ref SEQ_OF_ANY_TABLE_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE];
+
+  // Float output types
+  static ref FLOAT_TYPES: Vec<Type> = vec![common_type::float];
 }
 
 // ============================================================================
@@ -152,6 +166,19 @@ fn validate_coordinates(coords: &[(f64, f64)]) -> Result<(), &'static str> {
   }
 
   Ok(())
+}
+
+/// Calculate haversine distance between two lon/lat points in meters
+fn haversine_distance(lon1: f64, lat1: f64, lon2: f64, lat2: f64) -> f64 {
+  let lat1_rad = lat1.to_radians();
+  let lat2_rad = lat2.to_radians();
+  let delta_lat = (lat2 - lat1).to_radians();
+  let delta_lon = (lon2 - lon1).to_radians();
+
+  let a = (delta_lat / 2.0).sin().powi(2) + lat1_rad.cos() * lat2_rad.cos() * (delta_lon / 2.0).sin().powi(2);
+  let c = 2.0 * a.sqrt().asin();
+
+  EARTH_RADIUS_METERS * c
 }
 
 /// Parse a sequence of [lon, lat] sequences into Vec of (lon, lat) tuples
@@ -1499,6 +1526,311 @@ impl Shard for ToLitchiCsvShard {
 }
 
 // ============================================================================
+// Geo.FilterVisible Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.FilterVisible",
+  "Filters waypoints to keep only those where the camera's look point falls inside a polygon"
+)]
+struct FilterVisibleShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Polygon", "Reference polygon to check visibility against", POLYGON_VAR_TYPES)]
+  polygon: ParamVar,
+
+  #[shard_param("Altitude", "Default altitude in meters (used if waypoint has no altitude)", FLOAT_OR_VAR_TYPES)]
+  altitude: ParamVar,
+
+  #[shard_param("GimbalPitch", "Gimbal pitch angle in degrees (-90 to 0, negative = looking down)", FLOAT_OR_VAR_TYPES)]
+  gimbal_pitch: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for FilterVisibleShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      polygon: ParamVar::default(),
+      altitude: ParamVar::new(30.0.into()),
+      gimbal_pitch: ParamVar::new((-45.0).into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+impl FilterVisibleShard {
+  /// Calculate where the camera is looking on the ground
+  /// Returns (look_lon, look_lat) or None if gimbal is pointing straight down
+  fn calculate_look_point(
+    waypoint_lon: f64,
+    waypoint_lat: f64,
+    altitude: f64,
+    gimbal_pitch: f64,
+    heading: f64,
+  ) -> Option<(f64, f64)> {
+    // Gimbal pitch is negative (e.g., -45° means 45° below horizontal)
+    // At -90° (straight down), the look point is directly below the drone
+    // At 0° (horizontal), the look point is at infinity
+
+    // Calculate horizontal distance to look point
+    // For gimbal_pitch = -45°: tan(45°) = 1, so distance = altitude
+    // For gimbal_pitch = -90°: tan(0°) = 0, so distance = 0 (straight down)
+    let pitch_from_horizontal = gimbal_pitch.abs(); // 0 to 90 degrees
+    let pitch_from_vertical = 90.0 - pitch_from_horizontal; // 90 to 0 degrees
+
+    // If looking straight down or nearly so, look point is at waypoint position
+    if pitch_from_vertical < 1.0 {
+      return Some((waypoint_lon, waypoint_lat));
+    }
+
+    // Calculate horizontal distance to look point using trigonometry
+    // tan(pitch_from_vertical) = horizontal_distance / altitude
+    let look_distance_meters = altitude * pitch_from_vertical.to_radians().tan();
+
+    // Convert heading to radians (0° = North, 90° = East)
+    let heading_rad = heading.to_radians();
+
+    // Calculate offset in meters
+    // sin(heading) gives east component, cos(heading) gives north component
+    let offset_x_meters = look_distance_meters * heading_rad.sin();
+    let offset_y_meters = look_distance_meters * heading_rad.cos();
+
+    // Convert meters to degrees using equirectangular approximation
+    let meters_per_deg_lon = METERS_PER_DEG_LAT * waypoint_lat.to_radians().cos();
+    let offset_lon = offset_x_meters / meters_per_deg_lon;
+    let offset_lat = offset_y_meters / METERS_PER_DEG_LAT;
+
+    Some((waypoint_lon + offset_lon, waypoint_lat + offset_lat))
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for FilterVisibleShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    // Get polygon parameter
+    let polygon_var = self.polygon.get();
+    let polygon_table = polygon_var.as_table().map_err(|_| "Invalid Polygon parameter")?;
+
+    // Parse polygon coordinates
+    let coords_var = polygon_table
+      .get_static("coords")
+      .ok_or("Missing 'coords' in polygon")?;
+    let coords = parse_coords(coords_var)?;
+    if coords.len() < 3 {
+      return Err("Polygon must have at least 3 coordinates");
+    }
+
+    // Build geo polygon for containment checks
+    let geo_poly = build_geo_polygon(&coords);
+
+    // Get default parameters
+    let default_altitude: f64 = self.altitude.get().try_into().unwrap_or(30.0);
+    let default_gimbal_pitch: f64 = self.gimbal_pitch.get().try_into().unwrap_or(-45.0);
+
+    // Validate gimbal pitch
+    if default_gimbal_pitch < -90.0 || default_gimbal_pitch > 0.0 {
+      return Err("GimbalPitch must be between -90 and 0 degrees");
+    }
+
+    // Parse input waypoints
+    let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
+
+    // Filter waypoints
+    let mut output_seq = AutoSeqVar::new();
+    let mut new_index: i64 = 0;
+
+    for item in seq.iter() {
+      let table = item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      // Get waypoint position
+      let lon: f64 = table
+        .get_static("x")
+        .ok_or("Missing 'x' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'x' value")?;
+      let lat: f64 = table
+        .get_static("y")
+        .ok_or("Missing 'y' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'y' value")?;
+
+      // Get optional fields
+      let altitude: f64 = table
+        .get_static("altitude")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(default_altitude);
+      let gimbal_pitch: f64 = table
+        .get_static("gimbal_pitch")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(default_gimbal_pitch);
+      let heading: f64 = table
+        .get_static("heading")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(0.0);
+
+      // Calculate look point
+      if let Some((look_lon, look_lat)) = Self::calculate_look_point(lon, lat, altitude, gimbal_pitch, heading) {
+        // Check if look point is inside polygon
+        let look_point = Point::new(look_lon, look_lat);
+        if geo_poly.contains(&look_point) {
+          // Keep this waypoint - clone it with updated index
+          let mut point_table = AutoTableVar::new();
+          point_table.0.insert_fast_static("x", &Var::from(lon));
+          point_table.0.insert_fast_static("y", &Var::from(lat));
+          point_table.0.insert_fast_static("index", &Var::from(new_index));
+
+          // Preserve row if present
+          if let Some(row_var) = table.get_static("row") {
+            if let Ok(row) = TryInto::<i64>::try_into(row_var) {
+              point_table.0.insert_fast_static("row", &Var::from(row));
+            }
+          }
+
+          // Preserve other optional fields
+          if let Some(alt_var) = table.get_static("altitude") {
+            point_table.0.insert_fast_static("altitude", alt_var);
+          }
+          if let Some(speed_var) = table.get_static("speed") {
+            point_table.0.insert_fast_static("speed", speed_var);
+          }
+          if let Some(heading_var) = table.get_static("heading") {
+            point_table.0.insert_fast_static("heading", heading_var);
+          }
+          if let Some(gimbal_var) = table.get_static("gimbal_pitch") {
+            point_table.0.insert_fast_static("gimbal_pitch", gimbal_var);
+          }
+
+          output_seq.0.emplace_table(point_table);
+          new_index += 1;
+        }
+      }
+    }
+
+    self.output = output_seq.to_cloned();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
+// Geo.PathLength Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.PathLength",
+  "Calculates the total path length between consecutive waypoints in meters"
+)]
+struct PathLengthShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  output: ClonedVar,
+}
+
+impl Default for PathLengthShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for PathLengthShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &FLOAT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
+
+    if seq.len() < 2 {
+      // Single waypoint or empty - zero distance
+      self.output = 0.0f64.into();
+      return Ok(Some(self.output.0));
+    }
+
+    let mut total_distance: f64 = 0.0;
+    let mut prev_lon: Option<f64> = None;
+    let mut prev_lat: Option<f64> = None;
+
+    for item in seq.iter() {
+      let table = item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      let lon: f64 = table
+        .get_static("x")
+        .ok_or("Missing 'x' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'x' value")?;
+      let lat: f64 = table
+        .get_static("y")
+        .ok_or("Missing 'y' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'y' value")?;
+
+      if let (Some(prev_x), Some(prev_y)) = (prev_lon, prev_lat) {
+        total_distance += haversine_distance(prev_x, prev_y, lon, lat);
+      }
+
+      prev_lon = Some(lon);
+      prev_lat = Some(lat);
+    }
+
+    self.output = total_distance.into();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -1515,4 +1847,6 @@ pub extern "C" fn shardsRegister_geo_geo(core: *mut shards::shardsc::SHCore) {
   register_shard::<ToGoogleEarthShard>();
   register_shard::<ToGeoJsonShard>();
   register_shard::<ToLitchiCsvShard>();
+  register_shard::<FilterVisibleShard>();
+  register_shard::<PathLengthShard>();
 }
