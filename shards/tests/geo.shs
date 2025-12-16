@@ -120,10 +120,34 @@
   "Geo.ToDjiKmz test passed" | Log
 })
 
+@wire(geo-google-earth-test {
+  ; Test Google Earth KML export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to KML for Google Earth preview
+  points | Geo.ToGoogleEarth(Path: "/tmp/test-geo-preview.kml" Altitude: 34.0) = output
+
+  ; Verify passthrough (output should equal input)
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-preview.kml" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-preview.kml" | FS.Remove
+
+  "Geo.ToGoogleEarth test passed" | Log
+})
+
 @schedule(root geo-polygon-test)
 @schedule(root geo-gridfill-test)
 @schedule(root geo-gridfill-rotation-test)
 @schedule(root geo-boustrophedon-test)
 @schedule(root geo-dji-kmz-test)
+@schedule(root geo-google-earth-test)
 
 @run(root) | Assert.Is(true)
