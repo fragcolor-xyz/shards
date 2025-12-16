@@ -275,6 +275,43 @@
   "Geo.PathLength test passed" | Log
 })
 
+@wire(geo-simplify-path-test {
+  ; Test SimplifyPath - reduces waypoints to turn points only
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate dense grid with many waypoints (boustrophedon pattern creates turns)
+  poly | Geo.GridFill(SpacingX: 50.0 SpacingY: 50.0 Direction: 0.0) = dense-points
+  dense-points | Count = original-count
+  original-count | Log("Original waypoint count:")
+
+  ; Simplify - should keep only turn points
+  dense-points | Geo.SimplifyPath(Tolerance: 1.0) = simplified-points
+  simplified-points | Count = simplified-count
+  simplified-count | Log("Simplified waypoint count:")
+
+  ; Should have significantly fewer points
+  simplified-count | IsLess(original-count) | Assert.Is(true true)
+
+  ; Should still have at least first and last
+  simplified-count | IsMoreEqual(2) | Assert.Is(true true)
+
+  ; First point should be preserved
+  simplified-points | Take(0) = first
+  first.index | Assert.Is(0 true)
+  first.x | IsFloat | Assert.Is(true true)
+  first.y | IsFloat | Assert.Is(true true)
+
+  ; Last point should be preserved with correct index
+  simplified-points | RTake(0) = last
+  last.index | Assert.Is(simplified-count | Sub(1) true)
+
+  ; Report reduction ratio
+  original-count | ToFloat | Div(simplified-count | ToFloat) = ratio
+  ratio | Log("Reduction ratio:")
+
+  "Geo.SimplifyPath test passed" | Log
+})
+
 @schedule(root geo-polygon-test)
 @schedule(root geo-buffer-test)
 @schedule(root geo-gridfill-test)
@@ -286,5 +323,6 @@
 @schedule(root geo-litchi-csv-test)
 @schedule(root geo-filter-visible-test)
 @schedule(root geo-path-length-test)
+@schedule(root geo-simplify-path-test)
 
 @run(root) | Assert.Is(true)

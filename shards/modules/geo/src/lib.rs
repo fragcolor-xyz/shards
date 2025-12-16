@@ -9,6 +9,7 @@
 //! - `Geo.GridFill` - Fills a polygon with grid points in boustrophedon pattern
 //! - `Geo.FilterVisible` - Filters waypoints by camera visibility within a polygon
 //! - `Geo.PathLength` - Calculates total path length in meters (for flight time estimation)
+//! - `Geo.SimplifyPath` - Removes intermediate points, keeping only turn waypoints
 //! - `Geo.ToDjiKmz` - Exports waypoints to DJI Fly compatible KMZ files
 //! - `Geo.ToGoogleEarth` - Exports waypoints to Google Earth KML
 //! - `Geo.ToGeoJSON` - Exports waypoints to GeoJSON format
@@ -1839,6 +1840,199 @@ impl Shard for PathLengthShard {
 }
 
 // ============================================================================
+// Geo.SimplifyPath Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.SimplifyPath",
+  "Simplifies a waypoint path by removing intermediate points on straight segments, keeping only turn points"
+)]
+struct SimplifyPathShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Tolerance", "Angle tolerance in degrees for detecting turns (default 1.0)", FLOAT_OR_VAR_TYPES)]
+  tolerance: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for SimplifyPathShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      tolerance: ParamVar::new(1.0.into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+impl SimplifyPathShard {
+  /// Calculate bearing from point 1 to point 2 in degrees (0-360)
+  fn calculate_bearing(lon1: f64, lat1: f64, lon2: f64, lat2: f64) -> f64 {
+    let lat1_rad = lat1.to_radians();
+    let lat2_rad = lat2.to_radians();
+    let delta_lon = (lon2 - lon1).to_radians();
+
+    let y = delta_lon.sin() * lat2_rad.cos();
+    let x = lat1_rad.cos() * lat2_rad.sin() - lat1_rad.sin() * lat2_rad.cos() * delta_lon.cos();
+
+    let bearing = y.atan2(x).to_degrees();
+    (bearing + 360.0) % 360.0
+  }
+
+  /// Calculate the angular difference between two bearings
+  fn bearing_diff(bearing1: f64, bearing2: f64) -> f64 {
+    let diff = (bearing2 - bearing1 + 180.0).rem_euclid(360.0) - 180.0;
+    diff.abs()
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for SimplifyPathShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let tolerance: f64 = self.tolerance.get().try_into().unwrap_or(1.0);
+    let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
+
+    // Need at least 3 points to simplify
+    if seq.len() < 3 {
+      // Return input as-is
+      return Ok(Some(*input));
+    }
+
+    // Parse all waypoints first
+    struct WaypointData {
+      lon: f64,
+      lat: f64,
+      heading: Option<f64>,
+      table_idx: usize,
+    }
+
+    let mut waypoints: Vec<WaypointData> = Vec::with_capacity(seq.len());
+    for (idx, item) in seq.iter().enumerate() {
+      let table = item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      let lon: f64 = table
+        .get_static("x")
+        .ok_or("Missing 'x' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'x' value")?;
+      let lat: f64 = table
+        .get_static("y")
+        .ok_or("Missing 'y' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'y' value")?;
+      let heading: Option<f64> = table.get_static("heading").and_then(|v| v.try_into().ok());
+
+      waypoints.push(WaypointData {
+        lon,
+        lat,
+        heading,
+        table_idx: idx,
+      });
+    }
+
+    // Determine which points to keep
+    let mut keep_indices: Vec<usize> = Vec::new();
+
+    // Always keep first point
+    keep_indices.push(0);
+
+    for i in 1..waypoints.len() - 1 {
+      let prev = &waypoints[i - 1];
+      let curr = &waypoints[i];
+      let next = &waypoints[i + 1];
+
+      // Check if heading changes (if heading field exists)
+      let heading_changed = match (prev.heading, curr.heading) {
+        (Some(h1), Some(h2)) => Self::bearing_diff(h1, h2) > tolerance,
+        _ => false,
+      };
+
+      // Check if path direction changes (turn detection)
+      let bearing_to_curr = Self::calculate_bearing(prev.lon, prev.lat, curr.lon, curr.lat);
+      let bearing_to_next = Self::calculate_bearing(curr.lon, curr.lat, next.lon, next.lat);
+      let direction_changed = Self::bearing_diff(bearing_to_curr, bearing_to_next) > tolerance;
+
+      if heading_changed || direction_changed {
+        keep_indices.push(i);
+      }
+    }
+
+    // Always keep last point
+    keep_indices.push(waypoints.len() - 1);
+
+    // Build output sequence with kept waypoints
+    let mut output_seq = AutoSeqVar::new();
+    let mut new_index: i64 = 0;
+
+    for &orig_idx in &keep_indices {
+      let orig_item = &seq[orig_idx];
+      let orig_table = orig_item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      let mut point_table = AutoTableVar::new();
+
+      // Copy x, y with new index
+      let lon: f64 = orig_table.get_static("x").unwrap().try_into().unwrap();
+      let lat: f64 = orig_table.get_static("y").unwrap().try_into().unwrap();
+      point_table.0.insert_fast_static("x", &Var::from(lon));
+      point_table.0.insert_fast_static("y", &Var::from(lat));
+      point_table.0.insert_fast_static("index", &Var::from(new_index));
+
+      // Preserve optional fields
+      if let Some(row_var) = orig_table.get_static("row") {
+        if let Ok(row) = TryInto::<i64>::try_into(row_var) {
+          point_table.0.insert_fast_static("row", &Var::from(row));
+        }
+      }
+      if let Some(alt_var) = orig_table.get_static("altitude") {
+        point_table.0.insert_fast_static("altitude", alt_var);
+      }
+      if let Some(speed_var) = orig_table.get_static("speed") {
+        point_table.0.insert_fast_static("speed", speed_var);
+      }
+      if let Some(heading_var) = orig_table.get_static("heading") {
+        point_table.0.insert_fast_static("heading", heading_var);
+      }
+      if let Some(gimbal_var) = orig_table.get_static("gimbal_pitch") {
+        point_table.0.insert_fast_static("gimbal_pitch", gimbal_var);
+      }
+
+      output_seq.0.emplace_table(point_table);
+      new_index += 1;
+    }
+
+    self.output = output_seq.to_cloned();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -1857,4 +2051,5 @@ pub extern "C" fn shardsRegister_geo_geo(core: *mut shards::shardsc::SHCore) {
   register_shard::<ToLitchiCsvShard>();
   register_shard::<FilterVisibleShard>();
   register_shard::<PathLengthShard>();
+  register_shard::<SimplifyPathShard>();
 }
