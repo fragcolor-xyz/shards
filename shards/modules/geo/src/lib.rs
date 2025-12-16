@@ -14,7 +14,8 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-use geo::{AffineOps, AffineTransform, BoundingRect, Centroid, Contains, Coord, Point, Polygon};
+use geo::{AffineOps, AffineTransform, Area, BoundingRect, Centroid, Contains, Coord, MultiPolygon, Point, Polygon};
+use geo_buffer::buffer_polygon;
 use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::{
@@ -272,6 +273,162 @@ impl Shard for PolygonShard {
     table.0.emplace_table(Var::ephemeral_string("centroid"), centroid_table);
 
     self.output = table.to_cloned();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
+// Geo.Buffer Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.Buffer",
+  "Expands or contracts a polygon by a specified distance in meters"
+)]
+struct BufferShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Distance", "Buffer distance in meters (positive=expand, negative=contract)", FLOAT_OR_VAR_TYPES)]
+  distance: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for BufferShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      distance: ParamVar::new(0.0.into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for BufferShard {
+  fn input_types(&mut self) -> &Types {
+    &POLYGON_OUTPUT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &POLYGON_OUTPUT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let distance: f64 = self.distance.get().try_into().map_err(|_| "Invalid Distance")?;
+
+    if distance == 0.0 {
+      // No buffer, return input as-is
+      return Ok(Some(*input));
+    }
+
+    // Parse input polygon table
+    let table = input.as_table().map_err(|_| "Expected polygon table")?;
+
+    // Get coords from table
+    let coords_var = table.get_static("coords").ok_or("Missing 'coords' in polygon")?;
+    let coords = parse_coords(coords_var)?;
+    if coords.len() < 3 {
+      return Err("Polygon must have at least 3 coordinates");
+    }
+
+    // Get centroid for projection
+    let centroid_table = table.get_static("centroid").ok_or("Missing 'centroid' in polygon")?;
+    let centroid_tbl = centroid_table.as_table().map_err(|_| "Invalid centroid")?;
+    let origin_lon: f64 = centroid_tbl
+      .get_static("x")
+      .ok_or("Missing centroid x")?
+      .try_into()
+      .map_err(|_| "Invalid centroid x")?;
+    let origin_lat: f64 = centroid_tbl
+      .get_static("y")
+      .ok_or("Missing centroid y")?
+      .try_into()
+      .map_err(|_| "Invalid centroid y")?;
+
+    // Convert to meters for buffering
+    let coords_meters: Vec<Coord<f64>> = coords
+      .iter()
+      .map(|&(lon, lat)| {
+        let (x, y) = lonlat_to_meters(lon, lat, origin_lon, origin_lat);
+        Coord { x, y }
+      })
+      .collect();
+
+    // Build polygon in meters and buffer it
+    let poly_meters = Polygon::new(geo::LineString::new(coords_meters), vec![]);
+    let buffered: MultiPolygon<f64> = buffer_polygon(&poly_meters, distance);
+
+    // Get the largest polygon from the result (buffer can create multiple)
+    let largest_poly = buffered
+      .iter()
+      .max_by(|a, b| {
+        let area_a = a.unsigned_area();
+        let area_b = b.unsigned_area();
+        area_a.partial_cmp(&area_b).unwrap_or(std::cmp::Ordering::Equal)
+      })
+      .ok_or("Buffer operation produced no polygons")?;
+
+    // Convert back to lon/lat
+    let buffered_coords: Vec<(f64, f64)> = largest_poly
+      .exterior()
+      .coords()
+      .map(|c| meters_to_lonlat(c.x, c.y, origin_lon, origin_lat))
+      .collect();
+
+    // Remove closing point if present (will be added by build_geo_polygon if needed)
+    let buffered_coords: Vec<(f64, f64)> = if buffered_coords.len() > 1 {
+      let first = buffered_coords.first().unwrap();
+      let last = buffered_coords.last().unwrap();
+      if (first.0 - last.0).abs() < 1e-8 && (first.1 - last.1).abs() < 1e-8 {
+        buffered_coords[..buffered_coords.len() - 1].to_vec()
+      } else {
+        buffered_coords
+      }
+    } else {
+      buffered_coords
+    };
+
+    // Build output polygon table
+    let geo_poly = build_geo_polygon(&buffered_coords);
+    let new_centroid = geo_poly.centroid().ok_or("Failed to compute centroid")?;
+
+    let mut out_table = AutoTableVar::new();
+    out_table.0.insert_fast_static("type", &Var::ephemeral_string("polygon"));
+
+    let mut coords_seq = AutoSeqVar::new();
+    for &(lon, lat) in &buffered_coords {
+      let mut coord_seq = AutoSeqVar::new();
+      coord_seq.0.push(&Var::from(lon));
+      coord_seq.0.push(&Var::from(lat));
+      coords_seq.0.emplace_seq(coord_seq);
+    }
+    out_table.0.emplace_seq(Var::ephemeral_string("coords"), coords_seq);
+
+    let mut centroid_out = AutoTableVar::new();
+    centroid_out.0.insert_fast_static("x", &Var::from(new_centroid.x()));
+    centroid_out.0.insert_fast_static("y", &Var::from(new_centroid.y()));
+    out_table.0.emplace_table(Var::ephemeral_string("centroid"), centroid_out);
+
+    self.output = out_table.to_cloned();
     Ok(Some(self.output.0))
   }
 }
@@ -1352,6 +1509,7 @@ pub extern "C" fn shardsRegister_geo_geo(core: *mut shards::shardsc::SHCore) {
   }
 
   register_shard::<PolygonShard>();
+  register_shard::<BufferShard>();
   register_shard::<GridFillShard>();
   register_shard::<ToDjiKmzShard>();
   register_shard::<ToGoogleEarthShard>();

@@ -13,4 +13,5 @@ lazy_static = "1.5"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1"
 geo = "0.32"
+geo-buffer = "0.2"
 zip = "6.0"

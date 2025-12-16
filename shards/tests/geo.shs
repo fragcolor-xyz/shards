@@ -24,6 +24,31 @@
   "Geo.Polygon test passed" | Log
 })
 
+@wire(geo-buffer-test {
+  ; Create a simple square polygon
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Get original coord count
+  poly.coords | Count = original-count
+
+  ; Expand by 50 meters
+  poly | Geo.Buffer(Distance: 50.0) = expanded
+
+  ; Verify it's still a polygon
+  expanded.type | Assert.Is("polygon" true)
+
+  ; Buffered polygon should have more vertices (corners become arcs/miters)
+  expanded.coords | Count | IsMoreEqual(original-count) | Assert.Is(true true)
+
+  ; Contract by 50 meters
+  poly | Geo.Buffer(Distance: -50.0) = contracted
+
+  ; Verify contracted polygon exists
+  contracted.type | Assert.Is("polygon" true)
+
+  "Geo.Buffer test passed" | Log
+})
+
 @wire(geo-gridfill-test {
   ; Create polygon
   [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
@@ -190,6 +215,7 @@
 })
 
 @schedule(root geo-polygon-test)
+@schedule(root geo-buffer-test)
 @schedule(root geo-gridfill-test)
 @schedule(root geo-gridfill-rotation-test)
 @schedule(root geo-boustrophedon-test)
