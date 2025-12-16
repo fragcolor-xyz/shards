@@ -127,8 +127,17 @@ fn lonlat_to_meters(lon: f64, lat: f64, origin_lon: f64, origin_lat: f64) -> (f6
 }
 
 /// Inverse equirectangular projection: convert meters back to lon/lat
+///
+/// Note: origin_lat must be within ±85° (validated by input coordinate checks).
+/// At exactly ±90° (poles), cos(lat) = 0 which would cause division by zero.
 fn meters_to_lonlat(x: f64, y: f64, origin_lon: f64, origin_lat: f64) -> (f64, f64) {
-  let meters_per_deg_lon = METERS_PER_DEG_LAT * origin_lat.to_radians().cos();
+  let cos_lat = origin_lat.to_radians().cos();
+  // Safety: prevent division by zero at poles (should never happen with validated input)
+  let meters_per_deg_lon = if cos_lat.abs() < 1e-10 {
+    1.0 // Fallback to avoid NaN/Inf - caller should validate latitude
+  } else {
+    METERS_PER_DEG_LAT * cos_lat
+  };
   (origin_lon + x / meters_per_deg_lon, origin_lat + y / METERS_PER_DEG_LAT)
 }
 
@@ -527,11 +536,7 @@ impl Shard for GridFillShard {
     // Get parameters
     let spacing_x: f64 = self.spacing_x.get().try_into().map_err(|_| "Invalid SpacingX")?;
     let spacing_y: f64 = self.spacing_y.get().try_into().map_err(|_| "Invalid SpacingY")?;
-    let direction: f64 = if self.direction.get().is_none() {
-      0.0
-    } else {
-      self.direction.get().try_into().unwrap_or(0.0)
-    };
+    let direction: f64 = self.direction.get().try_into().unwrap_or(0.0);
 
     if spacing_x <= 0.0 || spacing_y <= 0.0 {
       return Err("Spacing must be positive");
@@ -583,9 +588,9 @@ impl Shard for GridFillShard {
 
     // Generate candidate grid points over the bounding box.
     // Uses integer-based iteration to avoid floating-point accumulation errors.
-    // Points are generated up to and including the bbox boundary (0..=steps with floor),
-    // then filtered by polygon containment. This may generate a few candidates outside
-    // the polygon near edges, but ensures complete coverage.
+    // With floor(), points are generated from bbox.min at spacing intervals.
+    // The last point is at bbox.min + floor(span/spacing) * spacing, which may be
+    // slightly inside bbox.max. Points are then filtered by polygon containment.
     let mut rows: Vec<Vec<(f64, f64)>> = Vec::new();
     let y_steps = ((bbox.max().y - bbox.min().y) / spacing_y).floor() as usize;
     for i in 0..=y_steps {
@@ -898,15 +903,15 @@ impl Shard for ToDjiKmzShard {
     let drone_enum: i64 = self.drone_enum.get().try_into().unwrap_or(68.0) as i64;
     let drone_sub_enum: i64 = self.drone_sub_enum.get().try_into().unwrap_or(0.0) as i64;
 
-    // Parse input waypoints
+    // Parse input waypoints - check limits before allocating/parsing
     let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
-
-    if seq.len() > MAX_DJI_WAYPOINTS {
-      return Err("Too many waypoints (max 200 for DJI Fly)");
-    }
 
     if seq.is_empty() {
       return Err("No waypoints provided");
+    }
+
+    if seq.len() > MAX_DJI_WAYPOINTS {
+      return Err("Too many waypoints (max 200 for DJI Fly)");
     }
 
     let mut waypoints = Vec::with_capacity(seq.len());
@@ -1405,24 +1410,21 @@ impl Default for ToLitchiCsvShard {
 }
 
 impl ToLitchiCsvShard {
-  fn generate_csv(&self, waypoints: &[Waypoint], default_speed: f64, default_gimbal: f64, default_heading: f64, curve_size: f64) -> String {
+  fn generate_csv(&self, waypoints: &[Waypoint], curve_size: f64) -> String {
     let mut csv = String::from("latitude,longitude,altitude(m),heading(deg),curvesize(m),rotationdir,gimbalmode,gimbalpitchangle,actiontype1,actionparam1,altitudemode,speed(m/s),poi_latitude,poi_longitude,poi_altitude(m),poi_altitudemode,photo_timeinterval,photo_distinterval\n");
 
     for wp in waypoints {
-      let heading = if wp.heading != 0.0 { wp.heading } else { default_heading };
-      let gimbal = if wp.gimbal_pitch != 0.0 { wp.gimbal_pitch } else { default_gimbal };
-      let speed = if wp.speed != 5.0 { wp.speed } else { default_speed };
-
+      // Use waypoint values directly - defaults already applied during parsing
       csv.push_str(&format!(
         "{:.15},{:.15},{:.0},{:.0},{:.1},0,2,{:.0},5,{:.0},0,{:.1},0,0,-1,0,-1,-1\n",
         wp.lat,
         wp.lon,
         wp.altitude,
-        heading.round(),
+        wp.heading.round(),
         curve_size,
-        gimbal.round(),
-        gimbal.round(),
-        speed
+        wp.gimbal_pitch.round(),
+        wp.gimbal_pitch.round(),
+        wp.speed
       ));
     }
 
@@ -1497,15 +1499,15 @@ impl Shard for ToLitchiCsvShard {
       let speed: f64 = table
         .get_static("speed")
         .and_then(|v| v.try_into().ok())
-        .unwrap_or(5.0);
+        .unwrap_or(default_speed);
       let gimbal_pitch: f64 = table
         .get_static("gimbal_pitch")
         .and_then(|v| v.try_into().ok())
-        .unwrap_or(0.0);
+        .unwrap_or(default_gimbal);
       let heading: f64 = table
         .get_static("heading")
         .and_then(|v| v.try_into().ok())
-        .unwrap_or(0.0);
+        .unwrap_or(default_heading);
 
       waypoints.push(Waypoint {
         lon,
@@ -1518,7 +1520,7 @@ impl Shard for ToLitchiCsvShard {
       });
     }
 
-    let csv = self.generate_csv(&waypoints, default_speed, default_gimbal, default_heading, curve_size);
+    let csv = self.generate_csv(&waypoints, curve_size);
     std::fs::write(path, csv).map_err(|_| "Failed to write CSV file")?;
 
     Ok(Some(*input))
@@ -1572,6 +1574,12 @@ impl FilterVisibleShard {
     gimbal_pitch: f64,
     heading: f64,
   ) -> Option<(f64, f64)> {
+    // Safety: validate latitude to avoid division issues near poles
+    // Waypoints may come from user data without validation
+    if waypoint_lat.abs() > MAX_LATITUDE {
+      return Some((waypoint_lon, waypoint_lat)); // Return waypoint position as fallback
+    }
+
     // Gimbal pitch is negative (e.g., -45° means 45° below horizontal)
     // At -90° (straight down), the look point is directly below the drone
     // At 0° (horizontal), the look point is at infinity
