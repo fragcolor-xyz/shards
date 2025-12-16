@@ -19,7 +19,7 @@ use shards::core::register_shard;
 use shards::shard::Shard;
 use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
-  Seq, Type, Types, Var, FLOAT_TYPES_SLICE, SEQ_OF_SEQ_OF_FLOAT_TYPES, STRING_TYPES,
+  Seq, Type, Types, Var, SEQ_OF_SEQ_OF_FLOAT_TYPES,
 };
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -287,10 +287,10 @@ struct GridFillShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("SpacingX", "Grid spacing in X direction (meters)", FLOAT_TYPES_SLICE)]
+  #[shard_param("SpacingX", "Grid spacing in X direction (meters)", FLOAT_OR_VAR_TYPES)]
   spacing_x: ParamVar,
 
-  #[shard_param("SpacingY", "Grid spacing in Y direction (meters)", FLOAT_TYPES_SLICE)]
+  #[shard_param("SpacingY", "Grid spacing in Y direction (meters)", FLOAT_OR_VAR_TYPES)]
   spacing_y: ParamVar,
 
   #[shard_param("Direction", "Rotation angle in degrees (default 0)", FLOAT_OR_VAR_TYPES)]
@@ -481,7 +481,7 @@ struct ToDjiKmzShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Path", "Output file path for the KMZ file", STRING_TYPES)]
+  #[shard_param("Path", "Output file path for the KMZ file", STRING_VAR_OR_NONE_TYPES)]
   path: ParamVar,
 
   #[shard_param("FinishAction", "Action after mission: goHome, noAction, or autoLand", STRING_VAR_OR_NONE_TYPES)]
@@ -823,7 +823,7 @@ struct ToGoogleEarthShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Path", "Output file path for the KML file", STRING_TYPES)]
+  #[shard_param("Path", "Output file path for the KML file", STRING_VAR_OR_NONE_TYPES)]
   path: ParamVar,
 
   #[shard_param("Altitude", "Default altitude in meters (relative to ground)", FLOAT_OR_VAR_TYPES)]
