@@ -178,8 +178,9 @@ fn build_geo_polygon(coords: &[(f64, f64)]) -> Polygon<f64> {
   let mut exterior: Vec<Coord<f64>> = coords.iter().map(|&(x, y)| Coord { x, y }).collect();
 
   // Close polygon if not already closed
+  // Use 1e-8 degrees (~1mm) as epsilon for geographic coordinates
   if let (Some(first), Some(last)) = (exterior.first(), exterior.last()) {
-    if (first.x - last.x).abs() > 1e-10 || (first.y - last.y).abs() > 1e-10 {
+    if (first.x - last.x).abs() > 1e-8 || (first.y - last.y).abs() > 1e-8 {
       exterior.push(*first);
     }
   }
@@ -396,12 +397,13 @@ impl Shard for GridFillShard {
 
     // Generate grid points within bounding box
     // Use integer-based iteration to avoid floating-point accumulation errors
+    // floor() ensures we don't generate points beyond the bounding box
     let mut rows: Vec<Vec<(f64, f64)>> = Vec::new();
-    let y_steps = ((bbox.max().y - bbox.min().y) / spacing_y).ceil() as usize;
+    let y_steps = ((bbox.max().y - bbox.min().y) / spacing_y).floor() as usize;
     for i in 0..=y_steps {
       let y = bbox.min().y + (i as f64) * spacing_y;
       let mut row: Vec<(f64, f64)> = Vec::new();
-      let x_steps = ((bbox.max().x - bbox.min().x) / spacing_x).ceil() as usize;
+      let x_steps = ((bbox.max().x - bbox.min().x) / spacing_x).floor() as usize;
       for j in 0..=x_steps {
         let x = bbox.min().x + (j as f64) * spacing_x;
         let point = Point::new(x, y);
