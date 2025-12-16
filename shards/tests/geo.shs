@@ -166,6 +166,29 @@
   "Geo.ToGeoJSON test passed" | Log
 })
 
+@wire(geo-litchi-csv-test {
+  ; Test Litchi CSV export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to Litchi CSV
+  points | Geo.ToLitchiCSV(Path: "/tmp/test-geo-mission.csv" Altitude: 34.0 Heading: 180.0 GimbalPitch: -45.0) = output
+
+  ; Verify passthrough
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.csv" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.csv" | FS.Remove
+
+  "Geo.ToLitchiCSV test passed" | Log
+})
+
 @schedule(root geo-polygon-test)
 @schedule(root geo-gridfill-test)
 @schedule(root geo-gridfill-rotation-test)
@@ -173,5 +196,6 @@
 @schedule(root geo-dji-kmz-test)
 @schedule(root geo-google-earth-test)
 @schedule(root geo-geojson-test)
+@schedule(root geo-litchi-csv-test)
 
 @run(root) | Assert.Is(true)

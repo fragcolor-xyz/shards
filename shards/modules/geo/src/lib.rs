@@ -1172,6 +1172,176 @@ impl Shard for ToGeoJsonShard {
 }
 
 // ============================================================================
+// Geo.ToLitchiCSV Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.ToLitchiCSV",
+  "Exports waypoints to Litchi CSV format for drone missions"
+)]
+struct ToLitchiCsvShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Path", "Output file path for the CSV file", STRING_VAR_OR_NONE_TYPES)]
+  path: ParamVar,
+
+  #[shard_param("Altitude", "Default altitude in meters", FLOAT_OR_VAR_TYPES)]
+  altitude: ParamVar,
+
+  #[shard_param("Speed", "Default speed in m/s (0 = default)", FLOAT_OR_VAR_TYPES)]
+  speed: ParamVar,
+
+  #[shard_param("GimbalPitch", "Gimbal pitch angle (-90 to 0)", FLOAT_OR_VAR_TYPES)]
+  gimbal_pitch: ParamVar,
+
+  #[shard_param("Heading", "Default heading in degrees", FLOAT_OR_VAR_TYPES)]
+  heading: ParamVar,
+
+  #[shard_param("CurveSize", "Curve size for smooth turns (meters)", FLOAT_OR_VAR_TYPES)]
+  curve_size: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for ToLitchiCsvShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      path: ParamVar::default(),
+      altitude: ParamVar::new(30.0.into()),
+      speed: ParamVar::new(0.0.into()),
+      gimbal_pitch: ParamVar::new((-45.0).into()),
+      heading: ParamVar::new(0.0.into()),
+      curve_size: ParamVar::new(0.0.into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+impl ToLitchiCsvShard {
+  fn generate_csv(&self, waypoints: &[Waypoint], default_speed: f64, default_gimbal: f64, default_heading: f64, curve_size: f64) -> String {
+    let mut csv = String::from("latitude,longitude,altitude(m),heading(deg),curvesize(m),rotationdir,gimbalmode,gimbalpitchangle,actiontype1,actionparam1,altitudemode,speed(m/s),poi_latitude,poi_longitude,poi_altitude(m),poi_altitudemode,photo_timeinterval,photo_distinterval\n");
+
+    for wp in waypoints {
+      let heading = if wp.heading != 0.0 { wp.heading } else { default_heading };
+      let gimbal = if wp.gimbal_pitch != 0.0 { wp.gimbal_pitch } else { default_gimbal };
+      let speed = if wp.speed != 5.0 { wp.speed } else { default_speed };
+
+      csv.push_str(&format!(
+        "{:.15},{:.15},{:.0},{:.0},{:.1},0,2,{:.0},5,{:.0},0,{:.1},0,0,-1,0,-1,-1\n",
+        wp.lat,
+        wp.lon,
+        wp.altitude,
+        heading.round(),
+        curve_size,
+        gimbal.round(),
+        gimbal.round(),
+        speed
+      ));
+    }
+
+    csv
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for ToLitchiCsvShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(data.inputType)
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let path: &str = self.path.get().try_into().map_err(|_| "Invalid Path parameter")?;
+    let default_altitude: f64 = self.altitude.get().try_into().unwrap_or(30.0);
+    let default_speed: f64 = self.speed.get().try_into().unwrap_or(0.0);
+    let default_gimbal: f64 = self.gimbal_pitch.get().try_into().unwrap_or(-45.0);
+    let default_heading: f64 = self.heading.get().try_into().unwrap_or(0.0);
+    let curve_size: f64 = self.curve_size.get().try_into().unwrap_or(0.0);
+
+    let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
+
+    if seq.is_empty() {
+      return Err("No waypoints provided");
+    }
+
+    let mut waypoints = Vec::with_capacity(seq.len());
+    for item in seq.iter() {
+      let table = item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      let lon: f64 = table
+        .get_static("x")
+        .ok_or("Missing 'x' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'x' value")?;
+      let lat: f64 = table
+        .get_static("y")
+        .ok_or("Missing 'y' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'y' value")?;
+      let index: i64 = table
+        .get_static("index")
+        .ok_or("Missing 'index' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'index' value")?;
+
+      let altitude: f64 = table
+        .get_static("altitude")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(default_altitude);
+      let speed: f64 = table
+        .get_static("speed")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(5.0);
+      let gimbal_pitch: f64 = table
+        .get_static("gimbal_pitch")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(0.0);
+      let heading: f64 = table
+        .get_static("heading")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(0.0);
+
+      waypoints.push(Waypoint {
+        lon,
+        lat,
+        index,
+        altitude,
+        speed,
+        gimbal_pitch,
+        heading,
+      });
+    }
+
+    let csv = self.generate_csv(&waypoints, default_speed, default_gimbal, default_heading, curve_size);
+    std::fs::write(path, csv).map_err(|_| "Failed to write CSV file")?;
+
+    Ok(Some(*input))
+  }
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -1186,4 +1356,5 @@ pub extern "C" fn shardsRegister_geo_geo(core: *mut shards::shardsc::SHCore) {
   register_shard::<ToDjiKmzShard>();
   register_shard::<ToGoogleEarthShard>();
   register_shard::<ToGeoJsonShard>();
+  register_shard::<ToLitchiCsvShard>();
 }
