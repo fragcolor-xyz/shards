@@ -143,11 +143,35 @@
   "Geo.ToGoogleEarth test passed" | Log
 })
 
+@wire(geo-geojson-test {
+  ; Test GeoJSON export
+  [[-122.42 37.78] [-122.41 37.78] [-122.41 37.79] [-122.42 37.79]] | Geo.Polygon = poly
+
+  ; Generate grid points
+  poly | Geo.GridFill(SpacingX: 100.0 SpacingY: 100.0 Direction: 0.0) = points
+  points | Count | IsMore(0) | Assert.Is(true true)
+
+  ; Export to GeoJSON
+  points | Geo.ToGeoJSON(Path: "/tmp/test-geo-mission.geojson" Altitude: 34.0) = output
+
+  ; Verify passthrough
+  output | Count | Assert.Is(points | Count true)
+
+  ; Verify file was created
+  "/tmp/test-geo-mission.geojson" | FS.IsFile | Assert.Is(true true)
+
+  ; Clean up test file
+  "/tmp/test-geo-mission.geojson" | FS.Remove
+
+  "Geo.ToGeoJSON test passed" | Log
+})
+
 @schedule(root geo-polygon-test)
 @schedule(root geo-gridfill-test)
 @schedule(root geo-gridfill-rotation-test)
 @schedule(root geo-boustrophedon-test)
 @schedule(root geo-dji-kmz-test)
 @schedule(root geo-google-earth-test)
+@schedule(root geo-geojson-test)
 
 @run(root) | Assert.Is(true)

@@ -999,6 +999,179 @@ impl Shard for ToGoogleEarthShard {
 }
 
 // ============================================================================
+// Geo.ToGeoJSON Shard
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "Geo.ToGeoJSON",
+  "Exports waypoints to GeoJSON format for use with GIS tools"
+)]
+struct ToGeoJsonShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Path", "Output file path for the GeoJSON file", STRING_VAR_OR_NONE_TYPES)]
+  path: ParamVar,
+
+  #[shard_param("Altitude", "Default altitude in meters", FLOAT_OR_VAR_TYPES)]
+  altitude: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for ToGeoJsonShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      path: ParamVar::default(),
+      altitude: ParamVar::new(30.0.into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+impl ToGeoJsonShard {
+  fn generate_geojson(&self, waypoints: &[Waypoint]) -> String {
+    // Build point features for each waypoint
+    let mut features = String::new();
+    for (i, wp) in waypoints.iter().enumerate() {
+      if i > 0 {
+        features.push_str(",\n");
+      }
+      features.push_str(&format!(
+        r#"    {{
+      "type": "Feature",
+      "geometry": {{
+        "type": "Point",
+        "coordinates": [{:.8}, {:.8}, {:.1}]
+      }},
+      "properties": {{
+        "index": {},
+        "altitude": {:.1},
+        "speed": {:.1}
+      }}
+    }}"#,
+        wp.lon, wp.lat, wp.altitude, wp.index, wp.altitude, wp.speed
+      ));
+    }
+
+    // Build LineString for flight path
+    let mut path_coords = String::new();
+    for (i, wp) in waypoints.iter().enumerate() {
+      if i > 0 {
+        path_coords.push_str(", ");
+      }
+      path_coords.push_str(&format!("[{:.8}, {:.8}, {:.1}]", wp.lon, wp.lat, wp.altitude));
+    }
+
+    format!(
+      r#"{{
+  "type": "FeatureCollection",
+  "features": [
+    {{
+      "type": "Feature",
+      "geometry": {{
+        "type": "LineString",
+        "coordinates": [{}]
+      }},
+      "properties": {{
+        "name": "Flight Path"
+      }}
+    }},
+{}
+  ]
+}}
+"#,
+      path_coords, features
+    )
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for ToGeoJsonShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_GRID_POINTS_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(data.inputType)
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let path: &str = self.path.get().try_into().map_err(|_| "Invalid Path parameter")?;
+    let default_altitude: f64 = self.altitude.get().try_into().unwrap_or(30.0);
+
+    let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
+
+    if seq.is_empty() {
+      return Err("No waypoints provided");
+    }
+
+    let mut waypoints = Vec::with_capacity(seq.len());
+    for item in seq.iter() {
+      let table = item.as_table().map_err(|_| "Expected waypoint table")?;
+
+      let lon: f64 = table
+        .get_static("x")
+        .ok_or("Missing 'x' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'x' value")?;
+      let lat: f64 = table
+        .get_static("y")
+        .ok_or("Missing 'y' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'y' value")?;
+      let index: i64 = table
+        .get_static("index")
+        .ok_or("Missing 'index' in waypoint")?
+        .try_into()
+        .map_err(|_| "Invalid 'index' value")?;
+
+      let altitude: f64 = table
+        .get_static("altitude")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(default_altitude);
+      let speed: f64 = table
+        .get_static("speed")
+        .and_then(|v| v.try_into().ok())
+        .unwrap_or(5.0);
+
+      waypoints.push(Waypoint {
+        lon,
+        lat,
+        index,
+        altitude,
+        speed,
+        gimbal_pitch: 0.0,
+        heading: 0.0,
+      });
+    }
+
+    let geojson = self.generate_geojson(&waypoints);
+    std::fs::write(path, geojson).map_err(|_| "Failed to write GeoJSON file")?;
+
+    Ok(Some(*input))
+  }
+}
+
+// ============================================================================
 // Registration
 // ============================================================================
 
@@ -1012,4 +1185,5 @@ pub extern "C" fn shardsRegister_geo_geo(core: *mut shards::shardsc::SHCore) {
   register_shard::<GridFillShard>();
   register_shard::<ToDjiKmzShard>();
   register_shard::<ToGoogleEarthShard>();
+  register_shard::<ToGeoJsonShard>();
 }
