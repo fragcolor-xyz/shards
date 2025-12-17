@@ -105,8 +105,179 @@ void ThreadFiber::switchToThread() {
 
 ThreadFiber::operator bool() const { return !finished; }
 
-#else // SH_USE_THREAD_FIBER
-#ifndef __EMSCRIPTEN__
+#elif SH_CUSTOM_FCONTEXT
+// Custom fcontext-based fiber implementation
+
+#if SH_DEBUG_CONSISTENT_RESUMER
+static bool checkForConsistentResumerCustom() {
+  static bool check = []() {
+    if (std::getenv("SH_IGNORE_CONSISTENT_RESUMER"))
+      return false;
+    return true;
+  }();
+  return check;
+}
+#endif
+
+#ifdef SH_USE_TSAN
+// Thread-local storage for the main TSAN fiber handle
+static thread_local void *tsan_main_fiber_custom = nullptr;
+
+static ALWAYS_INLINE void *getTsanMainFiberCustom() {
+  if (!tsan_main_fiber_custom) {
+    tsan_main_fiber_custom = __tsan_get_current_fiber();
+  }
+  return tsan_main_fiber_custom;
+}
+#endif
+
+Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
+
+Fiber::~Fiber() {
+#ifdef SH_USE_TSAN
+  if (tsan_fiber) {
+    void *current_fiber = __tsan_get_current_fiber();
+    if (current_fiber == tsan_fiber) {
+      __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
+    }
+    __tsan_destroy_fiber(tsan_fiber);
+    tsan_fiber = nullptr;
+  }
+#endif
+}
+
+void Fiber::fcontextEntry(fcontext::transfer_t t) {
+  // The transfer contains the Fiber pointer and the caller's context
+  Fiber *self = static_cast<Fiber *>(t.data);
+
+  // Store the caller's context so we can return to it
+  self->ctx = t.fctx;
+
+#ifdef SH_USE_ASAN
+  // We just switched TO this fiber, finish the switch
+  __sanitizer_finish_switch_fiber(self->asan_init_fake_stack, nullptr, nullptr);
+#endif
+
+  // Run the user's function
+  self->func();
+
+  // Function returned - switch back to caller
+#ifdef SH_USE_ASAN
+  __sanitizer_start_switch_fiber(nullptr, nullptr, 0);
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
+#endif
+
+  // Jump back to caller - this will terminate the fiber
+  fcontext::sh_jump_fcontext(self->ctx, nullptr);
+}
+
+void Fiber::init(std::function<void()> fn) {
+#if SH_DEBUG_CONSISTENT_RESUMER
+  consistentResumer.emplace(std::this_thread::get_id());
+#endif
+
+  func = std::move(fn);
+
+#ifdef SH_USE_ASAN
+  asan_stack_bottom = allocator.mem;
+  asan_stack_size = allocator.size;
+  __asan_unpoison_memory_region(asan_stack_bottom, asan_stack_size);
+#endif
+
+#ifdef SH_USE_TSAN
+  getTsanMainFiberCustom();
+  shassert(!tsan_fiber && "Fiber::init() called twice");
+  tsan_fiber = __tsan_create_fiber(0);
+#endif
+
+  // Create the context - sp points to top of stack (base + size)
+  void *sp = allocator.mem + allocator.size;
+  ctx = fcontext::sh_make_fcontext(sp, allocator.size, &Fiber::fcontextEntry);
+
+#ifdef SH_USE_ASAN
+  void *init_fake_stack = nullptr;
+  __sanitizer_start_switch_fiber(&init_fake_stack, asan_stack_bottom, asan_stack_size);
+  asan_init_fake_stack = init_fake_stack;
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(tsan_fiber, 0);
+#endif
+
+  // Do initial resume to run until first suspend
+  fcontext::transfer_t t = fcontext::sh_jump_fcontext(ctx, this);
+  ctx = t.fctx;
+
+#ifdef SH_USE_ASAN
+  __sanitizer_finish_switch_fiber(init_fake_stack, nullptr, nullptr);
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
+#endif
+}
+
+void Fiber::resume() {
+  shassert(ctx);
+#if SH_DEBUG_CONSISTENT_RESUMER
+  if (checkForConsistentResumerCustom() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
+    throw std::runtime_error("Fiber::resume() called from different thread");
+#endif
+
+#ifdef SH_USE_ASAN
+  void *fake_stack = nullptr;
+  __sanitizer_start_switch_fiber(&fake_stack, asan_stack_bottom, asan_stack_size);
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(tsan_fiber, 0);
+#endif
+
+  fcontext::transfer_t t = fcontext::sh_jump_fcontext(ctx, this);
+  ctx = t.fctx;
+
+#ifdef SH_USE_ASAN
+  __sanitizer_finish_switch_fiber(fake_stack, nullptr, nullptr);
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
+#endif
+}
+
+void Fiber::suspend() {
+  shassert(ctx);
+#if SH_DEBUG_CONSISTENT_RESUMER
+  if (checkForConsistentResumerCustom() && (!consistentResumer || *consistentResumer != std::this_thread::get_id()))
+    throw std::runtime_error("Fiber::suspend() called from different thread");
+#endif
+
+#ifdef SH_USE_ASAN
+  void *fake_stack = nullptr;
+  __sanitizer_start_switch_fiber(&fake_stack, nullptr, 0);
+#endif
+
+#ifdef SH_USE_TSAN
+  __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
+#endif
+
+  fcontext::transfer_t t = fcontext::sh_jump_fcontext(ctx, nullptr);
+  ctx = t.fctx;
+
+#ifdef SH_USE_ASAN
+  __sanitizer_finish_switch_fiber(fake_stack, nullptr, nullptr);
+#endif
+}
+
+Fiber::operator bool() const {
+  return ctx != nullptr;
+}
+
+#elif !defined(__EMSCRIPTEN__)
+// Boost.Context based fiber implementation (fallback)
 
 #if SH_DEBUG_CONSISTENT_RESUMER
 static bool checkForConsistentResumer() {
@@ -382,6 +553,5 @@ NO_INLINE void Fiber::suspend() {
   emscripten_fiber_swap(&em_fiber, em_parent_fiber);
 }
 
-#endif
-#endif
+#endif // SH_USE_THREAD_FIBER / SH_CUSTOM_FCONTEXT / __EMSCRIPTEN__ chain
 } // namespace shards
