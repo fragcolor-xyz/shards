@@ -155,6 +155,25 @@ if(WIN32 OR EMSCRIPTEN)
   set(BOOST_UUID_LINK_LIBATOMIC OFF CACHE BOOL "" FORCE)
 endif()
 
+# Explicitly list Boost libraries to build.
+# Without this, Boost builds ALL libraries which is slow and unnecessary.
+# Note: context is included because asio/beast depend on it, but we force ucontext
+# implementation below to avoid cross-compilation assembly issues.
+set(BOOST_INCLUDE_LIBRARIES
+  filesystem lockfree foreach multiprecision atomic thread tti
+  beast asio stacktrace container random interprocess uuid process context
+  CACHE STRING "Boost libraries to build")
+
+# Disable Boost.Context coroutine support in Asio (we use our own fiber implementation)
+set(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER ON CACHE BOOL "" FORCE)
+add_compile_definitions(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER)
+
+# Force Boost.Context to use ucontext implementation instead of fcontext assembly.
+# This avoids cross-compilation issues where Boost misdetects the architecture
+# (e.g., detects riscv32 as i386). We don't actually use Boost.Context anyway -
+# it's only pulled in as a transitive dependency from asio/beast.
+set(BOOST_CONTEXT_IMPLEMENTATION "ucontext" CACHE STRING "" FORCE)
+
 set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
 
 if(BOOST_DIR)

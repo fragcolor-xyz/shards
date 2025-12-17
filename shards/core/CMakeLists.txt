@@ -202,9 +202,12 @@ if(NOT EMSCRIPTEN)
     # Enable ASM language if not already enabled
     enable_language(ASM)
   else()
-    # Use Boost.Context for coroutines
-    message(STATUS "Shards: Using Boost.Context for fiber support")
-    target_link_libraries(shards-core Boost::context)
+    # No custom fcontext and Boost.Context is not built by default
+    # (we exclude it from BOOST_INCLUDE_LIBRARIES to avoid cross-compile issues)
+    message(FATAL_ERROR
+      "No fiber support available for architecture: ${CMAKE_SYSTEM_PROCESSOR}\n"
+      "Custom fcontext supports: x86, x86_64, ARM, ARM64, RISC-V\n"
+      "To use Boost.Context fallback, add 'context' to BOOST_INCLUDE_LIBRARIES in deps/CMakeLists.txt")
   endif()
 else()
   target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
