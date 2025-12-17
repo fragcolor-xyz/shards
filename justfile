@@ -482,7 +482,7 @@ configure-zig target:
     -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
     -DZIG_TARGET={{ target }} \
     -DCMAKE_BUILD_TYPE=Release \
-    -DRUST_BUILD_TYPE=Small \
+    -DRUST_BUILD_TYPE=ExtraSmall \
     -DSHARDS_WITH_EVERYTHING=OFF \
     -DSHARDS_WITH_LANGFFI=ON \
     -DSHARDS_WITH_ASSERT=ON \

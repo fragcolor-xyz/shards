@@ -68,6 +68,8 @@ if(NOT RUST_CARGO_TARGET)
       # Tier 3 target - requires -Z build-std
       set(RUST_CARGO_TARGET riscv32gc-unknown-linux-musl)
       set(RUST_RISCV32 TRUE)
+      list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std)
+      set(RUST_NIGHTLY TRUE)
     else()
       message(FATAL_ERROR "Unsupported Zig musl architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
@@ -116,10 +118,10 @@ elseif(RUST_BUILD_TYPE STREQUAL "Small")
 elseif(RUST_BUILD_TYPE STREQUAL "ExtraSmall")
   set(RUST_CARGO_FLAGS_INT --profile extra-small)
   set(RUST_BUILD_SUBDIR_CONFIGURATION extra-small)
-  list(APPEND RUST_FLAGS -Zlocation-detail=none)
+  list(APPEND RUST_FLAGS -Zlocation-detail=none -Zunstable-options -Cpanic=immediate-abort)
   list(APPEND RUSTC_FLAGS
     -Zbuild-std=std,panic_abort
-    -Zbuild-std-features=optimize_for_size,panic_immediate_abort
+    -Zbuild-std-features=optimize_for_size
   )
 else()
   set(RUST_CARGO_FLAGS_INT --release)
@@ -453,9 +455,12 @@ function(add_rust_library)
     # Pass include paths to bindgen for Zig cross-compilation
     # bindgen uses libclang, which defaults to host system headers
     # We provide -nostdinc and explicit include paths for the target
-    # Note: Don't pass --target here, bindgen gets it from CARGO_CFG_TARGET
     # Build the string directly to avoid CMake list/escaping issues
     set(_ZIG_BINDGEN_ARGS "-nostdinc -isystem ${_ZIG_LIB_DIR}/include -isystem ${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET} -isystem ${_ZIG_LIB_DIR}/libc/include/generic-musl -isystem ${_ZIG_LIB_DIR}/libc/include/${_ZIG_ARCH_ANY} -isystem ${_ZIG_LIB_DIR}/libc/include/any-linux-any")
+    # For riscv32, clang doesn't recognize 'riscv32gc-unknown-linux-musl' - need explicit --target without 'gc'
+    if(ZIG_ARCH STREQUAL "riscv32")
+      set(_ZIG_BINDGEN_ARGS "${_ZIG_BINDGEN_ARGS} --target=riscv32-unknown-linux-musl")
+    endif()
     # Add to environment directly, bypassing the EXTRA_CLANG_ARGS list mechanism
     list(APPEND _RUST_ENVIRONMENT "BINDGEN_EXTRA_CLANG_ARGS=${_ZIG_BINDGEN_ARGS}")
     message(STATUS "Zig bindgen include paths configured for ${ZIG_TARGET}")
