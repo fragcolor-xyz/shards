@@ -35,11 +35,11 @@
 .syntax unified
 
 /*
- * fcontext_t sh_make_fcontext(void* sp, size_t size, void (*fn)(transfer_t))
+ * fcontext_t sh_make_fcontext(void* sp, void* stack_bottom, void (*fn)(transfer_t))
  *
  * Arguments:
  *   a1 (r0) - stack pointer (top of allocated stack)
- *   a2 (r1) - stack size (unused)
+ *   a2 (r1) - stack bottom (unused on this platform)
  *   a3 (r2) - pointer to context function
  * Returns:
  *   a1 (r0) - new context handle

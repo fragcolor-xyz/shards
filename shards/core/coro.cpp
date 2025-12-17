@@ -10,6 +10,10 @@
 #include <cstdlib>
 #endif
 
+#if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
+#include <valgrind/valgrind.h>
+#endif
+
 // Enable for verbose fiber logging
 #ifndef SH_EM_FIBER_TRACE_LOGS
 #define SH_EM_FIBER_TRACE_LOGS 0
@@ -134,6 +138,12 @@ static ALWAYS_INLINE void *getTsanMainFiberCustom() {
 Fiber::Fiber(SHStackAllocator allocator) : allocator(allocator) {}
 
 Fiber::~Fiber() {
+#if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
+  if (valgrind_stack_id) {
+    VALGRIND_STACK_DEREGISTER(valgrind_stack_id);
+  }
+#endif
+
 #ifdef SH_USE_TSAN
   if (tsan_fiber) {
     void *current_fiber = __tsan_get_current_fiber();
@@ -192,6 +202,12 @@ void Fiber::init(std::function<void()> fn) {
 
   func = std::move(fn);
 
+#if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
+  // Register stack with Valgrind for proper stack tracking
+  void *sp = allocator.mem + allocator.size;
+  valgrind_stack_id = VALGRIND_STACK_REGISTER(sp, allocator.mem);
+#endif
+
 #ifdef SH_USE_ASAN
   asan_stack_bottom = allocator.mem;
   asan_stack_size = allocator.size;
@@ -206,7 +222,7 @@ void Fiber::init(std::function<void()> fn) {
 
   // Create the context - sp points to top of stack (base + size)
   void *sp = allocator.mem + allocator.size;
-  ctx = fcontext::sh_make_fcontext(sp, allocator.size, &Fiber::fcontextEntry);
+  ctx = fcontext::sh_make_fcontext(sp, allocator.mem, &Fiber::fcontextEntry);
 
 #ifdef SH_USE_ASAN
   void *init_fake_stack = nullptr;

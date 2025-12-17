@@ -78,11 +78,11 @@
 .text
 
 /*
- * fcontext_t sh_make_fcontext(void* sp, size_t size, void (*fn)(transfer_t))
+ * fcontext_t sh_make_fcontext(void* sp, void* stack_bottom, void (*fn)(transfer_t))
  *
  * RISC-V calling convention:
  *   a0 - stack pointer (top of allocated stack)
- *   a1 - stack size (unused)
+ *   a1 - stack bottom (unused on this platform)
  *   a2 - pointer to context function
  * Returns:
  *   a0 - new context handle

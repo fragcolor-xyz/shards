@@ -33,11 +33,11 @@
 .text
 
 /*
- * fcontext_t sh_make_fcontext(void* sp, size_t size, void (*fn)(transfer_t))
+ * fcontext_t sh_make_fcontext(void* sp, void* stack_bottom, void (*fn)(transfer_t))
  *
  * Windows x64 calling convention:
  *   RCX - stack pointer (top of allocated stack)
- *   RDX - stack size
+ *   RDX - stack bottom (used for TEB setup)
  *   R8  - pointer to context function
  * Returns:
  *   RAX - new context handle
@@ -65,15 +65,11 @@ sh_make_fcontext:
     /* save top address of context stack as 'base' for TEB */
     movq  %rcx, 0xc8(%rax)
 
-    /* compute bottom address of context stack (limit) */
-    negq  %rdx
-    leaq  (%rcx,%rdx), %rcx
-
-    /* save bottom address as 'limit' for TEB */
-    movq  %rcx, 0xc0(%rax)
+    /* save bottom address (from stack_bottom param) as 'limit' for TEB */
+    movq  %rdx, 0xc0(%rax)
 
     /* save as 'deallocation stack' for TEB */
-    movq  %rcx, 0xb8(%rax)
+    movq  %rdx, 0xb8(%rax)
 
     /* set fiber local storage to zero */
     xorq  %rcx, %rcx

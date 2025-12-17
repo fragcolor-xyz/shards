@@ -31,12 +31,12 @@
 .text
 
 /*
- * fcontext_t sh_make_fcontext(void* sp, size_t size, void (*fn)(transfer_t))
+ * fcontext_t sh_make_fcontext(void* sp, void* stack_bottom, void (*fn)(transfer_t))
  *
  * Creates a new context on the given stack.
  * Arguments:
  *   rdi - stack pointer (top of allocated stack)
- *   rsi - stack size (unused, kept for API compatibility)
+ *   rsi - stack bottom (unused on this platform)
  *   rdx - pointer to context function
  * Returns:
  *   rax - new context handle (pointer to context data on stack)
@@ -121,6 +121,11 @@ sh_jump_fcontext:
     movq  %rbx, 0x28(%rsp)
     movq  %rbp, 0x30(%rsp)
 
+    /* save return address at RIP slot for consistent layout with make_fcontext */
+    /* return address from call is at RSP+0x40, we save it at RSP+0x38 */
+    movq  0x40(%rsp), %rcx
+    movq  %rcx, 0x38(%rsp)
+
     /* save current stack pointer (our context) in rax for return */
     movq  %rsp, %rax
 
@@ -189,6 +194,10 @@ sh_ontop_fcontext:
     movq  %r15, 0x20(%rsp)
     movq  %rbx, 0x28(%rsp)
     movq  %rbp, 0x30(%rsp)
+
+    /* save return address at RIP slot for consistent layout with make_fcontext */
+    movq  0x40(%rsp), %rcx
+    movq  %rcx, 0x38(%rsp)
 
     /* save current stack pointer (our context) in rax for return */
     movq  %rsp, %rax

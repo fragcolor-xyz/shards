@@ -22,10 +22,10 @@ struct transfer_t {
 
 // Create a new fiber context on the given stack
 // sp: Stack pointer (top of allocated stack memory, i.e., base + size)
-// size: Size of the allocated stack in bytes
+// stack_bottom: Bottom of the stack (used for TEB setup on Windows, ignored elsewhere)
 // fn: Entry function to call when context is first resumed
-// Returns: New context handle, or nullptr on failure
-extern "C" fcontext_t sh_make_fcontext(void *sp, std::size_t size, void (*fn)(transfer_t));
+// Returns: New context handle
+extern "C" fcontext_t sh_make_fcontext(void *sp, void *stack_bottom, void (*fn)(transfer_t));
 
 // Switch to target context
 // to: Context to switch to

@@ -27,11 +27,11 @@
 .text
 
 /*
- * fcontext_t sh_make_fcontext(void* sp, size_t size, void (*fn)(transfer_t))
+ * fcontext_t sh_make_fcontext(void* sp, void* stack_bottom, void (*fn)(transfer_t))
  *
  * i386 calling convention: args on stack
  *   [esp+4]  - stack pointer (top of allocated stack)
- *   [esp+8]  - stack size (unused)
+ *   [esp+8]  - stack bottom (unused on this platform)
  *   [esp+12] - pointer to context function
  * Returns:
  *   eax - new context handle
