@@ -142,15 +142,9 @@ endif()
 target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
 
 # Custom fcontext implementation option
-# Default OFF (use custom assembly), ON for Windows (uses Boost::context)
-if(WIN32)
-  set(SH_USE_BOOST_CONTEXT_DEFAULT ON)
-else()
-  set(SH_USE_BOOST_CONTEXT_DEFAULT OFF)
-endif()
-
-set(SH_USE_BOOST_CONTEXT ${SH_USE_BOOST_CONTEXT_DEFAULT} CACHE BOOL
-  "Use Boost.Context instead of custom assembly for fiber support (required on Windows)")
+# Default OFF (use custom assembly) for all platforms including Windows
+set(SH_USE_BOOST_CONTEXT OFF CACHE BOOL
+  "Use Boost.Context instead of custom assembly for fiber support")
 
 if(NOT EMSCRIPTEN)
   target_link_libraries(shards-core Boost::beast Boost::asio)
@@ -166,19 +160,24 @@ if(NOT EMSCRIPTEN)
 
     # Detect architecture and select appropriate assembly file
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
-      if(APPLE)
+      if(WIN32)
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_ms_pe.S")
+        message(STATUS "Shards: Selected x86_64 Windows fcontext assembly")
+      elseif(APPLE)
         set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_sysv_macho.S")
+        message(STATUS "Shards: Selected x86_64 macOS fcontext assembly")
       else()
         set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_sysv_elf.S")
+        message(STATUS "Shards: Selected x86_64 Linux fcontext assembly")
       endif()
-      message(STATUS "Shards: Selected x86_64 fcontext assembly")
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
       if(APPLE)
         set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_arm64_aapcs_macho.S")
+        message(STATUS "Shards: Selected ARM64 macOS fcontext assembly")
       else()
         set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_arm64_aapcs_elf.S")
+        message(STATUS "Shards: Selected ARM64 Linux fcontext assembly")
       endif()
-      message(STATUS "Shards: Selected ARM64 fcontext assembly")
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv32|RISCV")
       set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_riscv_elf.S")
       message(STATUS "Shards: Selected RISC-V fcontext assembly")
