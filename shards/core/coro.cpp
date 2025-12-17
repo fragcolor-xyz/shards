@@ -202,9 +202,11 @@ void Fiber::init(std::function<void()> fn) {
 
   func = std::move(fn);
 
+  // sp points to top of stack (base + size)
+  void *sp = allocator.mem + allocator.size;
+
 #if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
   // Register stack with Valgrind for proper stack tracking
-  void *sp = allocator.mem + allocator.size;
   valgrind_stack_id = VALGRIND_STACK_REGISTER(sp, allocator.mem);
 #endif
 
@@ -220,8 +222,7 @@ void Fiber::init(std::function<void()> fn) {
   tsan_fiber = __tsan_create_fiber(0);
 #endif
 
-  // Create the context - sp points to top of stack (base + size)
-  void *sp = allocator.mem + allocator.size;
+  // Create the context
   ctx = fcontext::sh_make_fcontext(sp, allocator.mem, &Fiber::fcontextEntry);
 
 #ifdef SH_USE_ASAN
