@@ -80,7 +80,8 @@ jobs:
               rustup +$RUSTUP_TOOLCHAIN target add x86_64-unknown-linux-musl
               ;;
             riscv64-linux-musl)
-              rustup +$RUSTUP_TOOLCHAIN target add riscv64gc-unknown-linux-musl
+              # No pre-built std for riscv64gc-unknown-linux-musl, uses -Zbuild-std
+              echo "riscv64gc-unknown-linux-musl uses -Zbuild-std"
               ;;
             riscv32-linux-musl)
               # Tier 3 target - uses -Zbuild-std, no rustup target needed

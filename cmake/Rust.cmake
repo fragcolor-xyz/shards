@@ -63,7 +63,10 @@ if(NOT RUST_CARGO_TARGET)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
       set(RUST_CARGO_TARGET x86_64-unknown-linux-musl)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
+      # riscv64gc-unknown-linux-musl doesn't have pre-built std, needs -Zbuild-std
       set(RUST_CARGO_TARGET riscv64gc-unknown-linux-musl)
+      list(APPEND RUST_CARGO_UNSTABLE_FLAGS -Zbuild-std)
+      set(RUST_NIGHTLY TRUE)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32")
       # Tier 3 target - requires -Z build-std
       set(RUST_CARGO_TARGET riscv32gc-unknown-linux-musl)
@@ -457,9 +460,11 @@ function(add_rust_library)
     # We provide -nostdinc and explicit include paths for the target
     # Build the string directly to avoid CMake list/escaping issues
     set(_ZIG_BINDGEN_ARGS "-nostdinc -isystem ${_ZIG_LIB_DIR}/include -isystem ${_ZIG_LIB_DIR}/libc/include/${ZIG_TARGET} -isystem ${_ZIG_LIB_DIR}/libc/include/generic-musl -isystem ${_ZIG_LIB_DIR}/libc/include/${_ZIG_ARCH_ANY} -isystem ${_ZIG_LIB_DIR}/libc/include/any-linux-any")
-    # For riscv32, clang doesn't recognize 'riscv32gc-unknown-linux-musl' - need explicit --target without 'gc'
+    # For riscv, clang doesn't recognize the 'gc' suffix in target triples - need explicit --target without 'gc'
     if(ZIG_ARCH STREQUAL "riscv32")
       set(_ZIG_BINDGEN_ARGS "${_ZIG_BINDGEN_ARGS} --target=riscv32-unknown-linux-musl")
+    elseif(ZIG_ARCH STREQUAL "riscv64")
+      set(_ZIG_BINDGEN_ARGS "${_ZIG_BINDGEN_ARGS} --target=riscv64-unknown-linux-musl")
     endif()
     # Add to environment directly, bypassing the EXTRA_CLANG_ARGS list mechanism
     list(APPEND _RUST_ENVIRONMENT "BINDGEN_EXTRA_CLANG_ARGS=${_ZIG_BINDGEN_ARGS}")

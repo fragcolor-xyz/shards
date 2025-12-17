@@ -157,8 +157,7 @@ endif()
 
 # Explicitly list Boost libraries to build.
 # Without this, Boost builds ALL libraries which is slow and unnecessary.
-# Note: context is included because asio/beast depend on it, but we force ucontext
-# implementation below to avoid cross-compilation assembly issues.
+# Note: context is pulled in as a transitive dependency from asio/beast even if not listed.
 set(BOOST_INCLUDE_LIBRARIES
   filesystem lockfree foreach multiprecision atomic thread tti
   beast asio stacktrace container random interprocess uuid process context

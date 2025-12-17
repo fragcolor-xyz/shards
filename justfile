@@ -455,7 +455,9 @@ configure-zig target:
       RUST_TARGET="x86_64-unknown-linux-gnu"
       ;;
     riscv64-linux-musl)
+      # No pre-built std available, uses -Z build-std
       RUST_TARGET="riscv64gc-unknown-linux-musl"
+      TIER3_TARGET="yes"
       ;;
     riscv32-linux-musl)
       # Tier 3 target - uses -Z build-std, no need to add via rustup
