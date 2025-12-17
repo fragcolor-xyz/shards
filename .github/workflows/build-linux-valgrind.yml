@@ -9,8 +9,12 @@ jobs:
   # Build shards and run valgrind on Linux
   #
   Linux-valgrind:
-    name: Build
+    name: Build (${{ matrix.variant }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [default, with-suppressions]
     steps:
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -25,6 +29,14 @@ jobs:
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
+          rustup component add rust-src --toolchain $RUSTUP_TOOLCHAIN
+      - name: Set valgrind options
+        run: |
+          VALGRIND_OPTS="--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes"
+          if [ "${{ matrix.variant }}" = "with-suppressions" ]; then
+            VALGRIND_OPTS="$VALGRIND_OPTS --suppressions=../valgrind.supp"
+          fi
+          echo "VALGRIND_OPTS=$VALGRIND_OPTS" >> $GITHUB_ENV
       - name: Build and Test
         run: |
           mkdir build
@@ -32,34 +44,34 @@ jobs:
           cmake -G Ninja -DUSE_VALGRIND=1 -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
           ninja shards
           ninja test-runtime
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/hello.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/general.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/strings.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-compose.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/variables.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/flows.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/linalg.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/math.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/math_audio.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/return.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/channels.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/subwires.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/const-vars.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards ../shards/tests/wires-embed-issue.shs
-          LOG_network=trace valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/network.shs no-big-load:true
-          LOG_network=trace valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/network-ws.shs no-big-load:true
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/capture-logs.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/fs-security.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/fileops.shs
-          valgrind --exit-on-first-error=no --error-exitcode=1 --fair-sched=yes --leak-check=full ./test-runtime
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/complex-deserialize.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/table-seq-push.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/traits.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/help.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/fib.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/global-init.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/jinja.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/crdts.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/crdt-benchmarks.shs
-          valgrind --exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes ./shards new ../shards/tests/geo.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/hello.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/general.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/strings.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/table-compose.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/variables.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/flows.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/linalg.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/math.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/math_audio.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/return.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/channels.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/subwires.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/const-vars.shs
+          valgrind $VALGRIND_OPTS ./shards ../shards/tests/wires-embed-issue.shs
+          LOG_network=trace valgrind $VALGRIND_OPTS ./shards new ../shards/tests/network.shs no-big-load:true
+          LOG_network=trace valgrind $VALGRIND_OPTS ./shards new ../shards/tests/network-ws.shs no-big-load:true
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/capture-logs.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/fs-security.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/fileops.shs
+          valgrind $VALGRIND_OPTS --exit-on-first-error=no --leak-check=full ./test-runtime
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/complex-deserialize.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/table-seq-push.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/traits.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/help.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/fib.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/global-init.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/jinja.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdts.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdt-benchmarks.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/geo.shs
 

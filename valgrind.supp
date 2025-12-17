@@ -1,0 +1,33 @@
+# Valgrind suppression file for shards
+# Suppress false positives from Rust standard library and common crates
+
+# clap argument parser - iterator optimizations trigger false positives
+{
+   clap_filter_map_uninit
+   Memcheck:Cond
+   ...
+   fun:*clap_builder*
+}
+
+{
+   clap_command_build
+   Memcheck:Cond
+   ...
+   fun:*clap_builder*command*_build_self*
+}
+
+{
+   clap_parser
+   Memcheck:Cond
+   ...
+   fun:*clap_builder*parser*
+}
+
+# Rust iterator internals
+{
+   rust_filter_map
+   Memcheck:Cond
+   ...
+   fun:*filter_map*
+   fun:*clap*
+}
