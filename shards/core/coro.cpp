@@ -176,12 +176,10 @@ void Fiber::fcontextEntry(fcontext::transfer_t t) {
   __sanitizer_start_switch_fiber(nullptr, nullptr, 0);
 #endif
 
-#ifdef SH_USE_TSAN
-  // Switch TSAN tracking to main fiber before final jump.
-  // The fiber will be destroyed after resume() returns, and the
-  // destructor properly checks and handles the TSAN state.
-  __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
-#endif
+  // Note: No TSAN switch here - resume() handles it after the actual context
+  // switch completes. Switching TSAN state before the jump would cause a
+  // temporal inconsistency where TSAN thinks we're on main but we're still
+  // executing on the fiber's stack.
 
   // Jump back to caller - after this the fiber should not be resumed.
   // Note: ctx remains valid after this; the caller should not resume
