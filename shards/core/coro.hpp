@@ -30,13 +30,6 @@
 #define SH_DEBUG_CONSISTENT_RESUMER 0
 #endif
 
-// Enable to assert on consistent resuming
-// this is required to pass for the emscripten version to work correctly
-// since fiber state is stored on the calling JS stack
-#ifndef SH_DEBUG_CONSISTENT_RESUMER
-#define SH_DEBUG_CONSISTENT_RESUMER 0
-#endif
-
 // Defining SH_USE_THREAD_FIBER uses threads as fibers to aid in debugging
 // Set SHARDS_THREAD_FIBER=ON in cmake to enable
 #if SH_USE_THREAD_FIBER
@@ -81,8 +74,85 @@ private:
 };
 using Fiber = ThreadFiber;
 } // namespace shards
-#else // SH_USE_THREAD_FIBER
-#ifndef __EMSCRIPTEN__
+#elif SH_CUSTOM_FCONTEXT
+// Custom assembly-based fiber implementation
+#define SH_CORO_NEED_STACK_MEM 1
+#include "fcontext.hpp"
+#include <shards/log/log.hpp>
+
+// Valgrind stack registration support
+#if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
+#include <valgrind/valgrind.h>
+#endif
+
+// ASAN fiber support
+#ifdef SH_USE_ASAN
+#include <sanitizer/asan_interface.h>
+extern "C" {
+void __sanitizer_start_switch_fiber(void **fake_stack_save, const void *stack_bottom, size_t stack_size);
+void __sanitizer_finish_switch_fiber(void *fake_stack_save, const void **stack_bottom_old, size_t *stack_size_old);
+}
+#endif
+
+// TSAN fiber support
+#ifdef SH_USE_TSAN
+extern "C" {
+void *__tsan_get_current_fiber(void);
+void *__tsan_create_fiber(unsigned flags);
+void __tsan_destroy_fiber(void *fiber);
+void __tsan_switch_to_fiber(void *fiber, unsigned flags);
+void __tsan_set_fiber_name(void *fiber, const char *name);
+}
+#endif
+
+namespace shards {
+// Stack allocator for custom fcontext
+struct SHStackAllocator {
+  size_t size{SH_BASE_STACK_SIZE};
+  uint8_t *mem{nullptr};
+};
+
+struct Fiber {
+private:
+  SHStackAllocator allocator;
+  fcontext::fcontext_t ctx{nullptr};
+  std::function<void()> func;
+
+#if SH_DEBUG_CONSISTENT_RESUMER
+  std::optional<std::thread::id> consistentResumer;
+#endif
+
+#if defined(BOOST_USE_VALGRIND) || defined(SHARDS_VALGRIND)
+  unsigned valgrind_stack_id{0};
+#endif
+
+#ifdef SH_USE_ASAN
+  const void *asan_stack_bottom{nullptr};
+  size_t asan_stack_size{0};
+  void *asan_init_fake_stack{nullptr};
+#endif
+
+#ifdef SH_USE_TSAN
+  void *tsan_fiber{nullptr};
+#endif
+
+  // Trampoline function called by fcontext on first resume
+  static void fcontextEntry(fcontext::transfer_t t);
+
+public:
+  Fiber(SHStackAllocator allocator);
+  ~Fiber();
+  Fiber(const Fiber &) = delete;
+  Fiber &operator=(const Fiber &) = delete;
+  void init(std::function<void()> fn);
+  void resume();
+  void suspend();
+  operator bool() const;
+};
+} // namespace shards
+
+#elif !defined(__EMSCRIPTEN__)
+// Boost.Context based fiber (fallback)
 #define SH_CORO_NEED_STACK_MEM 1
 #define SH_BOOST_COROUTINE 1
 #include <boost/context/continuation.hpp>
@@ -245,8 +315,7 @@ struct Fiber {
   uint8_t *c_stack{nullptr};
 };
 } // namespace shards
-#endif // SHARDS_USE_JSPI
-#endif // SH_USE_THREAD_FIBER
+#endif // SH_USE_THREAD_FIBER / SH_CUSTOM_FCONTEXT / __EMSCRIPTEN__ chain
 
 namespace shards {
 using Coroutine = std::optional<Fiber>;

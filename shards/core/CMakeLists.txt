@@ -141,8 +141,71 @@ endif()
 
 target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
 
+# Custom fcontext implementation option
+# Default OFF (use custom assembly) for all platforms including Windows
+set(SH_USE_BOOST_CONTEXT OFF CACHE BOOL
+  "Use Boost.Context instead of custom assembly for fiber support")
+
 if(NOT EMSCRIPTEN)
-  target_link_libraries(shards-core Boost::beast Boost::asio Boost::context)
+  target_link_libraries(shards-core Boost::beast Boost::asio)
+
+  # Detect architecture and check if custom fcontext is supported
+  set(FCONTEXT_SUPPORTED OFF)
+  if(NOT SH_USE_BOOST_CONTEXT)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+      if(WIN32)
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_ms_pe.S")
+        message(STATUS "Shards: Selected x86_64 Windows fcontext assembly")
+      elseif(APPLE)
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_sysv_macho.S")
+        message(STATUS "Shards: Selected x86_64 macOS fcontext assembly")
+      else()
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_64_sysv_elf.S")
+        message(STATUS "Shards: Selected x86_64 Linux fcontext assembly")
+      endif()
+      set(FCONTEXT_SUPPORTED ON)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+      if(APPLE)
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_arm64_aapcs_macho.S")
+        message(STATUS "Shards: Selected ARM64 macOS fcontext assembly")
+      else()
+        set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_arm64_aapcs_elf.S")
+        message(STATUS "Shards: Selected ARM64 Linux fcontext assembly")
+      endif()
+      set(FCONTEXT_SUPPORTED ON)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv32|RISCV")
+      set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_riscv_elf.S")
+      message(STATUS "Shards: Selected RISC-V fcontext assembly")
+      set(FCONTEXT_SUPPORTED ON)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|ARM")
+      set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_arm_aapcs_elf.S")
+      message(STATUS "Shards: Selected ARM32 fcontext assembly")
+      set(FCONTEXT_SUPPORTED ON)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i[36]86|x86")
+      set(FCONTEXT_ASM_FILE "${CMAKE_CURRENT_SOURCE_DIR}/asm/fcontext_x86_sysv_elf.S")
+      message(STATUS "Shards: Selected x86 (32-bit) fcontext assembly")
+      set(FCONTEXT_SUPPORTED ON)
+    else()
+      message(WARNING "Unsupported architecture for custom fcontext: ${CMAKE_SYSTEM_PROCESSOR}. "
+        "Falling back to Boost.Context.")
+    endif()
+  endif()
+
+  if(FCONTEXT_SUPPORTED)
+    # Use custom assembly-based fcontext
+    message(STATUS "Shards: Using custom fcontext assembly for fiber support")
+    target_compile_definitions(shards-core PUBLIC SH_CUSTOM_FCONTEXT=1)
+
+    # Add assembly file to sources
+    target_sources(shards-core PRIVATE ${FCONTEXT_ASM_FILE})
+
+    # Enable ASM language if not already enabled
+    enable_language(ASM)
+  else()
+    # Use Boost.Context for coroutines
+    message(STATUS "Shards: Using Boost.Context for fiber support")
+    target_link_libraries(shards-core Boost::context)
+  endif()
 else()
   target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
 
