@@ -11,14 +11,16 @@
 /*******************************************************
  *                                                     *
  *  Context data layout:                               *
- *  RV64: 208 bytes (26 registers * 8 bytes)           *
- *  RV32: 104 bytes (26 registers * 4 bytes)           *
+ *  With FP (rv64f/d): 208 bytes (14 GP + 12 FP) * 8   *
+ *  With FP (rv32f/d): 112 bytes (14 GP + 12 FP) * 4   *
+ *  Without FP (rv64): 112 bytes (14 GP) * 8           *
+ *  Without FP (rv32): 64 bytes (14 GP) * 4, pad to 64 *
  *                                                     *
  *  Saved registers (callee-saved):                    *
  *  - s0-s11 (x8-x9, x18-x27): 12 GP registers         *
  *  - ra (x1): return address                          *
  *  - pc slot: entry point                             *
- *  - fs0-fs11 (f8-f9, f18-f27): 12 FP registers       *
+ *  - fs0-fs11 (f8-f9, f18-f27): 12 FP registers (if F)*
  *                                                     *
  *******************************************************/
 
@@ -29,18 +31,26 @@
 #  define SZREG  8
 #  define REG_S  sd
 #  define REG_L  ld
-#  define SZFREG 8
-#  define FREG_S fsd
-#  define FREG_L fld
-#  define CTX_SIZE  0xd0   /* 26 registers * 8 = 208 bytes (aligned to 16) */
+#  if defined(__riscv_flen)
+#    define SZFREG 8
+#    define FREG_S fsd
+#    define FREG_L fld
+#    define CTX_SIZE  0xd0   /* (14 GP + 12 FP) * 8 = 208 bytes */
+#  else
+#    define CTX_SIZE  0x70   /* 14 GP * 8 = 112 bytes */
+#  endif
 #elif __riscv_xlen == 32
 #  define SZREG  4
 #  define REG_S  sw
 #  define REG_L  lw
-#  define SZFREG 4
-#  define FREG_S fsw
-#  define FREG_L flw
-#  define CTX_SIZE  0x70   /* 26 registers * 4 = 104 bytes (aligned to 16 = 112) */
+#  if defined(__riscv_flen)
+#    define SZFREG 4
+#    define FREG_S fsw
+#    define FREG_L flw
+#    define CTX_SIZE  0x70   /* (14 GP + 12 FP) * 4 = 104, rounded to 112 */
+#  else
+#    define CTX_SIZE  0x40   /* 14 GP * 4 = 56, rounded to 64 for alignment */
+#  endif
 #else
 #  error "Unsupported RISC-V XLEN"
 #endif
@@ -61,6 +71,7 @@
 #define CTX_S11  (12 * SZREG)
 #define CTX_PC   (13 * SZREG)  /* Entry point / return address */
 
+#if defined(__riscv_flen)
 /* FP Register offsets in context (fs0-fs11, callee-saved) */
 #define CTX_FS0  (14 * SZREG)
 #define CTX_FS1  (15 * SZREG)
@@ -74,6 +85,7 @@
 #define CTX_FS9  (23 * SZREG)
 #define CTX_FS10 (24 * SZREG)
 #define CTX_FS11 (25 * SZREG)
+#endif
 
 .text
 
