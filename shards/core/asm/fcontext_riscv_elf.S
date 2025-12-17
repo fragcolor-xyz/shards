@@ -11,16 +11,14 @@
 /*******************************************************
  *                                                     *
  *  Context data layout:                               *
- *  RV64: 104 bytes (13 registers * 8 bytes)           *
- *  RV32: 52 bytes (13 registers * 4 bytes)            *
+ *  RV64: 208 bytes (26 registers * 8 bytes)           *
+ *  RV32: 104 bytes (26 registers * 4 bytes)           *
  *                                                     *
  *  Saved registers (callee-saved):                    *
  *  - s0-s11 (x8-x9, x18-x27): 12 GP registers         *
  *  - ra (x1): return address                          *
- *                                                     *
- *  Note: FP registers (fs0-fs11) not saved by default *
- *  to reduce context size. Enable SH_FCONTEXT_FP if   *
- *  needed for your application.                       *
+ *  - pc slot: entry point                             *
+ *  - fs0-fs11 (f8-f9, f18-f27): 12 FP registers       *
  *                                                     *
  *******************************************************/
 
@@ -31,17 +29,23 @@
 #  define SZREG  8
 #  define REG_S  sd
 #  define REG_L  ld
-#  define CTX_SIZE  0x70   /* 14 registers * 8 = 112 bytes (aligned to 16) */
+#  define SZFREG 8
+#  define FREG_S fsd
+#  define FREG_L fld
+#  define CTX_SIZE  0xd0   /* 26 registers * 8 = 208 bytes (aligned to 16) */
 #elif __riscv_xlen == 32
 #  define SZREG  4
 #  define REG_S  sw
 #  define REG_L  lw
-#  define CTX_SIZE  0x40   /* 14 registers * 4 = 56 bytes (aligned to 16 = 64) */
+#  define SZFREG 4
+#  define FREG_S fsw
+#  define FREG_L flw
+#  define CTX_SIZE  0x70   /* 26 registers * 4 = 104 bytes (aligned to 16 = 112) */
 #else
 #  error "Unsupported RISC-V XLEN"
 #endif
 
-/* Register offsets in context */
+/* GP Register offsets in context */
 #define CTX_RA   (0 * SZREG)
 #define CTX_S0   (1 * SZREG)
 #define CTX_S1   (2 * SZREG)
@@ -56,6 +60,20 @@
 #define CTX_S10  (11 * SZREG)
 #define CTX_S11  (12 * SZREG)
 #define CTX_PC   (13 * SZREG)  /* Entry point / return address */
+
+/* FP Register offsets in context (fs0-fs11, callee-saved) */
+#define CTX_FS0  (14 * SZREG)
+#define CTX_FS1  (15 * SZREG)
+#define CTX_FS2  (16 * SZREG)
+#define CTX_FS3  (17 * SZREG)
+#define CTX_FS4  (18 * SZREG)
+#define CTX_FS5  (19 * SZREG)
+#define CTX_FS6  (20 * SZREG)
+#define CTX_FS7  (21 * SZREG)
+#define CTX_FS8  (22 * SZREG)
+#define CTX_FS9  (23 * SZREG)
+#define CTX_FS10 (24 * SZREG)
+#define CTX_FS11 (25 * SZREG)
 
 .text
 
@@ -130,6 +148,22 @@ sh_jump_fcontext:
     REG_S s10, CTX_S10(sp)
     REG_S s11, CTX_S11(sp)
 
+#if defined(__riscv_flen)
+    /* Save callee-saved FP registers fs0-fs11 */
+    FREG_S fs0, CTX_FS0(sp)
+    FREG_S fs1, CTX_FS1(sp)
+    FREG_S fs2, CTX_FS2(sp)
+    FREG_S fs3, CTX_FS3(sp)
+    FREG_S fs4, CTX_FS4(sp)
+    FREG_S fs5, CTX_FS5(sp)
+    FREG_S fs6, CTX_FS6(sp)
+    FREG_S fs7, CTX_FS7(sp)
+    FREG_S fs8, CTX_FS8(sp)
+    FREG_S fs9, CTX_FS9(sp)
+    FREG_S fs10, CTX_FS10(sp)
+    FREG_S fs11, CTX_FS11(sp)
+#endif
+
     /* Save current SP as PC slot (return point for when we're resumed) */
     REG_S ra, CTX_PC(sp)
 
@@ -158,6 +192,22 @@ sh_jump_fcontext:
     REG_L s9, CTX_S9(sp)
     REG_L s10, CTX_S10(sp)
     REG_L s11, CTX_S11(sp)
+
+#if defined(__riscv_flen)
+    /* Restore callee-saved FP registers fs0-fs11 */
+    FREG_L fs0, CTX_FS0(sp)
+    FREG_L fs1, CTX_FS1(sp)
+    FREG_L fs2, CTX_FS2(sp)
+    FREG_L fs3, CTX_FS3(sp)
+    FREG_L fs4, CTX_FS4(sp)
+    FREG_L fs5, CTX_FS5(sp)
+    FREG_L fs6, CTX_FS6(sp)
+    FREG_L fs7, CTX_FS7(sp)
+    FREG_L fs8, CTX_FS8(sp)
+    FREG_L fs9, CTX_FS9(sp)
+    FREG_L fs10, CTX_FS10(sp)
+    FREG_L fs11, CTX_FS11(sp)
+#endif
 
     /* Deallocate context-data from stack */
     addi sp, sp, CTX_SIZE
@@ -208,6 +258,22 @@ sh_ontop_fcontext:
     REG_S s10, CTX_S10(sp)
     REG_S s11, CTX_S11(sp)
 
+#if defined(__riscv_flen)
+    /* Save callee-saved FP registers fs0-fs11 */
+    FREG_S fs0, CTX_FS0(sp)
+    FREG_S fs1, CTX_FS1(sp)
+    FREG_S fs2, CTX_FS2(sp)
+    FREG_S fs3, CTX_FS3(sp)
+    FREG_S fs4, CTX_FS4(sp)
+    FREG_S fs5, CTX_FS5(sp)
+    FREG_S fs6, CTX_FS6(sp)
+    FREG_S fs7, CTX_FS7(sp)
+    FREG_S fs8, CTX_FS8(sp)
+    FREG_S fs9, CTX_FS9(sp)
+    FREG_S fs10, CTX_FS10(sp)
+    FREG_S fs11, CTX_FS11(sp)
+#endif
+
     /* Save current SP as PC slot */
     REG_S ra, CTX_PC(sp)
 
@@ -233,6 +299,22 @@ sh_ontop_fcontext:
     REG_L s9, CTX_S9(sp)
     REG_L s10, CTX_S10(sp)
     REG_L s11, CTX_S11(sp)
+
+#if defined(__riscv_flen)
+    /* Restore callee-saved FP registers fs0-fs11 */
+    FREG_L fs0, CTX_FS0(sp)
+    FREG_L fs1, CTX_FS1(sp)
+    FREG_L fs2, CTX_FS2(sp)
+    FREG_L fs3, CTX_FS3(sp)
+    FREG_L fs4, CTX_FS4(sp)
+    FREG_L fs5, CTX_FS5(sp)
+    FREG_L fs6, CTX_FS6(sp)
+    FREG_L fs7, CTX_FS7(sp)
+    FREG_L fs8, CTX_FS8(sp)
+    FREG_L fs9, CTX_FS9(sp)
+    FREG_L fs10, CTX_FS10(sp)
+    FREG_L fs11, CTX_FS11(sp)
+#endif
 
     /* Deallocate context-data */
     addi sp, sp, CTX_SIZE

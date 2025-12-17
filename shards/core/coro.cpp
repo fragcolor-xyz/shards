@@ -167,14 +167,25 @@ void Fiber::fcontextEntry(fcontext::transfer_t t) {
 #endif
 
 #ifdef SH_USE_TSAN
+  // Switch TSAN tracking to main fiber before final jump.
+  // The fiber will be destroyed after resume() returns, and the
+  // destructor properly checks and handles the TSAN state.
   __tsan_switch_to_fiber(getTsanMainFiberCustom(), 0);
 #endif
 
-  // Jump back to caller - this will terminate the fiber
+  // Jump back to caller - after this the fiber should not be resumed.
+  // Note: ctx remains valid after this; the caller should not resume
+  // the fiber once the function has returned.
   fcontext::sh_jump_fcontext(self->ctx, nullptr);
 }
 
 void Fiber::init(std::function<void()> fn) {
+  // Validate allocator before use
+  shassert(allocator.mem != nullptr && "Stack memory is null");
+  shassert(allocator.size >= 4096 && "Stack size too small (minimum 4096)");
+  // Prevent double-init
+  shassert(!ctx && "Fiber::init() called twice");
+
 #if SH_DEBUG_CONSISTENT_RESUMER
   consistentResumer.emplace(std::this_thread::get_id());
 #endif
