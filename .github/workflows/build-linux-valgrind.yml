@@ -9,12 +9,8 @@ jobs:
   # Build shards and run valgrind on Linux
   #
   Linux-valgrind:
-    name: Build (${{ matrix.variant }})
+    name: Build
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [default, with-suppressions]
     steps:
       - name: Checkout shards
         uses: actions/checkout@v3
@@ -30,14 +26,10 @@ jobs:
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
           rustup component add rust-src --toolchain $RUSTUP_TOOLCHAIN
-      - name: Set valgrind options
-        run: |
-          VALGRIND_OPTS="--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes"
-          if [ "${{ matrix.variant }}" = "with-suppressions" ]; then
-            VALGRIND_OPTS="$VALGRIND_OPTS --suppressions=../valgrind.supp"
-          fi
-          echo "VALGRIND_OPTS=$VALGRIND_OPTS" >> $GITHUB_ENV
       - name: Build and Test
+        env:
+          # Use suppression file to ignore false positives from Rust optimizations (e.g. clap iterator code)
+          VALGRIND_OPTS: "--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes --suppressions=../valgrind.supp"
         run: |
           mkdir build
           cd build
@@ -74,4 +66,3 @@ jobs:
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdts.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdt-benchmarks.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/geo.shs
-
