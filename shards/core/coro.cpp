@@ -211,6 +211,9 @@ void Fiber::init(std::function<void()> fn) {
 #ifdef SH_USE_ASAN
   asan_stack_bottom = allocator.mem;
   asan_stack_size = allocator.size;
+  // Unpoison the entire fiber stack. This is necessary because ASAN tracks
+  // stack usage and would otherwise report errors when the fiber accesses
+  // its stack. Also required for exception unwinding to work correctly.
   __asan_unpoison_memory_region(asan_stack_bottom, asan_stack_size);
 #endif
 
@@ -233,7 +236,11 @@ void Fiber::init(std::function<void()> fn) {
   __tsan_switch_to_fiber(tsan_fiber, 0);
 #endif
 
-  // Do initial resume to run until first suspend
+  // Do initial resume to run until first suspend.
+  // The jump switches to the new context, which runs fcontextEntry until it
+  // suspends. When it suspends, control returns here with a new context handle
+  // in t.fctx - this is the suspended fiber's context, which replaces the
+  // initial context created by sh_make_fcontext.
   fcontext::transfer_t t = fcontext::sh_jump_fcontext(ctx, this);
   ctx = t.fctx;
 

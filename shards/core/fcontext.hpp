@@ -22,7 +22,11 @@ struct transfer_t {
 
 // Create a new fiber context on the given stack
 // sp: Stack pointer (top of allocated stack memory, i.e., base + size)
-// stack_bottom: Bottom of the stack (used for TEB setup on Windows, ignored elsewhere)
+// stack_bottom: Bottom of the stack. On Windows, this is used to set up the
+//               Thread Environment Block (TEB) stack limit/base fields for
+//               proper SEH and stack overflow detection. On other platforms
+//               this parameter is ignored but should still be passed for API
+//               consistency.
 // fn: Entry function to call when context is first resumed
 // Returns: New context handle
 extern "C" fcontext_t sh_make_fcontext(void *sp, void *stack_bottom, void (*fn)(transfer_t));
