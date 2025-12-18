@@ -3,10 +3,6 @@ set(cli_SOURCES
 )
 
 function(setup_shards_target TARGET)
-  if(NOT EMSCRIPTEN AND NOT IOS AND NOT VISIONOS AND NOT WATCHOS)
-    target_link_libraries(${TARGET} Boost::process)
-  endif()
-
   target_link_libraries(${TARGET} shards-core)
 
   set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE CXX)

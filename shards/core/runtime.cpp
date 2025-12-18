@@ -19,7 +19,6 @@
 #include "pmr/vector.hpp"
 #include "inline.hpp"
 #include "async.hpp"
-#include <boost/asio/thread_pool.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
 #include <csignal>
