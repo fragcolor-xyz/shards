@@ -37,8 +37,8 @@ jobs:
           rustup component add rust-src --toolchain $RUSTUP_TOOLCHAIN
       - name: Build and Test
         env:
-          # Use suppression file to ignore false positives from Rust optimizations (e.g. clap iterator code)
-          VALGRIND_OPTS: "--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes --suppressions=../valgrind.supp"
+          # Suppression file available at ../valgrind.supp if needed for false positives
+          VALGRIND_OPTS: "--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes"
         run: |
           mkdir build
           cd build
