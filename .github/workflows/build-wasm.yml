@@ -43,10 +43,10 @@ jobs:
           export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=`which cc`
           echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER" >> $GITHUB_ENV
 
-          # Use emsdk 4.0.10+ for emdawnwebgpu port (modern WebGPU API matching wgpu v27)
+          # Use emsdk 4.0.20 for emdawnwebgpu port (modern WebGPU API matching wgpu v27)
           pushd emsdk
-          ./emsdk install 4.0.10
-          ./emsdk activate 4.0.10
+          ./emsdk install 4.0.20
+          ./emsdk activate 4.0.20
           source ./emsdk_env.sh
           cat ./.emscripten
           export EM_CONFIG=$PWD/.emscripten
@@ -62,7 +62,14 @@ jobs:
 
       - name: Build
         run: |
-          cmake -Bbuild -GNinja -DCMAKE_BUILD_TYPE=Release -DSKIP_HEAVY_INLINE=1 -DUSE_LTO=0 -DRUST_USE_LTO=0 -DEMSCRIPTEN_PTHREADS=ON -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake
+          cmake -Bbuild -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DSKIP_HEAVY_INLINE=1 \
+            -DRUST_BUILD_TYPE=ExtraSmall \
+            -DUSE_LTO=0 \
+            -DRUST_USE_LTO=0 \
+            -DEMSCRIPTEN_PTHREADS=ON \
+            -DCMAKE_TOOLCHAIN_FILE=$EMSCRIPTEN_ROOT/cmake/Modules/Platform/Emscripten.cmake
           cmake --build build --target shards
 
           echo "SHARDS_BUILD=$(pwd)/build" >> $GITHUB_ENV

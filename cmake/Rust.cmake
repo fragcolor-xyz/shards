@@ -332,6 +332,15 @@ function(add_rust_library)
     # Required to have some symbols be exported
     # https://github.com/rust-lang/rust-bindgen/issues/751
     list(APPEND EXTRA_CLANG_ARGS "-fvisibility=default")
+    # Add emdawnwebgpu include path for WebGPU headers
+    if(DEFINED ENV{EMSDK})
+      set(_EMSDK_PATH "$ENV{EMSDK}")
+      set(_EMDAWNWEBGPU_INCLUDE "${_EMSDK_PATH}/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include")
+      if(EXISTS "${_EMDAWNWEBGPU_INCLUDE}")
+        list(APPEND EXTRA_CLANG_ARGS "-isystem${_EMDAWNWEBGPU_INCLUDE}")
+        message(STATUS "Added emdawnwebgpu include path for bindgen: ${_EMDAWNWEBGPU_INCLUDE}")
+      endif()
+    endif()
   endif()
 
   if(IOS)

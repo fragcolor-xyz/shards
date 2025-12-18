@@ -153,7 +153,7 @@ coverage-rust-reset:
 # Path to emsdk - override with: just emsdk_path=/path/to/emsdk configure-wasm
 emsdk_path := env_var_or_default("EMSDK_PATH", "../emsdk")
 # emsdk 4.0.10+ required for --use-port=emdawnwebgpu (modern WebGPU API matching wgpu v27)
-emsdk_version := "4.0.10"
+emsdk_version := "4.0.20"
 
 # configure cmake for emscripten/wasm build
 configure-wasm:
@@ -188,6 +188,7 @@ configure-wasm:
   cmake -Bbuild/Wasm -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DSKIP_HEAVY_INLINE=1 \
+    -DRUST_BUILD_TYPE=ExtraSmall \
     -DUSE_LTO=0 \
     -DRUST_USE_LTO=0 \
     -DEMSCRIPTEN_PTHREADS=ON \
