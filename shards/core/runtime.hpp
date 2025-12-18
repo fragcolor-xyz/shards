@@ -259,8 +259,10 @@ void installSignalHandlers();
 
 bool isDebuggerPresent();
 
+#ifndef SH_STRIP_HELP_STRINGS
 #ifdef SH_COMPRESSED_STRINGS
 void decompressStrings();
+#endif
 #endif
 
 struct DefaultHelpText {

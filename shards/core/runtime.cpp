@@ -129,6 +129,7 @@ auto &getCompiledCompressedStrings() {
   return CompiledCompressedStrings;
 }
 
+#ifndef SH_STRIP_HELP_STRINGS
 #ifdef SH_COMPRESSED_STRINGS
 SHOptionalString getCompiledCompressedString(uint32_t id) {
   auto &_comp = getCompiledCompressedStrings(); // make sure it's initialized
@@ -187,6 +188,7 @@ SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
   return ls;
 }
 #endif
+#endif // !SH_STRIP_HELP_STRINGS
 
 #ifdef SH_USE_UBSAN
 extern "C" void __sanitizer_set_report_path(const char *path);

@@ -153,7 +153,7 @@ coverage-rust-reset:
 # Path to emsdk - override with: just emsdk_path=/path/to/emsdk configure-wasm
 emsdk_path := env_var_or_default("EMSDK_PATH", "../emsdk")
 # emsdk 4.0.10+ required for --use-port=emdawnwebgpu (modern WebGPU API matching wgpu v27)
-emsdk_version := "4.0.10"
+emsdk_version := "4.0.20"
 
 # configure cmake for emscripten/wasm build
 configure-wasm:
@@ -188,6 +188,7 @@ configure-wasm:
   cmake -Bbuild/Wasm -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DSKIP_HEAVY_INLINE=1 \
+    -DRUST_BUILD_TYPE=ExtraSmall \
     -DUSE_LTO=0 \
     -DRUST_USE_LTO=0 \
     -DEMSCRIPTEN_PTHREADS=ON \
@@ -455,7 +456,9 @@ configure-zig target:
       RUST_TARGET="x86_64-unknown-linux-gnu"
       ;;
     riscv64-linux-musl)
+      # No pre-built std available, uses -Z build-std
       RUST_TARGET="riscv64gc-unknown-linux-musl"
+      TIER3_TARGET="yes"
       ;;
     riscv32-linux-musl)
       # Tier 3 target - uses -Z build-std, no need to add via rustup
@@ -481,8 +484,8 @@ configure-zig target:
   cmake -Bbuild/Zig-{{ target }} -GNinja \
     -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
     -DZIG_TARGET={{ target }} \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DRUST_BUILD_TYPE=Small \
+    -DCMAKE_BUILD_TYPE=MinSizeRel \
+    -DRUST_BUILD_TYPE=ExtraSmall \
     -DSHARDS_WITH_EVERYTHING=OFF \
     -DSHARDS_WITH_LANGFFI=ON \
     -DSHARDS_WITH_ASSERT=ON \

@@ -195,6 +195,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
   add_compile_definitions(SH_RELWITHDEBINFO=1)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+  # Strip help strings to reduce binary size
+  add_compile_definitions(SH_STRIP_HELP_STRINGS=1)
+endif()
+
 option(SHARDS_MIN_DEBUG_INFO "Use minimal debug info" OFF)
 
 function(fixup_debug_flags VARNAME)

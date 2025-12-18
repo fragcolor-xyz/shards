@@ -637,6 +637,74 @@ struct Zip {
   }
 };
 
+struct Concat {
+  SHVar outputCache{};
+  Type seqType{};
+  Types seqTypes{};
+
+  void destroy() {
+    if (outputCache.valueType == SHType::Seq) {
+      shards::arrayFree(outputCache.payload.seqValue);
+    }
+  }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Concatenates a sequence of sequences into a single sequence. Unlike Flatten, this only removes one level of "
+                   "nesting and preserves the structure of inner elements (tables, nested sequences, etc.).");
+  }
+
+  static SHOptionalString inputHelp() { return SHCCSTR("A sequence of sequences to concatenate."); }
+
+  static SHOptionalString outputHelp() { return SHCCSTR("A single sequence containing all elements from the input sequences."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::AnySeqType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::AnySeqType; }
+
+  SHTypeInfo compose(const SHInstanceData &data) {
+    // Input should be a sequence of sequences
+    // Output is a sequence of the inner element types
+    if (data.inputType.basicType == SHType::Seq && data.inputType.seqTypes.len > 0) {
+      std::unordered_set<SHTypeInfo> innerTypes;
+      for (uint32_t i = 0; i < data.inputType.seqTypes.len; i++) {
+        auto &elemType = data.inputType.seqTypes.elements[i];
+        if (elemType.basicType == SHType::Seq) {
+          // Collect inner types from nested sequences
+          for (uint32_t j = 0; j < elemType.seqTypes.len; j++) {
+            innerTypes.insert(elemType.seqTypes.elements[j]);
+          }
+        }
+      }
+      if (!innerTypes.empty()) {
+        std::vector<SHTypeInfo> vTypes(innerTypes.begin(), innerTypes.end());
+        seqTypes = Types(vTypes);
+        seqType = Type::SeqOf(seqTypes);
+        return seqType;
+      }
+    }
+    return CoreInfo::AnySeqType;
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    outputCache.valueType = SHType::Seq;
+    shards::arrayResize(outputCache.payload.seqValue, 0);
+
+    auto &outer = input.payload.seqValue;
+    for (uint32_t i = 0; i < outer.len; i++) {
+      auto &elem = outer.elements[i];
+      if (elem.valueType == SHType::Seq) {
+        auto &inner = elem.payload.seqValue;
+        for (uint32_t j = 0; j < inner.len; j++) {
+          shards::arrayPush(outputCache.payload.seqValue, inner.elements[j]);
+        }
+      } else {
+        // If element is not a sequence, add it directly (graceful handling)
+        shards::arrayPush(outputCache.payload.seqValue, elem);
+      }
+    }
+    return outputCache;
+  }
+};
+
 struct Extend {
   static SHOptionalString help() {
     return SHCCSTR("Extends the mutable sequence parameter with the elements of the input sequence.");
@@ -709,6 +777,7 @@ SHARDS_REGISTER_FN(seqs) {
   REGISTER_SHARD("Bytes.Join", Join);
   REGISTER_SHARD("Merge", Merge);
   REGISTER_SHARD("Zip", Zip);
+  REGISTER_SHARD("Concat", Concat);
   REGISTER_SHARD("Extend", Extend);
 }
 }; // namespace shards
