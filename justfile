@@ -484,7 +484,7 @@ configure-zig target:
   cmake -Bbuild/Zig-{{ target }} -GNinja \
     -DCMAKE_TOOLCHAIN_FILE=cmake/Zig.cmake \
     -DZIG_TARGET={{ target }} \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=MinSizeRel \
     -DRUST_BUILD_TYPE=ExtraSmall \
     -DSHARDS_WITH_EVERYTHING=OFF \
     -DSHARDS_WITH_LANGFFI=ON \

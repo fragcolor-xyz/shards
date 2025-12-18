@@ -26,7 +26,7 @@ target_include_directories(shards-core PUBLIC ${SHARDS_DIR})
 # Expose tracy client so all dependencies get the TRACY_ENABLE define
 target_link_libraries(shards-core Tracy::TracyClient shards-fast-string)
 
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if(CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
   set(SHARDS_INLINE_EVERYTHING_DEFAULT OFF)
 else()
   set(SHARDS_INLINE_EVERYTHING_DEFAULT ON)

@@ -56,6 +56,10 @@ inline std::string formatShardSourceLocation(Shard *blk);
 #include <emscripten.h>
 #endif
 
+#ifdef SH_STRIP_HELP_STRINGS
+// MinSizeRel: No help strings - return null inline
+#define SHCCSTR(_str_) SHOptionalString{nullptr, ::shards::constant<::shards::crc32(_str_)>::value}
+#else
 #ifdef NDEBUG
 #define SH_COMPRESSED_STRINGS 1
 #endif
@@ -65,6 +69,7 @@ inline std::string formatShardSourceLocation(Shard *blk);
 #else
 #define SHCCSTR(_str_) ::shards::setCompiledCompressedString(::shards::constant<::shards::crc32(_str_)>::value, _str_)
 #endif
+#endif // SH_STRIP_HELP_STRINGS
 
 #define SHLOG_TRACE SPDLOG_TRACE
 #define SHLOG_DEBUG SPDLOG_DEBUG
@@ -80,11 +85,13 @@ inline std::string formatShardSourceLocation(Shard *blk);
 #include "assert.hpp"
 
 namespace shards {
+#ifndef SH_STRIP_HELP_STRINGS
 #ifdef SH_COMPRESSED_STRINGS
 SHOptionalString getCompiledCompressedString(uint32_t crc);
 #else
 SHOptionalString setCompiledCompressedString(uint32_t crc, const char *str);
 #endif
+#endif // !SH_STRIP_HELP_STRINGS
 
 SHString getString(uint32_t crc);
 void setString(uint32_t crc, SHString str);
