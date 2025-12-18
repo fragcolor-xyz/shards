@@ -53,12 +53,22 @@ jobs:
           export EMSCRIPTEN_ROOT=$PWD/upstream/emscripten
           popd
 
+          echo "EMSDK=$PWD/emsdk" >> $GITHUB_ENV
           echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
           echo "EMSCRIPTEN_ROOT=$EMSCRIPTEN_ROOT" >> $GITHUB_ENV
 
       - name: Set up rust
         run: |
           rustup +$RUSTUP_TOOLCHAIN component add rust-src
+
+      - name: Pre-cache emdawnwebgpu port
+        run: |
+          source $EMSDK/emsdk_env.sh
+          # Trigger port download by running a minimal compile with the port
+          # This ensures the WebGPU headers are available for bindgen during cargo build
+          echo "int main(){return 0;}" | emcc -x c - --use-port=emdawnwebgpu -o /tmp/test.js
+          # Verify the port was cached
+          ls -la $EMSDK/upstream/emscripten/cache/ports/emdawnwebgpu/emdawnwebgpu_pkg/webgpu/include/
 
       - name: Build
         run: |
