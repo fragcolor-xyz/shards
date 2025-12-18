@@ -40,6 +40,8 @@ add_shards_module(network SOURCES ${NETWORK_SOURCES}
 target_link_libraries(shards-module-network Tracy::TracyClient)
 
 if(NOT EMSCRIPTEN)
+  # Network module needs asio for KCP and STUN
+  target_link_libraries(shards-module-network Boost::asio)
   if(USE_UBSAN)
     target_compile_options(kcp PRIVATE -fno-sanitize=null)
   endif()

@@ -9,7 +9,7 @@
 #include <shards/core/module.hpp>
 #include <shards/core/hash.hpp>
 #include <shards/shards.h>
-#include <boost/beast/core/detail/base64.hpp>
+#include "base64.hpp"
 #include <type_traits>
 #include <boost/algorithm/hex.hpp>
 #include <unordered_map>
@@ -1149,16 +1149,16 @@ struct ToBase64 {
   SHVar activate(SHContext *context, const SHVar &input) {
     output.clear();
     if (input.valueType == SHType::Bytes) {
-      auto req = boost::beast::detail::base64::encoded_size(input.payload.bytesSize);
+      auto req = base64::encoded_size(input.payload.bytesSize);
       output.resize(req);
-      auto written = boost::beast::detail::base64::encode(output.data(), input.payload.bytesValue, input.payload.bytesSize);
+      auto written = base64::encode(output.data(), input.payload.bytesValue, input.payload.bytesSize);
       output.resize(written);
     } else {
       const auto len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr ? input.payload.stringLen
                                                                                            : strlen(input.payload.stringValue);
-      auto req = boost::beast::detail::base64::encoded_size(len);
+      auto req = base64::encoded_size(len);
       output.resize(req);
-      auto written = boost::beast::detail::base64::encode(output.data(), input.payload.stringValue, len);
+      auto written = base64::encode(output.data(), input.payload.stringValue, len);
       output.resize(written);
     }
     return Var(output);
@@ -1180,9 +1180,9 @@ struct FromBase64 {
     output.clear();
     auto len = input.payload.stringLen > 0 || input.payload.stringValue == nullptr ? input.payload.stringLen
                                                                                    : strlen(input.payload.stringValue);
-    auto req = boost::beast::detail::base64::decoded_size(len);
+    auto req = base64::decoded_size(len);
     output.resize(req);
-    auto [written, _] = boost::beast::detail::base64::decode(output.data(), input.payload.stringValue, len);
+    auto [written, _] = base64::decode(output.data(), input.payload.stringValue, len);
     output.resize(written);
     return Var(output.data(), output.size());
   }

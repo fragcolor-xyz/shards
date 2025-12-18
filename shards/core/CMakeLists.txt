@@ -147,8 +147,6 @@ set(SH_USE_BOOST_CONTEXT OFF CACHE BOOL
   "Use Boost.Context instead of custom assembly for fiber support")
 
 if(NOT EMSCRIPTEN)
-  target_link_libraries(shards-core Boost::beast Boost::asio)
-
   # Detect architecture and check if custom fcontext is supported
   set(FCONTEXT_SUPPORTED OFF)
   if(NOT SH_USE_BOOST_CONTEXT)
@@ -209,11 +207,6 @@ if(NOT EMSCRIPTEN)
       "Custom fcontext supports: x86, x86_64, ARM, ARM64, RISC-V\n"
       "To use Boost.Context fallback, add 'context' to BOOST_INCLUDE_LIBRARIES in deps/CMakeLists.txt")
   endif()
-else()
-  target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::asio,INTERFACE_INCLUDE_DIRECTORIES>)
-
-  # For usage of boost/beast/core/detail/base64.hpp
-  target_include_directories(shards-core PUBLIC $<TARGET_PROPERTY:Boost::beast,INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 target_link_libraries(shards-core
