@@ -1220,7 +1220,18 @@
   @i3(6 6 6) | Flatten | Assert.Is([6 6 6] true) >> i3s
   i3s | Flatten | Assert.Is([3 3 3 6 6 6] true)
   Log
-  
+
+  ; Concat tests - unlike Flatten, only removes one level of nesting
+  [[1 2] [3 4] [5]] | Concat | Assert.Is([1 2 3 4 5] true)
+  [[1 2 3]] | Concat | Assert.Is([1 2 3] true)
+  [[] [1] []] | Concat | Assert.Is([1] true)
+  ; Concat preserves inner structure (tables, nested seqs)
+  [[{a: 1} {b: 2}] [{c: 3}]] | Concat | Assert.Is([{a: 1} {b: 2} {c: 3}] true)
+  [[[1 2]] [[3 4]]] | Concat | Assert.Is([[1 2] [3 4]] true)
+  ; Empty input
+  [] | Concat | Assert.Is([] true)
+  "Concat tests passed" | Log
+
   @i2(1 2) | Add(@i2(1 2)) | Assert.Is(@i2(2 4) true)
   @i2(1 2) | Sub(@i2(1 2)) | Assert.Is(@i2(0 0) true)
   @i2(1 2) | Mul(@i2(1 2)) | Assert.Is(@i2(1 4) true)
