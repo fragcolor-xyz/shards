@@ -240,9 +240,8 @@ if(EMSCRIPTEN)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}" CACHE STRING "" FORCE)
   endif()
 
-  # Use WebAssembly native exceptions (more efficient than JS-based exceptions)
-  add_compile_options(-fwasm-exceptions)
-  add_link_options(-fwasm-exceptions)
+  add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-sDISABLE_EXCEPTION_CATCHING=0>")
+  add_link_options("-sDISABLE_EXCEPTION_CATCHING=0")
 
   add_compile_definitions(NO_FORCE_INLINE)
 
