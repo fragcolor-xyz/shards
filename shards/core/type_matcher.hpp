@@ -4,9 +4,9 @@
 #include <shards/shards.hpp>
 #include <shards/iterator.hpp>
 #include <shards/defer.hpp>
+#include <shards/log/log.hpp>
 #include <boost/container/small_vector.hpp>
 #include <string>
-#include <spdlog/spdlog.h>
 #include "ops_internal.hpp"
 
 namespace shards {

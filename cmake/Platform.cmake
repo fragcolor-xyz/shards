@@ -123,6 +123,32 @@ if(ZIG_TARGET)
   message(STATUS "Zig cross-compilation enabled for target: ${ZIG_TARGET}")
 endif()
 
+# Freestanding/bare-metal detection (for FreeRTOS, etc.)
+if(SH_FREESTANDING)
+  set(SH_FREERTOS TRUE CACHE BOOL "FreeRTOS support enabled" FORCE)
+  set(HAVE_THREADS OFF)  # No OS-level threading, FreeRTOS provides its own
+  message(STATUS "Freestanding target detected - enabling FreeRTOS support")
+
+  # Add compile definitions for C++ code
+  add_compile_definitions(SH_FREESTANDING=1)
+  add_compile_definitions(SH_FREERTOS=1)
+
+  # Minimal module set for embedded
+  set(SHARDS_WITH_EVERYTHING OFF CACHE BOOL "" FORCE)
+  set(SHARDS_NO_RUST_UNION ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_CORE ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_RUN ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_STRUCT ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_DEBUG ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_ASSERT ON CACHE BOOL "" FORCE)
+
+  # Disable features not available on bare metal
+  set(SHARDS_WITH_GFX OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_EGUI OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_INPUT OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_AUDIO OFF CACHE BOOL "" FORCE)
+endif()
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" AND NOT EMSCRIPTEN)
   set(X86 TRUE)
   set(ARM FALSE)

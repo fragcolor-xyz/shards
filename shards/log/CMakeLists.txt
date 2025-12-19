@@ -1,3 +1,17 @@
+# For freestanding builds, provide a minimal logging stub
+if(SH_FREESTANDING)
+  add_library(shards-logging STATIC log_stub.cpp)
+  target_include_directories(shards-logging PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../..)
+  target_include_directories(shards-logging PRIVATE ${SHARDS_ROOT}/include)
+  target_link_libraries(shards-logging magic_enum)
+  target_compile_definitions(shards-logging PUBLIC
+    SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_OFF
+    SHARDS_NO_SPDLOG=1
+  )
+  message(STATUS "Using minimal logging stub for freestanding target")
+  return()  # Skip rest of this file for freestanding
+endif()
+
 add_library(shards-logging log.cpp)
 target_include_directories(shards-logging PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../..)
 target_include_directories(shards-logging PRIVATE ${SHARDS_ROOT}/include)

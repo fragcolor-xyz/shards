@@ -1,3 +1,9 @@
+# Skip SQLite for freestanding builds (requires Rust)
+if(SH_FREESTANDING)
+  message(STATUS "Skipping SQLite for freestanding target")
+  return()
+endif()
+
 # Define SQLite source files
 set(SQLITE_SOURCES
   cr-sqlite/core/src/sqlite/sqlite3.c

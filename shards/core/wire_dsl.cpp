@@ -1,4 +1,5 @@
 #include <shards/wire_dsl.hpp>
+#include <shards/log/log.hpp>
 
 namespace shards {
 Var::Var(const Wire &wire) : Var(wire.weakRef()) {}

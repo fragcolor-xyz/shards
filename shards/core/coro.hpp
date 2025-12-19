@@ -12,7 +12,14 @@
 #endif
 
 #ifndef SH_BASE_STACK_SIZE
-#if SH_EMSCRIPTEN
+#if SH_FREERTOS
+// FreeRTOS: Use configurable stack size, default 8KB (much smaller than desktop)
+#ifdef CONFIG_SHARDS_STACK_SIZE
+#define SH_BASE_STACK_SIZE CONFIG_SHARDS_STACK_SIZE
+#else
+#define SH_BASE_STACK_SIZE (8 * 1024)
+#endif
+#elif SH_EMSCRIPTEN
 #define SH_BASE_STACK_SIZE 2 * 1024 * 1024
 #else
 #ifndef NDEBUG
@@ -20,7 +27,7 @@
 #else
 #define SH_BASE_STACK_SIZE 128 * 1024
 #endif
-#endif // SH_EMSCRIPTEN
+#endif // SH_FREERTOS / SH_EMSCRIPTEN
 #endif
 
 // Enable to assert on consistent resuming

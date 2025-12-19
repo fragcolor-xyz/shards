@@ -16,7 +16,12 @@
 #include "ops_internal.hpp"
 #include "platform.hpp"
 
+// For freestanding, use log.hpp which provides stubs; otherwise use spdlog directly
+#if SHARDS_NO_SPDLOG
+#include <shards/log/log.hpp>
+#else
 #include "spdlog/spdlog.h"
+#endif
 #include "type_matcher.hpp"
 #include "type_info.hpp"
 #include "trait.hpp"
@@ -27,7 +32,9 @@
 #include <atomic>
 #include <cassert>
 #include <list>
+#if !SH_FREESTANDING
 #include <mutex>
+#endif
 #include <optional>
 #include <type_traits>
 #include <unordered_set>
@@ -48,7 +55,10 @@ inline std::string formatShardSourceLocation(Shard *blk);
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+// TBB - not available on freestanding, use std::unordered_map instead
+#if !SH_FREESTANDING
 #include "oneapi/tbb/concurrent_unordered_map.h"
+#endif
 
 #include "coro.hpp"
 
@@ -71,6 +81,8 @@ inline std::string formatShardSourceLocation(Shard *blk);
 #endif
 #endif // SH_STRIP_HELP_STRINGS
 
+// SHLOG macros - use stubs from log.hpp for freestanding, spdlog otherwise
+#if !SHARDS_NO_SPDLOG
 #define SHLOG_TRACE SPDLOG_TRACE
 #define SHLOG_DEBUG SPDLOG_DEBUG
 #define SHLOG_INFO SPDLOG_INFO
@@ -81,6 +93,7 @@ inline std::string formatShardSourceLocation(Shard *blk);
     SPDLOG_CRITICAL(__VA_ARGS__); \
     std::abort();                 \
   }
+#endif // !SHARDS_NO_SPDLOG
 
 #include "assert.hpp"
 
@@ -1092,7 +1105,11 @@ public:
   std::string RootPath;
   std::string ExePath;
 
+#if SH_FREESTANDING
+  std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+#else
   oneapi::tbb::concurrent_unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+#endif
 
   SHTableInterface TableInterface{
       .tableGetIterator =

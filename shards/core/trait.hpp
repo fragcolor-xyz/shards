@@ -2,10 +2,13 @@
 #define B7638520_BA4D_4989_BDC2_7F3533FE84B5
 
 #include "hash.hpp"
+#include "platform.hpp"
 #include <shards/shards.h>
 #include <string.h>
 #include <map>
+#if !SH_FREESTANDING
 #include <shared_mutex>
+#endif
 
 namespace shards {
 void freeTraitVariable(SHTraitVariable &ivar);
@@ -62,7 +65,9 @@ struct Trait : public SHTrait {
 struct TraitRegister {
 private:
   std::map<XXH128_hash_t, shards::Trait> traits;
+#if !SH_FREESTANDING
   std::shared_mutex mutex;
+#endif
 
 public:
   TraitRegister() = default;
@@ -71,6 +76,14 @@ public:
 
   const shards::Trait &insertUnique(const SHTrait &trait) {
     auto hash = ((Trait &)trait).hash128();
+#if SH_FREESTANDING
+    // Single-threaded on freestanding - no locking needed
+    auto it = traits.find(hash);
+    if (it == traits.end()) {
+      it = traits.emplace(hash, trait).first;
+    }
+    return it->second;
+#else
     std::shared_lock<decltype(mutex)> lock(mutex);
     auto it = traits.find(hash);
     if (it == traits.end()) {
@@ -85,12 +98,17 @@ public:
       return it->second;
     }
     return it->second;
+#endif
   }
 
   const shards::Trait *findTrait(const SHTrait &trait) {
     auto hash = ((Trait &)trait).hash128();
+#if SH_FREESTANDING
+    auto it = traits.find(hash);
+#else
     std::shared_lock<decltype(mutex)> lock(mutex);
     auto it = traits.find(hash);
+#endif
     if (it == traits.end()) {
       return nullptr;
     }

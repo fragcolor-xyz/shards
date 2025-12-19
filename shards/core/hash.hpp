@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <set>
 #include <unordered_map>
+#include <vector>
+#include <memory>
 
 // XXH_VECTOR is defined via compiler flag for emscripten (see CMakeLists.txt)
 #define XXH_INLINE_ALL

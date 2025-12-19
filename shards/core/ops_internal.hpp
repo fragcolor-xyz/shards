@@ -6,11 +6,16 @@
 
 #include "magic_enum.hpp"
 #include <shards/shards.hpp>
-#include "spdlog/fmt/bundled/core.h"
+#include <shards/utility.hpp>
 #include <shards/ops.hpp>
 #include <sstream>
+
+#if !SHARDS_NO_SPDLOG
+#include "spdlog/fmt/bundled/core.h"
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h> // must be included
+#endif
+// Note: For freestanding, fmt::format is provided by shards/utility.hpp
 
 namespace shards {
 
@@ -86,6 +91,8 @@ inline std::ostream &operator<<(std::ostream &os, const SHTypeInfo &v) { return 
 inline std::ostream &operator<<(std::ostream &os, const SHTypesInfo &v) { return shards::defaultFormatter.format(os, v); }
 inline std::ostream &operator<<(std::ostream &os, const SHTrait &v) { return shards::defaultFormatter.format(os, v); }
 
+// fmt::formatter specializations - only available when full spdlog/fmt is present
+#if !SHARDS_NO_SPDLOG
 template <typename T> struct StringStreamFormatter {
   constexpr auto parse(fmt::format_parse_context &ctx) -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
@@ -168,5 +175,6 @@ template <> struct fmt::formatter<shards::Types> {
     return base.format(v, ctx);
   }
 };
+#endif // !SHARDS_NO_SPDLOG
 
 #endif // SH_CORE_OPS_INTERNAL

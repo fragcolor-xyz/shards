@@ -1,6 +1,8 @@
 #ifndef B68BA3EA_DC46_428A_9F0D_1E831742B9EB
 #define B68BA3EA_DC46_428A_9F0D_1E831742B9EB
 
+#include <shards/core/platform.hpp>
+
 // NOTE: this c++17 feature recently landed in the standard libary but it's not implemented everywhere yet
 // https://reviews.llvm.org/rG243da90ea5357c1ca324f714ea4813dc9029af27
 // use boost where not supported
@@ -8,7 +10,12 @@
 #define HAVE_CXX_17_MEMORY_RESOURCE 0
 #endif
 
-#if !HAVE_CXX_17_MEMORY_RESOURCE
+// For freestanding/bare-metal builds, use our minimal PMR implementation
+#if SH_FREERTOS || SH_FREESTANDING
+#include "freestanding.hpp"
+// shards::pmr namespace is already defined in freestanding.hpp
+
+#elif !HAVE_CXX_17_MEMORY_RESOURCE
 #include <boost/container/pmr/monotonic_buffer_resource.hpp>
 #include <boost/container/pmr/memory_resource.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>

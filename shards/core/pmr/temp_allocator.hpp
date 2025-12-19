@@ -3,6 +3,7 @@
 
 #include <shards/core/pmr/wrapper.hpp>
 #include <shards/core/assert.hpp>
+#include <shards/core/platform.hpp>
 #include <tracy/Wrapper.hpp>
 #include "../../gfx/moving_average.hpp"
 #include "../../gfx/math.hpp"
@@ -11,9 +12,11 @@
 #include <sanitizer/asan_interface.h>
 #endif
 
+#if !SH_FREESTANDING
 #include <thread>
-#include <optional>
 #include <mutex>
+#endif
+#include <optional>
 
 // Enable to check for allocation from wrong thread
 #ifdef NDEBUG
@@ -111,13 +114,13 @@ public:
 #endif
 
     void *alignedPtr;
-    if (_Align > boost::container::pmr::memory_resource::max_align) {
+    if (_Align > shards::pmr::memory_resource::max_align) {
       // When we need a higher alignment than default, we need to allocate extra
       // to ensure we can align the pointer without overflowing
       size_t extraSpace = _Align - 1;
       size_t sizeAllocated = _Bytes + extraSpace;
       totalRequestedBytes += sizeAllocated;
-      char *p = static_cast<char *>(baseAllocator->allocate(sizeAllocated, boost::container::pmr::memory_resource::max_align));
+      char *p = static_cast<char *>(baseAllocator->allocate(sizeAllocated, shards::pmr::memory_resource::max_align));
 
       // Calculate aligned pointer within our allocated block
       alignedPtr = reinterpret_cast<void *>(gfx::alignTo(reinterpret_cast<size_t>(p), _Align));

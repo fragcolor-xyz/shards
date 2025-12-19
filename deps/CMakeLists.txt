@@ -27,7 +27,24 @@ endif()
 
 add_subdirectory(magic_enum)
 add_subdirectory(nameof)
-add_subdirectory(spdlog)
+
+# spdlog - requires threading support, skip for freestanding
+if(NOT SH_FREESTANDING)
+  add_subdirectory(spdlog)
+else()
+  # Provide minimal spdlog stub for freestanding
+  add_library(spdlog INTERFACE)
+  target_include_directories(spdlog INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/spdlog/include)
+  target_compile_definitions(spdlog INTERFACE
+    SPDLOG_NO_EXCEPTIONS=1
+    SPDLOG_NO_THREAD_ID=1
+    SPDLOG_DISABLE_DEFAULT_LOGGER=1
+    SPDLOG_HEADER_ONLY=1
+    SPDLOG_NO_TLS=1
+  )
+  message(STATUS "Using spdlog header-only mode for freestanding target")
+endif()
+
 add_subdirectory(sqlite)
 
 set(DEBUG_RENDERER_IN_DISTRIBUTION ON CACHE BOOL "" FORCE)
@@ -68,12 +85,16 @@ if(NOT DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
   set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE BOOL "" FORCE)
 endif()
 
-set(TBB_STRICT OFF CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH ON CACHE BOOL "" FORCE)
-add_subdirectory(oneTBB)
+# TBB - skip for freestanding (requires pthreads)
+if(NOT SH_FREESTANDING)
+  set(TBB_STRICT OFF CACHE BOOL "" FORCE)
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+  set(TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH ON CACHE BOOL "" FORCE)
+  add_subdirectory(oneTBB)
+endif()
 
-if(NOT EMSCRIPTEN)
+# Skip OpenSSL/libressl for emscripten and freestanding
+if(NOT EMSCRIPTEN AND NOT SH_FREESTANDING)
   if(DESKTOP_LINUX)
     if(GNU_STATIC_BUILD)
       set(OPENSSL_USE_STATIC_LIBS TRUE)
@@ -155,48 +176,95 @@ if(WIN32 OR EMSCRIPTEN)
   set(BOOST_UUID_LINK_LIBATOMIC OFF CACHE BOOL "" FORCE)
 endif()
 
-# Explicitly list Boost libraries to build.
-# Without this, Boost builds ALL libraries which is slow and unnecessary.
-# Note: context is pulled in as a transitive dependency from asio/beast even if not listed.
-set(BOOST_INCLUDE_LIBRARIES
-  filesystem lockfree foreach multiprecision atomic thread tti
-  beast asio stacktrace container random interprocess uuid process context
-  CACHE STRING "Boost libraries to build")
+# For freestanding builds, skip Boost's CMake system entirely and just provide headers
+# This avoids building any compiled libraries that require OS support
+if(SH_FREESTANDING)
+  message(STATUS "Freestanding build: using Boost headers only (no compiled libraries)")
 
-# Disable Boost.Context coroutine support in Asio (we use our own fiber implementation)
-set(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER ON CACHE BOOL "" FORCE)
-add_compile_definitions(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER)
-
-# For Zig cross-compilation, force Boost.Context to use ucontext implementation
-# instead of fcontext assembly. This avoids issues where Boost misdetects the
-# architecture (e.g., detects riscv32 as i386). We don't actually use Boost.Context
-# anyway - it's only pulled in as a transitive dependency from asio/beast.
-# Note: ucontext doesn't work on iOS/Windows, so only enable for Zig cross builds.
-if(ZIG_MUSL)
-  set(BOOST_CONTEXT_IMPLEMENTATION "ucontext" CACHE STRING "" FORCE)
-endif()
-
-set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
-
-if(BOOST_DIR)
-  message(STATUS "Using boost from BOOST_DIR=${BOOST_DIR}")
-  add_subdirectory(${BOOST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/boost)
-else()
-  message(STATUS "Fetching boost")
+  # Download Boost source for headers only
   FetchContent_Declare(
     boost
     URL https://develop.fragcolor.com/boost-1.87.0.7z
     URL_HASH SHA256=abade069520e065e28740ba1f379a356a96bebb14e1b4b853316587c860747b5
   )
-
-  FetchContent_MakeAvailable(boost)
+  FetchContent_GetProperties(boost)
+  if(NOT boost_POPULATED)
+    FetchContent_Populate(boost)
+  endif()
   message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
+
+  # Create INTERFACE libraries for the header-only Boost components we need
+  # These don't build anything, just provide include directories
+  add_library(Boost_headers_only INTERFACE)
+
+  # Boost library headers are in libs/<name>/include/
+  # We need to add each library's include directory
+  set(BOOST_HEADER_LIBS
+    config core assert static_assert throw_exception predef type_traits
+    mp11 describe container container_hash move intrusive align
+    mpl preprocessor utility detail io function_types callable_traits
+    iterator range concept_check array type_index typeof fusion
+    optional variant2 foreach multiprecision tti integer smart_ptr
+  )
+  foreach(lib ${BOOST_HEADER_LIBS})
+    if(EXISTS ${boost_SOURCE_DIR}/libs/${lib}/include)
+      target_include_directories(Boost_headers_only INTERFACE ${boost_SOURCE_DIR}/libs/${lib}/include)
+    endif()
+  endforeach()
+
+  # Create aliases that match the normal Boost::* target names
+  add_library(Boost::foreach ALIAS Boost_headers_only)
+  add_library(Boost::multiprecision ALIAS Boost_headers_only)
+  add_library(Boost::tti ALIAS Boost_headers_only)
+  add_library(Boost::headers ALIAS Boost_headers_only)
+
+else()
+  # Normal Boost build for hosted environments
+
+  # Explicitly list Boost libraries to build.
+  # Without this, Boost builds ALL libraries which is slow and unnecessary.
+  # Note: context is pulled in as a transitive dependency from asio/beast even if not listed.
+  set(BOOST_INCLUDE_LIBRARIES
+    filesystem lockfree foreach multiprecision atomic thread tti
+    beast asio stacktrace container random interprocess uuid process context
+    CACHE STRING "Boost libraries to build")
+
+  # Disable Boost.Context coroutine support in Asio (we use our own fiber implementation)
+  set(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER ON CACHE BOOL "" FORCE)
+  add_compile_definitions(BOOST_ASIO_DISABLE_BOOST_CONTEXT_FIBER)
+
+  # For Zig cross-compilation, force Boost.Context to use ucontext implementation
+  # instead of fcontext assembly. This avoids issues where Boost misdetects the
+  # architecture (e.g., detects riscv32 as i386). We don't actually use Boost.Context
+  # anyway - it's only pulled in as a transitive dependency from asio/beast.
+  # Note: ucontext doesn't work on iOS/Windows, so only enable for Zig cross builds.
+  if(ZIG_MUSL)
+    set(BOOST_CONTEXT_IMPLEMENTATION "ucontext" CACHE STRING "" FORCE)
+  endif()
+
+  set(BOOST_DIR "" CACHE FILEPATH "Use boost from this path, not setting this will download the sources automatically")
+
+  if(BOOST_DIR)
+    message(STATUS "Using boost from BOOST_DIR=${BOOST_DIR}")
+    add_subdirectory(${BOOST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/boost)
+  else()
+    message(STATUS "Fetching boost")
+    FetchContent_Declare(
+      boost
+      URL https://develop.fragcolor.com/boost-1.87.0.7z
+      URL_HASH SHA256=abade069520e065e28740ba1f379a356a96bebb14e1b4b853316587c860747b5
+    )
+
+    FetchContent_MakeAvailable(boost)
+    message(STATUS "boost_SOURCE_DIR=${boost_SOURCE_DIR}")
+  endif()
 endif()
 
 # SDL3 - download for all platforms, but only build for non-emscripten/non-watchOS
 # Emscripten needs SDL3 headers for structures and enums even though it doesn't use the library
 # Zig cross-compilation also only uses headers (no GUI support when cross-compiling)
-if(NOT SHARDS_NO_SDL)
+# Skip entirely for freestanding/bare-metal builds
+if(NOT SHARDS_NO_SDL AND NOT SH_FREESTANDING)
   if(EMSCRIPTEN OR WATCHOS OR ZIG_CROSSCOMPILE)
     # Download headers only for emscripten and watchOS
     CPMAddPackage(
@@ -258,7 +326,10 @@ if(BROTLI_ENABLED)
   )
 endif()
 
-add_subdirectory(Catch2)
+# Catch2 - skip for freestanding (signal handling not available)
+if(NOT SH_FREESTANDING)
+  add_subdirectory(Catch2)
+endif()
 
 # kissfft and opus - only needed when audio module is enabled
 is_module_enabled(AUDIO_ENABLED audio)
@@ -308,7 +379,7 @@ if(AUDIO_ENABLED)
   endif()
 endif()
 
-if(NOT SHARDS_NO_SDL)
+if(NOT SHARDS_NO_SDL AND NOT SH_FREESTANDING)
   # tinygltf is needed by gfx module pch.cpp
   CPMAddPackage(
     NAME tinygltf
@@ -402,7 +473,7 @@ CPMAddPackage(
 # Create symlinks for CPM-downloaded libraries that need directory-prefixed includes
 # This allows includes like <linalg/linalg.h> to work with CPM's -src suffix naming
 set(CPM_SYMLINK_LIBS linalg utf8.h entt)
-if(NOT SHARDS_NO_SDL)
+if(NOT SHARDS_NO_SDL AND NOT SH_FREESTANDING)
   list(APPEND CPM_SYMLINK_LIBS tinygltf)
 endif()
 if(AUDIO_ENABLED)
@@ -544,4 +615,37 @@ if(CRDTS_ENABLED)
   )
   add_library(crdt_lite INTERFACE)
   target_include_directories(crdt_lite INTERFACE ${crdt-lite_SOURCE_DIR})
+endif()
+
+# FreeRTOS-Kernel - only needed for freestanding/bare-metal builds
+if(SH_FREESTANDING)
+  # Configure FreeRTOS port
+  set(FREERTOS_PORT "GCC_RISC_V" CACHE STRING "FreeRTOS port" FORCE)
+
+  CPMAddPackage(
+    NAME FreeRTOS-Kernel
+    GITHUB_REPOSITORY FreeRTOS/FreeRTOS-Kernel
+    GIT_TAG V11.1.0
+    DOWNLOAD_ONLY YES
+  )
+
+  # Create interface library for FreeRTOS headers
+  # Note: FreeRTOS-Kernel needs a FreeRTOSConfig.h provided by the user
+  add_library(freertos-kernel-headers INTERFACE)
+  target_include_directories(freertos-kernel-headers INTERFACE
+    ${FreeRTOS-Kernel_SOURCE_DIR}/include
+    ${FreeRTOS-Kernel_SOURCE_DIR}/portable/GCC/RISC-V
+  )
+
+  # Allow user to specify their FreeRTOSConfig.h location
+  if(FREERTOS_CONFIG_DIR)
+    target_include_directories(freertos-kernel-headers INTERFACE ${FREERTOS_CONFIG_DIR})
+    message(STATUS "FreeRTOS config directory: ${FREERTOS_CONFIG_DIR}")
+  else()
+    message(STATUS "FreeRTOS: No FREERTOS_CONFIG_DIR specified - user must provide FreeRTOSConfig.h")
+  endif()
+
+  # Export source dir for user to build the kernel with their config
+  set(FREERTOS_KERNEL_SOURCE_DIR ${FreeRTOS-Kernel_SOURCE_DIR} CACHE PATH "FreeRTOS-Kernel source directory")
+  message(STATUS "FreeRTOS-Kernel source: ${FREERTOS_KERNEL_SOURCE_DIR}")
 endif()

@@ -1,3 +1,9 @@
+# Skip Rust for freestanding/bare-metal builds (no Rust runtime available)
+if(SH_FREESTANDING)
+  message(STATUS "Skipping Rust configuration for freestanding target")
+  return()
+endif()
+
 # Automatic rust target config
 set(RUST_BUILD_SUBDIR_HAS_TARGET ON)
 

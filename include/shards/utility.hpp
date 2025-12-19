@@ -8,15 +8,40 @@
 #include "ops.hpp"
 #include "iterator.hpp"
 #include "defer.hpp"
+#include <shards/core/platform.hpp>
 #include <cassert>
-#include <future>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 #include <string.h>
 
-#if SHARDS_NO_SPDLOG
+// Threading headers - not available on freestanding
+#if !SH_FREESTANDING
+#include <future>
+#include <mutex>
+#endif
+
+#if SH_FREESTANDING
+// For freestanding, provide minimal format stub - fmt has locale dependencies
+#include <sstream>
+#include <iterator>
+namespace fmt {
+  template<typename... Args>
+  inline std::string format(const char* fmt_str, Args&&... args) {
+    return std::string(fmt_str);
+  }
+
+  // format_to for back_inserter usage
+  template<typename OutputIt, typename... Args>
+  inline OutputIt format_to(OutputIt out, const char* fmt_str, Args&&... args) {
+    std::string s(fmt_str);
+    for (char c : s) {
+      *out++ = c;
+    }
+    return out;
+  }
+}
+#elif SHARDS_NO_SPDLOG
 #include <fmt/format.h>
 #else
 #include <spdlog/fmt/fmt.h>

@@ -54,6 +54,18 @@
 #define SH_EMSCRIPTEN 0
 #endif
 
+#ifndef SH_ESP32
+#define SH_ESP32 0
+#endif
+
+#ifndef SH_FREERTOS
+#define SH_FREERTOS 0
+#endif
+
+#ifndef SH_FREESTANDING
+#define SH_FREESTANDING 0
+#endif
+
 // Portable string duplication using C++ new/delete
 // Use delete[] to free the returned string
 #include <cstring>

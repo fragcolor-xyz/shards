@@ -3,6 +3,7 @@
 
 #include "platform.hpp"
 
+#if !SH_FREESTANDING
 #if SH_WINDOWS
 #include <windows.h>
 #include <processthreadsapi.h>
@@ -12,12 +13,17 @@
 #endif
 #include <pthread.h>
 #endif
+#endif // !SH_FREESTANDING
 
 #include <string>
 #include <string_view>
 #include <list>
 #include <cassert>
+
+#if !SHARDS_NO_SPDLOG
 #include <spdlog/fmt/fmt.h>
+#endif
+// Note: For freestanding, fmt::format is provided by shards/utility.hpp
 
 #ifndef SH_DEBUG_THREAD_NAMES
 #define SH_DEBUG_THREAD_NAMES 0

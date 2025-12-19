@@ -45,14 +45,20 @@ add_subdirectory(${SHARDS_DIR}/deps deps)
 # Standalone libraries
 add_subdirectory(${SHARDS_DIR}/shards/fast_string src/fast_string)
 add_subdirectory(${SHARDS_DIR}/shards/log src/log)
-add_subdirectory(${SHARDS_DIR}/shards/input src/input)
-add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
+
+# Skip input and gfx for freestanding builds (no graphics on bare metal)
+if(NOT SH_FREESTANDING)
+  add_subdirectory(${SHARDS_DIR}/shards/input src/input)
+  add_subdirectory(${SHARDS_DIR}/shards/gfx src/gfx)
+endif()
 
 # Shards core
 add_subdirectory(${SHARDS_DIR}/shards/core src/core)
 
-# Rust projects
-add_subdirectory(${SHARDS_DIR}/shards/rust src/rust)
+# Rust projects (skip for freestanding - use serialized wires instead)
+if(NOT SH_FREESTANDING)
+  add_subdirectory(${SHARDS_DIR}/shards/rust src/rust)
+endif()
 
 # Modules
 set(SHARDS_MODULE_ROOT ${SHARDS_DIR}/shards/modules)
@@ -62,51 +68,60 @@ macro(add_module NAME)
   list(APPEND ADDED_MODULES ${NAME})
 endmacro()
 
-# Fixed-order modules (should be here if they have dependencies)
-add_module(gfx)
-add_module(egui)
+# Skip all modules for freestanding - they mostly require Rust or OS features
+# Only the core runtime (shards/core/) is built for bare-metal
+if(NOT SH_FREESTANDING)
+  # Fixed-order modules (should be here if they have dependencies)
+  add_module(gfx)
+  add_module(egui)
 
-message(STATUS "ADDED_MODULES = ${ADDED_MODULES}")
+  message(STATUS "ADDED_MODULES = ${ADDED_MODULES}")
 
-# Automatic scan for remaining modules
-file(GLOB SHARDS_MODULE_FOLDERS RELATIVE ${SHARDS_MODULE_ROOT} ${SHARDS_MODULE_ROOT}/*)
+  # Automatic scan for remaining modules
+  file(GLOB SHARDS_MODULE_FOLDERS RELATIVE ${SHARDS_MODULE_ROOT} ${SHARDS_MODULE_ROOT}/*)
 
-foreach(MODULE_FOLDER ${SHARDS_MODULE_FOLDERS})
-  list(FIND ADDED_MODULES ${MODULE_FOLDER} ALREADY_ADDED)
+  foreach(MODULE_FOLDER ${SHARDS_MODULE_FOLDERS})
+    list(FIND ADDED_MODULES ${MODULE_FOLDER} ALREADY_ADDED)
 
-  if(EXISTS ${SHARDS_MODULE_ROOT}/${MODULE_FOLDER}/CMakeLists.txt AND ALREADY_ADDED LESS 0)
-    add_subdirectory(${SHARDS_MODULE_ROOT}/${MODULE_FOLDER} modules/${MODULE_FOLDER})
-  endif()
-endforeach()
+    if(EXISTS ${SHARDS_MODULE_ROOT}/${MODULE_FOLDER}/CMakeLists.txt AND ALREADY_ADDED LESS 0)
+      add_subdirectory(${SHARDS_MODULE_ROOT}/${MODULE_FOLDER} modules/${MODULE_FOLDER})
+    endif()
+  endforeach()
 
-# Union library that ties the modules together
-add_subdirectory(${SHARDS_DIR}/shards/union src/union)
+  # Union library that ties the modules together
+  add_subdirectory(${SHARDS_DIR}/shards/union src/union)
 
-# Shards library and executable bundle
-add_subdirectory(${SHARDS_DIR}/shards/cli src/cli)
+  # Shards library and executable bundle
+  add_subdirectory(${SHARDS_DIR}/shards/cli src/cli)
 
-add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
+  add_subdirectory(${SHARDS_DIR}/shards/tests src/tests)
+else()
+  message(STATUS "Freestanding build - skipping modules, union, cli, and tests")
+endif()
 
-# Automatically find subprojects
-set(SHARDS_SUBPROJECT_ROOT "${SHARDS_DIR}/external")
-file(GLOB SHARDS_SUBPROJECT_FOLDERS RELATIVE ${SHARDS_SUBPROJECT_ROOT} ${SHARDS_SUBPROJECT_ROOT}/*)
+# Skip external subprojects for freestanding builds
+if(NOT SH_FREESTANDING)
+  # Automatically find subprojects
+  set(SHARDS_SUBPROJECT_ROOT "${SHARDS_DIR}/external")
+  file(GLOB SHARDS_SUBPROJECT_FOLDERS RELATIVE ${SHARDS_SUBPROJECT_ROOT} ${SHARDS_SUBPROJECT_ROOT}/*)
 
-foreach(SUBPROJECT_FOLDER ${SHARDS_SUBPROJECT_FOLDERS})
-  if(EXISTS ${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER}/CMakeLists.txt)
-    message(STATUS "Adding subproject: ${SUBPROJECT_FOLDER}")
-    add_subdirectory(${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER} external/${SUBPROJECT_FOLDER})
-  endif()
-endforeach()
+  foreach(SUBPROJECT_FOLDER ${SHARDS_SUBPROJECT_FOLDERS})
+    if(EXISTS ${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER}/CMakeLists.txt)
+      message(STATUS "Adding subproject: ${SUBPROJECT_FOLDER}")
+      add_subdirectory(${SHARDS_SUBPROJECT_ROOT}/${SUBPROJECT_FOLDER} external/${SUBPROJECT_FOLDER})
+    endif()
+  endforeach()
 
-# Add manually specified subproject paths
-set(SHARDS_SUBPROJECTS "" CACHE FILEPATH "List of paths to subprojects to integrate into the main build")
+  # Add manually specified subproject paths
+  set(SHARDS_SUBPROJECTS "" CACHE FILEPATH "List of paths to subprojects to integrate into the main build")
 
-foreach(SUBPROJECT_PATH ${SHARDS_SUBPROJECTS})
-  get_filename_component(SUBPROJECT_PATH_ABS "${SUBPROJECT_PATH}" ABSOLUTE BASE_DIR "${SHARDS_DIR}")
+  foreach(SUBPROJECT_PATH ${SHARDS_SUBPROJECTS})
+    get_filename_component(SUBPROJECT_PATH_ABS "${SUBPROJECT_PATH}" ABSOLUTE BASE_DIR "${SHARDS_DIR}")
 
-  if(EXISTS ${SUBPROJECT_PATH_ABS}/CMakeLists.txt)
-    get_filename_component(FILENAME ${SUBPROJECT_PATH_ABS} NAME)
-    message(STATUS "Adding subproject: ${SUBPROJECT_PATH_ABS} (as ${FILENAME})")
-    add_subdirectory(${SUBPROJECT_PATH_ABS} external/${FILENAME})
-  endif()
-endforeach()
+    if(EXISTS ${SUBPROJECT_PATH_ABS}/CMakeLists.txt)
+      get_filename_component(FILENAME ${SUBPROJECT_PATH_ABS} NAME)
+      message(STATUS "Adding subproject: ${SUBPROJECT_PATH_ABS} (as ${FILENAME})")
+      add_subdirectory(${SUBPROJECT_PATH_ABS} external/${FILENAME})
+    endif()
+  endforeach()
+endif()

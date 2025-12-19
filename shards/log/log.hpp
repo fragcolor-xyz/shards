@@ -2,6 +2,81 @@
 #define E8296F1D_E25F_4AC4_AA7C_D680CA0D7ABF
 
 #include <string>
+
+// For freestanding/bare-metal builds, provide stub types
+#if SHARDS_NO_SPDLOG
+
+#include <cstdint>
+#include <string_view>
+#include <memory>
+
+namespace shards::logging {
+
+// Stub log level enum
+enum class Level {
+  trace = 0,
+  debug = 1,
+  info = 2,
+  warn = 3,
+  err = 4,
+  critical = 5,
+  off = 6,
+  n_levels
+};
+
+// Stub LogContext
+struct LogContext {
+  LogContext() {}
+  template<typename T> LogContext(T) {}
+  ~LogContext() {}
+  LogContext(const LogContext &) = delete;
+  LogContext &operator=(const LogContext &) = delete;
+  LogContext(LogContext &&other) {}
+  LogContext &operator=(LogContext &&other) = delete;
+  void linkRootTo(LogContext *other) {}
+  void unlink() {}
+};
+
+struct ThreadState {
+  LogContext *current{};
+  static ThreadState &get();
+};
+
+// Logger is just a null pointer in stub mode
+typedef std::nullptr_t Logger;
+
+// Stub options
+struct Options {
+  const char *name{nullptr};
+  bool console{false};
+  const char *fileName{nullptr};
+};
+
+void init(Options options);
+void shutdown();
+Logger getOrCreate(std::string_view name, Level level = Level::info);
+Level parseLevel(std::string_view str);
+
+// Stub macros - everything is a no-op
+#define SPDLOG_TRACE(...) ((void)0)
+#define SPDLOG_DEBUG(...) ((void)0)
+#define SPDLOG_INFO(...) ((void)0)
+#define SPDLOG_WARN(...) ((void)0)
+#define SPDLOG_ERROR(...) ((void)0)
+#define SPDLOG_CRITICAL(...) ((void)0)
+#define SHLOG_TRACE(...) ((void)0)
+#define SHLOG_DEBUG(...) ((void)0)
+#define SHLOG_INFO(...) ((void)0)
+#define SHLOG_WARNING(...) ((void)0)
+#define SHLOG_ERROR(...) ((void)0)
+#define SHLOG_FATAL(...) ((void)0)
+
+inline bool isLoggerInitialized() { return false; }
+
+} // namespace shards::logging
+
+#else // Full spdlog implementation
+
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/dist_sink.h>
 #include <shared_mutex>
@@ -105,5 +180,7 @@ inline Logger getOrCreate(const std::string &name) {
 bool isLoggerInitialized();
 
 } // namespace shards::logging
+
+#endif // SHARDS_NO_SPDLOG
 
 #endif /* E8296F1D_E25F_4AC4_AA7C_D680CA0D7ABF */

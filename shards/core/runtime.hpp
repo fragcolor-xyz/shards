@@ -45,6 +45,9 @@ using SHTimeDiff = decltype(SHClock::now() - SHDuration(0.0));
 // For sleep
 #if _WIN32
 #include <Windows.h>
+#elif SH_FREERTOS
+#include <FreeRTOS.h>
+#include <task.h>
 #else
 #include <time.h>
 #endif
@@ -463,6 +466,19 @@ inline void sleep(std::chrono::nanoseconds duration) {
     SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
+#elif SH_FREERTOS
+    // Convert nanoseconds to milliseconds for FreeRTOS
+    // configTICK_RATE_HZ is usually 1000 (1ms per tick)
+    const uint32_t ms = duration.count() / 1000000;
+    if (ms > 0) {
+      // This puts the Shards task to BLOCKED state.
+      // The CPU immediately switches to other tasks (e.g., LwIP).
+      vTaskDelay(pdMS_TO_TICKS(ms));
+    } else {
+      // Sub-millisecond sleep requested.
+      // vTaskDelay(0) forces a context switch (yield) but doesn't wait.
+      taskYIELD();
+    }
 #elif __EMSCRIPTEN__
     // Convert nanoseconds to milliseconds
     unsigned int ms = duration.count() / 1000000;
@@ -477,8 +493,12 @@ inline void sleep(std::chrono::nanoseconds duration) {
       (void)0;
 #endif
   } else {
-    // just yield to kernel
+    // just yield to kernel/scheduler
+#if SH_FREERTOS
+    taskYIELD();
+#else
     std::this_thread::yield();
+#endif
   }
 }
 

@@ -2,9 +2,7 @@
 #define F80CEE03_D5CE_4787_8D65_FB8CC200104A
 
 #include <chrono>
-#include <thread>
 #include <deque>
-#include <future>
 
 #include <shards/shards.h>
 #include <shards/utility.hpp>
@@ -12,8 +10,13 @@
 #include "utils.hpp"
 #include "runtime.hpp"
 
+// Guard boost includes - not available on FreeRTOS bare-metal
+#if !SH_FREERTOS
+#include <thread>
+#include <future>
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
+#endif
 
 #include <tracy/Wrapper.hpp>
 
@@ -21,18 +24,27 @@
 #include <emscripten.h>
 #endif
 
+#if SH_FREERTOS
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#include <semphr.h>
+#endif
+
 // Can not create this many workers, create on demand instead
-#if SH_EMSCRIPTEN
+#if SH_EMSCRIPTEN || SH_FREERTOS
 #define SH_ENABLE_TIDE_POOL 0
 #else
 #define SH_ENABLE_TIDE_POOL 1
 #endif
 
-#if !SH_ENABLE_TIDE_POOL
+#if !SH_ENABLE_TIDE_POOL && !SH_FREERTOS
 #include "taskflow.hpp"
 #endif
 
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+// Async support: disabled for emscripten without pthreads and for FreeRTOS (for now)
+// TODO: Implement FreeRTOS TidePool using xTaskCreate/xQueue
+#if (defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)) || SH_FREERTOS
 #define HAS_ASYNC_SUPPORT 0
 #else
 #define HAS_ASYNC_SUPPORT 1

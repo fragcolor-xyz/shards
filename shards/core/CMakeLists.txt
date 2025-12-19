@@ -1,18 +1,29 @@
-set(core_SOURCES
-  async.cpp
-  ops_internal.cpp
-  number_types.cpp
-  utils.cpp
-  coro.cpp
-  wire_dsl.cpp
-  trait.cpp
-  type_info.cpp
-  hash.cpp
-  taskflow.cpp
-  pmr/shared_temp_allocator.cpp
-  log_api.cpp
-  wires.cpp
-)
+if(SH_FREESTANDING)
+  # Minimal sources for bare-metal - no OS, no filesystem, no threads
+  set(core_SOURCES
+    number_types.cpp
+    coro.cpp
+    runtime_freestanding.cpp
+  )
+else()
+  # Full sources for hosted environments
+  set(core_SOURCES
+    async.cpp
+    ops_internal.cpp
+    number_types.cpp
+    utils.cpp
+    coro.cpp
+    wire_dsl.cpp
+    trait.cpp
+    type_info.cpp
+    hash.cpp
+    pmr/shared_temp_allocator.cpp
+    log_api.cpp
+    wires.cpp
+    runtime.cpp
+    taskflow.cpp
+  )
+endif()
 
 if(EMSCRIPTEN)
   list(APPEND core_SOURCES em_proxy.cpp)
@@ -42,7 +53,7 @@ else()
   target_compile_definitions(shards-core PUBLIC SHARDS_INLINE_EVERYTHING=0)
 endif()
 
-# we are building with boost containers since we build shards, we can support this
+# Boost containers - header-only, available on all platforms
 target_compile_definitions(shards-core PUBLIC HAS_BOOST_CONTAINER=1)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -79,25 +90,32 @@ else()
   target_compile_definitions(shards-core PUBLIC SHARDS_DEBUGGER=0)
 endif()
 
-if(WIN32)
-  if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_link_libraries(shards-core Boost::stacktrace_windbg)
+# Boost stacktrace - not available on FreeRTOS bare-metal
+if(NOT SH_FREESTANDING)
+  if(WIN32)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+      target_link_libraries(shards-core Boost::stacktrace_windbg)
+    else()
+      target_link_libraries(shards-core Boost::stacktrace_basic)
+    endif()
+
+    # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
+    # 0x0A00 = Windows 10
+    target_compile_definitions(shards-core PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
+  elseif(DESKTOP_LINUX)
+    target_link_libraries(shards-core Boost::stacktrace_addr2line)
   else()
     target_link_libraries(shards-core Boost::stacktrace_basic)
   endif()
-
-  # Target windows SDK (https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt)
-  # 0x0A00 = Windows 10
-  target_compile_definitions(shards-core PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
-elseif(DESKTOP_LINUX)
-  target_link_libraries(shards-core Boost::stacktrace_addr2line)
-else()
-  target_link_libraries(shards-core Boost::stacktrace_basic)
 endif()
 
-target_precompile_headers(shards-core PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+# Skip precompiled headers for freestanding (may have issues with cross-compilation)
+if(NOT SH_FREESTANDING)
+  target_precompile_headers(shards-core PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp>")
+endif()
 
-if(APPLE)
+# Apple frameworks - not available on bare-metal
+if(APPLE AND NOT SH_FREESTANDING)
   target_link_libraries(shards-core
     "-framework Foundation"
     "-framework CoreAudio"
@@ -139,7 +157,18 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
+# Link FreeRTOS headers for freestanding builds
+if(SH_FREERTOS)
+  target_link_libraries(shards-core freertos-kernel-headers)
+endif()
+
+# Boost libraries - not available on FreeRTOS bare-metal
+if(NOT SH_FREESTANDING)
+  target_link_libraries(shards-core Boost::filesystem Boost::lockfree Boost::foreach Boost::multiprecision Boost::atomic Boost::thread Boost::tti)
+else()
+  # Minimal boost for embedded - just header-only libraries
+  target_link_libraries(shards-core Boost::foreach Boost::multiprecision Boost::tti)
+endif()
 
 # Custom fcontext implementation option
 # Default OFF (use custom assembly) for all platforms including Windows
@@ -209,27 +238,48 @@ if(NOT EMSCRIPTEN)
   endif()
 endif()
 
-target_link_libraries(shards-core
-  spdlog magic_enum nameof linalg xxHash
-  pdqsort entt utf8.h Taskflow stb nlohmann_json
-  shards-logging tbb
-)
+# Core dependencies - different for freestanding vs hosted
+if(SH_FREESTANDING)
+  # Minimal dependencies for bare-metal
+  target_link_libraries(shards-core
+    magic_enum nameof linalg xxHash
+    pdqsort entt utf8.h stb nlohmann_json
+  )
+  target_compile_definitions(shards-core PUBLIC SHARDS_NO_SPDLOG=1)
+else()
+  # Full dependencies for hosted environments
+  target_link_libraries(shards-core
+    spdlog magic_enum nameof linalg xxHash
+    pdqsort entt utf8.h stb nlohmann_json
+    shards-logging
+    Taskflow tbb
+  )
+endif()
+
 target_compile_definitions(shards-core PUBLIC SHARDS_WITH_ENTT=1)
 
 if(DESKTOP)
   target_compile_definitions(shards-core PUBLIC SHARDS_DESKTOP=1)
 endif()
 
-if(WIN32)
-  target_link_libraries(shards-core ws2_32 mswsock Secur32 Crypt32 NCrypt)
-elseif(DESKTOP_LINUX)
-  target_link_libraries(shards-core pthread dl rt)
+# Platform-specific libraries
+if(NOT SH_FREESTANDING)
+  if(WIN32)
+    target_link_libraries(shards-core ws2_32 mswsock Secur32 Crypt32 NCrypt)
+  elseif(DESKTOP_LINUX)
+    target_link_libraries(shards-core pthread dl rt)
+  endif()
 endif()
 
 target_compile_options(shards-core
   # -fno-finite-math-only` restores NaN/infinity support while keeping the other fast-math optimizations active
   PRIVATE -ffast-math -fno-finite-math-only -funroll-loops
 )
+
+# GCC 15+ has strict -Wtemplate-body that breaks DEFER macro in templates
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "15.0")
+  target_compile_options(shards-core PRIVATE -Wno-template-body)
+endif()
 
 if(EMSCRIPTEN)
   target_link_options(shards-core PUBLIC "-sLLD_REPORT_UNDEFINED")
