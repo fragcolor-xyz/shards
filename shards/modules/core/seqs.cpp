@@ -451,7 +451,7 @@ struct Zip {
   }
 
   PARAM_VAR(_seqs, "Sequences", "The sequences to zip together.", {CoreInfo::SeqOfSeqsType});
-  PARAM_VAR(_keys, "Keys", "The element keys to user.", {CoreInfo::NoneType, CoreInfo::StringSeqType});
+  PARAM_VAR(_keys, "Keys", "The element keys to use.", {CoreInfo::NoneType, CoreInfo::StringSeqType});
   PARAM_IMPL(PARAM_IMPL_FOR(_seqs), PARAM_IMPL_FOR(_keys));
 
   PARAM_REQUIRED_VARIABLES();
