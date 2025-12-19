@@ -1,0 +1,18 @@
+; HDL Verilog Transpiler Test
+; Tests basic combinational logic generation
+
+@wire(test-hdl {
+  ; Simple adder - uses regular Math.Add with HDL translation
+  ; Pattern follows shader translator: use variables, not nested shards
+  HDL.Module(Name: "adder" Contents: {
+    HDL.Input(Name: "a" Width: 8) >= a
+    HDL.Input(Name: "b" Width: 8) >= b
+    a | Math.Add(b) | HDL.Output(Name: "sum" Width: 9)
+  })
+  | Log("Generated Verilog:")
+  | Assert.IsNot("")
+})
+
+@mesh(main)
+@schedule(main test-hdl)
+@run(main)
