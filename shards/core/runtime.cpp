@@ -1738,7 +1738,7 @@ SHRunWireOutput runWire(SHWire *wire, SHContext *context, const SHVar &wireInput
   wire->context = context;
   DEFER({ wire->state = SHWire::State::IterationEnded; });
 
-  auto *input = &wireInput;
+  auto *input = &static_cast<const SHVar &>(wire->currentInput);
 run_wire_logic:
   try {
     auto state = shardsActivation<false>(&wire->shards[0], context, *input, wire->previousOutput);
