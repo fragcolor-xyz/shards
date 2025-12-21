@@ -356,8 +356,11 @@ impl RequestBase {
     self.url.warmup(context);
     self.headers.warmup(context);
     self.proxy.warmup(context);
+    Ok(())
+  }
 
-    // Build config signature for dynamic cache key
+  fn _ensure_client(&mut self, context: &Context) -> Result<(), &'static str> {
+    // Build config signature for dynamic cache key based on current proxy value
     let proxy_url = {
       let p = self.proxy.get();
       if p.is_none() {
@@ -689,9 +692,10 @@ macro_rules! get_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
+        self.rb._ensure_client(context)?;
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
-        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
+        let mut request = self.rb.client.as_ref().ok_or("No HTTP client")?.0.$call(request_string);
 
         let headers = self.rb.headers.get();
         if !headers.is_none() {
@@ -866,10 +870,11 @@ macro_rules! post_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
+        self.rb._ensure_client(context)?;
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
 
-        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
+        let mut request = self.rb.client.as_ref().ok_or("No HTTP client")?.0.$call(request_string);
 
         let headers = self.rb.headers.get();
 
