@@ -15,7 +15,7 @@ if(HTTP_SUPPORTED)
     # Rust-only build with rustls
     add_rust_library(NAME shards-http
       PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-      FEATURES rustls)
+      FEATURES rustls socks)
 
     add_shards_module(http
       RUST_TARGETS shards-http-rust
@@ -29,7 +29,7 @@ if(HTTP_SUPPORTED)
     if(NOT EMSCRIPTEN)
       add_rust_library(NAME shards-http
         PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-        FEATURES native-tls)
+        FEATURES native-tls socks)
       set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
       list(APPEND REGISTER_SHARDS_ARG rust)
     endif()

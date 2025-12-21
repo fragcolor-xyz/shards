@@ -13,6 +13,7 @@ crate-type = ["rlib", "staticlib"]
 # No default - must explicitly choose native-tls or rustls
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
+socks = ["reqwest/socks"]
 
 [dependencies]
 lazy_static = "1.5.0"
