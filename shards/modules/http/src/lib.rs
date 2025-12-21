@@ -223,7 +223,7 @@ static HEADERS_TYPES: &[Type] = &[
   common_type::string_table,
   common_type::string_table_var,
 ];
-static PROXY_TYPES: &[Type] = &[common_type::none, common_type::string, common_type::string_var];
+static PROXY_TYPES: &[Type] = &[common_type::none, common_type::string];
 
 struct RequestBase {
   client: Option<our_client::OurClient>,
@@ -335,16 +335,6 @@ impl RequestBase {
       };
       self.required.push(exp_info);
     }
-    if self.proxy.is_variable() {
-      let exp_info = ExposedInfo {
-        exposedType: common_type::string,
-        name: self.proxy.get_name(),
-        help: shccstr!("The proxy URL."),
-        ..ExposedInfo::default()
-      };
-      self.required.push(exp_info);
-    }
-
     Some(&self.required)
   }
 
@@ -356,24 +346,19 @@ impl RequestBase {
     self.url.warmup(context);
     self.headers.warmup(context);
     self.proxy.warmup(context);
-    Ok(())
-  }
 
-  fn _ensure_client(&mut self, context: &Context) -> Result<(), &'static str> {
-    // Build config signature for dynamic cache key based on current proxy value
+    // Read proxy value (static, resolved at warmup)
     let proxy_url = {
       let p = self.proxy.get();
       if p.is_none() {
         None
       } else {
         let s: &str = p.try_into().map_err(|_| "Invalid proxy URL")?;
-        if s.is_empty() {
-          None
-        } else {
-          Some(s.to_string())
-        }
+        if s.is_empty() { None } else { Some(s.to_string()) }
       }
     };
+
+    // Build config signature for cache key (proxy and invalid_certs are static)
     let config = ClientConfig {
       proxy_url: proxy_url.clone(),
       invalid_certs: self.invalid_certs,
@@ -692,7 +677,6 @@ macro_rules! get_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
-        self.rb._ensure_client(context)?;
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
         let mut request = self.rb.client.as_ref().ok_or("No HTTP client")?.0.$call(request_string);
@@ -870,7 +854,6 @@ macro_rules! post_like {
       }
 
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
-        self.rb._ensure_client(context)?;
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
 
