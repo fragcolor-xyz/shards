@@ -110,7 +110,7 @@ pub struct Setting {
 }
 
 #[derive(Clone)]
-enum Definition {
+pub enum Definition {
   ValueSource(*const Value),
   ValueGenerated(Value),
   Constant(SVar),
@@ -170,6 +170,9 @@ pub struct EvalEnv {
 
   complexity: u64,
   context_type: ContextType,
+
+  // Storage for defines values injected via FFI, keeps them alive during evaluation
+  pub defines_storage: Vec<Value>,
 }
 
 impl Drop for EvalEnv {
@@ -213,6 +216,7 @@ impl EvalEnv {
       complexity: 0,
       context_type: ContextType::Source,
       default_line_info: None,
+      defines_storage: Vec::new(),
     };
 
     if let Some(parent) = parent {
@@ -236,6 +240,12 @@ impl EvalEnv {
     }
 
     env
+  }
+
+  /// Insert a definition into the environment's definitions map.
+  /// Used by FFI to inject defines from external sources.
+  pub fn insert_definition(&mut self, key: Identifier, value: Definition) {
+    self.definitions.insert(key, value);
   }
 
   fn from_captured(env: &CapturedEvalContext) -> Self {
@@ -263,6 +273,7 @@ impl EvalEnv {
       complexity: 0,
       context_type: ContextType::Source,
       default_line_info: None,
+      defines_storage: Vec::new(),
     };
 
     // Convert ClonedDefinition to Definition

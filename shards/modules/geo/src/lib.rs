@@ -696,6 +696,9 @@ struct ToDjiKmzShard {
   #[shard_param("DroneSubEnum", "DJI drone sub-enum value (default 0)", FLOAT_OR_VAR_TYPES)]
   drone_sub_enum: ParamVar,
 
+  #[shard_param("TurnDampingDist", "Turn damping distance in meters for smooth curves (default 2.0, 0 may cause load errors)", FLOAT_OR_VAR_TYPES)]
+  turn_damping_dist: ParamVar,
+
   output: ClonedVar,
 }
 
@@ -710,6 +713,7 @@ impl Default for ToDjiKmzShard {
       gimbal_pitch: ParamVar::new((-45.0).into()),
       drone_enum: ParamVar::new(68.0.into()),
       drone_sub_enum: ParamVar::new(0.0.into()),
+      turn_damping_dist: ParamVar::new(2.0.into()),
       output: ClonedVar::default(),
     }
   }
@@ -763,16 +767,56 @@ impl ToDjiKmzShard {
     speed: f64,
     drone_enum: i64,
     drone_sub_enum: i64,
+    _turn_damping_dist: f64,
   ) -> String {
     let mut placemarks = String::new();
-    for wp in waypoints {
+    let last_idx = waypoints.len().saturating_sub(1);
+
+    for (i, wp) in waypoints.iter().enumerate() {
+      // First waypoint stops, others pass through smoothly
+      let turn_mode = if i == 0 {
+        "toPointAndStopWithContinuityCurvature"
+      } else {
+        "toPointAndPassWithContinuityCurvature"
+      };
+
+      // Build the second action group for gimbal transition (all except last waypoint)
+      let second_action_group = if i < last_idx {
+        format!(
+          r#"
+        <wpml:actionGroup>
+          <wpml:actionGroupId>{}</wpml:actionGroupId>
+          <wpml:actionGroupStartIndex>{}</wpml:actionGroupStartIndex>
+          <wpml:actionGroupEndIndex>{}</wpml:actionGroupEndIndex>
+          <wpml:actionGroupMode>parallel</wpml:actionGroupMode>
+          <wpml:actionTrigger>
+            <wpml:actionTriggerType>betweenAdjacentPoints</wpml:actionTriggerType>
+          </wpml:actionTrigger>
+          <wpml:action>
+            <wpml:actionId>0</wpml:actionId>
+            <wpml:actionActuatorFunc>gimbalEvenlyRotate</wpml:actionActuatorFunc>
+            <wpml:actionActuatorFuncParam>
+              <wpml:gimbalPitchRotateAngle>{}</wpml:gimbalPitchRotateAngle>
+              <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
+            </wpml:actionActuatorFuncParam>
+          </wpml:action>
+        </wpml:actionGroup>"#,
+          wp.index * 2 + 1,  // actionGroupId: 1, 3, 5, ...
+          wp.index,          // startIndex
+          wp.index + 1,      // endIndex (next waypoint)
+          wp.gimbal_pitch.round() as i64
+        )
+      } else {
+        String::new()
+      };
+
       placemarks.push_str(&format!(
         r#"      <Placemark>
         <Point>
           <coordinates>{:.15},{:.15}</coordinates>
         </Point>
         <wpml:index>{}</wpml:index>
-        <wpml:executeHeight>{:.4}</wpml:executeHeight>
+        <wpml:executeHeight>{}</wpml:executeHeight>
         <wpml:waypointSpeed>{:.1}</wpml:waypointSpeed>
         <wpml:waypointHeadingParam>
           <wpml:waypointHeadingMode>smoothTransition</wpml:waypointHeadingMode>
@@ -782,7 +826,7 @@ impl ToDjiKmzShard {
           <wpml:waypointHeadingPathMode>followBadArc</wpml:waypointHeadingPathMode>
         </wpml:waypointHeadingParam>
         <wpml:waypointTurnParam>
-          <wpml:waypointTurnMode>toPointAndStopWithDiscontinuityCurvature</wpml:waypointTurnMode>
+          <wpml:waypointTurnMode>{}</wpml:waypointTurnMode>
           <wpml:waypointTurnDampingDist>0</wpml:waypointTurnDampingDist>
         </wpml:waypointTurnParam>
         <wpml:useStraightLine>0</wpml:useStraightLine>
@@ -790,7 +834,7 @@ impl ToDjiKmzShard {
           <wpml:actionGroupId>{}</wpml:actionGroupId>
           <wpml:actionGroupStartIndex>{}</wpml:actionGroupStartIndex>
           <wpml:actionGroupEndIndex>{}</wpml:actionGroupEndIndex>
-          <wpml:actionGroupMode>sequence</wpml:actionGroupMode>
+          <wpml:actionGroupMode>parallel</wpml:actionGroupMode>
           <wpml:actionTrigger>
             <wpml:actionTriggerType>reachPoint</wpml:actionTriggerType>
           </wpml:actionTrigger>
@@ -811,7 +855,7 @@ impl ToDjiKmzShard {
               <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
             </wpml:actionActuatorFuncParam>
           </wpml:action>
-        </wpml:actionGroup>
+        </wpml:actionGroup>{}
       </Placemark>
 "#,
         wp.lon,
@@ -820,10 +864,12 @@ impl ToDjiKmzShard {
         wp.altitude,
         wp.speed,
         wp.heading.round() as i64,
+        turn_mode,
+        wp.index * 2,  // actionGroupId: 0, 2, 4, ...
         wp.index,
         wp.index,
-        wp.index,
-        wp.gimbal_pitch.round() as i64
+        wp.gimbal_pitch.round() as i64,
+        second_action_group
       ));
     }
 
@@ -903,6 +949,7 @@ impl Shard for ToDjiKmzShard {
     }
     let drone_enum: i64 = self.drone_enum.get().try_into().unwrap_or(68.0) as i64;
     let drone_sub_enum: i64 = self.drone_sub_enum.get().try_into().unwrap_or(0.0) as i64;
+    let turn_damping_dist: f64 = self.turn_damping_dist.get().try_into().unwrap_or(2.0);
 
     // Parse input waypoints - check limits before allocating/parsing
     let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
@@ -976,7 +1023,7 @@ impl Shard for ToDjiKmzShard {
     // Generate KML/WPML content
     let timestamp = Self::get_timestamp_ms();
     let template_kml = self.generate_template_kml(finish_action, default_speed, timestamp, drone_enum, drone_sub_enum);
-    let waylines_wpml = self.generate_waylines_wpml(&waypoints, finish_action, default_speed, drone_enum, drone_sub_enum);
+    let waylines_wpml = self.generate_waylines_wpml(&waypoints, finish_action, default_speed, drone_enum, drone_sub_enum, turn_damping_dist);
 
     // Create KMZ file (ZIP with wpmz/ folder)
     let file = std::fs::File::create(path).map_err(|_| "Failed to create KMZ file")?;

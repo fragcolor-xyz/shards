@@ -1135,6 +1135,7 @@ typedef void(__cdecl *SHFreeError)(struct SHLError *error);
 typedef struct SHLEvalEnv *(__cdecl *SHCreateEvalEnv)(struct SHStringWithLen namespace_);
 typedef void(__cdecl *SHFreeEvalEnv)(struct SHLEvalEnv *env);
 typedef bool(__cdecl *SHEvalProc)(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error);
+typedef bool(__cdecl *SHSetDefines)(struct SHLEvalEnv *env, const struct SHVar *defines, struct SHLError *error);
 typedef bool(__cdecl *SHTransformEnv)(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire);
 typedef bool(__cdecl *SHTransformEnvs)(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name,
                                        struct SHLWire *out_wire);
@@ -1434,6 +1435,9 @@ typedef struct _SHCore {
 
   // Flush logs
   SHLogFlush logFlush;
+
+  // Set defines for evaluation environment
+  SHSetDefines setDefines;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;

@@ -2456,7 +2456,13 @@ enum Shards {
         G.Core.pointee.registerEnumType(vendor, type, info)
     }
 
-    static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String) -> Result<WireController, ShardError> {
+    /// Evaluate code with optional defines injected into the evaluation environment.
+    /// - Parameters:
+    ///   - name: Name for the wire
+    ///   - code: Shards code to evaluate
+    ///   - basePath: Base path for resolving includes
+    ///   - defines: Optional dictionary of defines to inject (supports String, Int, Double, Bool values)
+    static func maybeEvalWire(_ name: String, _ code: String, _ basePath: String, defines: [String: Any]? = nil) -> Result<WireController, ShardError> {
         // Create SHStringWithLen instances
         let nameStr = SwiftSWL(name)
         let codeStr = SwiftSWL(code)
@@ -2484,6 +2490,38 @@ enum Shards {
         // Create error struct for eval
         var evalError = SHLError()
         defer { G.Core.pointee.freeError(&evalError) }
+
+        // Set defines before evaluation if provided
+        if let defines = defines {
+            let definesTable = TableVar()
+            for (key, value) in defines {
+                let keyVar = OwnedVar(string: key)
+                var valueVar: OwnedVar
+                switch value {
+                case let s as String:
+                    valueVar = OwnedVar(string: s)
+                case let i as Int:
+                    valueVar = OwnedVar(int: i)
+                case let d as Double:
+                    valueVar = OwnedVar(float: d)
+                case let b as Bool:
+                    valueVar = OwnedVar(bool: b)
+                default:
+                    G.Core.pointee.freeEvalEnv(env)
+                    return .failure(ShardError(message: "Unsupported define value type for key '\(key)'"))
+                }
+                definesTable.insertOrUpdate(key: keyVar.v, cloning: valueVar.v)
+            }
+            var definesVar = definesTable.v
+            let setDefinesSuccess = G.Core.pointee.setDefines(env, &definesVar, &evalError)
+            guard setDefinesSuccess else {
+                let errorMessage = String(cString: evalError.message)
+                let line = evalError.line
+                let column = evalError.column
+                G.Core.pointee.freeEvalEnv(env)
+                return .failure(ShardError(message: "Failed to set defines: \(errorMessage) at line \(line), column \(column)"))
+            }
+        }
 
         // Evaluate the AST
         let evalSuccess = G.Core.pointee.eval(env, &astOwned.v, &evalError)
@@ -2519,8 +2557,9 @@ enum Shards {
         return .success(wireController)
     }
 
-    static func evalWire(_ name: String, _ code: String, _ basePath: String) -> WireController? {
-        let result = maybeEvalWire(name, code, basePath)
+    /// Evaluate code with optional defines - convenience version that returns nil on failure
+    static func evalWire(_ name: String, _ code: String, _ basePath: String, defines: [String: Any]? = nil) -> WireController? {
+        let result = maybeEvalWire(name, code, basePath, defines: defines)
         switch result {
         case let .success(wireController):
             return wireController

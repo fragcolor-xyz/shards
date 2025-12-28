@@ -15,6 +15,7 @@ void shards_free_error(SHLError *error);
 SHLEvalEnv *shards_create_env(SHStringWithLen namespace_);
 void shards_free_env(SHLEvalEnv *env);
 bool shards_eval_env(SHLEvalEnv *env, const SHVar *ast, SHLError *error);
+bool shards_set_defines(SHLEvalEnv *env, const SHVar *defines, SHLError *error);
 bool shards_transform_env(SHLEvalEnv *env, SHStringWithLen name, SHLWire *out_wire);
 bool shards_transform_envs(SHLEvalEnv **env, size_t len, SHStringWithLen name, SHLWire *out_wire);
 bool shards_eval_ast(const SHVar *ast, SHStringWithLen name, SHLWire *out_wire);
@@ -45,6 +46,10 @@ inline void setupCoreLang(SHCore *result) {
   result->freeEvalEnv = [](SHLEvalEnv *env) { shards_free_env(env); };
 
   result->eval = [](SHLEvalEnv *env, const SHVar *ast, SHLError *error) -> bool { return shards_eval_env(env, ast, error); };
+
+  result->setDefines = [](SHLEvalEnv *env, const SHVar *defines, SHLError *error) -> bool {
+    return shards_set_defines(env, defines, error);
+  };
 
   result->transformEnv = [](SHLEvalEnv *env, SHStringWithLen name, SHLWire *out_wire) {
     return shards_transform_env(env, name, out_wire);
@@ -85,6 +90,10 @@ void InternalCore::freeEvalEnv(struct SHLEvalEnv *env) { sh_current_interface.fr
 
 bool InternalCore::eval(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error) {
   return sh_current_interface.eval(env, ast, error);
+}
+
+bool InternalCore::setDefines(struct SHLEvalEnv *env, const struct SHVar *defines, struct SHLError *error) {
+  return sh_current_interface.setDefines(env, defines, error);
 }
 
 bool InternalCore::transformEnv(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire) {

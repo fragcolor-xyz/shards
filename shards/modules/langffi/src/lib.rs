@@ -4,10 +4,11 @@ use shards::SHStringWithLen;
 use shards::{shlog_error, types::*};
 use shards_lang::cli::process_args;
 use shards_lang::custom_state::CustomStateContainer;
-use shards_lang::eval::{self, *};
+use shards_lang::eval::{self, Definition, *};
 use shards_lang::read::AST_TYPE;
 use shards_lang::{ast::*, RcStrWrapper};
 use shards_lang::{print, read};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::{c_char, CString};
 
@@ -214,6 +215,76 @@ pub extern "C" fn shards_eval_env(env: *mut EvalEnv, ast: &Var, out_error: *mut 
     }
   }
   return true;
+}
+
+#[no_mangle]
+pub extern "C" fn shards_set_defines(
+  env: *mut EvalEnv,
+  defines: *const shards::types::Var,
+  out_error: *mut SHLError,
+) -> bool {
+  profiling::scope!("shards_set_defines");
+  let env = unsafe { &mut *env };
+  let defines = unsafe { &*defines };
+
+  // None is valid, just no-op
+  if defines.is_none() {
+    return true;
+  }
+
+  if !defines.is_table() {
+    let error_message = CString::new("Defines must be a table or none").unwrap();
+    unsafe {
+      (*out_error).message = error_message.into_raw();
+      (*out_error).line = 0;
+      (*out_error).column = 0;
+    }
+    return false;
+  }
+
+  let table = defines.as_table().unwrap();
+  for (k, v) in table.iter() {
+    let key: &str = match (&k).try_into() {
+      Ok(s) => s,
+      Err(e) => {
+        let error_message = CString::new(format!("Invalid define key: {}", e)).unwrap();
+        unsafe {
+          (*out_error).message = error_message.into_raw();
+          (*out_error).line = 0;
+          (*out_error).column = 0;
+        }
+        return false;
+      }
+    };
+
+    let value: Value = match v.try_into() {
+      Ok(v) => v,
+      Err(e) => {
+        let error_message =
+          CString::new(format!("Invalid define value for '{}': {}", key, e)).unwrap();
+        unsafe {
+          (*out_error).message = error_message.into_raw();
+          (*out_error).line = 0;
+          (*out_error).column = 0;
+        }
+        return false;
+      }
+    };
+
+    // Store value in env's storage vector to keep it alive
+    env.defines_storage.push(value);
+    let value_ptr = env.defines_storage.last().unwrap() as *const Value;
+
+    env.insert_definition(
+      Identifier {
+        name: RcStrWrapper::new(Cow::Owned(key.into())),
+        namespaces: Vec::new(),
+        custom_state: CustomStateContainer::new(),
+      },
+      Definition::ValueSource(value_ptr),
+    );
+  }
+  true
 }
 
 /// It will consume the env

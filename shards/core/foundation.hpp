@@ -1483,6 +1483,8 @@ struct InternalCore {
 
   static bool eval(struct SHLEvalEnv *env, const struct SHVar *ast, struct SHLError *error);
 
+  static bool setDefines(struct SHLEvalEnv *env, const struct SHVar *defines, struct SHLError *error);
+
   static bool transformEnv(struct SHLEvalEnv *env, struct SHStringWithLen name, struct SHLWire *out_wire);
 
   static bool transformEnvs(struct SHLEvalEnv **env, uint32_t len, struct SHStringWithLen name, struct SHLWire *out_wire);
