@@ -174,6 +174,12 @@ lazy_static! {
       INT_TYPES_SLICE
     )
       .into(),
+    (
+      cstr!("Proxy"),
+      shccstr!("Proxy URL (http://host:port, socks5://host:port, or socks5h://host:port for remote DNS)."),
+      PROXY_TYPES
+    )
+      .into(),
   ];
 }
 
@@ -197,12 +203,27 @@ mod our_client {
   }
 }
 
+struct ClientConfig {
+  proxy_url: Option<String>,
+  invalid_certs: bool,
+}
+
+impl ClientConfig {
+  fn cache_key(&self) -> String {
+    match &self.proxy_url {
+      Some(url) => format!("Http.Client.{}.{}", url, self.invalid_certs),
+      None => format!("Http.Client.none.{}", self.invalid_certs),
+    }
+  }
+}
+
 static URL_TYPES: &[Type] = &[common_type::string, common_type::string_var];
 static HEADERS_TYPES: &[Type] = &[
   common_type::none,
   common_type::string_table,
   common_type::string_table_var,
 ];
+static PROXY_TYPES: &[Type] = &[common_type::none, common_type::string];
 
 struct RequestBase {
   client: Option<our_client::OurClient>,
@@ -219,6 +240,7 @@ struct RequestBase {
   streaming: bool,
   task_cancel: Option<CancellationToken>,
   global_client: Option<VarRef>,
+  proxy: ParamVar,
 }
 
 impl Default for RequestBase {
@@ -238,6 +260,7 @@ impl Default for RequestBase {
       streaming: false,
       task_cancel: None,
       global_client: None,
+      proxy: ParamVar::new(().into()),
     }
   }
 }
@@ -270,6 +293,7 @@ impl RequestBase {
       6 => Ok(self.retry = value.try_into().map_err(|_x| "Failed to set retry")?),
       7 => Ok(self.streaming = value.try_into().map_err(|_x| "Failed to set streaming")?),
       8 => Ok(self.backoff = value.try_into().map_err(|_x| "Failed to set backoff")?),
+      9 => self.proxy.set_param(value),
       _ => unreachable!(),
     }
   }
@@ -285,6 +309,7 @@ impl RequestBase {
       6 => self.retry.try_into().expect("A valid integer in range"),
       7 => self.streaming.into(),
       8 => self.backoff.try_into().expect("A valid integer in range"),
+      9 => self.proxy.get_param(),
       _ => unreachable!(),
     }
   }
@@ -310,7 +335,6 @@ impl RequestBase {
       };
       self.required.push(exp_info);
     }
-
     Some(&self.required)
   }
 
@@ -319,22 +343,55 @@ impl RequestBase {
   }
 
   fn _warmup(&mut self, context: &Context) -> Result<(), &'static str> {
-    let mut global_client = VarRef::referenceGlobal(context, "Http.Client");
+    self.url.warmup(context);
+    self.headers.warmup(context);
+    self.proxy.warmup(context);
+
+    // Read proxy value (static, resolved at warmup)
+    let proxy_url = {
+      let p = self.proxy.get();
+      if p.is_none() {
+        None
+      } else {
+        let s: &str = p.try_into().map_err(|_| "Invalid proxy URL")?;
+        if s.is_empty() { None } else { Some(s.to_string()) }
+      }
+    };
+
+    // Build config signature for cache key (proxy and invalid_certs are static)
+    let config = ClientConfig {
+      proxy_url: proxy_url.clone(),
+      invalid_certs: self.invalid_certs,
+    };
+    let cache_key = config.cache_key();
+
+    // Use VarRef::referenceGlobal with dynamic key (per-mesh caching)
+    let mut global_client = VarRef::referenceGlobal(context, &cache_key);
+
     if global_client.as_mut().is_none() {
-      // Create a new client
-      let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(self.invalid_certs)
-        .build()
-        .map_err(|e| {
-          print_error(&e);
-          "Failed to create client"
+      // Create new client with proxy config
+      let mut builder = reqwest::Client::builder()
+        .danger_accept_invalid_certs(self.invalid_certs);
+
+      if let Some(ref proxy_url) = proxy_url {
+        let proxy = reqwest::Proxy::all(proxy_url).map_err(|e| {
+          shlog_error!("Invalid proxy URL '{}': {}. Supported formats: http://host:port, socks5://host:port, socks5h://host:port", proxy_url, e);
+          "Invalid proxy URL (supported: http://, socks5://, socks5h://)"
         })?;
+        builder = builder.proxy(proxy);
+      }
+
+      let client = builder.build().map_err(|e| {
+        print_error(&e);
+        "Failed to create HTTP client"
+      })?;
       let client = our_client::OurClient(client);
       let client_var = Var::new_ref_counted(client.clone(), &*CLIENT_TYPE);
       cloneVar(&mut global_client.as_mut(), &client_var);
-      self.client = Some(client); // internally already Arc-ed
+      self.client = Some(client);
       self.global_client = Some(global_client);
     } else {
+      // Reuse existing client from mesh-global storage
       let client = unsafe {
         Var::from_ref_counted_object::<our_client::OurClient>(global_client.as_mut(), &*CLIENT_TYPE)
       };
@@ -343,8 +400,6 @@ impl RequestBase {
       self.global_client = Some(global_client);
     }
 
-    self.url.warmup(context);
-    self.headers.warmup(context);
     Ok(())
   }
 
@@ -358,6 +413,7 @@ impl RequestBase {
 
     self.url.cleanup(ctx);
     self.headers.cleanup(ctx);
+    self.proxy.cleanup(ctx);
     self._close_client();
     self.output = ClonedVar::default();
 
@@ -623,7 +679,7 @@ macro_rules! get_like {
       fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &'static str> {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
-        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
+        let mut request = self.rb.client.as_ref().ok_or("No HTTP client")?.0.$call(request_string);
 
         let headers = self.rb.headers.get();
         if !headers.is_none() {
@@ -801,7 +857,7 @@ macro_rules! post_like {
         let request = self.rb.url.get();
         let request_string: &str = request.try_into()?;
 
-        let mut request = self.rb.client.as_ref().unwrap().0.$call(request_string);
+        let mut request = self.rb.client.as_ref().ok_or("No HTTP client")?.0.$call(request_string);
 
         let headers = self.rb.headers.get();
 
@@ -860,6 +916,9 @@ macro_rules! post_like {
             request = request.header(hname, hvalue);
           }
         }
+
+        let timeout = Duration::from_secs(self.rb.timeout);
+        request = request.timeout(timeout);
 
         if self.rb.retry == 0 {
           let _ = self.rb._finalize(context, request)?;
