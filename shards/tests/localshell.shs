@@ -76,6 +76,123 @@ grep-result.status | Assert.Is("completed")
 grep-result.output | ExpectString | Log("Grep no match output")
 "Grep with no matches completed successfully" | Log
 
+; Test exit code capture
+"Testing exit code capture" | Log
+"true" | LocalShell.Execute(Session: shell-session) >= exit-result
+exit-result.status | Assert.Is("completed")
+exit-result.exit_code | ExpectInt | Assert.Is(0)
+"Exit code 0 captured for success" | Log
+
+"false" | LocalShell.Execute(Session: shell-session) >= exit-fail-result
+exit-fail-result.status | Assert.Is("completed")
+exit-fail-result.exit_code | ExpectInt | Assert.Is(1)
+"Exit code 1 captured for failure" | Log
+
+; Test configurable PTY size
+"Testing configurable PTY size" | Log
+LocalShell.Create(Rows: 40 Cols: 120) >= sized-session
+sized-session | LocalShell.IsAlive | Assert.Is(true)
+"tput lines" | LocalShell.Execute(Session: sized-session) >= tput-result
+tput-result.status | Assert.Is("completed")
+tput-result.output | ExpectString | String.Contains("40") | Assert.Is(true)
+"Configurable PTY size works" | Log
+
+; Test LocalShell.Resize
+"Testing PTY resize" | Log
+LocalShell.Resize(Session: sized-session Rows: 50 Cols: 132)
+"tput lines" | LocalShell.Execute(Session: sized-session) >= resize-result
+resize-result.status | Assert.Is("completed")
+resize-result.output | ExpectString | String.Contains("50") | Assert.Is(true)
+"PTY resize works" | Log
+
+; Test LocalShell.Write and LocalShell.Read
+"Testing raw Write and Read" | Log
+"echo 'raw_test_output'" | LocalShell.Write(Session: shell-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: shell-session Timeout: 1000) >= raw-output
+raw-output | ExpectString | String.Contains("raw_test_output") | Assert.Is(true)
+"Raw Write/Read works" | Log
+
+; Test top -l 1 (macOS single snapshot) via raw Read/Write
+; Exercises: large output with ANSI codes, non-blocking incremental read
+"Testing top snapshot via raw Read/Write" | Log
+LocalShell.Create(Rows: 30 Cols: 100) >= top-session
+"top -l 1 -n 5" | LocalShell.Write(Session: top-session AppendNewline: true)
+Pause(3.0) ; give top time to produce output
+LocalShell.Read(Session: top-session Timeout: 2000) >= top-output
+top-output | ExpectString | String.Contains("Processes") | Assert.Is(true)
+"top snapshot captured via raw Read" | Log
+
+; Test Execute auto-Ctrl-C when interrupting a pending interactive command
+"Testing Execute auto-interrupt" | Log
+LocalShell.Create >= ctrl-session
+; Start sleep via Execute — will timeout and be marked requires_interaction
+"sleep 300" | LocalShell.Execute(Session: ctrl-session Timeout: 2) >= sleep-result
+sleep-result.status | Assert.Is("requires_interaction")
+ctrl-session | LocalShell.IsAlive | Assert.Is(true)
+; Send a new command — Execute auto-sends Ctrl-C to cancel the pending sleep
+"echo ctrl_c_survived" | LocalShell.Execute(Session: ctrl-session) >= post-ctrl-result
+post-ctrl-result.status | Assert.Is("completed")
+post-ctrl-result.output | ExpectString | String.Contains("ctrl_c_survived") | Assert.Is(true)
+"Execute auto-interrupt works" | Log
+
+; Test incremental reads (Read returns only new data each call)
+"Testing incremental reads" | Log
+LocalShell.Create >= inc-session
+"echo 'first_chunk'" | LocalShell.Write(Session: inc-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: inc-session Timeout: 1000) >= chunk1
+chunk1 | ExpectString | String.Contains("first_chunk") | Assert.Is(true)
+"echo 'second_chunk'" | LocalShell.Write(Session: inc-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: inc-session Timeout: 1000) >= chunk2
+chunk2 | ExpectString | String.Contains("second_chunk") | Assert.Is(true)
+; Second read should NOT contain first_chunk (incremental)
+chunk2 | ExpectString | String.Contains("first_chunk") | Assert.Is(false)
+"Incremental reads work" | Log
+
+; Test Resize during a running process
+"Testing resize during running process" | Log
+LocalShell.Create(Rows: 24 Cols: 80) >= resize-live-session
+; Start a background process that uses terminal size
+"tput cols" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: resize-live-session Timeout: 1000) >= pre-resize-cols
+pre-resize-cols | ExpectString | String.Contains("80") | Assert.Is(true)
+; Resize while session is active
+LocalShell.Resize(Session: resize-live-session Rows: 50 Cols: 200)
+Pause(0.3) ; let SIGWINCH propagate
+"tput cols" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: resize-live-session Timeout: 1000) >= post-resize-cols
+post-resize-cols | ExpectString | String.Contains("200") | Assert.Is(true)
+"Resize during running process works" | Log
+
+; Test large output doesn't hang (buffer truncation path)
+"Testing large output (buffer truncation)" | Log
+"seq 1 5000" | LocalShell.Execute(Session: shell-session Timeout: 15) >= big-result
+big-result.status | Assert.Is("completed")
+big-result.output | ExpectString | String.Contains("5000") | Assert.Is(true)
+"Large output completed without hanging" | Log
+
+; Test Read with StripAnsi
+"Testing StripAnsi on Read" | Log
+; Use Execute to produce ANSI output, then Read with StripAnsi
+; tput bold produces ANSI codes; we check they're stripped
+"echo -e '\\033[1mBOLD_TEXT\\033[0m'" | LocalShell.Execute(Session: shell-session CleanOutput: false) >= ansi-result
+ansi-result.output | ExpectString | String.Contains("BOLD_TEXT") | Assert.Is(true)
+; Now test that Read with StripAnsi can strip ANSI from raw output
+"echo -e '\\033[1mSTRIPPED_TEST\\033[0m'" | LocalShell.Write(Session: shell-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: shell-session StripAnsi: true Timeout: 1000) >= stripped
+stripped | ExpectString | String.Contains("STRIPPED_TEST") | Assert.Is(true)
+; Read with StripAnsi: false should contain raw bytes
+"echo -e '\\033[4mUNDERLINE\\033[0m'" | LocalShell.Write(Session: shell-session AppendNewline: true)
+Pause(0.5)
+LocalShell.Read(Session: shell-session StripAnsi: false Timeout: 1000) >= raw-ansi
+raw-ansi | ExpectString | String.Contains("UNDERLINE") | Assert.Is(true)
+"StripAnsi works" | Log
+
 ; Test session alive check
 "Testing session alive check" | Log
 shell-session | LocalShell.IsAlive | Assert.Is(true)

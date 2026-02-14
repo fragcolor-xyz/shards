@@ -34,32 +34,19 @@ use shards::types::BOOL_TYPES;
 use portable_pty::{CommandBuilder, PtySize};
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::channel;
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering};
 use std::time::Duration;
 
 // Configuration constants
-// These match the SSH module's patterns and timeouts
 const INITIAL_PROMPT_WAIT_MS: u64 = 500;
-const INITIAL_PROMPT_MAX_RETRIES: usize = 10;
-const READER_THREAD_TIMEOUT_MS: u64 = 50;
+const INITIAL_PROMPT_MAX_RETRIES: usize = 20;
 const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
-const COMMAND_MAX_ITERATIONS: usize = 50;
-// Interactive detection timeout: 3 seconds is a balance between responsiveness and false positives.
-// This may be insufficient for systems under heavy load, slow I/O, or commands with slow startup.
-// Consider making this configurable via a parameter in future iterations.
-const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const ITERATION_SLEEP_MS: u64 = 100;
+const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
 const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
-const SENDINPUT_MAX_ITERATIONS: usize = 30;
-// SendInput early-exit threshold: 2 seconds of no new data before checking shared buffer
-// This is intentionally shorter than INTERACTIVE_DETECTION_ITERATIONS (3s) because:
-// - SendInput typically deals with interactive prompts that respond quickly
-// - Execute needs longer timeout to avoid false positives with slow commands
-// - Early exit in SendInput improves responsiveness for "peek" operations
 const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds
-const MAX_BUFFER_BYTES: usize = 65536; // 64KB default, matches SSH module
-const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation to avoid repeated truncation
+const MAX_BUFFER_BYTES: usize = 65536; // 64KB default
+const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation
 
 // LocalShell session object wrapper
 mod local_shell {
@@ -74,18 +61,27 @@ mod local_shell {
 
     pub struct LocalShellSession {
         pub pair: Arc<Mutex<Option<portable_pty::PtyPair>>>,
+        #[allow(dead_code)] // Kept alive for Drop ordering; reader arc is moved into thread
         pub reader: Arc<Mutex<Box<dyn Read + Send>>>,
         pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
         pub is_alive: Arc<AtomicBool>,
         pub state: Arc<Mutex<SessionState>>,
         pub output_buffer: Arc<Mutex<Vec<u8>>>,
+        pub total_bytes_written: Arc<AtomicUsize>,
+        /// Read cursor for LocalShell.Read — tracks how many bytes have been consumed
+        /// by raw reads. Lives on the session so multiple Read shard instances share state.
+        pub read_position: Arc<AtomicUsize>,
         pub reader_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
         pub child: Arc<Mutex<Option<Box<dyn portable_pty::Child + Send + Sync>>>>,
+        pub prompt_marker: Option<String>,
+        pub term_rows: Arc<AtomicU16>,
+        pub term_cols: Arc<AtomicU16>,
     }
 
     #[derive(Clone)]
     pub struct InteractiveState {
+        #[allow(dead_code)] // Stored for debugging/future use
         pub original_cmd: String,
     }
 
@@ -106,12 +102,7 @@ mod local_shell {
             }
 
             // Step 3: CRITICAL - Drop the PTY pair to close file descriptors
-            // This MUST happen before we try to lock the reader, because:
-            // - The reader thread holds reader lock while blocked in read()
-            // - We can't get the lock while the thread is blocking
-            // - Dropping the pair closes the master PTY FD
-            // - This causes the blocking read() to return with EOF
-            // - Then the reader thread releases the lock and exits
+            // This causes the blocking read() in the reader thread to return with EOF
             if let Ok(mut pair_opt) = self.pair.lock() {
                 if let Some(pair) = pair_opt.take() {
                     shlog_trace!("Dropping PTY pair to close file descriptors");
@@ -121,12 +112,10 @@ mod local_shell {
             }
 
             // Step 4: Wait for reader thread with timeout
-            // The thread should now exit quickly since the PTY FD is closed
             if let Ok(mut thread_opt) = self.reader_thread.lock() {
                 if let Some(thread) = thread_opt.take() {
                     shlog_trace!("Waiting for reader thread to finish");
 
-                    // Give it 2 seconds to exit gracefully
                     let mut finished = false;
                     for _i in 0..20 {
                         if thread.is_finished() {
@@ -141,7 +130,6 @@ mod local_shell {
                         shlog_trace!("Reader thread joined successfully");
                     } else {
                         shlog_error!("Reader thread did not finish within timeout, leaving it detached (thread leak)");
-                        // Don't join - let it leak rather than hang forever
                     }
                 }
             }
@@ -162,112 +150,13 @@ lazy_static! {
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
 }
 
-// Helper function to check shared buffer for prompt in a specific range
-// This prevents race conditions where the reader thread adds more data after we stop reading,
-// and ensures we only check NEW output received after SendInput was called (not old data)
-//
-// IMPORTANT: If buffer truncation occurs, positions become invalid. This function detects
-// truncation and returns false to avoid checking invalid ranges.
-fn check_buffer_for_prompt(
-    local_shell: &LocalShellSession,
-    from_position: usize,
-    up_to_position: usize
-) -> Result<bool, &'static str> {
-    let shared_buffer = local_shell.output_buffer.lock()
-        .map_err(|_| "Buffer lock poisoned")?;
-
-    // Capture buffer length FIRST to prevent TOCTOU race with reader thread
-    let initial_buffer_len = shared_buffer.len();
-
-    // Check for invalid position range (prevents integer underflow)
-    // This can happen if from_position > up_to_position after buffer truncation
-    if from_position > up_to_position {
-        shlog_debug!("Invalid position range: from {} > to {}, skipping check", from_position, up_to_position);
-        return Ok(false);
-    }
-
-    // Check if buffer was truncated by looking for truncation message at the start
-    // If truncated, absolute positions (from_position, up_to_position) are invalid
-    // HOWEVER, we can still check if the current buffer (after truncation message)
-    // contains a prompt. This is SAFE because:
-    //
-    // 1. Execute CLEARS the buffer before each command (see line ~716)
-    // 2. The buffer only contains output from the CURRENT command
-    // 3. truncate_to_tail() keeps the most recent 93% of output (tail)
-    // 4. Shell prompts appear at the END of command output
-    // 5. Therefore, if a prompt exists, it will be in the kept tail
-    //
-    // This violates the "check only NEW data" contract, but it's acceptable because:
-    // - After truncation, position-based checking is impossible anyway
-    // - The tail is guaranteed to be from the current command (buffer cleared per-command)
-    // - Prompts are always at the end (so they'll be in the tail if present)
-    // - Without this, commands with >64KB output would hang forever
-    //
-    // For SendInput specifically:
-    // - The buffer might contain both old interactive prompt + new output
-    // - But the tail will contain the MOST RECENT output
-    // - If command completed, the final prompt will be in the tail
-    // - If still waiting, the interactive prompt will be in the tail
-    if shared_buffer.starts_with(b"[... output truncated ...]") {
-        shlog_debug!("Buffer was truncated, positions invalid, checking current buffer state instead");
-
-        // Skip truncation message and check the tail that was kept
-        // truncate_to_tail() prepends "[... output truncated ...]\n" then the tail
-        let truncation_msg_len = b"[... output truncated ...]\n".len();
-        if shared_buffer.len() > truncation_msg_len {
-            let current_tail = &shared_buffer[truncation_msg_len..];
-            let output_str = String::from_utf8_lossy(current_tail);
-            let has_prompt = is_prompt(&output_str);
-            shlog_debug!("Truncated buffer tail check: prompt detected = {}", has_prompt);
-            return Ok(has_prompt);
-        }
-
-        // Truncation message exists but no tail data yet
-        return Ok(false);
-    }
-
-    // CRITICAL: Re-check buffer length after truncation check to prevent TOCTOU race
-    // The reader thread could have truncated the buffer between the initial length
-    // capture and now, invalidating our positions
-    let current_buffer_len = shared_buffer.len();
-    if current_buffer_len != initial_buffer_len {
-        shlog_debug!("Buffer length changed ({} -> {}), positions may be invalid, skipping check",
-            initial_buffer_len, current_buffer_len);
-        return Ok(false);
-    }
-
-    // Clamp positions to current buffer size
-    // NOTE: After all the checks above (range validation, truncation, buffer length),
-    // positions should be valid. This clamping is defensive - if positions exceed
-    // buffer length here, it indicates a bug in earlier logic or a race condition.
-    // We clamp instead of panicking to avoid crashes, but log if this happens.
-    let safe_from = from_position.min(current_buffer_len);
-    let safe_to = up_to_position.min(current_buffer_len);
-
-    if from_position > current_buffer_len || up_to_position > current_buffer_len {
-        shlog_warn!("Positions exceed buffer length after validation: from={}, to={}, buffer_len={}. This indicates a bug or race condition.",
-            from_position, up_to_position, current_buffer_len);
-    }
-
-    // Only check the relevant range (data received since from_position)
-    if safe_to <= safe_from {
-        return Ok(false); // No new data to check
-    }
-
-    // RACE WINDOW LIMITATION: There's still a small window between the buffer length
-    // check above and this slice operation where the reader thread could modify the
-    // buffer. Rust's bounds checking prevents crashes, but we might read partial data.
-    // The alternative (holding lock for entire function) would block the reader thread
-    // and hurt concurrency. This is an acceptable trade-off for performance.
-    let relevant_output = &shared_buffer[safe_from..safe_to];
-    let output_str = String::from_utf8_lossy(relevant_output);
-    Ok(is_prompt(&output_str))
+// Helper: detect shell prompts
+fn is_prompt(text: &str) -> bool {
+    is_prompt_or_marker(text, None)
 }
 
-// Helper function to detect shell prompts (NOT interactive program prompts)
-// Reused from SSH module
-fn is_prompt(text: &str) -> bool {
-    // Strip ANSI codes first before checking for prompt
+// Helper: detect shell prompts with optional sentinel marker
+fn is_prompt_or_marker(text: &str, marker: Option<&str>) -> bool {
     let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
     let cleaned = String::from_utf8_lossy(&stripped_bytes);
 
@@ -275,46 +164,47 @@ fn is_prompt(text: &str) -> bool {
     if let Some(last) = lines.last() {
         let trimmed = last.trim();
 
+        // Check sentinel marker first (most reliable)
+        if let Some(m) = marker {
+            if trimmed.contains(m) {
+                return true;
+            }
+        }
+
         // Exclude interactive program prompts like >>> (Python), >> (continuation)
-        // These indicate we're IN a program, not at the shell
         if trimmed.ends_with(">>>") || trimmed.ends_with(">>") {
             return false;
         }
 
-        // Check for common SHELL prompt patterns only
+        // Check for common SHELL prompt patterns
         trimmed.ends_with("$ ")
             || trimmed.ends_with("$")
             || trimmed.ends_with("# ")
             || trimmed.ends_with("#")
-            || trimmed.ends_with("> ")  // Windows/PowerShell prompt
-            || trimmed.ends_with(">")   // Single > is OK (but not >> or >>>)
-            || trimmed.ends_with("% ")  // zsh prompt
-            || trimmed.ends_with("%")   // zsh prompt
+            || trimmed.ends_with("> ")
+            || trimmed.ends_with(">")
+            || trimmed.ends_with("% ")
+            || trimmed.ends_with("%")
     } else {
         false
     }
 }
 
-// Helper function to detect common interactive prompts (password, confirmation, etc.)
-// These patterns indicate a command is waiting for user input
+// Helper: detect common interactive prompts (password, confirmation, etc.)
 fn is_interactive_prompt(text: &str) -> bool {
-    // Strip ANSI codes first
     let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
     let cleaned = String::from_utf8_lossy(&stripped_bytes);
 
-    // Check last few lines for interactive patterns
     let lines: Vec<&str> = cleaned.lines().collect();
     if lines.is_empty() {
         return false;
     }
 
-    // Check last 3 lines (some prompts span multiple lines)
     let check_lines = if lines.len() > 3 { &lines[lines.len()-3..] } else { &lines[..] };
 
     for line in check_lines {
         let lower = line.to_lowercase();
 
-        // Common interactive patterns
         if lower.contains("password:")
             || lower.contains("passphrase:")
             || lower.contains("continue?")
@@ -333,24 +223,20 @@ fn is_interactive_prompt(text: &str) -> bool {
     false
 }
 
-// Helper function to mark session as corrupted after encountering a critical error (like lock poisoning)
+// Helper: mark session as corrupted
 fn mark_session_corrupted(local_shell: &LocalShellSession, error_context: &str) {
     shlog_error!("Critical error in LocalShell ({}), marking session as corrupted", error_context);
     local_shell.is_alive.store(false, Ordering::Release);
-    // Try to set state, but if the lock is poisoned, is_alive=false is enough
     if let Ok(mut state) = local_shell.state.lock() {
         *state = SessionState::Corrupted(error_context.to_string());
     }
 }
 
-// Helper function to clean output (remove ANSI codes, control chars, and trailing prompts)
-// Reused from SSH module
-fn clean_output(output: &str) -> String {
-    // Strip ANSI escape sequences
+// Helper: clean output (remove ANSI codes, control chars, and trailing prompts)
+fn clean_output_with_marker(output: &str, marker: Option<&str>) -> String {
     let stripped_bytes = strip_ansi_escapes::strip(output);
     let text = String::from_utf8_lossy(&stripped_bytes);
 
-    // Remove control characters (except newlines and tabs)
     let no_control: String = text.chars()
         .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
         .collect();
@@ -360,28 +246,24 @@ fn clean_output(output: &str) -> String {
     // Remove trailing prompt if present
     if !lines.is_empty() {
         let last_line = lines.last().unwrap();
-        if is_prompt(last_line) {
+        if is_prompt_or_marker(last_line, marker) {
             lines.pop();
         }
     }
 
-    // Join lines and trim
     let result = lines.join("\n");
     result.trim().to_string()
 }
 
-// Helper function to truncate output buffer to keep tail
-// Reused from SSH module
+// Helper: truncate output buffer to keep tail
 fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
     if buffer.len() <= max_bytes {
         return false;
     }
 
-    // Keep last ~93% of max_bytes to avoid repeated truncation on every read
-    let keep_bytes = (max_bytes * 93) / 100;
+    let keep_bytes = (max_bytes * BUFFER_TRUNCATE_KEEP_RATIO) / 100;
     let truncate_msg = b"[... output truncated ...]\n";
 
-    // Remove from the front, keep the tail
     let skip = buffer.len() - keep_bytes + truncate_msg.len();
     let tail: Vec<u8> = buffer.drain(skip..).collect();
     buffer.clear();
@@ -389,6 +271,104 @@ fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
     buffer.extend_from_slice(&tail);
 
     true
+}
+
+// Helper: check if session is alive, return descriptive error if not
+fn check_session_alive(local_shell: &LocalShellSession) -> Result<(), &'static str> {
+    if !local_shell.is_alive.load(Ordering::Acquire) {
+        if let Ok(state) = local_shell.state.lock() {
+            return Err(match *state {
+                SessionState::ProcessDied => "Local shell process has exited",
+                SessionState::Corrupted(ref reason) => {
+                    shlog_error!("Session corrupted: {}", reason);
+                    "Local shell session corrupted due to internal error"
+                },
+                SessionState::Running => "Local shell is not alive (unexpected state)",
+            });
+        } else {
+            return Err("Local shell session corrupted (state lock poisoned)");
+        }
+    }
+    Ok(())
+}
+
+// Helper: extract LocalShellSession from Var
+fn get_session(session_var: &Var) -> Result<&LocalShellSession, &'static str> {
+    let local_shell = unsafe {
+        Var::from_ref_counted_object::<LocalShellSession>(session_var, &*LOCAL_SHELL_TYPE)?
+    };
+    Ok(unsafe { &*(local_shell as *const LocalShellSession) })
+}
+
+// Start the reader thread for a session's shared buffer
+fn start_reader_thread(
+    reader_arc: Arc<Mutex<Box<dyn Read + Send>>>,
+    buffer: Arc<Mutex<Vec<u8>>>,
+    total_bytes: Arc<AtomicUsize>,
+    alive: Arc<AtomicBool>,
+    state: Arc<Mutex<SessionState>>,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        shlog_trace!("Reader thread started");
+        let mut buf = [0u8; 4096];
+
+        loop {
+            if !alive.load(Ordering::Acquire) {
+                shlog_trace!("Reader thread exiting");
+                break;
+            }
+
+            match reader_arc.lock() {
+                Ok(mut reader) => {
+                    match reader.read(&mut buf) {
+                        Ok(n) if n > 0 => {
+                            match buffer.lock() {
+                                Ok(mut b) => {
+                                    b.extend_from_slice(&buf[..n]);
+
+                                    if b.len() > MAX_BUFFER_BYTES {
+                                        if truncate_to_tail(&mut b, MAX_BUFFER_BYTES) {
+                                            shlog_trace!("Reader thread: buffer truncated to {} bytes", b.len());
+                                        }
+                                    }
+
+                                    // Increment monotonic counter AFTER write
+                                    total_bytes.fetch_add(n, Ordering::Release);
+
+                                    shlog_trace!("Reader thread: read {} bytes, buffer now {} bytes", n, b.len());
+                                }
+                                Err(e) => {
+                                    shlog_trace!("Reader thread: buffer lock poisoned: {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                        Ok(_) => {
+                            alive.store(false, Ordering::Release);
+                            if let Ok(mut s) = state.lock() {
+                                *s = SessionState::ProcessDied;
+                            }
+                            shlog_trace!("Reader thread: EOF detected, process died");
+                            break;
+                        }
+                        Err(e) => {
+                            alive.store(false, Ordering::Release);
+                            if let Ok(mut s) = state.lock() {
+                                *s = SessionState::ProcessDied;
+                            }
+                            shlog_trace!("Reader thread: read error: {}", e);
+                            break;
+                        }
+                    }
+                }
+                Err(e) => {
+                    shlog_trace!("Reader thread: reader lock poisoned: {}", e);
+                    break;
+                }
+            }
+        }
+        shlog_trace!("Reader thread finished");
+    })
 }
 
 // ============================================================================
@@ -410,6 +390,12 @@ pub struct CreateShard {
     #[shard_param("ShellArgs", "Arguments to pass to shell (default: ['--login', '-i'] for bash on Unix)", [common_type::strings, common_type::strings_var, common_type::none])]
     shell_args: ParamVar,
 
+    #[shard_param("Rows", "PTY rows (default: 24)", [common_type::int, common_type::int_var, common_type::none])]
+    rows: ParamVar,
+
+    #[shard_param("Cols", "PTY columns (default: 80)", [common_type::int, common_type::int_var, common_type::none])]
+    cols: ParamVar,
+
     output: ClonedVar,
 }
 
@@ -420,6 +406,8 @@ impl Default for CreateShard {
             shell: ParamVar::new(Var::default()),
             working_dir: ParamVar::new(Var::default()),
             shell_args: ParamVar::new(Var::default()),
+            rows: ParamVar::new(24i64.into()),
+            cols: ParamVar::new(80i64.into()),
             output: ClonedVar::default(),
         }
     }
@@ -461,7 +449,18 @@ impl BlockingShard for CreateShard {
         let shell_var = self.shell.get();
         let working_dir_var = self.working_dir.get();
 
-        // Get PTY system
+        // Get PTY size params
+        let rows_val = self.rows.get();
+        let cols_val = self.cols.get();
+        let rows: u16 = if rows_val.is_none() { 24 } else {
+            let v: i64 = rows_val.as_ref().try_into().unwrap_or(24);
+            v.max(1).min(u16::MAX as i64) as u16
+        };
+        let cols: u16 = if cols_val.is_none() { 80 } else {
+            let v: i64 = cols_val.as_ref().try_into().unwrap_or(80);
+            v.max(1).min(u16::MAX as i64) as u16
+        };
+
         let pty_system = portable_pty::native_pty_system();
 
         // Determine shell command
@@ -469,7 +468,6 @@ impl BlockingShard for CreateShard {
             let shell_path: &str = shell_var.as_ref().try_into()?;
             shell_path.to_string()
         } else {
-            // Default shell based on platform
             #[cfg(unix)]
             let default_shell = "/bin/bash";
             #[cfg(windows)]
@@ -478,31 +476,26 @@ impl BlockingShard for CreateShard {
             default_shell.to_string()
         };
 
-        shlog_trace!("Creating local shell with: {}", shell_cmd);
+        shlog_trace!("Creating local shell with: {} ({}x{})", shell_cmd, cols, rows);
 
-        // Create PTY pair
         let pair = pty_system
             .openpty(PtySize {
-                rows: 24,
-                cols: 80,
+                rows,
+                cols,
                 pixel_width: 0,
                 pixel_height: 0,
             })
             .map_err(|_| "Failed to open PTY")?;
 
-        // Set up command
         let mut cmd = CommandBuilder::new(&shell_cmd);
 
-        // Set working directory if specified
         if !working_dir_var.is_none() {
             let wd: &str = working_dir_var.as_ref().try_into()?;
             cmd.cwd(wd);
         }
 
-        // Set shell arguments
         let shell_args_var = self.shell_args.get();
         if !shell_args_var.is_none() {
-            // User provided custom arguments
             let args_seq: shards::types::SeqVar = shell_args_var.as_ref().try_into()
                 .map_err(|_| "ShellArgs must be a sequence of strings")?;
             for arg_var in args_seq.iter() {
@@ -517,7 +510,6 @@ impl BlockingShard for CreateShard {
                 cmd.arg(arg_str);
             }
         } else {
-            // Default arguments for bash: --login to get environment, -i for interactive mode
             #[cfg(unix)]
             if shell_cmd.contains("bash") {
                 cmd.arg("--login");
@@ -525,129 +517,103 @@ impl BlockingShard for CreateShard {
             }
         }
 
-        // Spawn the child process and store it for cleanup
         let child = pair
             .slave
             .spawn_command(cmd)
             .map_err(|_| "Failed to spawn shell")?;
 
-        // Get reader and writer
         let reader = pair.master.try_clone_reader()
             .map_err(|_| "Failed to clone reader")?;
         let writer = pair.master.take_writer()
             .map_err(|_| "Failed to take writer")?;
 
-        // Wrap in Arc<Mutex<>> for shared access
         let reader_arc = Arc::new(Mutex::new(reader));
         let writer_arc = Arc::new(Mutex::new(writer));
 
-        // Wait for initial prompt
+        // Create shared state FIRST
+        let output_buffer = Arc::new(Mutex::new(Vec::new()));
+        let total_bytes_written = Arc::new(AtomicUsize::new(0));
+        let is_alive = Arc::new(AtomicBool::new(true));
+        let state = Arc::new(Mutex::new(SessionState::Running));
+
+        // Start reader thread BEFORE waiting for initial prompt (Bug 1 fix)
+        let reader_thread = start_reader_thread(
+            Arc::clone(&reader_arc),
+            Arc::clone(&output_buffer),
+            Arc::clone(&total_bytes_written),
+            Arc::clone(&is_alive),
+            Arc::clone(&state),
+        );
+
+        // Wait for initial prompt by polling the shared buffer (no throwaway threads)
         std::thread::sleep(Duration::from_millis(INITIAL_PROMPT_WAIT_MS));
 
-        let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
-
         for _ in 0..INITIAL_PROMPT_MAX_RETRIES {
-            let (tx, rx) = channel();
-            let reader_clone = Arc::clone(&reader_arc);
-
-            std::thread::spawn(move || {
-                if let Ok(mut reader) = reader_clone.lock() {
-                    let mut buf = [0u8; 4096];
-                    match reader.read(&mut buf) {
-                        Ok(n) => { let _ = tx.send((n, buf)); }
-                        Err(_) => { let _ = tx.send((0, buf)); }
-                    }
-                }
-            });
-
-            match rx.recv_timeout(Duration::from_millis(ITERATION_SLEEP_MS)) {
-                Ok((n, buf)) if n > 0 => {
-                    output_buffer.extend_from_slice(&buf[..n]);
-                    let output_str = String::from_utf8_lossy(&output_buffer);
+            {
+                let buf = output_buffer.lock().map_err(|_| "Buffer lock poisoned")?;
+                if !buf.is_empty() {
+                    let output_str = String::from_utf8_lossy(&buf);
                     if is_prompt(&output_str) {
+                        shlog_trace!("Initial prompt detected");
                         break;
                     }
                 }
-                _ => {}
             }
             std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         shlog_trace!("Shell ready");
-        shlog_trace!("Local shell created successfully");
 
-        // Create shared output buffer and state
-        let output_buffer = Arc::new(Mutex::new(Vec::new()));
-        let is_alive = Arc::new(AtomicBool::new(true));
-        let state = Arc::new(Mutex::new(SessionState::Running));
+        // Try to set PS1 sentinel marker for reliable prompt detection
+        let marker = format!("__SHARDS_PROMPT_{:x}__", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() & 0xFFFFFFFF);
 
-        // Start reader thread
-        let reader_clone = Arc::clone(&reader_arc);
-        let buffer_clone = Arc::clone(&output_buffer);
-        let alive_clone = Arc::clone(&is_alive);
-
-        let reader_thread = std::thread::spawn(move || {
-            shlog_trace!("Reader thread started");
-            let mut buf = [0u8; 4096];
-
-            loop {
-                // Check if we should exit (lock-free atomic check)
-                if !alive_clone.load(Ordering::Acquire) {
-                    shlog_trace!("Reader thread exiting");
-                    break;
-                }
-
-                // Read from PTY (this will block until data is available)
-                // The is_alive check above ensures we exit gracefully when session is closed
-                match reader_clone.lock() {
-                    Ok(mut reader) => {
-                        match reader.read(&mut buf) {
-                            Ok(n) if n > 0 => {
-                                // Append to shared buffer with truncation
-                                match buffer_clone.lock() {
-                                    Ok(mut buffer) => {
-                                        buffer.extend_from_slice(&buf[..n]);
-
-                                        // Truncate buffer if it exceeds max size
-                                        if buffer.len() > MAX_BUFFER_BYTES {
-                                            if truncate_to_tail(&mut buffer, MAX_BUFFER_BYTES) {
-                                                shlog_trace!("Reader thread: buffer truncated to {} bytes", buffer.len());
-                                            }
-                                        }
-
-                                        shlog_trace!("Reader thread: read {} bytes, buffer now {} bytes", n, buffer.len());
-                                    }
-                                    Err(e) => {
-                                        shlog_trace!("Reader thread: buffer lock poisoned: {}", e);
-                                        break;
-                                    }
-                                }
-                            }
-                            Ok(_) => {
-                                // EOF - process died
-                                alive_clone.store(false, Ordering::Release);
-                                shlog_trace!("Reader thread: EOF detected, process died");
-                                break;
-                            }
-                            Err(e) => {
-                                // Read error - process died or FD closed
-                                alive_clone.store(false, Ordering::Release);
-                                shlog_trace!("Reader thread: read error: {}", e);
-                                break;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        shlog_trace!("Reader thread: reader lock poisoned: {}", e);
-                        break;
-                    }
+        // Send PS1 setup command
+        let prompt_marker = {
+            let ps1_cmd = format!("export PS1='{}'\n", marker);
+            let mut set_marker = false;
+            if let Ok(mut w) = writer_arc.lock() {
+                if w.write_all(ps1_cmd.as_bytes()).is_ok() && w.flush().is_ok() {
+                    set_marker = true;
                 }
             }
-            shlog_trace!("Reader thread finished");
-        });
 
-        // Create LocalShellSession object
+            if set_marker {
+                // Wait for the marker to appear
+                std::thread::sleep(Duration::from_millis(300));
+
+                // Check if marker appeared in buffer
+                let marker_found = if let Ok(buf) = output_buffer.lock() {
+                    let s = String::from_utf8_lossy(&buf);
+                    s.contains(&marker)
+                } else {
+                    false
+                };
+
+                if marker_found {
+                    shlog_trace!("Sentinel prompt marker set: {}", marker);
+                    // Clear buffer after marker setup - we don't want setup output in command results
+                    if let Ok(mut buf) = output_buffer.lock() {
+                        buf.clear();
+                    }
+                    total_bytes_written.store(0, Ordering::Release);
+                    Some(marker)
+                } else {
+                    shlog_trace!("Sentinel prompt marker not detected, falling back to pattern matching");
+                    // Clear buffer anyway
+                    if let Ok(mut buf) = output_buffer.lock() {
+                        buf.clear();
+                    }
+                    total_bytes_written.store(0, Ordering::Release);
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
         let local_shell = LocalShellSession {
             pair: Arc::new(Mutex::new(Some(pair))),
             reader: reader_arc,
@@ -656,8 +622,13 @@ impl BlockingShard for CreateShard {
             is_alive,
             state,
             output_buffer,
+            total_bytes_written,
+            read_position: Arc::new(AtomicUsize::new(0)),
             reader_thread: Arc::new(Mutex::new(Some(reader_thread))),
             child: Arc::new(Mutex::new(Some(child))),
+            prompt_marker,
+            term_rows: Arc::new(AtomicU16::new(rows)),
+            term_cols: Arc::new(AtomicU16::new(cols)),
         };
 
         let shell_var = Var::new_ref_counted(local_shell, &*LOCAL_SHELL_TYPE);
@@ -682,8 +653,6 @@ pub struct ExecuteShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    // Timeout for command execution in seconds
-    // The implementation uses 10 iterations per second (ITERATION_SLEEP_MS = 100ms)
     #[shard_param("Timeout", "Command timeout in seconds (default: 30)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -748,35 +717,14 @@ impl BlockingShard for ExecuteShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
-        // Get timeout parameter and calculate max iterations
-        // Each iteration is ITERATION_SLEEP_MS (100ms), so timeout_secs * 10 = max iterations
         let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
-        let timeout_secs = if timeout_secs <= 0 { 30 } else { timeout_secs };  // Default to 30s if invalid
-        let max_iterations = (timeout_secs as usize) * 10;  // 10 iterations per second
+        let timeout_secs = if timeout_secs <= 0 { 30 } else { timeout_secs };
+        let max_iterations = (timeout_secs as usize) * 10;
 
-        // Extract local shell object
-        let local_shell = unsafe {
-            Var::from_ref_counted_object::<LocalShellSession>(&session_var, &*LOCAL_SHELL_TYPE)?
-        };
-        let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
+        let local_shell = get_session(&session_var)?;
+        check_session_alive(local_shell)?;
 
-        // Check if shell is still alive
-        if !local_shell.is_alive.load(Ordering::Acquire) {
-            // Check state to provide better error message
-            if let Ok(state) = local_shell.state.lock() {
-                return Err(match *state {
-                    SessionState::ProcessDied => "Local shell process has exited",
-                    SessionState::Corrupted(ref reason) => {
-                        shlog_error!("Session corrupted: {}", reason);
-                        "Local shell session corrupted due to internal error"
-                    },
-                    SessionState::Running => "Local shell is not alive (unexpected state)",
-                });
-            } else {
-                // State lock is poisoned too
-                return Err("Local shell session corrupted (state lock poisoned)");
-            }
-        }
+        let marker = local_shell.prompt_marker.as_deref();
 
         // Check if there's a pending interactive command
         {
@@ -789,9 +737,6 @@ impl BlockingShard for ExecuteShard {
             };
             if pending.is_some() {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
-
-                // Send Ctrl+C to cancel the interactive command
-                // Writer lock is released immediately after write to avoid blocking
                 {
                     let mut writer = match local_shell.writer.lock() {
                         Ok(guard) => guard,
@@ -802,20 +747,13 @@ impl BlockingShard for ExecuteShard {
                     };
                     let _ = writer.write_all(&[3]);
                     let _ = writer.flush();
-                } // Writer lock released here
-
-                // Give the shell time to process Ctrl+C
-                // Any response will be read by the reader thread into the shared buffer
+                }
                 std::thread::sleep(Duration::from_millis(300));
-
-                // Note: We don't need to drain the response - the shared buffer will be
-                // cleared before the next command anyway, and the reader thread handles all reads
-
                 *pending = None;
             }
         }
 
-        // Clear shared buffer before sending command
+        // Clear shared buffer and reset monotonic counter before sending command
         {
             let mut shared_buffer = match local_shell.output_buffer.lock() {
                 Ok(guard) => guard,
@@ -825,7 +763,9 @@ impl BlockingShard for ExecuteShard {
                 }
             };
             shared_buffer.clear();
-            shlog_trace!("Cleared shared buffer before command");
+            local_shell.total_bytes_written.store(0, Ordering::Release);
+            local_shell.read_position.store(0, Ordering::Release);
+            shlog_trace!("Cleared shared buffer and reset counters before command");
         }
 
         // Send command
@@ -844,40 +784,33 @@ impl BlockingShard for ExecuteShard {
                 .map_err(|_| "Failed to flush command writer (IO error)")?;
         }
 
-        // Read output from shared buffer with timeout-based prompt detection
+        // Read output using monotonic byte counter (Bug 2 fix)
         let mut output_buffer = Vec::new();
-        let mut last_buffer_size = 0;
+        let mut last_total_bytes = 0usize;
         let mut no_data_count = 0;
         let mut prompt_detected = false;
         let mut was_truncated = false;
 
         shlog_trace!("Starting to read command output from shared buffer");
-
-        // Give shell time to process command
         std::thread::sleep(Duration::from_millis(COMMAND_OUTPUT_WAIT_MS));
 
         for iteration in 0..max_iterations {
-            // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
-            let new_data = {
-                let shared_buffer = local_shell.output_buffer.lock()
-                    .map_err(|_| "Buffer lock poisoned")?;
+            // Use monotonic counter to detect new data (immune to truncation)
+            let current_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+            let has_new_data = current_total > last_total_bytes;
 
-                // Only copy new data since last read
-                if shared_buffer.len() > last_buffer_size {
-                    shared_buffer[last_buffer_size..].to_vec()
-                } else {
-                    Vec::new()
-                }
-            };
+            if has_new_data {
+                // New data arrived — snapshot the buffer contents
+                let snapshot = {
+                    let shared_buffer = local_shell.output_buffer.lock()
+                        .map_err(|_| "Buffer lock poisoned")?;
+                    shared_buffer.clone()
+                };
 
-            let bytes_read = new_data.len();
+                output_buffer = snapshot;
+                last_total_bytes = current_total;
 
-            if bytes_read > 0 {
-                // Append new data to our local output buffer
-                output_buffer.extend_from_slice(&new_data);
-                last_buffer_size += bytes_read;
-
-                // Truncate if buffer exceeds max size
+                // Truncate local copy if needed
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
                     was_truncated = true;
                     shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
@@ -886,19 +819,26 @@ impl BlockingShard for ExecuteShard {
                 let output_str = String::from_utf8_lossy(&output_buffer);
 
                 shlog_trace!(
-                    "Read {} bytes (iteration {}), buffer size: {}, last line: {:?}",
-                    bytes_read,
+                    "Read data (iteration {}), total_bytes: {}, buffer size: {}, last line: {:?}",
                     iteration,
+                    current_total,
                     output_buffer.len(),
                     output_str.lines().last()
                 );
 
                 // Check for prompt
-                if is_prompt(&output_str) {
+                if is_prompt_or_marker(&output_str, marker) {
                     prompt_detected = true;
                     shlog_trace!("Prompt detected in output, command completed");
                     break;
                 }
+
+                // Bug 3 fix: check for interactive prompt IMMEDIATELY when we have data
+                if is_interactive_prompt(&output_str) {
+                    shlog_trace!("Interactive prompt pattern detected early: {:?}", output_str.lines().last());
+                    break;
+                }
+
                 no_data_count = 0;
             } else {
                 no_data_count += 1;
@@ -909,61 +849,47 @@ impl BlockingShard for ExecuteShard {
                     output_buffer.is_empty()
                 );
 
-                // Interactive command detection logic:
-                // We detect a command as interactive if it stops producing output but doesn't return to shell prompt.
-                //
-                // Conditions explained:
-                // 1. no_data_count >= INTERACTIVE_DETECTION_ITERATIONS (30 iterations = 3 seconds):
-                //    - Gives command enough time to complete output before assuming it's waiting for input
-                //    - 3 seconds balances between false positives (slow commands) and responsiveness
-                //
-                // 2. !output_buffer.is_empty():
-                //    - Command must have produced SOME output (avoids detecting hung commands as interactive)
-                //    - Interactive prompts typically display text before waiting
-                //
-                // 3. iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 (≥15 iterations = ≥1.5 seconds):
-                //    - Prevents premature detection during command startup
-                //    - Allows time for fast commands to complete normally
-                //
+                // Fallback interactive detection after 3 seconds of silence with some output
                 if no_data_count >= INTERACTIVE_DETECTION_ITERATIONS && !output_buffer.is_empty() && iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 {
                     let output_str = String::from_utf8_lossy(&output_buffer);
 
-                    // First check for shell prompt (command completed normally)
-                    if is_prompt(&output_str) {
+                    if is_prompt_or_marker(&output_str, marker) {
                         prompt_detected = true;
                         shlog_trace!("Prompt detected on final check");
                         break;
                     }
 
-                    // Check for common interactive prompt patterns (password, confirmation, etc.)
                     if is_interactive_prompt(&output_str) {
                         shlog_trace!("Interactive prompt pattern detected: {:?}", output_str.lines().last());
                         break;
                     }
 
-                    // No shell prompt, no obvious interactive pattern, but no new data for 2 seconds
-                    // Likely an interactive command waiting for input
-                    shlog_trace!("Command appears to be interactive (no new data for 2s, no prompt detected)");
+                    shlog_trace!("Command appears to be interactive (no new data for 3s, no prompt detected)");
                     break;
                 }
             }
             std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        // Determine status and prepare output
+        // Build result table
         let mut result_table = AutoTableVar::new();
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
 
         if prompt_detected {
-            // Command completed normally
+            // Try to capture exit code
+            let exit_code = capture_exit_code(local_shell, marker);
+
             let final_output = if should_clean {
-                clean_output(&output_str)
+                clean_output_with_marker(&output_str, marker)
             } else {
                 output_str
             };
 
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+            if let Some(code) = exit_code {
+                result_table.0.insert_fast_static("exit_code", &Var::from(code));
+            }
             if was_truncated {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
@@ -978,7 +904,7 @@ impl BlockingShard for ExecuteShard {
             }
 
             let partial_output = if should_clean {
-                clean_output(&output_str)
+                clean_output_with_marker(&output_str, marker)
             } else {
                 output_str
             };
@@ -994,9 +920,73 @@ impl BlockingShard for ExecuteShard {
             }
         }
 
+        // Sync read position so subsequent LocalShell.Read doesn't pick up stale data
+        // from command execution or exit code capture
+        let final_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+        local_shell.read_position.store(final_total, Ordering::Release);
+
         self.output = result_table.to_cloned();
         Ok(self.output.0)
     }
+}
+
+// Helper: capture exit code by sending `echo $?` after command completes
+fn capture_exit_code(local_shell: &LocalShellSession, marker: Option<&str>) -> Option<i64> {
+    // Clear buffer, send echo $?, wait for prompt, parse result
+    {
+        let mut buf = match local_shell.output_buffer.lock() {
+            Ok(b) => b,
+            Err(_) => return None,
+        };
+        buf.clear();
+        local_shell.total_bytes_written.store(0, Ordering::Release);
+        local_shell.read_position.store(0, Ordering::Release);
+    }
+
+    {
+        let mut writer = match local_shell.writer.lock() {
+            Ok(w) => w,
+            Err(_) => return None,
+        };
+        if writer.write_all(b"echo $?\n").is_err() || writer.flush().is_err() {
+            return None;
+        }
+    }
+
+    // Wait for response
+    std::thread::sleep(Duration::from_millis(200));
+
+    for _ in 0..10 {
+        let snapshot = {
+            let buf = local_shell.output_buffer.lock().ok()?;
+            buf.clone()
+        };
+
+        let output = String::from_utf8_lossy(&snapshot);
+        if is_prompt_or_marker(&output, marker) {
+            // Parse exit code from output
+            let stripped = strip_ansi_escapes::strip(output.as_bytes());
+            let cleaned = String::from_utf8_lossy(&stripped);
+            for line in cleaned.lines() {
+                let trimmed = line.trim();
+                // Skip the echo command itself and the prompt
+                if trimmed == "echo $?" || trimmed.is_empty() {
+                    continue;
+                }
+                if is_prompt_or_marker(trimmed, marker) {
+                    continue;
+                }
+                if let Ok(code) = trimmed.parse::<i64>() {
+                    return Some(code);
+                }
+            }
+            return None;
+        }
+
+        std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
+    }
+
+    None
 }
 
 // ============================================================================
@@ -1015,8 +1005,6 @@ pub struct SendInputShard {
     #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
     session: ParamVar,
 
-    // Timeout for reading response after sending input, in seconds
-    // The implementation uses 10 iterations per second (ITERATION_SLEEP_MS = 100ms)
     #[shard_param("Timeout", "Timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
@@ -1076,34 +1064,14 @@ impl BlockingShard for SendInputShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
-        // Get timeout parameter and calculate max iterations
         let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
-        let timeout_secs = if timeout_secs <= 0 { 10 } else { timeout_secs };  // Default to 10s if invalid
-        let max_iterations = (timeout_secs as usize) * 10;  // 10 iterations per second
+        let timeout_secs = if timeout_secs <= 0 { 10 } else { timeout_secs };
+        let max_iterations = (timeout_secs as usize) * 10;
 
-        // Extract local shell object
-        let local_shell = unsafe {
-            Var::from_ref_counted_object::<LocalShellSession>(&session_var, &*LOCAL_SHELL_TYPE)?
-        };
-        let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
+        let local_shell = get_session(&session_var)?;
+        check_session_alive(local_shell)?;
 
-        // Check if shell is still alive
-        if !local_shell.is_alive.load(Ordering::Acquire) {
-            // Check state to provide better error message
-            if let Ok(state) = local_shell.state.lock() {
-                return Err(match *state {
-                    SessionState::ProcessDied => "Local shell process has exited",
-                    SessionState::Corrupted(ref reason) => {
-                        shlog_error!("Session corrupted: {}", reason);
-                        "Local shell session corrupted due to internal error"
-                    },
-                    SessionState::Running => "Local shell is not alive (unexpected state)",
-                });
-            } else {
-                // State lock is poisoned too
-                return Err("Local shell session corrupted (state lock poisoned)");
-            }
-        }
+        let marker = local_shell.prompt_marker.as_deref();
 
         // Check if there's a pending interactive command
         {
@@ -1119,17 +1087,8 @@ impl BlockingShard for SendInputShard {
             }
         }
 
-        // Note current buffer position before sending input
-        let start_buffer_size = {
-            let shared_buffer = match local_shell.output_buffer.lock() {
-                Ok(guard) => guard,
-                Err(_) => {
-                    mark_session_corrupted(local_shell, "buffer lock poisoned in SendInput");
-                    return Err("Buffer lock poisoned");
-                }
-            };
-            shared_buffer.len()
-        };
+        // Record monotonic position before sending input
+        let start_total_bytes = local_shell.total_bytes_written.load(Ordering::Acquire);
 
         // Send input (if not empty)
         if !input_str.is_empty() {
@@ -1149,74 +1108,59 @@ impl BlockingShard for SendInputShard {
             shlog_trace!("SendInput: Write and flush succeeded");
         }
 
-        // Wait for output - give shell time to process input
+        // Wait for output
         std::thread::sleep(Duration::from_millis(SENDINPUT_INITIAL_WAIT_MS));
-        shlog_trace!("SendInput: Starting to read output after input (starting from byte {})", start_buffer_size);
+        shlog_trace!("SendInput: Starting to read output after input (start_total_bytes={})", start_total_bytes);
 
-        // Read output from shared buffer
         let mut output_buffer = Vec::new();
-        let mut last_buffer_size = start_buffer_size;
+        let mut last_total_bytes = start_total_bytes;
         let mut was_truncated = false;
         let mut no_data_count = 0;
+        let mut prompt_detected = false;
 
         for iteration in 0..max_iterations {
-            // Read from shared buffer atomically (single lock acquisition to avoid race conditions)
-            let new_data = {
-                let shared_buffer = local_shell.output_buffer.lock()
-                    .map_err(|_| "Buffer lock poisoned")?;
+            let current_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+            let has_new_data = current_total > last_total_bytes;
 
-                // Only copy new data since last read
-                if shared_buffer.len() > last_buffer_size {
-                    shared_buffer[last_buffer_size..].to_vec()
-                } else {
-                    Vec::new()
-                }
-            };
+            if has_new_data {
+                // Snapshot the entire buffer
+                let snapshot = {
+                    let shared_buffer = local_shell.output_buffer.lock()
+                        .map_err(|_| "Buffer lock poisoned")?;
+                    shared_buffer.clone()
+                };
 
-            let bytes_read = new_data.len();
+                output_buffer = snapshot;
+                last_total_bytes = current_total;
 
-            if bytes_read > 0 {
-                // Append new data to our local output buffer
-                output_buffer.extend_from_slice(&new_data);
-                last_buffer_size += bytes_read;
-
-                // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
                     was_truncated = true;
-                    shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
                 }
 
                 let output_str = String::from_utf8_lossy(&output_buffer);
                 shlog_trace!(
-                    "SendInput: Read {} bytes (iteration {}), buffer size: {}, content: {:?}",
-                    bytes_read,
-                    iteration,
-                    output_buffer.len(),
-                    output_str
+                    "SendInput: Read data (iteration {}), total_bytes: {}, buffer size: {}",
+                    iteration, current_total, output_buffer.len()
                 );
 
-                // Reset no-data counter
                 no_data_count = 0;
 
-                // Check if we got a prompt in the new data - if so, we're done
-                if is_prompt(&output_str) {
+                if is_prompt_or_marker(&output_str, marker) {
                     shlog_trace!("SendInput: Prompt detected in new output, exiting early");
+                    prompt_detected = true;
                     break;
                 }
             } else {
                 no_data_count += 1;
-                shlog_trace!("SendInput: No new data (iteration {}), buffer_size: {}, no_data_count: {}",
-                    iteration, output_buffer.len(), no_data_count);
+                shlog_trace!("SendInput: No new data (iteration {}), no_data_count: {}",
+                    iteration, no_data_count);
 
-                // Early exit: if no data for a while, check buffer range for prompt
-                // Check from start_buffer_size to last_buffer_size (only NEW data)
-                // This avoids detecting prompts from before SendInput was called
                 if no_data_count >= SENDINPUT_NO_DATA_THRESHOLD {
-                    if check_buffer_for_prompt(local_shell, start_buffer_size, last_buffer_size)? {
-                        shlog_trace!("SendInput: No new data for {}s and prompt detected in buffer range [{}..{}], exiting early",
-                            (SENDINPUT_NO_DATA_THRESHOLD as u64 * ITERATION_SLEEP_MS) / 1000,
-                            start_buffer_size,
-                            last_buffer_size);
+                    // Re-check buffer for prompt
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    if is_prompt_or_marker(&output_str, marker) {
+                        shlog_trace!("SendInput: Prompt detected after silence, exiting");
+                        prompt_detected = true;
                         break;
                     }
                 }
@@ -1224,26 +1168,14 @@ impl BlockingShard for SendInputShard {
             std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        // Capture final buffer position to avoid race condition with reader thread
-        let final_buffer_size = last_buffer_size;
-        shlog_trace!("SendInput: Finished reading, total output: {} bytes, final buffer position: {}",
-            output_buffer.len(), final_buffer_size);
-
-        // Check for prompt in the new output
-        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
-        let mut prompt_detected = is_prompt(&output_str);
-
-        // If no prompt detected in new output, check the shared buffer range
-        // This handles the case where the command completed and the prompt was written
-        // to the buffer before the reading loop could see it. We check from start_buffer_size
-        // to final_buffer_size to only examine NEW data, avoiding race conditions
+        // Final prompt check
         if !prompt_detected {
-            prompt_detected = check_buffer_for_prompt(local_shell, start_buffer_size, final_buffer_size)?;
-            shlog_trace!("SendInput: Checked buffer range [{}..{}] for prompt, detected: {}",
-                start_buffer_size, final_buffer_size, prompt_detected);
+            let output_str = String::from_utf8_lossy(&output_buffer);
+            prompt_detected = is_prompt_or_marker(&output_str, marker);
         }
 
         // Clean output
+        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
         let stripped_bytes = strip_ansi_escapes::strip(&output_str);
         let cleaned = String::from_utf8_lossy(&stripped_bytes);
         let mut lines: Vec<&str> = cleaned.lines().collect();
@@ -1255,7 +1187,6 @@ impl BlockingShard for SendInputShard {
         let mut result_table = AutoTableVar::new();
 
         if prompt_detected {
-            // Interactive session completed
             {
                 let mut pending = local_shell.pending_interactive.lock()
                     .map_err(|_| "Interactive state lock poisoned")?;
@@ -1268,7 +1199,6 @@ impl BlockingShard for SendInputShard {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         } else {
-            // Still waiting for more input/output
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("pending_output"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
             result_table.0.insert_fast_static(
@@ -1279,6 +1209,10 @@ impl BlockingShard for SendInputShard {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         }
+
+        // Sync read position so subsequent LocalShell.Read doesn't pick up stale data
+        let final_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+        local_shell.read_position.store(final_total, Ordering::Release);
 
         self.output = result_table.to_cloned();
         Ok(self.output.0)
@@ -1337,16 +1271,421 @@ impl Shard for IsAliveShard {
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        // Extract local shell object
-        let local_shell =
-            unsafe { Var::from_ref_counted_object::<LocalShellSession>(&input, &*LOCAL_SHELL_TYPE)? };
-        let local_shell = unsafe { &*(local_shell as *const LocalShellSession) };
-
-        // Check alive status flag (lock-free atomic read)
+        let local_shell = get_session(input)?;
         let is_alive = local_shell.is_alive.load(Ordering::Acquire);
-
         self.output = is_alive.into();
         Ok(Some(self.output.0))
+    }
+}
+
+/// Render raw PTY output through a virtual VT100 terminal to get properly-spaced text.
+/// Ink/TUI frameworks use cursor positioning sequences (CSI H, CSI C, etc.) for layout
+/// instead of literal spaces — simple ANSI stripping concatenates words without gaps.
+/// This processes bytes through a virtual screen and extracts the resulting text grid.
+fn render_through_virtual_terminal(raw_bytes: &[u8], rows: u16, cols: u16) -> String {
+    let mut parser = vt100::Parser::new(rows, cols, 0);
+    parser.process(raw_bytes);
+
+    let screen = parser.screen();
+    let mut output = String::new();
+
+    for row in 0..rows {
+        let row_text = screen.contents_between(row, 0, row, cols);
+        let trimmed = row_text.trim_end();
+        if !trimmed.is_empty() || !output.is_empty() {
+            if !output.is_empty() {
+                output.push('\n');
+            }
+            output.push_str(trimmed);
+        }
+    }
+
+    output.trim().to_string()
+}
+
+// ============================================================================
+// LocalShell.Read Shard — raw non-blocking read
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "LocalShell.Read",
+    "Read raw output from local shell session (non-blocking)"
+)]
+pub struct ReadShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("MaxBytes", "Maximum bytes to read (default: 65536)", [common_type::int, common_type::int_var])]
+    max_bytes: ParamVar,
+
+    #[shard_param("StripAnsi", "Strip ANSI escape sequences (default: false)", [common_type::bool, common_type::bool_var])]
+    strip_ansi: ParamVar,
+
+    #[shard_param("Timeout", "Timeout in milliseconds, 0 = immediate (default: 0)", [common_type::int, common_type::int_var])]
+    timeout_ms: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for ReadShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            max_bytes: ParamVar::new(65536i64.into()),
+            strip_ansi: ParamVar::new(false.into()),
+            timeout_ms: ParamVar::new(0i64.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for ReadShard {
+    fn input_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+        let session_var = *self.session.get();
+        let max_bytes: i64 = self.max_bytes.get().as_ref().try_into()?;
+        let max_bytes = if max_bytes <= 0 { 65536usize } else { max_bytes as usize };
+        let strip: bool = self.strip_ansi.get().as_ref().try_into()?;
+        let timeout_ms: i64 = self.timeout_ms.get().as_ref().try_into()?;
+        let timeout_ms = if timeout_ms < 0 { 0u64 } else { timeout_ms as u64 };
+
+        let local_shell = get_session(&session_var)?;
+        check_session_alive(local_shell)?;
+
+        // Read cursor lives on the session so multiple Read shard instances share it
+        let read_pos = &local_shell.read_position;
+
+        let deadline = if timeout_ms > 0 {
+            Some(std::time::Instant::now() + Duration::from_millis(timeout_ms))
+        } else {
+            None
+        };
+
+        let mut result_data = Vec::new();
+
+        // Accumulate data until timeout expires or data settles.
+        // Settle time scales with timeout: 20% of requested timeout, clamped [100ms, 2000ms].
+        // TUI apps (Ink/React) render in bursts with gaps — a longer settle avoids
+        // returning between render bursts with only partial output.
+        let settle_ms = if timeout_ms > 0 {
+            (timeout_ms / 5).max(100).min(2000)
+        } else {
+            100
+        };
+        let mut last_data_time: Option<std::time::Instant> = None;
+        let mut prev_total = read_pos.load(Ordering::Acquire);
+
+        loop {
+            let current_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+
+            if current_total > prev_total {
+                // New data arrived since last poll — reset settle timer
+                last_data_time = Some(std::time::Instant::now());
+                prev_total = current_total;
+            }
+
+            if let Some(dl) = deadline {
+                // Hard timeout
+                if std::time::Instant::now() >= dl {
+                    break;
+                }
+                // Early exit: data arrived then went quiet for SETTLE_MS
+                if let Some(ldt) = last_data_time {
+                    if std::time::Instant::now().duration_since(ldt) >= Duration::from_millis(settle_ms) {
+                        break;
+                    }
+                }
+                // Yield to scheduler instead of blocking the thread
+                shards::core::suspend(context, 0.01);
+            } else {
+                // No timeout = immediate mode, return whatever is available now
+                break;
+            }
+        }
+
+        // Final snapshot of accumulated data
+        let final_total = local_shell.total_bytes_written.load(Ordering::Acquire);
+        let final_consumed = read_pos.load(Ordering::Acquire);
+        if final_total > final_consumed {
+            let snapshot = {
+                let buf = local_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                buf.clone()
+            };
+
+            let new_byte_count = final_total - final_consumed;
+            let available = snapshot.len().min(new_byte_count).min(max_bytes);
+            result_data = snapshot[snapshot.len().saturating_sub(available)..].to_vec();
+            read_pos.store(final_total, Ordering::Release);
+        }
+
+        let output_str = if strip {
+            let term_rows = local_shell.term_rows.load(Ordering::Acquire);
+            let term_cols = local_shell.term_cols.load(Ordering::Acquire);
+            render_through_virtual_terminal(&result_data, term_rows, term_cols)
+        } else {
+            String::from_utf8_lossy(&result_data).to_string()
+        };
+
+        self.output = Var::ephemeral_string(&output_str).into();
+        Ok(Some(self.output.0))
+    }
+}
+
+// Interpret escape sequences in input strings for PTY writing.
+// Handles \r, \n, \t, \\, \xNN. Also converts bare LF (0x0A) to CR (0x0D)
+// because PTY Enter = CR, and TUI apps in raw mode expect CR not LF.
+fn interpret_escape_sequences(input: &str) -> Vec<u8> {
+    let mut result = Vec::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.peek() {
+                Some('n') => { chars.next(); result.push(0x0A); }
+                Some('r') => { chars.next(); result.push(0x0D); }
+                Some('t') => { chars.next(); result.push(0x09); }
+                Some('\\') => { chars.next(); result.push(b'\\'); }
+                Some('x') => {
+                    chars.next(); // consume 'x'
+                    let mut hex = String::new();
+                    for _ in 0..2 {
+                        if let Some(&c) = chars.peek() {
+                            if c.is_ascii_hexdigit() {
+                                hex.push(c);
+                                chars.next();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                        result.push(byte);
+                    }
+                }
+                _ => { result.push(b'\\'); }
+            }
+        } else if ch == '\n' {
+            // Bare LF → CR: terminal Enter sends CR to PTY master
+            result.push(0x0D);
+        } else {
+            let mut buf = [0u8; 4];
+            let encoded = ch.encode_utf8(&mut buf);
+            result.extend_from_slice(encoded.as_bytes());
+        }
+    }
+
+    result
+}
+
+// ============================================================================
+// LocalShell.Write Shard — raw byte write
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "LocalShell.Write",
+    "Write raw bytes to local shell session"
+)]
+pub struct WriteShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("AppendNewline", "Append newline after input (default: false)", [common_type::bool, common_type::bool_var])]
+    append_newline: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for WriteShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            append_newline: ParamVar::new(false.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for WriteShard {
+    fn input_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        let input_str: &str = input.try_into()?;
+        let session_var = *self.session.get();
+        let append_nl: bool = self.append_newline.get().as_ref().try_into()?;
+
+        let local_shell = get_session(&session_var)?;
+        check_session_alive(local_shell)?;
+
+        {
+            let bytes = interpret_escape_sequences(input_str);
+            let mut writer = local_shell.writer.lock()
+                .map_err(|_| "Writer lock poisoned")?;
+            writer.write_all(&bytes)
+                .map_err(|_| "Failed to write to shell (IO error)")?;
+            if append_nl {
+                writer.write_all(b"\r")
+                    .map_err(|_| "Failed to write newline to shell (IO error)")?;
+            }
+            writer.flush()
+                .map_err(|_| "Failed to flush writer (IO error)")?;
+        }
+
+        // Passthrough input
+        self.output = input.into();
+        Ok(Some(self.output.0))
+    }
+}
+
+// ============================================================================
+// LocalShell.Resize Shard — PTY resize
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "LocalShell.Resize",
+    "Resize the PTY terminal of a local shell session"
+)]
+pub struct ResizeShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("Rows", "Number of rows", [common_type::int, common_type::int_var])]
+    rows: ParamVar,
+
+    #[shard_param("Cols", "Number of columns", [common_type::int, common_type::int_var])]
+    cols: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for ResizeShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            rows: ParamVar::new(24i64.into()),
+            cols: ParamVar::new(80i64.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for ResizeShard {
+    fn input_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+        let session_var = *self.session.get();
+        let rows_val: i64 = self.rows.get().as_ref().try_into()?;
+        let cols_val: i64 = self.cols.get().as_ref().try_into()?;
+
+        let rows = rows_val.max(1).min(u16::MAX as i64) as u16;
+        let cols = cols_val.max(1).min(u16::MAX as i64) as u16;
+
+        let local_shell = get_session(&session_var)?;
+        check_session_alive(local_shell)?;
+
+        let pair_guard = local_shell.pair.lock()
+            .map_err(|_| "PTY pair lock poisoned")?;
+
+        if let Some(ref pair) = *pair_guard {
+            pair.master.resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            }).map_err(|_| "Failed to resize PTY")?;
+            local_shell.term_rows.store(rows, Ordering::Release);
+            local_shell.term_cols.store(cols, Ordering::Release);
+            shlog_trace!("PTY resized to {}x{}", cols, rows);
+        } else {
+            return Err("PTY pair has been dropped");
+        }
+
+        Ok(None)
     }
 }
 
@@ -1360,16 +1699,17 @@ pub extern "C" fn shardsRegister_localshell_rust(core: *mut shards::shardsc::SHC
         shards::core::Core = core;
     }
 
-    // Register LocalShellSession object type
     let mut info = shards::SHObjectInfo::default();
     info.name = cstr!("LocalShell.Session").as_ptr() as shards::SHString;
     shards::core::register_object_type_internal(FRAG_CC, fourCharacterCode(*b"lshl"), info);
 
-    // Register shards
     register_shard::<CreateShard>();
     register_shard::<ExecuteShard>();
     register_shard::<SendInputShard>();
     register_shard::<IsAliveShard>();
+    register_shard::<ReadShard>();
+    register_shard::<WriteShard>();
+    register_shard::<ResizeShard>();
 
     shlog_trace!("LocalShell module registered");
 }
