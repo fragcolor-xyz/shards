@@ -1128,6 +1128,28 @@ class SeqVar: OwnedVar {
         }
     }
 
+    /// Inserts a cloned copy of `value` at the given index, shifting subsequent elements right.
+    func insertCloning(at index: Int, value: SHVar) {
+        let currentSize = size()
+        assert(index >= 0 && index <= currentSize)
+        resize(size: currentSize + 1)
+        // Shift elements right from the end to avoid overwriting
+        if index < currentSize {
+            for i in stride(from: currentSize, through: index + 1, by: -1) {
+                // Raw struct copy (bitwise move) - both slots momentarily reference the same data
+                v.payload.seqValue.elements[i] = v.payload.seqValue.elements[i - 1]
+            }
+            // Zero out the insertion slot since its content was moved to index+1
+            v.payload.seqValue.elements[index] = SHVar()
+        }
+        // Clone the new value into the now-empty slot
+        withUnsafePointer(to: value) { ptr in
+            G.Core.pointee.cloneVar(
+                &v.payload.seqValue.elements[index], UnsafeMutablePointer(mutating: ptr)
+            )
+        }
+    }
+
     func remove(index: Int) {
         assert(index >= 0 && index < size())
         withUnsafeMutablePointer(to: &v.payload.seqValue) { ptr in
