@@ -33,11 +33,11 @@ timed-out | Assert.Is(true)
   Log
   
   json
-  Http.Post("https://echo.free.beeceptor.com")
+  Http.Post("https://httpbin.org/post")
   Log
-  
+
   json
-  Http.Post("https://echo.free.beeceptor.com" FullResponse: true)
+  Http.Post("https://httpbin.org/post" FullResponse: true)
   Log
   Take("headers")
   Take("content-type") | ExpectString
