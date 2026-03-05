@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential cmake ninja-build llvm
+          sudo apt-get -y install build-essential cmake ninja-build llvm libclang-dev
 
       - name: Setup Rust
         run: |
