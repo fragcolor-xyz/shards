@@ -92,15 +92,15 @@ exit-fail-result.exit_code | ExpectInt | Assert.Is(1)
 "Testing configurable PTY size" | Log
 LocalShell.Create(Rows: 40 Cols: 120) >= sized-session
 sized-session | LocalShell.IsAlive | Assert.Is(true)
-"tput lines" | LocalShell.Execute(Session: sized-session) >= tput-result
-tput-result.status | Assert.Is("completed")
-tput-result.output | ExpectString | String.Contains("40") | Assert.Is(true)
+"stty size" | LocalShell.Execute(Session: sized-session) >= stty-result
+stty-result.status | Assert.Is("completed")
+stty-result.output | ExpectString | String.Contains("40") | Assert.Is(true)
 "Configurable PTY size works" | Log
 
 ; Test LocalShell.Resize
 "Testing PTY resize" | Log
 LocalShell.Resize(Session: sized-session Rows: 50 Cols: 132)
-"tput lines" | LocalShell.Execute(Session: sized-session) >= resize-result
+"stty size" | LocalShell.Execute(Session: sized-session) >= resize-result
 resize-result.status | Assert.Is("completed")
 resize-result.output | ExpectString | String.Contains("50") | Assert.Is(true)
 "PTY resize works" | Log
