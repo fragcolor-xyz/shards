@@ -165,14 +165,14 @@ chunk2 | ExpectString | String.Contains("first_chunk") | Assert.Is(false)
 "Testing resize during running process" | Log
 LocalShell.Create(Rows: 24 Cols: 80) >= resize-live-session
 ; Start a background process that uses terminal size
-"tput cols" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
+"stty size" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
 Pause(0.5)
 LocalShell.Read(Session: resize-live-session Timeout: 1000) >= pre-resize-cols
 pre-resize-cols | ExpectString | String.Contains("80") | Assert.Is(true)
 ; Resize while session is active
 LocalShell.Resize(Session: resize-live-session Rows: 50 Cols: 200)
 Pause(0.3) ; let SIGWINCH propagate
-"tput cols" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
+"stty size" | LocalShell.Write(Session: resize-live-session AppendNewline: true)
 Pause(0.5)
 LocalShell.Read(Session: resize-live-session Timeout: 1000) >= post-resize-cols
 post-resize-cols | ExpectString | String.Contains("200") | Assert.Is(true)
