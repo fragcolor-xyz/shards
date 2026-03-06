@@ -113,14 +113,24 @@ LocalShell.Read(Session: shell-session Timeout: 1000) >= raw-output
 raw-output | ExpectString | String.Contains("raw_test_output") | Assert.Is(true)
 "Raw Write/Read works" | Log
 
-; Test top -l 1 (macOS single snapshot) via raw Read/Write
+; Test top snapshot via raw Read/Write
 ; Exercises: large output with ANSI codes, non-blocking incremental read
 "Testing top snapshot via raw Read/Write" | Log
 LocalShell.Create(Rows: 30 Cols: 100) >= top-session
-"top -l 1 -n 5" | LocalShell.Write(Session: top-session AppendNewline: true)
+; macOS uses -l 1 for logging mode, Linux uses -b -n 1 for batch mode
+@if(#(@platform | Is("macos")) {
+  "top -l 1 -n 5" | LocalShell.Write(Session: top-session AppendNewline: true)
+} {
+  "top -b -n 1" | LocalShell.Write(Session: top-session AppendNewline: true)
+})
 Pause(3.0) ; give top time to produce output
 LocalShell.Read(Session: top-session Timeout: 2000) >= top-output
-top-output | ExpectString | String.Contains("Processes") | Assert.Is(true)
+; macOS top outputs "Processes", Linux top outputs "top -"
+@if(#(@platform | Is("macos")) {
+  top-output | ExpectString | String.Contains("Processes") | Assert.Is(true)
+} {
+  top-output | ExpectString | String.Contains("top -") | Assert.Is(true)
+})
 "top snapshot captured via raw Read" | Log
 
 ; Test Execute auto-Ctrl-C when interrupting a pending interactive command
