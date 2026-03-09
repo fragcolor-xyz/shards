@@ -1792,6 +1792,13 @@ struct Spawn : public CapturingSpawners {
     passthrough = false;
   }
 
+  void destroy() {
+    // Clear containers before pool to ensure proper destruction order
+    _wireContainers.clear();
+    _pool.reset();
+    CapturingSpawners::destroy();
+  }
+
   static SHTypesInfo inputTypes() { return CoreInfo::AnyType; }
   static SHTypesInfo outputTypes() { return CoreInfo::WireType; }
 
@@ -1805,8 +1812,11 @@ struct Spawn : public CapturingSpawners {
                    "every time the shard is called.");
   }
 
+  static inline Types SpawnWireTypes{CoreInfo::NoneType, CoreInfo::WireType, CoreInfo::ShardRefSeqType, CoreInfo::WireVarType};
+
   static inline Parameters _params{
-      {"Wire", SHCCSTR("The Wire to schedule and run asynchronously"), IntoWire::RunnableTypes},
+      {"Wire", SHCCSTR("The Wire to schedule and run asynchronously. Can be a wire variable for dynamic wire selection."),
+       {SpawnWireTypes}},
       {"Joint",
        SHCCSTR("If true, all the spawned wires will be stopped whenever the parent wire is stopped."),
        {CoreInfo::BoolType}}};
@@ -1814,6 +1824,12 @@ struct Spawn : public CapturingSpawners {
   static SHParametersInfo parameters() { return _params; }
 
   bool _joint{false};
+  bool _isVariableWire{false};
+  SHVar _wireHash{};
+  SHWire *_lastWirePtr{nullptr};
+  bool _onWorkerThread{false};
+  IterableExposedInfo _savedShared;
+  SHExposedTypeInfo _requiredWire{};
 
   void setParam(int index, const SHVar &value) {
     switch (index) {
@@ -1839,7 +1855,27 @@ struct Spawn : public CapturingSpawners {
     }
   }
 
+  SHExposedTypesInfo requiredVariables() {
+    if (_isVariableWire) {
+      _requiredWire = SHExposedTypeInfo{wireref.variableName(), SHCCSTR("The wire to spawn."), CoreInfo::WireType};
+      return {&_requiredWire, 1, 0};
+    }
+    return CapturingSpawners::requiredVariables();
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
+    _isVariableWire = wireref.isVariable();
+    _inputType = data.inputType;
+
+    if (_isVariableWire) {
+      // Save shared context for deferred capture
+      const IterableExposedInfo shared(data.shared);
+      _savedShared = shared;
+      _onWorkerThread = data.onWorkerThread;
+      return CoreInfo::WireType;
+    }
+
+    // Static wire path (existing behavior)
     WireBase::resolveWire();
 
     if (!wire) {
@@ -1849,9 +1885,6 @@ struct Spawn : public CapturingSpawners {
     CapturingSpawners::compose(data, data.inputType);
 
     _pool.reset(new WireDoppelgangerPool<ManyWire>(SHWire::weakRef(wire)));
-
-    // copy input type
-    _inputType = data.inputType;
 
     return CoreInfo::WireType;
   }
@@ -1883,21 +1916,45 @@ struct Spawn : public CapturingSpawners {
 
     _composer.context = context;
 
-    for (auto &v : _vars) {
-      SHLOG_TRACE("Spawn: warming up variable: {}", v.variableName());
-      v.warmup(context);
+    if (!_isVariableWire) {
+      for (auto &v : _vars) {
+        SHLOG_TRACE("Spawn: warming up variable: {}", v.variableName());
+        v.warmup(context);
+      }
+      SHLOG_TRACE("Spawn: warmed up {} variables", _vars.size());
     }
-
-    SHLOG_TRACE("Spawn: warmed up {} variables", _vars.size());
+    // For variable wires, _vars warmup is deferred to setupVariableWire()
   }
 
   void cleanup(SHContext *context) {
-    if (_joint && _pool) {
-      _pool->stopAll();
-    }
+    if (_isVariableWire) {
+      // Stop all tracked clones if joint
+      if (_joint) {
+        for (auto &[wire, entry] : _wireContainers) {
+          stop(entry.container->wire.get());
+        }
+      }
 
-    for (auto &v : _vars) {
-      v.cleanup();
+      // Cleanup captured vars
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
+      _vars.clear();
+
+      // Clear clone tracking (pools stay alive via shared_ptr in entries until clones finish)
+      _wireContainers.clear();
+
+      _pool.reset();
+      _wireHash = {};
+      _lastWirePtr = nullptr;
+    } else {
+      if (_joint && _pool) {
+        _pool->stopAll();
+      }
+
+      for (auto &v : _vars) {
+        v.cleanup();
+      }
     }
 
     _composer.context = nullptr;
@@ -1905,30 +1962,129 @@ struct Spawn : public CapturingSpawners {
     WireBase::cleanup(context);
   }
 
-  std::unordered_map<const SHWire *, ManyWire *> _wireContainers;
+  struct CloneEntry {
+    ManyWire *container;
+    // Only set for variable-wire mode (tracks which pool owns this clone)
+    std::shared_ptr<WireDoppelgangerPool<ManyWire>> pool;
+  };
+  std::unordered_map<const SHWire *, CloneEntry> _wireContainers;
 
   void wireOnCleanup(const SHWire::OnCleanupEvent &e) {
     SHLOG_TRACE("Spawn::wireOnCleanup {}", e.wire->name);
 
     auto it = _wireContainers.find(e.wire);
     if (it != _wireContainers.end()) {
-      auto container = it->second;
-      for (auto &var : container->injectedVariables) {
+      auto &entry = it->second;
+      for (auto &var : entry.container->injectedVariables) {
         releaseVariable(var);
       }
-      container->injectedVariables.clear();
+      entry.container->injectedVariables.clear();
 
-      _pool->release(container);
+      // In variable-wire mode, release to the clone's own pool
+      // In static mode, release to _pool directly (avoids shared_ptr overhead)
+      if (entry.pool) {
+        entry.pool->release(entry.container);
+      } else {
+        _pool->release(entry.container);
+      }
       _wireContainers.erase(it);
     }
   }
 
+  void setupVariableWire(SHContext *context) {
+    auto wireVar = wireref.get();
+    if (wireVar.valueType != SHType::Wire)
+      return;
+
+    auto newWire = SHWire::sharedFromRef(wireVar.payload.wireValue);
+    if (!newWire)
+      return;
+
+    // Check if wire changed
+    if (_wireHash.valueType != SHType::None && _lastWirePtr == newWire.get()) {
+      auto newHash = shards::hash(wireVar);
+      if (_wireHash == newHash)
+        return; // no change
+    }
+
+    wire = newWire;
+
+    // Cleanup old captured vars
+    for (auto &v : _vars) {
+      v.cleanup();
+    }
+    _vars.clear();
+
+    // Compose the wire template (deferred)
+    auto composeAndSetup = [this, context, wireVar]() {
+      SHInstanceData data{};
+      data.inputType = _inputType;
+      data.wire = wire.get();
+      wire->mesh = context->main->mesh;
+
+      // Compose to discover requirements
+      auto dataCopy = data;
+      dataCopy.requiredVariables = &wire->requirements;
+      if (!wire->pure) {
+        dataCopy.shared = _savedShared;
+      }
+      auto res = composeWire(wire.get(), dataCopy);
+      arrayFree(res.exposedInfo);
+      arrayFree(res.requiredInfo);
+
+      wire->composedHash = shards::hash(wireVar);
+    };
+
+    if (!_onWorkerThread) {
+      await(
+          context, std::move(composeAndSetup), [] {});
+    } else {
+      composeAndSetup();
+    }
+
+    // Rebuild capture list
+    for (auto &avail : _savedShared) {
+      auto it = wire->requirements.find(avail.name);
+      if (it != wire->requirements.end() && !avail.global) {
+        SHLOG_TRACE("Spawn: deferred capture variable: {}", avail.name);
+        SHVar ctxVar{};
+        ctxVar.valueType = SHType::ContextVar;
+        ctxVar.payload.stringValue = avail.name;
+        ctxVar.payload.stringLen = strlen(avail.name);
+        auto &p = _vars.emplace_back();
+        p = ctxVar;
+      }
+    }
+
+    // Warmup new captured vars
+    for (auto &v : _vars) {
+      v.warmup(context);
+    }
+
+    // Copy shared for the Composer (use const ref to get deep copy)
+    _sharedCopy = static_cast<const IterableExposedInfo &>(_savedShared);
+
+    // Create new pool for this wire (old pools stay alive via CloneEntry shared_ptrs)
+    _pool = std::make_shared<WireDoppelgangerPool<ManyWire>>(SHWire::weakRef(wire));
+
+    _wireHash = wire->composedHash;
+    _lastWirePtr = wire.get();
+  }
+
   SHVar activate(SHContext *context, const SHVar &input) {
+    if (_isVariableWire) {
+      setupVariableWire(context);
+      if (!_pool)
+        return Var::Empty;
+    }
+
     auto mesh = context->main->mesh.lock();
 
     auto c = _pool->acquire(_composer, context);
     shassert(!_wireContainers.contains(c->wire.get()));
-    _wireContainers[c->wire.get()] = c;
+    // Only store pool ref for variable-wire mode (where pool can change)
+    // Static mode uses _pool directly in wireOnCleanup, avoiding shared_ptr overhead
+    _wireContainers[c->wire.get()] = CloneEntry{c, _isVariableWire ? _pool : nullptr};
 
     // Connect the cleanup event
     if (!c->_onCleanupConnection) {
@@ -1952,7 +2108,7 @@ struct Spawn : public CapturingSpawners {
     return Var(c->wire); // notice this is "weak"
   }
 
-  std::unique_ptr<WireDoppelgangerPool<ManyWire>> _pool;
+  std::shared_ptr<WireDoppelgangerPool<ManyWire>> _pool;
   SHTypeInfo _inputType{};
 };
 
@@ -1982,7 +2138,7 @@ struct WhenDone : Spawn {
       shassert(mesh && "Mesh is null");
 
       auto c = _pool->acquire(_composer, context);
-      _wireContainers[c->wire.get()] = c;
+      _wireContainers[c->wire.get()] = CloneEntry{c, nullptr}; // WhenDone is always static
 
       // Connect the cleanup event
       if (!c->_onCleanupConnection) {

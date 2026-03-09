@@ -514,3 +514,51 @@
 
 @schedule(root detach-restart)
 @run(root) | Assert.Is(true)
+
+;; Test: Spawn with variable wire
+@wire(var-spawn-wire-a {
+  Math.Add(10)
+  Log("var-spawn-a")
+})
+
+@wire(var-spawn-wire-b {
+  Math.Add(20)
+  Log("var-spawn-b")
+})
+
+@wire(test-variable-spawn {
+  Const(var-spawn-wire-a) | ToBytes | FromBytes | ExpectWire >= wire-var
+
+  ;; Spawn a variable wire
+  1 | Spawn(wire-var) = spawned-a
+  Wait(spawned-a)
+  Assert.Is(11 true)
+
+  ;; Switch the variable to a different wire and spawn again
+  Const(var-spawn-wire-b) | ToBytes | FromBytes | ExpectWire > wire-var
+  2 | Spawn(wire-var) = spawned-b
+  Wait(spawned-b)
+  Assert.Is(22 true)
+})
+
+@schedule(root test-variable-spawn)
+@run(root) | Assert.Is(true)
+
+;; Test: Spawn with variable wire captures parent variables
+@wire(var-spawn-capture-wire {
+  captured-value
+  Math.Add(100)
+  Log("var-spawn-capture")
+})
+
+@wire(test-variable-spawn-capture {
+  5 = captured-value
+  Const(var-spawn-capture-wire) | ToBytes | FromBytes | ExpectWire >= wire-var-cap
+
+  1 | Spawn(wire-var-cap) = spawned-cap
+  Wait(spawned-cap)
+  Assert.Is(105 true)
+})
+
+@schedule(root test-variable-spawn-capture)
+@run(root) | Assert.Is(true)
