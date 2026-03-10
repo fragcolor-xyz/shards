@@ -77,9 +77,11 @@ struct CoreLoader {
       if (handle)
         ifaceproc = (SHShardsInterface)GetProcAddress(handle, "shardsInterface");
 #else
-      handle = dlopen(SHARDS_MODULE_FILENAME, RTLD_NOW);
+      handle = dlopen(modulePath, RTLD_NOW);
       if (handle)
         ifaceproc = (SHShardsInterface)dlsym(handle, "shardsInterface");
+      if (!ifaceproc && handle)
+        ifaceproc = (SHShardsInterface)dlsym(handle, "exportedShardsInterface");
 #endif
     }
     assert(ifaceproc);
