@@ -6,13 +6,24 @@
 
 #include <pipewire/pipewire.h>
 #include <spa/param/video/format-utils.h>
+#include <spa/pod/builder.h>
 #include <spa/debug/types.h>
 #include <spa/param/video/type-info.h>
 
+// DRM format modifier constants — stable kernel ABI, avoids libdrm dependency
+#ifndef DRM_FORMAT_MOD_INVALID
+#define DRM_FORMAT_MOD_INVALID ((1ULL << 56) - 1)
+#endif
+#ifndef DRM_FORMAT_MOD_LINEAR
+#define DRM_FORMAT_MOD_LINEAR 0ULL
+#endif
+
 #include <shards/log/log.hpp>
 #include <atomic>
+#include <cerrno>
 #include <cstring>
 #include <mutex>
+#include <sys/mman.h>
 #include <vector>
 
 namespace Desktop {
@@ -60,8 +71,8 @@ public:
     }
 
     // Create stream
-    auto props = pw_properties_new(PW_KEY_MEDIA_TYPE, "Video", PW_KEY_MEDIA_CATEGORY, "Capture",
-                                   PW_KEY_MEDIA_ROLE, "Screen", nullptr);
+    auto props =
+        pw_properties_new(PW_KEY_MEDIA_TYPE, "Video", PW_KEY_MEDIA_CATEGORY, "Capture", PW_KEY_MEDIA_ROLE, "Screen", nullptr);
 
     _stream = pw_stream_new(_core, "shards-screen-capture", props);
     if (!_stream) {
@@ -80,21 +91,55 @@ public:
 
     pw_stream_add_listener(_stream, &_streamListener, &streamEvents, this);
 
-    // Build format params
-    uint8_t buffer[1024];
+    // Build format params — one per video format, each with DMA-BUF modifier support.
+    // PipeWire requires separate params per format when modifiers are involved (like OBS does).
+    // Also include one SHM-only fallback param with all formats but no modifier.
+    uint8_t buffer[8192];
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 
-    auto *params = static_cast<const struct spa_pod *>(spa_pod_builder_add_object(
-        &b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType,
-        SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
-        SPA_FORMAT_VIDEO_format,
-        SPA_POD_CHOICE_ENUM_Id(4, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_RGBx, SPA_VIDEO_FORMAT_BGRA,
-                               SPA_VIDEO_FORMAT_RGBA),
-        SPA_FORMAT_VIDEO_size,
-        SPA_POD_CHOICE_RANGE_Rectangle(&SPA_RECTANGLE(1920, 1080), &SPA_RECTANGLE(1, 1),
-                                       &SPA_RECTANGLE(8192, 8192)),
-        SPA_FORMAT_VIDEO_framerate,
-        SPA_POD_CHOICE_RANGE_Fraction(&SPA_FRACTION(30, 1), &SPA_FRACTION(0, 1), &SPA_FRACTION(144, 1))));
+    struct spa_rectangle sizeDefault = SPA_RECTANGLE(1920, 1080);
+    struct spa_rectangle sizeMin = SPA_RECTANGLE(1, 1);
+    struct spa_rectangle sizeMax = SPA_RECTANGLE(8192, 8192);
+    struct spa_fraction fpsDefault = SPA_FRACTION(30, 1);
+    struct spa_fraction fpsMin = SPA_FRACTION(0, 1);
+    struct spa_fraction fpsMax = SPA_FRACTION(144, 1);
+
+    // All common 32-bit RGBA permutations
+    static const uint32_t formats[] = {SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_RGBx,
+                                       SPA_VIDEO_FORMAT_RGBA, SPA_VIDEO_FORMAT_xBGR, SPA_VIDEO_FORMAT_ABGR,
+                                       SPA_VIDEO_FORMAT_xRGB, SPA_VIDEO_FORMAT_ARGB};
+    static const int numFormats = sizeof(formats) / sizeof(formats[0]);
+
+    // params[0..numFormats-1]: one per format WITH modifier (for DMA-BUF sources like Hyprland)
+    // params[numFormats]: all formats WITHOUT modifier (SHM fallback for GNOME/KDE)
+    const struct spa_pod *paramsList[numFormats + 1];
+
+    for (int i = 0; i < numFormats; i++) {
+      struct spa_pod_frame f;
+      spa_pod_builder_push_object(&b, &f, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
+      spa_pod_builder_add(&b, SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video), SPA_FORMAT_mediaSubtype,
+                          SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format, SPA_POD_Id(formats[i]),
+                          SPA_FORMAT_VIDEO_size, SPA_POD_CHOICE_RANGE_Rectangle(&sizeDefault, &sizeMin, &sizeMax),
+                          SPA_FORMAT_VIDEO_framerate, SPA_POD_CHOICE_RANGE_Fraction(&fpsDefault, &fpsMin, &fpsMax), 0);
+      // Modifier as Choice enum with MANDATORY|DONT_FIXATE — accept any modifier
+      spa_pod_builder_prop(&b, SPA_FORMAT_VIDEO_modifier, SPA_POD_PROP_FLAG_MANDATORY | SPA_POD_PROP_FLAG_DONT_FIXATE);
+      struct spa_pod_frame fChoice;
+      spa_pod_builder_push_choice(&b, &fChoice, SPA_CHOICE_Enum, 0);
+      spa_pod_builder_long(&b, DRM_FORMAT_MOD_INVALID); // default
+      spa_pod_builder_long(&b, DRM_FORMAT_MOD_INVALID); // any
+      spa_pod_builder_long(&b, DRM_FORMAT_MOD_LINEAR);  // linear (unmodified)
+      spa_pod_builder_pop(&b, &fChoice);
+      paramsList[i] = static_cast<const struct spa_pod *>(spa_pod_builder_pop(&b, &f));
+    }
+
+    // SHM fallback: all formats, no modifier
+    paramsList[numFormats] = static_cast<const struct spa_pod *>(spa_pod_builder_add_object(
+        &b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
+        SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
+        SPA_POD_CHOICE_ENUM_Id(8, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_RGBx, SPA_VIDEO_FORMAT_RGBA,
+                               SPA_VIDEO_FORMAT_xBGR, SPA_VIDEO_FORMAT_ABGR, SPA_VIDEO_FORMAT_xRGB, SPA_VIDEO_FORMAT_ARGB),
+        SPA_FORMAT_VIDEO_size, SPA_POD_CHOICE_RANGE_Rectangle(&sizeDefault, &sizeMin, &sizeMax), SPA_FORMAT_VIDEO_framerate,
+        SPA_POD_CHOICE_RANGE_Fraction(&fpsDefault, &fpsMin, &fpsMax)));
 
     pw_thread_loop_lock(_loop);
 
@@ -106,7 +151,7 @@ public:
     }
 
     auto connectFlags = static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS);
-    if (pw_stream_connect(_stream, PW_DIRECTION_INPUT, nodeId, connectFlags, &params, 1) < 0) {
+    if (pw_stream_connect(_stream, PW_DIRECTION_INPUT, nodeId, connectFlags, paramsList, numFormats + 1) < 0) {
       SPDLOG_LOGGER_ERROR(getCaptureLogger(), "Failed to connect PipeWire stream to node {}", nodeId);
       pw_thread_loop_unlock(_loop);
       shutdown();
@@ -159,11 +204,11 @@ public:
   const uint8_t *image() const { return _readBuffer.empty() ? nullptr : _readBuffer.data(); }
   int width() const { return _readWidth; }
   int height() const { return _readHeight; }
-  bool hasFrame() const { return !_readBuffer.empty(); }
+  bool hasFrame() const { return !_readBuffer.empty() && _readWidth > 0 && _readHeight > 0; }
 
 private:
   static void onStateChanged(void *data, enum pw_stream_state old, enum pw_stream_state state, const char *error) {
-    auto self = static_cast<PipeWireCapture *>(data);
+    (void)data;
     SPDLOG_LOGGER_INFO(getCaptureLogger(), "Stream state: {} -> {}", pw_stream_state_as_string(old),
                        pw_stream_state_as_string(state));
     if (state == PW_STREAM_STATE_ERROR && error) {
@@ -202,10 +247,10 @@ private:
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(paramsBuffer, sizeof(paramsBuffer));
 
     auto *bufferParams = static_cast<const struct spa_pod *>(spa_pod_builder_add_object(
-        &b, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers, SPA_PARAM_BUFFERS_buffers,
-        SPA_POD_CHOICE_RANGE_Int(2, 1, 8), SPA_PARAM_BUFFERS_size, SPA_POD_Int(frameSize),
-        SPA_PARAM_BUFFERS_stride, SPA_POD_Int(info.size.width * 4), SPA_PARAM_BUFFERS_dataType,
-        SPA_POD_CHOICE_FLAGS_Int(1 << SPA_DATA_MemPtr)));
+        &b, SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers, SPA_PARAM_BUFFERS_buffers, SPA_POD_CHOICE_RANGE_Int(2, 1, 8),
+        SPA_PARAM_BUFFERS_size, SPA_POD_Int(frameSize), SPA_PARAM_BUFFERS_stride, SPA_POD_Int(info.size.width * 4),
+        SPA_PARAM_BUFFERS_dataType,
+        SPA_POD_CHOICE_FLAGS_Int((1 << SPA_DATA_MemPtr) | (1 << SPA_DATA_MemFd) | (1 << SPA_DATA_DmaBuf))));
 
     pw_stream_update_params(self->_stream, &bufferParams, 1);
   }
@@ -221,13 +266,32 @@ private:
 
     struct spa_buffer *spa_buf = buf->buffer;
     if (!spa_buf->datas[0].data) {
-      pw_stream_queue_buffer(self->_stream, buf);
-      return;
+      SPDLOG_LOGGER_DEBUG(getCaptureLogger(), "Buffer data is NULL (type={}, fd={}, size={})",
+                          spa_buf->datas[0].type, spa_buf->datas[0].fd, spa_buf->datas[0].maxsize);
+      // DMA-BUF: try mmap via fd if MAP_BUFFERS didn't handle it
+      if (spa_buf->datas[0].type == SPA_DATA_DmaBuf && spa_buf->datas[0].fd >= 0) {
+        size_t mapSize = spa_buf->datas[0].maxsize;
+        if (mapSize == 0)
+          mapSize = self->_writeWidth * self->_writeHeight * 4;
+        void *mapped = mmap(nullptr, mapSize, PROT_READ, MAP_SHARED, spa_buf->datas[0].fd, 0);
+        if (mapped != MAP_FAILED) {
+          spa_buf->datas[0].data = mapped;
+          spa_buf->datas[0].maxsize = mapSize;
+          self->_dmabufMapped = mapped;
+          self->_dmabufMapSize = mapSize;
+        } else {
+          SPDLOG_LOGGER_TRACE(getCaptureLogger(), "DMA-BUF mmap failed: {}", strerror(errno));
+          pw_stream_queue_buffer(self->_stream, buf);
+          return;
+        }
+      } else {
+        pw_stream_queue_buffer(self->_stream, buf);
+        return;
+      }
     }
 
     const uint8_t *srcData = static_cast<const uint8_t *>(spa_buf->datas[0].data);
     uint32_t srcStride = spa_buf->datas[0].chunk->stride;
-    uint32_t srcSize = spa_buf->datas[0].chunk->size;
 
     {
       std::lock_guard<std::mutex> lock(self->_bufferMutex);
@@ -242,6 +306,11 @@ private:
       }
 
       // Copy and convert to BGRA if needed
+      // Memory layout for each format (byte order in memory):
+      //   BGRx/BGRA: B G R A — already our target layout
+      //   RGBx/RGBA: R G B A — swap [0]↔[2]
+      //   xBGR/ABGR: A B G R — rotate: dst[0]=src[1], dst[1]=src[2], dst[2]=src[3], dst[3]=src[0]
+      //   xRGB/ARGB: A R G B — dst[0]=src[3], dst[1]=src[2], dst[2]=src[1], dst[3]=src[0]
       for (int y = 0; y < h; y++) {
         const uint8_t *srcRow = srcData + y * srcStride;
         uint8_t *dstRow = self->_writeBuffer.data() + y * dstStride;
@@ -249,7 +318,6 @@ private:
         switch (self->_spaFormat) {
         case SPA_VIDEO_FORMAT_BGRx:
         case SPA_VIDEO_FORMAT_BGRA:
-          // Already BGRA layout, just copy (set alpha to 255 for BGRx)
           std::memcpy(dstRow, srcRow, dstStride);
           if (self->_spaFormat == SPA_VIDEO_FORMAT_BGRx) {
             for (int x = 0; x < w; x++)
@@ -258,12 +326,31 @@ private:
           break;
         case SPA_VIDEO_FORMAT_RGBx:
         case SPA_VIDEO_FORMAT_RGBA:
-          // Swap R and B
           for (int x = 0; x < w; x++) {
             dstRow[x * 4 + 0] = srcRow[x * 4 + 2]; // B
             dstRow[x * 4 + 1] = srcRow[x * 4 + 1]; // G
             dstRow[x * 4 + 2] = srcRow[x * 4 + 0]; // R
             dstRow[x * 4 + 3] = (self->_spaFormat == SPA_VIDEO_FORMAT_RGBA) ? srcRow[x * 4 + 3] : 255;
+          }
+          break;
+        case SPA_VIDEO_FORMAT_xBGR:
+        case SPA_VIDEO_FORMAT_ABGR:
+          // src: [A/x, B, G, R] → dst: [B, G, R, A]
+          for (int x = 0; x < w; x++) {
+            dstRow[x * 4 + 0] = srcRow[x * 4 + 1]; // B
+            dstRow[x * 4 + 1] = srcRow[x * 4 + 2]; // G
+            dstRow[x * 4 + 2] = srcRow[x * 4 + 3]; // R
+            dstRow[x * 4 + 3] = (self->_spaFormat == SPA_VIDEO_FORMAT_ABGR) ? srcRow[x * 4 + 0] : 255;
+          }
+          break;
+        case SPA_VIDEO_FORMAT_xRGB:
+        case SPA_VIDEO_FORMAT_ARGB:
+          // src: [A/x, R, G, B] → dst: [B, G, R, A]
+          for (int x = 0; x < w; x++) {
+            dstRow[x * 4 + 0] = srcRow[x * 4 + 3]; // B
+            dstRow[x * 4 + 1] = srcRow[x * 4 + 2]; // G
+            dstRow[x * 4 + 2] = srcRow[x * 4 + 1]; // R
+            dstRow[x * 4 + 3] = (self->_spaFormat == SPA_VIDEO_FORMAT_ARGB) ? srcRow[x * 4 + 0] : 255;
           }
           break;
         default:
@@ -276,6 +363,14 @@ private:
     }
 
     pw_stream_queue_buffer(self->_stream, buf);
+
+    // Unmap DMA-BUF if we mapped it manually
+    if (self->_dmabufMapped) {
+      munmap(self->_dmabufMapped, self->_dmabufMapSize);
+      spa_buf->datas[0].data = nullptr; // clear so we re-map next time
+      self->_dmabufMapped = nullptr;
+      self->_dmabufMapSize = 0;
+    }
   }
 
   struct pw_thread_loop *_loop = nullptr;
@@ -293,6 +388,8 @@ private:
   int _writeHeight = 0;
   bool _newFrame = false;
   uint32_t _spaFormat = SPA_VIDEO_FORMAT_BGRx;
+  void *_dmabufMapped = nullptr;
+  size_t _dmabufMapSize = 0;
 };
 
 } // namespace Desktop

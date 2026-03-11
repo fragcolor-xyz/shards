@@ -7,6 +7,7 @@
 #include <gio/gio.h>
 #include <shards/log/log.hpp>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -18,7 +19,10 @@ static inline shards::logging::Logger getLogger() {
   return logger;
 }
 
-// Manages an xdg-desktop-portal RemoteDesktop + ScreenCast session
+// Manages an xdg-desktop-portal ScreenCast session (with optional RemoteDesktop upgrade).
+// On compositors that support RemoteDesktop (GNOME, KDE), uses that interface for the session.
+// On compositors with ScreenCast only (Hyprland, wlroots), falls back automatically.
+// Input injection is handled separately via UInputDevice (/dev/uinput).
 class PortalSession {
 public:
   enum class State { Idle, Pending, Active, Failed };
@@ -47,7 +51,7 @@ public:
     _handleToken = "shards_" + std::to_string(reinterpret_cast<uintptr_t>(this));
     _sessionToken = "shards_session_" + std::to_string(reinterpret_cast<uintptr_t>(this));
 
-    // Step 1: CreateSession
+    // Step 1: Try RemoteDesktop.CreateSession first, fall back to ScreenCast
     createSession();
     return true;
   }
@@ -59,11 +63,27 @@ public:
     while (g_main_context_iteration(ctx, FALSE)) {
       // drain all pending events
     }
+
+    // Timeout for RemoteDesktop.CreateSession — on compositors like Hyprland that
+    // don't support RemoteDesktop, the D-Bus call never sends a Response signal.
+    // After 3 seconds, fall back to ScreenCast.
+    if (_waitingForCreateSession && _useRemoteDesktop) {
+      auto elapsed = std::chrono::steady_clock::now() - _createSessionTime;
+      if (elapsed > std::chrono::seconds(3)) {
+        SPDLOG_LOGGER_INFO(getLogger(), "RemoteDesktop.CreateSession timed out after 3s — falling back to ScreenCast");
+        _waitingForCreateSession = false;
+        _useRemoteDesktop = false;
+        createSessionScreenCast();
+      }
+    }
   }
 
   // Returns current state
   State state() const { return _state; }
   bool isActive() const { return _state == State::Active; }
+
+  // Whether RemoteDesktop interface was used (vs ScreenCast-only)
+  bool isRemoteDesktop() const { return _useRemoteDesktop; }
 
   // Cleanup everything
   void destroy() {
@@ -90,96 +110,13 @@ public:
     _pipewireNode = 0;
   }
 
-  // Input injection methods (require Active state)
-  void notifyKeyboardKeycode(uint32_t keycode, bool pressed) {
-    if (!isActive())
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    g_dbus_connection_call_sync(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                                "org.freedesktop.portal.RemoteDesktop", "NotifyKeyboardKeycode",
-                                g_variant_new("(oa{sv}iu)", _sessionPath.c_str(), &optionsBuilder, keycode,
-                                              pressed ? 1u : 0u),
-                                nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr);
-  }
-
-  void notifyPointerMotionAbsolute(double x, double y) {
-    if (!isActive() || _pipewireNode == 0)
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    g_dbus_connection_call_sync(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                                "org.freedesktop.portal.RemoteDesktop", "NotifyPointerMotionAbsolute",
-                                g_variant_new("(oa{sv}udd)", _sessionPath.c_str(), &optionsBuilder, _pipewireNode, x, y),
-                                nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr);
-  }
-
-  void notifyPointerMotion(double dx, double dy) {
-    if (!isActive())
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    g_dbus_connection_call_sync(
-        _connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.RemoteDesktop", "NotifyPointerMotion",
-        g_variant_new("(oa{sv}dd)", _sessionPath.c_str(), &optionsBuilder, dx, dy), nullptr, G_DBUS_CALL_FLAGS_NONE, -1,
-        nullptr, nullptr);
-  }
-
-  void notifyPointerButton(uint32_t button, bool pressed) {
-    if (!isActive())
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    g_dbus_connection_call_sync(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                                "org.freedesktop.portal.RemoteDesktop", "NotifyPointerButton",
-                                g_variant_new("(oa{sv}iu)", _sessionPath.c_str(), &optionsBuilder, button,
-                                              pressed ? 1u : 0u),
-                                nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr);
-  }
-
-  void notifyPointerAxisDiscrete(int axis, int steps) {
-    if (!isActive())
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    g_dbus_connection_call_sync(
-        _connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.RemoteDesktop", "NotifyPointerAxisDiscrete",
-        g_variant_new("(oa{sv}ui)", _sessionPath.c_str(), &optionsBuilder, (uint32_t)axis, steps), nullptr,
-        G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr);
-  }
-
-  void notifyPointerAxis(double dx, double dy) {
-    if (!isActive())
-      return;
-
-    GVariantBuilder optionsBuilder;
-    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
-
-    // Finish flag = 0 (no finish)
-    g_dbus_connection_call_sync(
-        _connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-        "org.freedesktop.portal.RemoteDesktop", "NotifyPointerAxis",
-        g_variant_new("(oa{sv}dd)", _sessionPath.c_str(), &optionsBuilder, dx, dy), nullptr, G_DBUS_CALL_FLAGS_NONE, -1,
-        nullptr, nullptr);
-  }
-
   int pipewireFd() const { return _pipewireFd; }
   uint32_t pipewireNode() const { return _pipewireNode; }
 
 private:
   void createSession() {
+    _useRemoteDesktop = true;
+
     GVariantBuilder optionsBuilder;
     g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
     g_variant_builder_add(&optionsBuilder, "{sv}", "handle_token", g_variant_new_string(_handleToken.c_str()));
@@ -187,7 +124,16 @@ private:
 
     // Subscribe for the response signal before making the call
     subscribeResponse([this](uint32_t response, GVariant *results) {
+      _waitingForCreateSession = false;
+
       if (response != 0) {
+        if (_useRemoteDesktop) {
+          // RemoteDesktop.CreateSession failed — fall back to ScreenCast
+          SPDLOG_LOGGER_INFO(getLogger(), "RemoteDesktop.CreateSession returned {} — falling back to ScreenCast", response);
+          _useRemoteDesktop = false;
+          createSessionScreenCast();
+          return;
+        }
         SPDLOG_LOGGER_ERROR(getLogger(), "CreateSession failed with response {}", response);
         _state = State::Failed;
         return;
@@ -198,7 +144,7 @@ private:
       g_variant_lookup(results, "session_handle", "&s", &sessionHandle);
       if (sessionHandle) {
         _sessionPath = sessionHandle;
-        SPDLOG_LOGGER_INFO(getLogger(), "Session created: {}", _sessionPath);
+        SPDLOG_LOGGER_INFO(getLogger(), "Session created (RemoteDesktop): {}", _sessionPath);
         selectDevices();
       } else {
         SPDLOG_LOGGER_ERROR(getLogger(), "No session_handle in response");
@@ -206,10 +152,48 @@ private:
       }
     });
 
+    SPDLOG_LOGGER_INFO(getLogger(), "Trying RemoteDesktop.CreateSession...");
+    _waitingForCreateSession = true;
+    _createSessionTime = std::chrono::steady_clock::now();
     g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                           "org.freedesktop.portal.RemoteDesktop", "CreateSession",
-                           g_variant_new("(a{sv})", &optionsBuilder), nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr,
-                           nullptr, nullptr);
+                           "org.freedesktop.portal.RemoteDesktop", "CreateSession", g_variant_new("(a{sv})", &optionsBuilder),
+                           nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr);
+  }
+
+  void createSessionScreenCast() {
+    // Regenerate tokens for the new attempt
+    _handleToken = "shards_sc_" + std::to_string(reinterpret_cast<uintptr_t>(this));
+    _sessionToken = "shards_sc_session_" + std::to_string(reinterpret_cast<uintptr_t>(this));
+
+    GVariantBuilder optionsBuilder;
+    g_variant_builder_init(&optionsBuilder, G_VARIANT_TYPE_VARDICT);
+    g_variant_builder_add(&optionsBuilder, "{sv}", "handle_token", g_variant_new_string(_handleToken.c_str()));
+    g_variant_builder_add(&optionsBuilder, "{sv}", "session_handle_token", g_variant_new_string(_sessionToken.c_str()));
+
+    subscribeResponse([this](uint32_t response, GVariant *results) {
+      if (response != 0) {
+        SPDLOG_LOGGER_ERROR(getLogger(), "ScreenCast.CreateSession failed with response {}", response);
+        _state = State::Failed;
+        return;
+      }
+
+      const char *sessionHandle = nullptr;
+      g_variant_lookup(results, "session_handle", "&s", &sessionHandle);
+      if (sessionHandle) {
+        _sessionPath = sessionHandle;
+        SPDLOG_LOGGER_INFO(getLogger(), "Session created (ScreenCast): {}", _sessionPath);
+        // ScreenCast path: skip selectDevices, go straight to selectSources
+        selectSources();
+      } else {
+        SPDLOG_LOGGER_ERROR(getLogger(), "No session_handle in response");
+        _state = State::Failed;
+      }
+    });
+
+    SPDLOG_LOGGER_INFO(getLogger(), "Trying ScreenCast.CreateSession...");
+    g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                           "org.freedesktop.portal.ScreenCast", "CreateSession", g_variant_new("(a{sv})", &optionsBuilder),
+                           nullptr, G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr);
   }
 
   void selectDevices() {
@@ -233,8 +217,8 @@ private:
 
     g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
                            "org.freedesktop.portal.RemoteDesktop", "SelectDevices",
-                           g_variant_new("(oa{sv})", _sessionPath.c_str(), &optionsBuilder), nullptr,
-                           G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr);
+                           g_variant_new("(oa{sv})", _sessionPath.c_str(), &optionsBuilder), nullptr, G_DBUS_CALL_FLAGS_NONE, -1,
+                           nullptr, nullptr, nullptr);
   }
 
   void selectSources() {
@@ -260,8 +244,8 @@ private:
 
     g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
                            "org.freedesktop.portal.ScreenCast", "SelectSources",
-                           g_variant_new("(oa{sv})", _sessionPath.c_str(), &optionsBuilder), nullptr,
-                           G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr);
+                           g_variant_new("(oa{sv})", _sessionPath.c_str(), &optionsBuilder), nullptr, G_DBUS_CALL_FLAGS_NONE, -1,
+                           nullptr, nullptr, nullptr);
   }
 
   void startSession() {
@@ -297,9 +281,8 @@ private:
       g_variant_builder_init(&emptyOptions, G_VARIANT_TYPE_VARDICT);
 
       GVariant *fdResult = g_dbus_connection_call_with_unix_fd_list_sync(
-          _connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-          "org.freedesktop.portal.ScreenCast", "OpenPipeWireRemote",
-          g_variant_new("(oa{sv})", _sessionPath.c_str(), &emptyOptions), G_VARIANT_TYPE("(h)"),
+          _connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", "org.freedesktop.portal.ScreenCast",
+          "OpenPipeWireRemote", g_variant_new("(oa{sv})", _sessionPath.c_str(), &emptyOptions), G_VARIANT_TYPE("(h)"),
           G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &fdList, nullptr, &error);
 
       if (error) {
@@ -319,14 +302,17 @@ private:
       }
 
       _state = State::Active;
-      SPDLOG_LOGGER_INFO(getLogger(), "Portal session is now active");
+      SPDLOG_LOGGER_INFO(getLogger(), "Portal session is now active (mode: {})", _useRemoteDesktop ? "RemoteDesktop" : "ScreenCast");
     });
 
+    // Use the appropriate interface for Start
+    const char *iface = _useRemoteDesktop ? "org.freedesktop.portal.RemoteDesktop" : "org.freedesktop.portal.ScreenCast";
+    SPDLOG_LOGGER_INFO(getLogger(), "Calling {}.Start", iface);
+
     // Use parent_window "" for no parent
-    g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
-                           "org.freedesktop.portal.RemoteDesktop", "Start",
-                           g_variant_new("(osa{sv})", _sessionPath.c_str(), "", &optionsBuilder), nullptr,
-                           G_DBUS_CALL_FLAGS_NONE, -1, nullptr, nullptr, nullptr);
+    g_dbus_connection_call(_connection, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop", iface, "Start",
+                           g_variant_new("(osa{sv})", _sessionPath.c_str(), "", &optionsBuilder), nullptr, G_DBUS_CALL_FLAGS_NONE,
+                           -1, nullptr, nullptr, nullptr);
   }
 
   using ResponseCallback = std::function<void(uint32_t response, GVariant *results)>;
@@ -350,8 +336,8 @@ private:
     std::string responsePath = "/org/freedesktop/portal/desktop/request/" + senderName + "/" + _handleToken;
 
     _responseSubscription = g_dbus_connection_signal_subscribe(
-        _connection, "org.freedesktop.portal.Desktop", "org.freedesktop.portal.Request", "Response",
-        responsePath.c_str(), nullptr, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+        _connection, "org.freedesktop.portal.Desktop", "org.freedesktop.portal.Request", "Response", responsePath.c_str(),
+        nullptr, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
         [](GDBusConnection *, const gchar *, const gchar *, const gchar *, const gchar *, GVariant *parameters,
            gpointer userData) {
           auto self = static_cast<PortalSession *>(userData);
@@ -374,6 +360,9 @@ private:
   State _state = State::Idle;
   guint _responseSubscription = 0;
   ResponseCallback _responseCallback;
+  bool _useRemoteDesktop = true;
+  bool _waitingForCreateSession = false;
+  std::chrono::steady_clock::time_point _createSessionTime;
 
   int _pipewireFd = -1;
   uint32_t _pipewireNode = 0;

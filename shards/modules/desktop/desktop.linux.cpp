@@ -5,6 +5,7 @@
 #include "desktop.hpp"
 #include "desktop.portal.linux.hpp"
 #include "desktop.capture.linux.hpp"
+#include "desktop.uinput.linux.hpp"
 
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
@@ -25,7 +26,7 @@ static PortalSession *asSession(const SHVar &var) {
   return nullptr;
 }
 
-// Global capture instances keyed by session (simple management for Phase 1)
+// Global capture instances keyed by session
 static std::unordered_map<PortalSession *, std::unique_ptr<PipeWireCapture>> g_captures;
 static std::mutex g_capturesMutex;
 
@@ -52,10 +53,41 @@ static void removeCapture(PortalSession *session) {
   g_captures.erase(session);
 }
 
+// Global UInputDevice singleton for input injection
+static std::unique_ptr<UInputDevice> g_uinput;
+static std::mutex g_uinputMutex;
+
+static UInputDevice *getOrCreateUInput() {
+  std::lock_guard<std::mutex> lock(g_uinputMutex);
+  if (g_uinput && g_uinput->isAvailable())
+    return g_uinput.get();
+
+  if (!g_uinput) {
+    g_uinput = std::make_unique<UInputDevice>();
+    if (!g_uinput->init()) {
+      g_uinput.reset();
+      return nullptr;
+    }
+  }
+  return g_uinput.get();
+}
+
+// Helper to get capture dimensions for absolute coordinate scaling
+static bool getCaptureSize(PortalSession *session, int &w, int &h) {
+  std::lock_guard<std::mutex> lock(g_capturesMutex);
+  auto it = g_captures.find(session);
+  if (it != g_captures.end() && it->second->hasFrame()) {
+    w = it->second->width();
+    h = it->second->height();
+    return true;
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop.StartSession
-// Opens a portal RemoteDesktop + ScreenCast session with user consent.
-// Returns a session object that can be used for input injection and capture.
+// Opens a portal ScreenCast session (with RemoteDesktop upgrade if available).
+// Returns a session object that can be used for capture and input injection.
 // ─────────────────────────────────────────────────────────────────────────────
 
 struct StartSession {
@@ -63,9 +95,10 @@ struct StartSession {
   static SHTypesInfo outputTypes() { return Globals::windowType; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Opens an xdg-desktop-portal RemoteDesktop session. "
+    return SHCCSTR("Opens an xdg-desktop-portal session for screen capture. "
+                   "Tries RemoteDesktop first, falls back to ScreenCast on compositors that only support it. "
                    "The user will be prompted to select a screen or window to share. "
-                   "Returns a session object for use with input injection and capture shards.");
+                   "Returns a session object for use with capture and input injection shards.");
   }
 
   PortalSession *_session = nullptr;
@@ -94,6 +127,9 @@ struct StartSession {
     if (_session->state() == PortalSession::State::Failed) {
       throw ActivationError("Portal session failed - user may have denied access");
     }
+
+    // Also initialize UInput for input injection
+    getOrCreateUInput();
 
     _output = Var::Object(_session, CoreCC, windowCC);
     return _output;
@@ -261,7 +297,7 @@ struct Pixels {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop.SendKeyEvent
-// Sends a keyboard event via the portal RemoteDesktop session.
+// Sends a keyboard event via uinput.
 // Input: Int2 [state (0=down, 1=up), linux keycode]
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -270,11 +306,11 @@ struct SendKeyEvent {
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Sends a keyboard event via the portal session. "
+    return SHCCSTR("Sends a keyboard event via uinput virtual device. "
                    "Input is Int2 [state (0=down, 1=up), linux keycode].");
   }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (used for API compatibility).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -287,22 +323,22 @@ struct SendKeyEvent {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
 
     int state = input.payload.int2Value[0];
     int keycode = input.payload.int2Value[1];
     bool pressed = (state == 0); // 0 = down/pressed
 
-    session->notifyKeyboardKeycode(static_cast<uint32_t>(keycode), pressed);
+    uinput->keyboardKey(static_cast<uint32_t>(keycode), pressed);
     return input;
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop.SetMousePos
-// Sets the absolute mouse position via the portal session.
+// Sets the absolute mouse position via uinput.
 // Input: Int2 [x, y]
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -311,11 +347,11 @@ struct SetMousePos {
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Sets the mouse position to absolute coordinates via the portal session. "
-                   "Input is Int2 [x, y].");
+    return SHCCSTR("Sets the mouse position to absolute coordinates via uinput. "
+                   "Input is Int2 [x, y]. Coordinates are scaled using the capture dimensions.");
   }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (needed for capture dimensions).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -328,20 +364,28 @@ struct SetMousePos {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
 
-    double x = static_cast<double>(input.payload.int2Value[0]);
-    double y = static_cast<double>(input.payload.int2Value[1]);
-    session->notifyPointerMotionAbsolute(x, y);
+    int x = input.payload.int2Value[0];
+    int y = input.payload.int2Value[1];
+
+    // Get screen dimensions from capture for coordinate scaling
+    int screenW = 1920, screenH = 1080; // defaults
+    auto *session = asSession(_session.get());
+    if (session) {
+      getCaptureSize(session, screenW, screenH);
+    }
+
+    uinput->pointerMotionAbsolute(x, y, screenW, screenH);
     return input;
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop.SetMouseRelativePos
-// Moves the mouse by a relative delta via the portal session.
+// Moves the mouse by a relative delta via uinput.
 // Input: Int2 [dx, dy]
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -350,11 +394,11 @@ struct SetMouseRelativePos {
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
   static SHOptionalString help() {
-    return SHCCSTR("Moves the mouse by a relative delta via the portal session. "
+    return SHCCSTR("Moves the mouse by a relative delta via uinput. "
                    "Input is Int2 [dx, dy].");
   }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (used for API compatibility).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -367,13 +411,13 @@ struct SetMouseRelativePos {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
 
-    double dx = static_cast<double>(input.payload.int2Value[0]);
-    double dy = static_cast<double>(input.payload.int2Value[1]);
-    session->notifyPointerMotion(dx, dy);
+    int dx = input.payload.int2Value[0];
+    int dy = input.payload.int2Value[1];
+    uinput->pointerMotionRelative(dx, dy);
     return input;
   }
 };
@@ -386,7 +430,7 @@ struct ClickBase {
   static SHTypesInfo inputTypes() { return CoreInfo::Int2Type; }
   static SHTypesInfo outputTypes() { return CoreInfo::Int2Type; }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (needed for capture dimensions).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -400,18 +444,24 @@ struct ClickBase {
 
 protected:
   SHVar doClick(SHContext *context, const SHVar &input, uint32_t button) {
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
+
+    int x = input.payload.int2Value[0];
+    int y = input.payload.int2Value[1];
+
+    // Get screen dimensions from capture for coordinate scaling
+    int screenW = 1920, screenH = 1080; // defaults
     auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    if (session) {
+      getCaptureSize(session, screenW, screenH);
+    }
 
-    // Move to position first
-    double x = static_cast<double>(input.payload.int2Value[0]);
-    double y = static_cast<double>(input.payload.int2Value[1]);
-    session->notifyPointerMotionAbsolute(x, y);
-
-    // Press and release
-    session->notifyPointerButton(button, true);
-    session->notifyPointerButton(button, false);
+    // Move to position first, then click
+    uinput->pointerMotionAbsolute(x, y, screenW, screenH);
+    uinput->pointerButton(button, true);
+    uinput->pointerButton(button, false);
 
     return input;
   }
@@ -440,11 +490,9 @@ struct ScrollVertical {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  static SHOptionalString help() {
-    return SHCCSTR("Scrolls vertically by the given float amount via the portal session.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Scrolls vertically by the given float amount via uinput."); }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (used for API compatibility).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -457,12 +505,12 @@ struct ScrollVertical {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
 
-    double amount = input.payload.floatValue;
-    session->notifyPointerAxis(0.0, amount);
+    int amount = static_cast<int>(input.payload.floatValue);
+    uinput->scrollVertical(amount);
     return input;
   }
 };
@@ -471,11 +519,9 @@ struct ScrollHorizontal {
   static SHTypesInfo inputTypes() { return CoreInfo::FloatType; }
   static SHTypesInfo outputTypes() { return CoreInfo::FloatType; }
 
-  static SHOptionalString help() {
-    return SHCCSTR("Scrolls horizontally by the given float amount via the portal session.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Scrolls horizontally by the given float amount via uinput."); }
 
-  PARAM_PARAMVAR(_session, "Session", "The remote desktop session.", {Globals::windowVarOrNone});
+  PARAM_PARAMVAR(_session, "Session", "The desktop session (used for API compatibility).", {Globals::windowVarOrNone});
   PARAM_IMPL(PARAM_IMPL_FOR(_session));
 
   PARAM_REQUIRED_VARIABLES();
@@ -488,12 +534,12 @@ struct ScrollHorizontal {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
+    auto *uinput = getOrCreateUInput();
+    if (!uinput)
+      throw ActivationError("UInput not available - check /dev/uinput permissions");
 
-    double amount = input.payload.floatValue;
-    session->notifyPointerAxis(amount, 0.0);
+    int amount = static_cast<int>(input.payload.floatValue);
+    uinput->scrollHorizontal(amount);
     return input;
   }
 };
@@ -515,7 +561,7 @@ SHARDS_REGISTER_FN(desktop) {
   REGISTER_SHARD("Desktop.Pixel", Pixel);
   REGISTER_SHARD("Desktop.Pixels", Pixels);
 
-  // Input injection
+  // Input injection (via uinput)
   REGISTER_SHARD("Desktop.SendKeyEvent", SendKeyEvent);
   REGISTER_SHARD("Desktop.SetMousePos", SetMousePos);
   REGISTER_SHARD("Desktop.SetMouseRelativePos", SetMouseRelativePos);
