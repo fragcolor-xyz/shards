@@ -228,6 +228,11 @@ public:
 
   static bool isEqualType(const SHTypeInfo &t1, const SHTypeInfo &t2) { return sCore._core->isEqualType(&t1, &t2); }
 
+  static bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter = true,
+                         bool relaxEmptySeqCheck = false) {
+    return sCore._core->matchTypes(&inputType, &receiverType, isParameter, relaxEmptySeqCheck);
+  }
+
   static SHTypeInfo deriveTypeInfo(const SHVar &v, const SHInstanceData *data, bool mutable_) {
     return sCore._core->deriveTypeInfo(&v, data, mutable_);
   }

@@ -115,6 +115,7 @@ template <typename SH_CORE> struct TExposedInfo {
 
 // Check if an exposed variable's type matches any of the valid types for a parameter.
 // validTypes entries with basicType==ContextVar contain the expected inner types in contextVarTypes.
+// Uses SH_CORE::matchTypes (backed by TypeMatcher) for proper structural type matching.
 template <typename SH_CORE>
 inline bool matchesValidTypes(const SHTypeInfo &exposedType, SHTypesInfo validTypes) {
   for (uint32_t i = 0; i < validTypes.len; i++) {
@@ -123,7 +124,7 @@ inline bool matchesValidTypes(const SHTypeInfo &exposedType, SHTypesInfo validTy
       return true;
     if (vt.basicType == SHType::ContextVar) {
       for (uint32_t j = 0; j < vt.contextVarTypes.len; j++) {
-        if (vt.contextVarTypes.elements[j].basicType == SHType::Any || SH_CORE::isEqualType(exposedType, vt.contextVarTypes.elements[j]))
+        if (SH_CORE::matchTypes(exposedType, vt.contextVarTypes.elements[j], true, false))
           return true;
       }
     }

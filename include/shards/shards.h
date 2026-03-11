@@ -1081,6 +1081,8 @@ typedef const char *(__cdecl *SHGetCompressedString)(uint32_t crc_id);
 typedef SHBool(__cdecl *SHIsEqualVar)(const struct SHVar *v1, const struct SHVar *v2);
 typedef int(__cdecl *SHCompareVar)(const struct SHVar *v1, const struct SHVar *v2);
 typedef SHBool(__cdecl *SHIsEqualType)(const struct SHTypeInfo *t1, const struct SHTypeInfo *t2);
+typedef SHBool(__cdecl *SHMatchTypes)(const struct SHTypeInfo *inputType, const struct SHTypeInfo *receiverType,
+                                      SHBool isParameter, SHBool relaxEmptySeqCheck);
 
 typedef struct SHTypeInfo(__cdecl *SHDeriveTypeInfo)(const struct SHVar *v, const struct SHInstanceData *data, bool mutable_);
 typedef void(__cdecl *SHFreeDerivedTypeInfo)(struct SHTypeInfo *t);
@@ -1438,6 +1440,9 @@ typedef struct _SHCore {
 
   // Set defines for evaluation environment
   SHSetDefines setDefines;
+
+  // Type matching (uses TypeMatcher internally)
+  SHMatchTypes matchTypes;
 
   //! ADD NEW FUNCTIONS AT BOTTOM OF THIS STRUCT
 } SHCore;
