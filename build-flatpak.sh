@@ -4,6 +4,17 @@
 
 set -e
 
+# Use podman if available, otherwise docker
+if command -v podman &> /dev/null; then
+  CONTAINER_CMD=podman
+elif command -v docker &> /dev/null; then
+  CONTAINER_CMD=docker
+else
+  echo "Error: Neither podman nor docker found"
+  exit 1
+fi
+echo "Using container runtime: $CONTAINER_CMD"
+
 echo "=== Cleaning up old files ==="
 rm -f shards-binary
 rm -f com.fragcolor.Shards.yml
@@ -13,14 +24,14 @@ rm -rf build-dir
 rm -rf repo
 rm -f generate-flatpak.sh
 
-echo "=== Building Shards with Docker ==="
-docker build -f Dockerfile.shards -t shards-builder .
+echo "=== Building Shards with $CONTAINER_CMD ==="
+$CONTAINER_CMD build -f Dockerfile.shards -t shards-builder .
 
-echo "=== Extracting binary from Docker ==="
+echo "=== Extracting binary from container ==="
 # Create temporary container and extract the binary
-CONTAINER_ID=$(docker create shards-builder)
-docker cp $CONTAINER_ID:/usr/local/bin/shards ./shards-binary
-docker rm $CONTAINER_ID
+CONTAINER_ID=$($CONTAINER_CMD create shards-builder)
+$CONTAINER_CMD cp $CONTAINER_ID:/usr/local/bin/shards ./shards-binary
+$CONTAINER_CMD rm $CONTAINER_ID
 
 echo "=== Creating minimal Flatpak manifest ==="
 cat > com.fragcolor.Shards.yml << 'EOF'
