@@ -104,6 +104,7 @@ template <typename SH_CORE> struct TExposedInfo {
 template <typename SH_CORE>
 inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo<SH_CORE> &out, const SHVar &var,
                                         SHTypesInfo validTypes, const char *debugTag) {
+  (void)validTypes; // Type validation is handled by the compose system
   if (var.valueType != SHType::ContextVar)
     return;
 
@@ -114,6 +115,13 @@ inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo
       return;
     }
   }
+
+  // Variable not found in shared context
+  std::string msg = "Required context variable '";
+  msg += name;
+  msg += "' not found for parameter ";
+  msg += debugTag;
+  throw ::shards::SHException(msg);
 }
 
 // Only define macros if the internal params.hpp hasn't been included
