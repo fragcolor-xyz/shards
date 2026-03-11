@@ -66,12 +66,23 @@ template <typename SH_CORE> struct TExposedInfo {
     }
   }
 
+  TExposedInfo(TExposedInfo &&other) noexcept : _innerInfo(other._innerInfo) { other._innerInfo = {}; }
+
   TExposedInfo &operator=(const TExposedInfo &other) {
     if (this == &other)
       return *this;
     SH_CORE::expTypesResize(&_innerInfo, 0);
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
       push_back(other._innerInfo.elements[i]);
+    }
+    return *this;
+  }
+
+  TExposedInfo &operator=(TExposedInfo &&other) noexcept {
+    if (this != &other) {
+      SH_CORE::expTypesFree(&_innerInfo);
+      _innerInfo = other._innerInfo;
+      other._innerInfo = {};
     }
     return *this;
   }
@@ -102,19 +113,38 @@ template <typename SH_CORE> struct TExposedInfo {
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 };
 
+// Check if an exposed variable's type matches any of the valid types for a parameter.
+// validTypes entries with basicType==ContextVar contain the expected inner types in contextVarTypes.
+template <typename SH_CORE>
+inline bool matchesValidTypes(const SHTypeInfo &exposedType, SHTypesInfo validTypes) {
+  for (uint32_t i = 0; i < validTypes.len; i++) {
+    auto &vt = validTypes.elements[i];
+    if (vt.basicType == SHType::Any)
+      return true;
+    if (vt.basicType == SHType::ContextVar) {
+      for (uint32_t j = 0; j < vt.contextVarTypes.len; j++) {
+        if (vt.contextVarTypes.elements[j].basicType == SHType::Any || SH_CORE::isEqualType(exposedType, vt.contextVarTypes.elements[j]))
+          return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Collect required context variables for DLL context
 // Recursively walks Seq/Table values to find nested ContextVars,
-// then looks them up in data.shared
+// validates their types against validTypes, then registers them
 template <typename SH_CORE>
 inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo<SH_CORE> &out, const SHVar &var,
                                         SHTypesInfo validTypes, const char *debugTag) {
-  (void)validTypes; // Type validation is handled by the compose system
   switch (var.valueType) {
   case SHType::ContextVar: {
     auto name = SHSTRVIEW(var);
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (data.shared.elements[i].name && name == data.shared.elements[i].name) {
-        out.push_back(data.shared.elements[i]);
+        if (matchesValidTypes<SH_CORE>(data.shared.elements[i].exposedType, validTypes)) {
+          out.push_back(data.shared.elements[i]);
+        }
         return;
       }
     }
