@@ -176,7 +176,7 @@ template <typename SH_CORE> struct TIterableParam {
       result.warmup = [](void *, SHContext *) {};
     }
 
-    if constexpr (has_warmup<T>::value) {
+    if constexpr (has_cleanup<T>::value) {
       result.cleanup = [](void *varPtr, SHContext *ctx) { ((T *)varPtr)->cleanup(ctx); };
     } else {
       result.cleanup = [](void *, SHContext *ctx) {};
