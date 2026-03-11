@@ -27,6 +27,7 @@ At runtime just dlopen the dll, that's it!
 #include "common_types.hpp"
 
 #include "object_type.hpp"
+#include "params.hpp"
 
 namespace shards {
 // this must be defined in the external
@@ -363,6 +364,8 @@ using ShardsVar = TShardsVar<Core>;
 using OwnedVar = TOwnedVar<Core>;
 using SeqVar = TSeqVar<Core>;
 using TableVar = TTableVar<Core>;
+using ExposedInfo = TExposedInfo<Core>;
+using IterableParam = TIterableParam<Core>;
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
           E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,
