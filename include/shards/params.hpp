@@ -29,9 +29,10 @@
 
 namespace shards {
 
-// Check if a type info contains context variables (from exposed_type_utils.hpp)
-// Guard: internal exposed_type_utils.hpp defines this in the same namespace
-#ifndef A16CC8A4_FBC4_4500_BE1D_F565963C9C16
+// Check if a type info contains context variables (also defined in exposed_type_utils.hpp)
+// Uses a dedicated guard so either header can be included first without redefinition
+#ifndef SH_HAS_CONTEXT_VARIABLES_DEFINED
+#define SH_HAS_CONTEXT_VARIABLES_DEFINED
 inline bool hasContextVariables(const SHTypeInfo &type) {
   switch (type.basicType) {
   case SHType::ContextVar:
@@ -66,6 +67,8 @@ template <typename SH_CORE> struct TExposedInfo {
   }
 
   TExposedInfo &operator=(const TExposedInfo &other) {
+    if (this == &other)
+      return *this;
     SH_CORE::expTypesResize(&_innerInfo, 0);
     for (uint32_t i = 0; i < other._innerInfo.len; i++) {
       push_back(other._innerInfo.elements[i]);
