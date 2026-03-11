@@ -102,29 +102,48 @@ template <typename SH_CORE> struct TExposedInfo {
   explicit operator SHExposedTypesInfo() const { return _innerInfo; }
 };
 
-// Simplified collectRequiredVariables for DLL context
-// Handles the common case: ContextVar parameter lookup in data.shared
+// Collect required context variables for DLL context
+// Recursively walks Seq/Table values to find nested ContextVars,
+// then looks them up in data.shared
 template <typename SH_CORE>
 inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo<SH_CORE> &out, const SHVar &var,
                                         SHTypesInfo validTypes, const char *debugTag) {
   (void)validTypes; // Type validation is handled by the compose system
-  if (var.valueType != SHType::ContextVar)
-    return;
-
-  auto name = SHSTRVIEW(var);
-  for (uint32_t i = 0; i < data.shared.len; i++) {
-    if (data.shared.elements[i].name && name == data.shared.elements[i].name) {
-      out.push_back(data.shared.elements[i]);
-      return;
+  switch (var.valueType) {
+  case SHType::ContextVar: {
+    auto name = SHSTRVIEW(var);
+    for (uint32_t i = 0; i < data.shared.len; i++) {
+      if (data.shared.elements[i].name && name == data.shared.elements[i].name) {
+        out.push_back(data.shared.elements[i]);
+        return;
+      }
     }
+    std::string msg = "Required context variable '";
+    msg += name;
+    msg += "' not found for parameter ";
+    msg += debugTag;
+    throw ::shards::SHException(msg);
   }
-
-  // Variable not found in shared context
-  std::string msg = "Required context variable '";
-  msg += name;
-  msg += "' not found for parameter ";
-  msg += debugTag;
-  throw ::shards::SHException(msg);
+  case SHType::Seq: {
+    auto &seq = var.payload.seqValue;
+    for (uint32_t i = 0; i < seq.len; i++) {
+      collectRequiredVariablesDll<SH_CORE>(data, out, seq.elements[i], validTypes, debugTag);
+    }
+    break;
+  }
+  case SHType::Table: {
+    auto &t = var.payload.tableValue;
+    SHTableIterator tit;
+    t.api->tableGetIterator(t, &tit);
+    SHVar k, v;
+    while (t.api->tableNext(t, &tit, &k, &v)) {
+      collectRequiredVariablesDll<SH_CORE>(data, out, v, validTypes, debugTag);
+    }
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 // Only define macros if the internal params.hpp hasn't been included
