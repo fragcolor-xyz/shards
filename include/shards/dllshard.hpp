@@ -228,6 +228,7 @@ public:
 
   static bool isEqualType(const SHTypeInfo &t1, const SHTypeInfo &t2) { return sCore._core->isEqualType(&t1, &t2); }
 
+  // Requires runtime ABI with matchTypes field (added in PR #1254)
   static bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter = true,
                          bool relaxEmptySeqCheck = false) {
     return sCore._core->matchTypes(&inputType, &receiverType, isParameter, relaxEmptySeqCheck);

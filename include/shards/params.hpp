@@ -123,6 +123,8 @@ inline bool matchesValidTypes(const SHTypeInfo &exposedType, SHTypesInfo validTy
     if (vt.basicType == SHType::Any)
       return true;
     if (vt.basicType == SHType::ContextVar) {
+      if (vt.contextVarTypes.len == 0)
+        return true; // No inner type constraints — accepts any context variable type
       for (uint32_t j = 0; j < vt.contextVarTypes.len; j++) {
         if (SH_CORE::matchTypes(exposedType, vt.contextVarTypes.elements[j], true, false))
           return true;
@@ -141,23 +143,28 @@ inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo
   switch (var.valueType) {
   case SHType::ContextVar: {
     auto name = SHSTRVIEW(var);
+    bool nameFound = false;
     for (uint32_t i = 0; i < data.shared.len; i++) {
       if (data.shared.elements[i].name && name == data.shared.elements[i].name) {
+        nameFound = true;
         if (matchesValidTypes<SH_CORE>(data.shared.elements[i].exposedType, validTypes)) {
           out.push_back(data.shared.elements[i]);
           return;
         }
-        // Variable found but type doesn't match — throw like internal collectRequiredVariables does
-        std::string msg = "No matching variable found for parameter ";
-        msg += debugTag;
-        throw ::shards::SHException(msg);
+        // Type mismatch — continue scanning, data.shared may have duplicate names at different scopes
       }
     }
-    std::string msg = "Required context variable '";
-    msg += name;
-    msg += "' not found for parameter ";
-    msg += debugTag;
-    throw ::shards::SHException(msg);
+    if (nameFound) {
+      std::string msg = "No matching variable found for parameter ";
+      msg += debugTag;
+      throw ::shards::SHException(msg);
+    } else {
+      std::string msg = "Required context variable '";
+      msg += name;
+      msg += "' not found for parameter ";
+      msg += debugTag;
+      throw ::shards::SHException(msg);
+    }
   }
   case SHType::Seq: {
     auto &seq = var.payload.seqValue;
