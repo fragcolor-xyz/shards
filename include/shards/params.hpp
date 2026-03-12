@@ -145,8 +145,12 @@ inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo
       if (data.shared.elements[i].name && name == data.shared.elements[i].name) {
         if (matchesValidTypes<SH_CORE>(data.shared.elements[i].exposedType, validTypes)) {
           out.push_back(data.shared.elements[i]);
+          return;
         }
-        return;
+        // Variable found but type doesn't match — throw like internal collectRequiredVariables does
+        std::string msg = "No matching variable found for parameter ";
+        msg += debugTag;
+        throw ::shards::SHException(msg);
       }
     }
     std::string msg = "Required context variable '";
