@@ -184,6 +184,11 @@ inline void collectRequiredVariablesDll(const SHInstanceData &data, TExposedInfo
 // Only define macros if the internal params.hpp hasn't been included
 #ifndef B0328A63_0B69_4191_94D5_38783B9F20C9
 
+// SHCCSTR is defined in foundation.hpp (core-only); provide a plain fallback for DLL context
+#ifndef SHCCSTR
+#define SHCCSTR(_str_) (SHOptionalString{_str_, {}})
+#endif
+
 #define PARAM_EXT(_type, _name, _paramInfo)                                 \
   static inline ::shards::ParameterInfo &_name##ParameterInfo = _paramInfo; \
   _type _name{};
