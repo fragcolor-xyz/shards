@@ -1426,13 +1426,8 @@ struct Set : public SetUpdateBase {
         SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
         throw WarmupError("Cannot add metadata to global variable because mesh is not available");
       } else {
-        if (_isTable) {
-          // Table types can change, so we need to force the metadata update
-          mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]), true);
-        } else {
-          // Regular types can't change, so we can just set the metadata and fail if it already exists
-          mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
-        }
+        // Types can't change, so we can just set the metadata and fail if it already exists
+        mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
       }
     }
   }
@@ -2525,6 +2520,16 @@ struct TableDecl : public VariableBase {
       _target = referenceVariable(context, _name.c_str());
     _key.warmup(context);
     initTable();
+
+    if (_global && !context->ephemeral) {
+      std::shared_ptr<SHMesh> mesh = context->main->mesh.lock();
+      if (!mesh) {
+        SHLOG_ERROR("Cannot add metadata to global variable {} because mesh is not available", _name);
+        throw WarmupError("Cannot add metadata to global variable because mesh is not available");
+      } else {
+        mesh->setMetadata(SHExposedTypeInfo(_exposedInfo._innerInfo.elements[0]));
+      }
+    }
   }
 
   SHExposedTypesInfo exposedVariables() { return SHExposedTypesInfo(_exposedInfo); }
