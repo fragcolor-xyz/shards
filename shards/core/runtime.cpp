@@ -3351,6 +3351,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->serializeVar = &serializeVar;
   result->deserializeVar = &deserializeVar;
 
+  result->matchTypes = [](const SHTypeInfo *inputType, const SHTypeInfo *receiverType, SHBool isParameter,
+                          SHBool relaxEmptySeqCheck) -> SHBool {
+    return TypeMatcher<>{.isParameter = bool(isParameter),
+                         .relaxEmptyTableCheck = true,
+                         .relaxEmptySeqCheck = bool(relaxEmptySeqCheck),
+                         .checkVarTypes = true}
+        .match(*inputType, *receiverType);
+  };
+
   return result;
 }
 

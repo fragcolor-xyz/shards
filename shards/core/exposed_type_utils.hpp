@@ -211,6 +211,8 @@ inline void getObjectTypes(std::vector<SHTypeInfo> &out, const SHTypeInfo &type)
   }
 }
 
+#ifndef SH_HAS_CONTEXT_VARIABLES_DEFINED
+#define SH_HAS_CONTEXT_VARIABLES_DEFINED
 inline bool hasContextVariables(const SHTypeInfo &type) {
   switch (type.basicType) {
   case SHType::ContextVar:
@@ -230,6 +232,7 @@ inline bool hasContextVariables(const SHTypeInfo &type) {
   }
   return false;
 }
+#endif
 
 } // namespace shards
 
