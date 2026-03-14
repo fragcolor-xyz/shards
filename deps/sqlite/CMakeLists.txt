@@ -32,14 +32,6 @@ add_library(sqlite-static STATIC ${SQLITE_SOURCES})
 target_compile_definitions(sqlite-static PUBLIC ${SQLITE_DEFINES})
 target_include_directories(sqlite-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
-# Add Rust library for CR-SQLite bundle
-add_rust_library(
-  NAME crsql_bundle
-  PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}/cr-sqlite/core/rs/bundle
-  ENVIRONMENT ${RUST_ENV} CRSQLITE_COMMIT_SHA=shards-dev
-  FEATURES static
-)
-
 # Option to include SQLite vector extension
 option(WITH_SQLITE_VEC "Include SQLite vector extension" ON)
 
@@ -65,18 +57,32 @@ if(WITH_SQLITE_VEC)
   endif()
 endif()
 
-# Create CR-SQLite extension object library
+# Create CR-SQLite extension object library (pure C port)
 add_library(crsqlite-extension-obj OBJECT
   cr-sqlite/core/src/crsqlite.c
   cr-sqlite/core/src/changes-vtab.c
+  cr-sqlite/core/src/changes-vtab-impl.c
   cr-sqlite/core/src/ext-data.c
+  cr-sqlite/core/src/util.c
+  cr-sqlite/core/src/pack-columns.c
+  cr-sqlite/core/src/tableinfo.c
+  cr-sqlite/core/src/bootstrap.c
+  cr-sqlite/core/src/db-version.c
+  cr-sqlite/core/src/triggers.c
+  cr-sqlite/core/src/crr.c
+  cr-sqlite/core/src/local-writes.c
+  cr-sqlite/core/src/automigrate.c
+  cr-sqlite/core/src/unpack-columns-vtab.c
+  cr-sqlite/core/src/cl-set-vtab.c
+  cr-sqlite/core/src/fractindex.c
 )
+target_include_directories(crsqlite-extension-obj PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src)
 target_link_libraries(crsqlite-extension-obj PUBLIC sqlite-static)
 if(WITH_SQLITE_VEC)
   target_link_libraries(crsqlite-extension-obj PUBLIC sqlite-vec)
   target_compile_definitions(crsqlite-extension-obj PUBLIC WITH_SQLITE_VEC)
 endif()
-target_compile_definitions(crsqlite-extension-obj PUBLIC ${SQLITE_DEFINES})
+target_compile_definitions(crsqlite-extension-obj PUBLIC ${SQLITE_DEFINES} CRSQLITE_COMMIT_SHA="shards-dev")
 target_include_directories(crsqlite-extension-obj PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/cr-sqlite/core/src/sqlite)
 
 # Create interface library for CR-SQLite extension
