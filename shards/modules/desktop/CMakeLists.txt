@@ -8,7 +8,7 @@ if(WIN32)
     EXPERIMENTAL)
 
   target_link_libraries(shards-module-desktop DXGI D3D11 ntdll)
-elseif(DESKTOP_LINUX)
+elseif(DESKTOP_LINUX AND NOT ZIG_MUSL)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(GIO REQUIRED gio-2.0 gio-unix-2.0)
   pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
