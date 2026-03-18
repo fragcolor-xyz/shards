@@ -58,6 +58,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 | Shard | Input | Output | Description |
 |---|---|---|---|
 | Desktop.StartSession | None | Session object | Opens portal with user consent (RemoteDesktop → ScreenCast fallback) |
+| Desktop.StartDirectCapture | Int (node ID) | Session object | Direct PipeWire capture — no portal, no consent dialog (headless/CI) |
 | Desktop.CaptureFrame | Session | Session | Swaps PipeWire capture buffer |
 | Desktop.Pixel | Int2 [x,y] | Color | Single pixel from capture (Session param) |
 | Desktop.Pixels | Int4 [l,t,r,b] | Image | Region from capture (Session param) |
@@ -78,6 +79,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 ## Testing
 
+### Interactive (portal)
 Must be tested on a Linux system with:
 - A running Wayland compositor
 - xdg-desktop-portal and a portal backend (e.g., xdg-desktop-portal-hyprland, xdg-desktop-portal-gnome, xdg-desktop-portal-wlr)
@@ -85,3 +87,13 @@ Must be tested on a Linux system with:
 - `/dev/uinput` access for input injection (user in `input` group + udev rule)
 
 The portal consent dialog will appear on first `Desktop.StartSession` call.
+
+### Headless / CI (direct PipeWire)
+`Desktop.StartDirectCapture` bypasses the portal entirely — no consent dialog, no D-Bus.
+Requires a running Wayland compositor and PipeWire, but can be headless (e.g., `sway` or `weston --backend=headless`).
+
+1. Start a headless compositor: `WLR_BACKENDS=headless sway` or `weston --backend=headless`
+2. Find the PipeWire screen capture node ID: `pw-cli list-objects | grep -A5 'node.name'`
+3. Pass node ID to `Desktop.StartDirectCapture`
+
+This enables fully automated testing without human interaction.

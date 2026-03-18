@@ -27,6 +27,10 @@ class PortalSession {
 public:
   enum class State { Idle, Pending, Active, Failed };
 
+  // Tag byte — must be first member so SessionTag* reinterpret_cast works.
+  // Value 1 = Portal session (see SessionKind in desktop.linux.cpp).
+  uint8_t _sessionKind = 1;
+
   PortalSession() = default;
   ~PortalSession() { destroy(); }
 

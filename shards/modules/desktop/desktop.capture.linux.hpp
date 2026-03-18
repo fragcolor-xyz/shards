@@ -43,6 +43,17 @@ public:
   PipeWireCapture &operator=(const PipeWireCapture &) = delete;
 
   bool init(int pipewireFd, uint32_t nodeId) {
+    return initInternal(nodeId, pipewireFd);
+  }
+
+  // Direct PipeWire connection — bypasses portal, connects to PipeWire daemon directly.
+  // Use for headless/automated scenarios where no portal consent dialog is possible.
+  bool initDirect(uint32_t nodeId) {
+    return initInternal(nodeId, -1);
+  }
+
+private:
+  bool initInternal(uint32_t nodeId, int pipewireFd) {
     pw_init(nullptr, nullptr);
 
     _loop = pw_thread_loop_new("shards-capture", nullptr);
@@ -59,10 +70,15 @@ public:
       return false;
     }
 
-    // Connect core using the portal's fd
-    _core = pw_context_connect_fd(_context, pipewireFd, nullptr, 0);
+    // Connect core — either via portal fd or directly to PipeWire daemon
+    if (pipewireFd >= 0) {
+      _core = pw_context_connect_fd(_context, pipewireFd, nullptr, 0);
+    } else {
+      _core = pw_context_connect(_context, nullptr, 0);
+    }
     if (!_core) {
-      SPDLOG_LOGGER_ERROR(getCaptureLogger(), "Failed to connect PipeWire core with fd {}", pipewireFd);
+      SPDLOG_LOGGER_ERROR(getCaptureLogger(), "Failed to connect PipeWire core{}",
+                          pipewireFd >= 0 ? " with fd " + std::to_string(pipewireFd) : " (direct)");
       pw_context_destroy(_context);
       _context = nullptr;
       pw_thread_loop_destroy(_loop);
@@ -164,6 +180,7 @@ public:
     return true;
   }
 
+public:
   void shutdown() {
     if (_loop)
       pw_thread_loop_lock(_loop);

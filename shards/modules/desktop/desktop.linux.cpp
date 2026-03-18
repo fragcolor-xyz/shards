@@ -18,15 +18,28 @@ using namespace shards;
 
 namespace Desktop {
 
-// Helper to extract PortalSession* from an object SHVar
-static PortalSession *asSession(const SHVar &var) {
+// Session tag to distinguish portal vs direct sessions stored as the same Object type.
+// Both PortalSession* and DirectSession* are stored as SHType::Object with windowCC,
+// so we use a tag byte at the start of each struct to tell them apart at runtime.
+enum class SessionKind : uint8_t { Portal = 1, Direct = 2 };
+
+// Tagged base — first byte identifies the session type
+struct SessionTag {
+  SessionKind kind;
+};
+
+// Helper to extract a pointer from object SHVar and identify the session kind
+static void *asSessionPtr(const SHVar &var, SessionKind &outKind) {
   if (var.valueType == SHType::Object && var.payload.objectVendorId == CoreCC && var.payload.objectTypeId == windowCC) {
-    return reinterpret_cast<PortalSession *>(var.payload.objectValue);
+    auto *tag = reinterpret_cast<SessionTag *>(var.payload.objectValue);
+    outKind = tag->kind;
+    return var.payload.objectValue;
   }
+  outKind = SessionKind::Portal;
   return nullptr;
 }
 
-// Global capture instances keyed by session
+// Global capture instances keyed by portal session
 static std::unordered_map<PortalSession *, std::unique_ptr<PipeWireCapture>> g_captures;
 static std::mutex g_capturesMutex;
 
@@ -70,18 +83,6 @@ static UInputDevice *getOrCreateUInput() {
     }
   }
   return g_uinput.get();
-}
-
-// Helper to get capture dimensions for absolute coordinate scaling
-static bool getCaptureSize(PortalSession *session, int &w, int &h) {
-  std::lock_guard<std::mutex> lock(g_capturesMutex);
-  auto it = g_captures.find(session);
-  if (it != g_captures.end() && it->second->hasFrame()) {
-    w = it->second->width();
-    h = it->second->height();
-    return true;
-  }
-  return false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +138,111 @@ struct StartSession {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Desktop.StartDirectCapture
+// Connects directly to PipeWire by node ID — no portal, no consent dialog.
+// For headless/automated scenarios (CI, testing, remote desktop servers).
+// Input: Int (PipeWire node ID)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Sentinel object to represent a direct capture session (no portal).
+// Tag byte must be first member (matches SessionTag layout for reinterpret_cast).
+struct DirectSession {
+  uint8_t _sessionKind = static_cast<uint8_t>(SessionKind::Direct);
+  uint32_t nodeId = 0;
+};
+
+static std::unordered_map<DirectSession *, std::unique_ptr<PipeWireCapture>> g_directCaptures;
+static std::mutex g_directCapturesMutex;
+
+static PipeWireCapture *getDirectCapture(DirectSession *ds) {
+  std::lock_guard<std::mutex> lock(g_directCapturesMutex);
+  auto it = g_directCaptures.find(ds);
+  return it != g_directCaptures.end() ? it->second.get() : nullptr;
+}
+
+static void removeDirectCapture(DirectSession *ds) {
+  std::lock_guard<std::mutex> lock(g_directCapturesMutex);
+  g_directCaptures.erase(ds);
+}
+
+struct StartDirectCapture {
+  static SHTypesInfo inputTypes() { return CoreInfo::IntType; }
+  static SHTypesInfo outputTypes() { return Globals::windowType; }
+
+  static SHOptionalString help() {
+    return SHCCSTR("Starts a direct PipeWire capture by node ID — no portal, no consent dialog. "
+                   "For headless/automated scenarios. Input is the PipeWire node ID (integer). "
+                   "Find node IDs with: pw-cli list-objects | grep -A5 'node.name'");
+  }
+
+  DirectSession *_session = nullptr;
+  SHVar _output{};
+
+  void cleanup(SHContext *context) {
+    if (_session) {
+      removeDirectCapture(_session);
+      delete _session;
+      _session = nullptr;
+    }
+    _output = SHVar{};
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    if (_session) {
+      _output = Var::Object(_session, CoreCC, windowCC);
+      return _output;
+    }
+
+    uint32_t nodeId = static_cast<uint32_t>(input.payload.intValue);
+
+    _session = new DirectSession();
+    _session->nodeId = nodeId;
+    auto capture = std::make_unique<PipeWireCapture>();
+    if (!capture->initDirect(nodeId)) {
+      delete _session;
+      _session = nullptr;
+      throw ActivationError("Failed to connect to PipeWire node directly");
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(g_directCapturesMutex);
+      g_directCaptures[_session] = std::move(capture);
+    }
+
+    // Also initialize UInput for input injection
+    getOrCreateUInput();
+
+    _output = Var::Object(_session, CoreCC, windowCC);
+    return _output;
+  }
+};
+
+// Unified capture lookup — works for both portal and direct sessions
+static PipeWireCapture *getCaptureForSession(const SHVar &var) {
+  SessionKind kind;
+  auto *ptr = asSessionPtr(var, kind);
+  if (!ptr)
+    return nullptr;
+
+  if (kind == SessionKind::Portal) {
+    return getOrCreateCapture(reinterpret_cast<PortalSession *>(ptr));
+  } else {
+    return getDirectCapture(reinterpret_cast<DirectSession *>(ptr));
+  }
+}
+
+// Unified size lookup
+static bool getCaptureSizeForSession(const SHVar &var, int &w, int &h) {
+  auto *capture = getCaptureForSession(var);
+  if (capture && capture->hasFrame()) {
+    w = capture->width();
+    h = capture->height();
+    return true;
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Desktop.CaptureFrame
 // Updates the capture buffer from the PipeWire stream.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,11 +257,7 @@ struct CaptureFrame {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(input);
-    if (!session)
-      throw ActivationError("Invalid session object");
-
-    auto *capture = getOrCreateCapture(session);
+    auto *capture = getCaptureForSession(input);
     if (capture) {
       capture->update();
     }
@@ -189,11 +291,7 @@ struct Pixel {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
-
-    auto *capture = getOrCreateCapture(session);
+    auto *capture = getCaptureForSession(_session.get());
     if (!capture || !capture->hasFrame())
       throw ActivationError("No capture frame available");
 
@@ -252,11 +350,7 @@ struct Pixels {
   OwnedVar _output{};
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *session = asSession(_session.get());
-    if (!session)
-      throw ActivationError("Invalid or missing session");
-
-    auto *capture = getOrCreateCapture(session);
+    auto *capture = getCaptureForSession(_session.get());
     if (!capture || !capture->hasFrame())
       throw ActivationError("No capture frame available");
 
@@ -373,10 +467,7 @@ struct SetMousePos {
 
     // Get screen dimensions from capture for coordinate scaling
     int screenW = 1920, screenH = 1080; // defaults
-    auto *session = asSession(_session.get());
-    if (session) {
-      getCaptureSize(session, screenW, screenH);
-    }
+    getCaptureSizeForSession(_session.get(), screenW, screenH);
 
     uinput->pointerMotionAbsolute(x, y, screenW, screenH);
     return input;
@@ -453,10 +544,7 @@ protected:
 
     // Get screen dimensions from capture for coordinate scaling
     int screenW = 1920, screenH = 1080; // defaults
-    auto *session = asSession(_session.get());
-    if (session) {
-      getCaptureSize(session, screenW, screenH);
-    }
+    getCaptureSizeForSession(_session.get(), screenW, screenH);
 
     // Move to position first, then click
     uinput->pointerMotionAbsolute(x, y, screenW, screenH);
@@ -555,6 +643,7 @@ SHARDS_REGISTER_FN(desktop) {
 
   // Session management
   REGISTER_SHARD("Desktop.StartSession", StartSession);
+  REGISTER_SHARD("Desktop.StartDirectCapture", StartDirectCapture);
 
   // Screen capture
   REGISTER_SHARD("Desktop.CaptureFrame", CaptureFrame);
