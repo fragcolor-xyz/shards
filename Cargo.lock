@@ -444,6 +444,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "bindgen"
+version = "0.72.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
+dependencies = [
+ "bitflags 2.10.0",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.12.1",
+ "log",
+ "prettyplease",
+ "proc-macro2 1.0.103",
+ "quote 1.0.42",
+ "regex",
+ "rustc-hash 2.1.1",
+ "shlex",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "bindgen_cuda"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2565,7 +2585,7 @@ dependencies = [
 name = "gfx-build"
 version = "0.1.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.69.5",
 ]
 
 [[package]]
@@ -6064,7 +6084,7 @@ name = "shards"
 version = "0.1.1"
 dependencies = [
  "approx",
- "bindgen",
+ "bindgen 0.72.1",
  "compile-time-crc32",
  "ctor",
  "dlopen",
@@ -6154,7 +6174,7 @@ dependencies = [
 name = "shards-egui"
 version = "0.1.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.69.5",
  "bitcode",
  "compile-time-crc32",
  "egui",
