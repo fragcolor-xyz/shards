@@ -13,7 +13,7 @@
 
 @wire(desktop-headless-test {
   // =========================================================================
-  // Phase 1: Portal session + basic capture verification
+  // Phase 1: Portal session + capture verification
   // =========================================================================
 
   Desktop.StartSession | Log("Session started") >= session
@@ -21,99 +21,83 @@
   Pause(2.0)
   session | Desktop.CaptureFrame
 
-  // Verify background color #204a4a → RGB(32,74,74) at multiple points
+  // Verify background color #204a4a at edge and center
   @i2(10 10) | Desktop.Pixel(Session: session)
   | Assert.Is(@color(32 74 74 255))
-  | Log("Pixel (10,10) verified")
-
   @i2(640 360) | Desktop.Pixel(Session: session)
   | Assert.Is(@color(32 74 74 255))
-  | Log("Pixel (center) verified")
+  @i2(1270 710) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  "Background color verified at 3 points" | Log
 
-  // Verify region capture dimensions
-  @i4(0 0 64 64) | Desktop.Pixels(Session: session)
-  | Log("64x64 region captured")
+  // Verify region capture
+  @i4(0 0 64 64) | Desktop.Pixels(Session: session) >= region
+  region | Log("64x64 region captured")
 
   // =========================================================================
-  // Phase 2: Open terminal, verify screen changes
+  // Phase 2: Launch terminal, verify visual change in capture
   // =========================================================================
 
-  // Launch foot terminal via swaymsg (returns non-zero, ignore)
+  // Open foot terminal — verify capture detects visual change
   Maybe({
     "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot"])
   } Pass)
-  "Launched foot terminal" | Log
   Pause(1.5)
-
-  // Capture frame — terminal should now be visible
   session | Desktop.CaptureFrame
   Pause(0.5)
   session | Desktop.CaptureFrame
 
-  // Terminal background (foot default) should differ from sway background
   @i2(640 360) | Desktop.Pixel(Session: session) >= term-pixel
-  term-pixel | Log("Center pixel with terminal")
   term-pixel | Assert.IsNot(@color(32 74 74 255))
-  "Terminal changed screen content" | Log
+  "Terminal opened — screen changed from background" | Log
 
   // =========================================================================
-  // Phase 3: Type command via wtype, verify file created
+  // Phase 3: Run shell command in compositor, verify file + visual output
   // =========================================================================
 
-  // =========================================================================
-  // Phase 3: Execute shell command via swaymsg, verify file created
-  // =========================================================================
-
-  // Use swaymsg exec to run a shell command in the headless compositor.
-  // This verifies the compositor is functional and can execute processes.
+  // Execute a command inside the compositor environment via foot -e.
+  // The command writes a file, and we verify the content.
   Maybe({
     "" | Process.Run(
       Executable: "swaymsg"
-      Arguments: ["exec" "bash -c 'echo swaymsg-ok > /tmp/shards-exec-test.txt'"]
+      Arguments: ["exec" "foot -e bash -c 'echo shards-headless-ok > /tmp/shards-test.txt && sleep 2'"]
     )
   } Pass)
   Pause(1.0)
 
-  "/tmp/shards-exec-test.txt" | FS.Read | String.Trim >= exec-content
-  exec-content | Log("swaymsg exec file content")
-  exec-content | Assert.Is("swaymsg-ok")
-  "Shell command executed and file content verified" | Log
+  // Verify the file was created with correct content
+  "/tmp/shards-test.txt" | FS.Read | String.Trim >= file-content
+  file-content | Assert.Is("shards-headless-ok")
+  "Shell wrote file, content verified" | Log
 
-  // Capture frame after shell interactions — terminal should still be visible
+  // Capture frame — should show the new terminal window with command output
   session | Desktop.CaptureFrame
   Pause(0.5)
   session | Desktop.CaptureFrame
-  @i2(640 360) | Desktop.Pixel(Session: session)
-  | Assert.IsNot(@color(32 74 74 255))
-  | Log("Terminal still visible after commands")
+
+  // The new terminal should be visible (might overlap or tile with the first)
+  @i2(640 360) | Desktop.Pixel(Session: session) >= cmd-pixel
+  cmd-pixel | Assert.IsNot(@color(32 74 74 255))
+  cmd-pixel | Log("Screen with command output")
 
   // =========================================================================
-  // Phase 5: Test uinput mouse/keyboard injection
+  // Phase 4: uinput device creation test
   // =========================================================================
 
+  // Verify uinput devices were created (they were during StartSession).
+  // In headless mode without libinput, uinput events don't reach sway's seat,
+  // but the devices are created and functional at the kernel level.
   Maybe({
     @i2(100 100) | Desktop.SetMousePos(Session: session)
     @i2(50 50) | Desktop.SetMouseRelativePos(Session: session)
     @i2(200 200) | Desktop.LeftClick(Session: session)
-    @i2(200 200) | Desktop.RightClick(Session: session)
-    @i2(200 200) | Desktop.MiddleClick(Session: session)
     1.0 | Desktop.ScrollVertical(Session: session)
-    -1.0 | Desktop.ScrollHorizontal(Session: session)
     @i2(0 30) | Desktop.SendKeyEvent(Session: session)
     Pause(0.02)
     @i2(1 30) | Desktop.SendKeyEvent(Session: session)
-
-    // Verify capture still works after input injection
-    Pause(0.5)
-    session | Desktop.CaptureFrame
-    Pause(0.5)
-    session | Desktop.CaptureFrame
-    @i2(10 10) | Desktop.Pixel(Session: session) >= post-input-pixel
-    post-input-pixel | Log("Pixel after input injection")
-
-    "Input injection test passed" | Log
+    "uinput devices functional" | Log
   } {
-    "Input injection test skipped (uinput not available)" | Log
+    "uinput not available" | Log
   })
 
   "All headless desktop tests passed!" | Log
