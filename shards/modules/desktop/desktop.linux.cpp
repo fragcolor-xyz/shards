@@ -112,27 +112,28 @@ static InputDevice *getOrCreateInput() {
   if (g_input && g_input->isAvailable())
     return g_input.get();
 
-  if (!g_input) {
-    // Try Wayland virtual input first (works in headless compositors)
-    if (getenv("WAYLAND_DISPLAY")) {
-      auto wayland = std::make_unique<WaylandInputAdapter>();
-      if (wayland->init()) {
-        g_input = std::move(wayland);
-        return g_input.get();
-      }
-    }
+  // Reset any stale device before creating a new one
+  g_input.reset();
 
-    // Fall back to uinput (requires /dev/uinput permissions)
-    auto uinput = std::make_unique<UInputAdapter>();
-    if (uinput->init()) {
-      g_input = std::move(uinput);
+  // Try Wayland virtual input first (works in headless compositors)
+  if (getenv("WAYLAND_DISPLAY")) {
+    auto wayland = std::make_unique<WaylandInputAdapter>();
+    if (wayland->init()) {
+      g_input = std::move(wayland);
       return g_input.get();
     }
-
-    return nullptr;
   }
-  return g_input.get();
+
+  // Fall back to uinput (requires /dev/uinput permissions)
+  auto uinput = std::make_unique<UInputAdapter>();
+  if (uinput->init()) {
+    g_input = std::move(uinput);
+    return g_input.get();
+  }
+
+  return nullptr;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Desktop.StartSession
@@ -178,7 +179,7 @@ struct StartSession {
       throw ActivationError("Portal session failed - user may have denied access");
     }
 
-    // Also initialize UInput for input injection
+    // Initialize input device for injection
     getOrCreateInput();
 
     _output = Var::Object(_session, CoreCC, windowCC);
