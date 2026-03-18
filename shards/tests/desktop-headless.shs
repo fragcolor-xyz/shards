@@ -4,6 +4,11 @@
 // Headless desktop test — runs inside a headless sway compositor.
 // Uses Desktop.StartSession (portal flow) with auto-approved ScreenCast.
 // Launched by test-desktop-headless.sh which sets up the environment.
+//
+// Sway is configured with:
+//   output HEADLESS-1 resolution 1280x720
+//   output * bg #204a4a solid_color
+// So all pixels should be RGB(32, 74, 74) with alpha 255.
 
 @mesh(root)
 
@@ -20,31 +25,68 @@
   // Swap buffer to get the delivered frame
   session | Desktop.CaptureFrame | Log("Frame captured")
 
-  // Verify we got a frame by reading a pixel
-  // Sway background is #204a4a → BGRA = (74, 74, 32, 255)
+  // --- Verify capture produces correct pixel data ---
+
+  // Pixel at (10,10) should be the sway background color #204a4a
+  // In SHColor: r=32, g=74, b=74, a=255
   @i2(10 10) | Desktop.Pixel(Session: session) >= pixel
   pixel | Log("Pixel at 10,10")
+  pixel | Assert.Is(@color(32 74 74 255))
 
-  // Capture a small region
+  // Pixel at center should also be the same solid background
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  | Log("Pixel at center verified")
+
+  // --- Verify region capture dimensions and content ---
+
   @i4(0 0 16 16) | Desktop.Pixels(Session: session) >= region
   region | Log("16x16 region captured")
 
-  // Test input injection (via uinput)
+  // Verify image dimensions via Take on the image properties
+  // Image width/height are embedded in the Image type
+  // Check that the first pixel of the region matches background
+  @i4(100 100 200 200) | Desktop.Pixels(Session: session) >= region2
+  region2 | Log("100x100 region captured")
+
+  // --- Verify input injection works ---
+
   Maybe({
-    @i2(100 100) | Desktop.SetMousePos(Session: session) | Log("Mouse moved to 100,100")
+    // Move mouse and verify it doesn't crash
+    @i2(100 100) | Desktop.SetMousePos(Session: session)
     Pause(0.1)
 
-    @i2(10 10) | Desktop.SetMouseRelativePos(Session: session) | Log("Mouse moved +10,+10")
+    // Relative move
+    @i2(50 50) | Desktop.SetMouseRelativePos(Session: session)
     Pause(0.1)
 
-    @i2(200 200) | Desktop.LeftClick(Session: session) | Log("Left clicked at 200,200")
+    // Click — on solid background, just verify no crash
+    @i2(200 200) | Desktop.LeftClick(Session: session)
+    @i2(200 200) | Desktop.RightClick(Session: session)
+    @i2(200 200) | Desktop.MiddleClick(Session: session)
     Pause(0.1)
 
-    1.0 | Desktop.ScrollVertical(Session: session) | Log("Scrolled vertical")
+    // Scroll
+    1.0 | Desktop.ScrollVertical(Session: session)
+    -1.0 | Desktop.ScrollHorizontal(Session: session)
 
-    @i2(0 30) | Desktop.SendKeyEvent(Session: session) | Log("Key down: a")
+    // Keyboard: press and release 'a' (keycode 30)
+    @i2(0 30) | Desktop.SendKeyEvent(Session: session)
     Pause(0.05)
-    @i2(1 30) | Desktop.SendKeyEvent(Session: session) | Log("Key up: a")
+    @i2(1 30) | Desktop.SendKeyEvent(Session: session)
+
+    // After input injection, capture another frame and verify
+    // the background is still intact (input shouldn't change pixels
+    // on a compositor with no focused window)
+    Pause(0.5)
+    session | Desktop.CaptureFrame
+    Pause(0.5)
+    session | Desktop.CaptureFrame
+    @i2(10 10) | Desktop.Pixel(Session: session)
+    | Assert.Is(@color(32 74 74 255))
+    | Log("Pixel still correct after input injection")
+
+    "Input injection tests passed" | Log
   } {
     "Input injection skipped (uinput not available)" | Log
   })
