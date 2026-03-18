@@ -422,29 +422,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.68.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "726e4313eb6ec35d2730258ad4e15b547ee75d6afaa1361a922e78e59b7d8078"
-dependencies = [
- "bitflags 2.10.0",
- "cexpr",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "log",
- "peeking_take_while",
- "prettyplease",
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "regex",
- "rustc-hash 1.1.0",
- "shlex",
- "syn 2.0.111",
- "which",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.69.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "271383c67ccabffb7381723dea0672a673f292304fcb45c01cc648c7a8d58088"
@@ -1269,33 +1246,6 @@ name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
-
-[[package]]
-name = "crsql_bundle"
-version = "0.1.0"
-dependencies = [
- "crsql_core",
- "crsql_fractindex_core",
- "sqlite_nostd",
-]
-
-[[package]]
-name = "crsql_core"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "num-derive",
- "num-traits",
- "sqlite_nostd",
-]
-
-[[package]]
-name = "crsql_fractindex_core"
-version = "0.1.0"
-dependencies = [
- "rand 0.8.5",
- "sqlite_nostd",
-]
 
 [[package]]
 name = "crunchy"
@@ -2615,7 +2565,7 @@ dependencies = [
 name = "gfx-build"
 version = "0.1.0"
 dependencies = [
- "bindgen 0.69.5",
+ "bindgen",
 ]
 
 [[package]]
@@ -4220,17 +4170,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
 
 [[package]]
-name = "num-derive"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
-dependencies = [
- "proc-macro2 1.0.103",
- "quote 1.0.42",
- "syn 2.0.111",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4647,12 +4586,6 @@ dependencies = [
  "type1-encoding-parser",
  "unicode-normalization",
 ]
-
-[[package]]
-name = "peeking_take_while"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 
 [[package]]
 name = "pem"
@@ -6131,7 +6064,7 @@ name = "shards"
 version = "0.1.1"
 dependencies = [
  "approx",
- "bindgen 0.69.5",
+ "bindgen",
  "compile-time-crc32",
  "ctor",
  "dlopen",
@@ -6221,7 +6154,7 @@ dependencies = [
 name = "shards-egui"
 version = "0.1.0"
 dependencies = [
- "bindgen 0.69.5",
+ "bindgen",
  "bitcode",
  "compile-time-crc32",
  "egui",
@@ -6628,30 +6561,6 @@ dependencies = [
  "nom",
  "serde",
  "unicode-segmentation",
-]
-
-[[package]]
-name = "sqlite3_allocator"
-version = "0.1.0"
-dependencies = [
- "sqlite3_capi",
-]
-
-[[package]]
-name = "sqlite3_capi"
-version = "0.1.0"
-dependencies = [
- "bindgen 0.68.1",
-]
-
-[[package]]
-name = "sqlite_nostd"
-version = "0.1.0"
-dependencies = [
- "num-derive",
- "num-traits",
- "sqlite3_allocator",
- "sqlite3_capi",
 ]
 
 [[package]]

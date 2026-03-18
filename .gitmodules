@@ -38,7 +38,7 @@
 [submodule "deps/sqlite/cr-sqlite"]
 	path = deps/sqlite/cr-sqlite
 	url = https://github.com/shards-lang/cr-sqlite.git
-	branch = shards
+	branch = pure-c-port
 [submodule "deps/oneTBB"]
 	path = deps/oneTBB
 	url = https://github.com/shards-lang/oneTBB.git

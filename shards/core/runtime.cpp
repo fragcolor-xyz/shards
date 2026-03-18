@@ -923,7 +923,8 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      throw shards::Error(ctx.bottom, composeResult.error.message.string);
+      const char *errMsg = composeResult.error.message.string ? composeResult.error.message.string : "Unknown composition error";
+      throw shards::Error(ctx.bottom, errMsg);
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -949,7 +950,8 @@ void validateConnection(InternalCompositionContext &ctx) {
     // input type (previousOutput)!
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
-      throw shards::Error(data.shard, composeResult.error.message.string);
+      const char *errMsg = composeResult.error.message.string ? composeResult.error.message.string : "Unknown composition error";
+      throw shards::Error(data.shard, errMsg);
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -1497,10 +1499,10 @@ SHComposeResult internalComposeWire(const SHWire *wire_, SHInstanceData data) {
       DEFER({ wire->composeData.reset(); });
       for (auto &type : cd.outputTypes) {
         if (!matchTypes(type, res.outputType, true, true, true)) {
-          std::string err =
+          auto err =
               fmt::format("Possible output {} does not match main output type: {} for wire {}", type, res.outputType, wire->name);
-          context->errorStack.emplace_back(wire_, std::move(err));
-          throw std::runtime_error({});
+          context->errorStack.emplace_back(wire_, err);
+          throw std::runtime_error(err);
         }
       }
     }
@@ -3350,6 +3352,15 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   result->serializeVar = &serializeVar;
   result->deserializeVar = &deserializeVar;
+
+  result->matchTypes = [](const SHTypeInfo *inputType, const SHTypeInfo *receiverType, SHBool isParameter,
+                          SHBool relaxEmptySeqCheck) -> SHBool {
+    return TypeMatcher<>{.isParameter = bool(isParameter),
+                         .relaxEmptyTableCheck = true,
+                         .relaxEmptySeqCheck = bool(relaxEmptySeqCheck),
+                         .checkVarTypes = true}
+        .match(*inputType, *receiverType);
+  };
 
   return result;
 }

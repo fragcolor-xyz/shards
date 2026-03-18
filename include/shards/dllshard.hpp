@@ -27,6 +27,7 @@ At runtime just dlopen the dll, that's it!
 #include "common_types.hpp"
 
 #include "object_type.hpp"
+#include "params.hpp"
 
 namespace shards {
 // this must be defined in the external
@@ -227,6 +228,12 @@ public:
 
   static bool isEqualType(const SHTypeInfo &t1, const SHTypeInfo &t2) { return sCore._core->isEqualType(&t1, &t2); }
 
+  // Requires runtime ABI with matchTypes field (added in PR #1254)
+  static bool matchTypes(const SHTypeInfo &inputType, const SHTypeInfo &receiverType, bool isParameter = true,
+                         bool relaxEmptySeqCheck = false) {
+    return sCore._core->matchTypes(&inputType, &receiverType, isParameter, relaxEmptySeqCheck);
+  }
+
   static SHTypeInfo deriveTypeInfo(const SHVar &v, const SHInstanceData *data, bool mutable_) {
     return sCore._core->deriveTypeInfo(&v, data, mutable_);
   }
@@ -363,6 +370,8 @@ using ShardsVar = TShardsVar<Core>;
 using OwnedVar = TOwnedVar<Core>;
 using SeqVar = TSeqVar<Core>;
 using TableVar = TTableVar<Core>;
+using ExposedInfo = TExposedInfo<Core>;
+using IterableParam = TIterableParam<Core>;
 
 template <typename E, std::vector<uint8_t> (*Serializer)(const E &) = nullptr,
           E (*Deserializer)(const std::string_view &) = nullptr, void (*BeforeDelete)(const E &) = nullptr,

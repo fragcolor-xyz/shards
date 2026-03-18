@@ -34,13 +34,6 @@ members = [
     "shards/gfx/rust/build",
     "shards/gfx/rust/profiling/profiling-procmacros",
 
-    # SQLite
-    "deps/sqlite/cr-sqlite/core/rs/core",
-    "deps/sqlite/cr-sqlite/core/rs/bundle",
-    "deps/sqlite/cr-sqlite/core/rs/fractindex-core",
-    "deps/sqlite/cr-sqlite/core/rs/sqlite-rs-embedded/sqlite_nostd",
-    "deps/sqlite/cr-sqlite/core/rs/sqlite-rs-embedded/sqlite3_capi",
-    "deps/sqlite/cr-sqlite/core/rs/sqlite-rs-embedded/sqlite3_allocator",
 ]
 
 # Exclude crates with their own [workspace] sections and test crates
@@ -53,9 +46,6 @@ exclude = [
     # wgpu has its own workspace
     "shards/gfx/rust/wgpu",
     "shards/gfx/rust/naga-native",
-    # sqlite test crates
-    "deps/sqlite/cr-sqlite/core/rs/integration_check",
-    "deps/sqlite/cr-sqlite/core/rs/bundle_static",
     "deps/sqlite/sqlite-vec",
     # Build tools (built separately for host during cross-compilation)
     "shards/tools/bin2c-rs",
