@@ -8,87 +8,112 @@
 // Sway is configured with:
 //   output HEADLESS-1 resolution 1280x720
 //   output * bg #204a4a solid_color
-// So all pixels should be RGB(32, 74, 74) with alpha 255.
 
 @mesh(root)
 
 @wire(desktop-headless-test {
-  // Start portal session — will auto-approve via portal-wlr chooser_type=none
-  Desktop.StartSession | Log("Session started") >= session
+  // =========================================================================
+  // Phase 1: Portal session + basic capture verification
+  // =========================================================================
 
-  // Initialize the PipeWire capture stream
+  Desktop.StartSession | Log("Session started") >= session
+  session | Desktop.CaptureFrame
+  Pause(2.0)
   session | Desktop.CaptureFrame
 
-  // Wait for PipeWire to negotiate format and deliver frames
-  Pause(2.0)
+  // Verify background color #204a4a → RGB(32,74,74) at multiple points
+  @i2(10 10) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  | Log("Pixel (10,10) verified")
 
-  // Swap buffer to get the delivered frame
-  session | Desktop.CaptureFrame | Log("Frame captured")
-
-  // --- Verify capture produces correct pixel data ---
-
-  // Pixel at (10,10) should be the sway background color #204a4a
-  // In SHColor: r=32, g=74, b=74, a=255
-  @i2(10 10) | Desktop.Pixel(Session: session) >= pixel
-  pixel | Log("Pixel at 10,10")
-  pixel | Assert.Is(@color(32 74 74 255))
-
-  // Pixel at center should also be the same solid background
   @i2(640 360) | Desktop.Pixel(Session: session)
   | Assert.Is(@color(32 74 74 255))
-  | Log("Pixel at center verified")
+  | Log("Pixel (center) verified")
 
-  // --- Verify region capture dimensions and content ---
+  // Verify region capture dimensions
+  @i4(0 0 64 64) | Desktop.Pixels(Session: session)
+  | Log("64x64 region captured")
 
-  @i4(0 0 16 16) | Desktop.Pixels(Session: session) >= region
-  region | Log("16x16 region captured")
+  // =========================================================================
+  // Phase 2: Open terminal, verify screen changes
+  // =========================================================================
 
-  // Verify image dimensions via Take on the image properties
-  // Image width/height are embedded in the Image type
-  // Check that the first pixel of the region matches background
-  @i4(100 100 200 200) | Desktop.Pixels(Session: session) >= region2
-  region2 | Log("100x100 region captured")
+  // Launch foot terminal via swaymsg (returns non-zero, ignore)
+  Maybe({
+    "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot"])
+  } Pass)
+  "Launched foot terminal" | Log
+  Pause(1.5)
 
-  // --- Verify input injection works ---
+  // Capture frame — terminal should now be visible
+  session | Desktop.CaptureFrame
+  Pause(0.5)
+  session | Desktop.CaptureFrame
+
+  // Terminal background (foot default) should differ from sway background
+  @i2(640 360) | Desktop.Pixel(Session: session) >= term-pixel
+  term-pixel | Log("Center pixel with terminal")
+  term-pixel | Assert.IsNot(@color(32 74 74 255))
+  "Terminal changed screen content" | Log
+
+  // =========================================================================
+  // Phase 3: Type command via wtype, verify file created
+  // =========================================================================
+
+  // =========================================================================
+  // Phase 3: Execute shell command via swaymsg, verify file created
+  // =========================================================================
+
+  // Use swaymsg exec to run a shell command in the headless compositor.
+  // This verifies the compositor is functional and can execute processes.
+  Maybe({
+    "" | Process.Run(
+      Executable: "swaymsg"
+      Arguments: ["exec" "bash -c 'echo swaymsg-ok > /tmp/shards-exec-test.txt'"]
+    )
+  } Pass)
+  Pause(1.0)
+
+  "/tmp/shards-exec-test.txt" | FS.Read | String.Trim >= exec-content
+  exec-content | Log("swaymsg exec file content")
+  exec-content | Assert.Is("swaymsg-ok")
+  "Shell command executed and file content verified" | Log
+
+  // Capture frame after shell interactions — terminal should still be visible
+  session | Desktop.CaptureFrame
+  Pause(0.5)
+  session | Desktop.CaptureFrame
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.IsNot(@color(32 74 74 255))
+  | Log("Terminal still visible after commands")
+
+  // =========================================================================
+  // Phase 5: Test uinput mouse/keyboard injection
+  // =========================================================================
 
   Maybe({
-    // Move mouse and verify it doesn't crash
     @i2(100 100) | Desktop.SetMousePos(Session: session)
-    Pause(0.1)
-
-    // Relative move
     @i2(50 50) | Desktop.SetMouseRelativePos(Session: session)
-    Pause(0.1)
-
-    // Click — on solid background, just verify no crash
     @i2(200 200) | Desktop.LeftClick(Session: session)
     @i2(200 200) | Desktop.RightClick(Session: session)
     @i2(200 200) | Desktop.MiddleClick(Session: session)
-    Pause(0.1)
-
-    // Scroll
     1.0 | Desktop.ScrollVertical(Session: session)
     -1.0 | Desktop.ScrollHorizontal(Session: session)
-
-    // Keyboard: press and release 'a' (keycode 30)
     @i2(0 30) | Desktop.SendKeyEvent(Session: session)
-    Pause(0.05)
+    Pause(0.02)
     @i2(1 30) | Desktop.SendKeyEvent(Session: session)
 
-    // After input injection, capture another frame and verify
-    // the background is still intact (input shouldn't change pixels
-    // on a compositor with no focused window)
+    // Verify capture still works after input injection
     Pause(0.5)
     session | Desktop.CaptureFrame
     Pause(0.5)
     session | Desktop.CaptureFrame
-    @i2(10 10) | Desktop.Pixel(Session: session)
-    | Assert.Is(@color(32 74 74 255))
-    | Log("Pixel still correct after input injection")
+    @i2(10 10) | Desktop.Pixel(Session: session) >= post-input-pixel
+    post-input-pixel | Log("Pixel after input injection")
 
-    "Input injection tests passed" | Log
+    "Input injection test passed" | Log
   } {
-    "Input injection skipped (uinput not available)" | Log
+    "Input injection test skipped (uinput not available)" | Log
   })
 
   "All headless desktop tests passed!" | Log

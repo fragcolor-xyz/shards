@@ -82,6 +82,9 @@ echo "=== Starting portal frontend (xdg-desktop-portal) ==="
 PIDS+=($!)
 sleep 1
 
+# Clean up any leftover test files
+rm -f /tmp/shards-test.txt /tmp/shards-exec-test.txt
+
 echo "=== Running headless desktop test ==="
 "$SHARDS_BIN" run "$SCRIPT_DIR/desktop-headless.shs"
 
