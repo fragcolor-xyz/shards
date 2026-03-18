@@ -35,21 +35,50 @@ use std::io::prelude::*;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering};
 use std::time::Duration;
+
+// Configuration constants
+const INITIAL_PROMPT_WAIT_MS: u64 = 500;
+const INITIAL_PROMPT_MAX_RETRIES: usize = 20;
+const COMMAND_OUTPUT_WAIT_MS: u64 = 200;
+const ITERATION_SLEEP_MS: u64 = 100;
+const INTERACTIVE_DETECTION_ITERATIONS: usize = 30; // 30 * 100ms = 3 seconds
+const SENDINPUT_INITIAL_WAIT_MS: u64 = 500;
+const SENDINPUT_NO_DATA_THRESHOLD: usize = 20; // 20 iterations = 2 seconds
+const MAX_BUFFER_BYTES: usize = 65536; // 64KB default
+const BUFFER_TRUNCATE_KEEP_RATIO: usize = 93; // Keep 93% on truncation
+const READER_POLL_MS: u64 = 50; // How often the reader thread polls the channel
 
 // SSH Shell object wrapper
 mod ssh_shell {
     use super::*;
 
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum SessionState {
+        Running,
+        Disconnected,
+        Corrupted(String),
+    }
+
     pub struct SSHShell {
         pub session: Arc<Mutex<Session>>,
         pub channel: Arc<Mutex<ssh2::Channel>>,
         pub pending_interactive: Arc<Mutex<Option<InteractiveState>>>,
-        pub is_connected: Arc<Mutex<bool>>,
+        pub is_connected: Arc<AtomicBool>,
+        pub state: Arc<Mutex<SessionState>>,
+        pub output_buffer: Arc<Mutex<Vec<u8>>>,
+        pub total_bytes_written: Arc<AtomicUsize>,
+        pub read_position: Arc<AtomicUsize>,
+        pub reader_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
+        pub prompt_marker: Option<String>,
+        pub term_rows: Arc<AtomicU16>,
+        pub term_cols: Arc<AtomicU16>,
     }
 
     #[derive(Clone)]
     pub struct InteractiveState {
+        #[allow(dead_code)]
         pub original_cmd: String,
     }
 
@@ -57,12 +86,10 @@ mod ssh_shell {
         fn drop(&mut self) {
             shlog_trace!("Dropping SSHShell, cleaning up connection");
 
-            // Mark as disconnected
-            if let Ok(mut is_connected) = self.is_connected.lock() {
-                *is_connected = false;
-            }
+            // Step 1: Mark as disconnected (stops reader thread loop)
+            self.is_connected.store(false, Ordering::Release);
 
-            // Close channel gracefully
+            // Step 2: Close channel gracefully
             if let Ok(mut channel) = self.channel.lock() {
                 let _ = channel.send_eof();
                 let _ = channel.wait_eof();
@@ -70,9 +97,32 @@ mod ssh_shell {
                 let _ = channel.wait_close();
             }
 
-            // Disconnect session
+            // Step 3: Disconnect session
             if let Ok(session) = self.session.lock() {
                 let _ = session.disconnect(None, "Session closed", None);
+            }
+
+            // Step 4: Wait for reader thread with timeout
+            if let Ok(mut thread_opt) = self.reader_thread.lock() {
+                if let Some(thread) = thread_opt.take() {
+                    shlog_trace!("Waiting for reader thread to finish");
+
+                    let mut finished = false;
+                    for _i in 0..20 {
+                        if thread.is_finished() {
+                            finished = true;
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(100));
+                    }
+
+                    if finished {
+                        let _ = thread.join();
+                        shlog_trace!("Reader thread joined successfully");
+                    } else {
+                        shlog_error!("Reader thread did not finish within timeout, leaving it detached (thread leak)");
+                    }
+                }
             }
 
             shlog_trace!("SSHShell cleanup complete");
@@ -91,9 +141,8 @@ lazy_static! {
     static ref EXECUTE_OUTPUT_TYPES: Vec<Type> = vec![common_type::string_table];
 }
 
-// Helper function to detect shell prompts (NOT interactive program prompts)
-fn is_prompt(text: &str) -> bool {
-    // Strip ANSI codes first before checking for prompt
+// Helper: detect shell prompts with optional sentinel marker
+fn is_prompt_or_marker(text: &str, marker: Option<&str>) -> bool {
     let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
     let cleaned = String::from_utf8_lossy(&stripped_bytes);
 
@@ -101,34 +150,83 @@ fn is_prompt(text: &str) -> bool {
     if let Some(last) = lines.last() {
         let trimmed = last.trim();
 
+        // Check sentinel marker first (most reliable)
+        if let Some(m) = marker {
+            if trimmed.contains(m) {
+                return true;
+            }
+        }
+
         // Exclude interactive program prompts like >>> (Python), >> (continuation)
-        // These indicate we're IN a program, not at the shell
         if trimmed.ends_with(">>>") || trimmed.ends_with(">>") {
             return false;
         }
 
-        // Check for common SHELL prompt patterns only
+        // Check for common SHELL prompt patterns
         trimmed.ends_with("$ ")
             || trimmed.ends_with("$")
             || trimmed.ends_with("# ")
             || trimmed.ends_with("#")
-            || trimmed.ends_with("> ")  // Windows/PowerShell prompt
-            || trimmed.ends_with(">")   // Single > is OK (but not >> or >>>)
-            || trimmed.ends_with("% ")  // zsh prompt
-            || trimmed.ends_with("%")   // zsh prompt
+            || trimmed.ends_with("> ")
+            || trimmed.ends_with(">")
+            || trimmed.ends_with("% ")
+            || trimmed.ends_with("%")
     } else {
         false
     }
 }
 
-// Helper function to clean output (remove ANSI codes, control chars, and trailing prompts)
-fn clean_output(output: &str) -> String {
-    // Strip ANSI escape sequences
+fn is_prompt(text: &str) -> bool {
+    is_prompt_or_marker(text, None)
+}
+
+// Helper: detect common interactive prompts (password, confirmation, etc.)
+fn is_interactive_prompt(text: &str) -> bool {
+    let stripped_bytes = strip_ansi_escapes::strip(text.as_bytes());
+    let cleaned = String::from_utf8_lossy(&stripped_bytes);
+
+    let lines: Vec<&str> = cleaned.lines().collect();
+    if lines.is_empty() {
+        return false;
+    }
+
+    let check_lines = if lines.len() > 3 { &lines[lines.len()-3..] } else { &lines[..] };
+
+    for line in check_lines {
+        let lower = line.to_lowercase();
+
+        if lower.contains("password:")
+            || lower.contains("passphrase:")
+            || lower.contains("continue?")
+            || lower.contains("(y/n)")
+            || lower.contains("[y/n]")
+            || lower.contains("press enter")
+            || lower.contains("press any key")
+            || lower.contains("are you sure")
+            || lower.ends_with("? ")
+            || lower.ends_with(": ")
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
+// Helper: mark session as corrupted
+fn mark_session_corrupted(ssh_shell: &SSHShell, error_context: &str) {
+    shlog_error!("Critical error in SSH session ({}), marking as corrupted", error_context);
+    ssh_shell.is_connected.store(false, Ordering::Release);
+    if let Ok(mut state) = ssh_shell.state.lock() {
+        *state = SessionState::Corrupted(error_context.to_string());
+    }
+}
+
+// Helper: clean output (remove ANSI codes, control chars, and trailing prompts)
+fn clean_output_with_marker(output: &str, marker: Option<&str>) -> String {
     let stripped_bytes = strip_ansi_escapes::strip(output);
     let text = String::from_utf8_lossy(&stripped_bytes);
 
-    // Remove control characters (except newlines and tabs)
-    // This handles backspace (\b), carriage return (\r), etc. from ZSH ZLE
     let no_control: String = text.chars()
         .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
         .collect();
@@ -138,17 +236,34 @@ fn clean_output(output: &str) -> String {
     // Remove trailing prompt if present
     if !lines.is_empty() {
         let last_line = lines.last().unwrap();
-        if is_prompt(last_line) {
+        if is_prompt_or_marker(last_line, marker) {
             lines.pop();
         }
     }
 
-    // Join lines and trim
     let result = lines.join("\n");
     result.trim().to_string()
 }
 
-// Helper function to check if an IO error indicates connection loss
+// Helper: truncate output buffer to keep tail
+fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
+    if buffer.len() <= max_bytes {
+        return false;
+    }
+
+    let keep_bytes = (max_bytes * BUFFER_TRUNCATE_KEEP_RATIO) / 100;
+    let truncate_msg = b"[... output truncated ...]\n";
+
+    let skip = buffer.len() - keep_bytes + truncate_msg.len();
+    let tail: Vec<u8> = buffer.drain(skip..).collect();
+    buffer.clear();
+    buffer.extend_from_slice(truncate_msg);
+    buffer.extend_from_slice(&tail);
+
+    true
+}
+
+// Helper: check if an IO error indicates connection loss
 fn is_connection_error(err: &std::io::Error) -> bool {
     use std::io::ErrorKind;
     matches!(
@@ -160,24 +275,278 @@ fn is_connection_error(err: &std::io::Error) -> bool {
     )
 }
 
-// Helper function to truncate output buffer to keep tail
-fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
-    if buffer.len() <= max_bytes {
-        return false;
+// Helper: check if session is alive, return descriptive error if not
+fn check_session_alive(ssh_shell: &SSHShell) -> Result<(), &'static str> {
+    if !ssh_shell.is_connected.load(Ordering::Acquire) {
+        if let Ok(state) = ssh_shell.state.lock() {
+            return Err(match *state {
+                SessionState::Disconnected => "SSH connection lost",
+                SessionState::Corrupted(ref reason) => {
+                    shlog_error!("Session corrupted: {}", reason);
+                    "SSH session corrupted due to internal error"
+                },
+                SessionState::Running => "SSH connection is not alive (unexpected state)",
+            });
+        } else {
+            return Err("SSH session corrupted (state lock poisoned)");
+        }
+    }
+    Ok(())
+}
+
+// Helper: extract SSHShell from Var
+fn get_session(session_var: &Var) -> Result<&SSHShell, &'static str> {
+    let ssh_shell = unsafe {
+        Var::from_ref_counted_object::<SSHShell>(session_var, &*SSH_SHELL_TYPE)?
+    };
+    Ok(unsafe { &*(ssh_shell as *const SSHShell) })
+}
+
+// Start the background reader thread for an SSH session.
+// The thread polls the channel in non-blocking mode and appends data to the shared buffer.
+fn start_reader_thread(
+    channel: Arc<Mutex<ssh2::Channel>>,
+    session: Arc<Mutex<Session>>,
+    buffer: Arc<Mutex<Vec<u8>>>,
+    total_bytes: Arc<AtomicUsize>,
+    alive: Arc<AtomicBool>,
+    state: Arc<Mutex<SessionState>>,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        shlog_trace!("SSH reader thread started");
+        let mut buf = [0u8; 4096];
+
+        loop {
+            if !alive.load(Ordering::Acquire) {
+                shlog_trace!("SSH reader thread exiting (not alive)");
+                break;
+            }
+
+            // Ensure session is in non-blocking mode before each read
+            if let Ok(sess) = session.lock() {
+                sess.set_blocking(false);
+            }
+
+            let read_result = {
+                match channel.lock() {
+                    Ok(mut ch) => ch.read(&mut buf),
+                    Err(e) => {
+                        shlog_trace!("SSH reader thread: channel lock poisoned: {}", e);
+                        break;
+                    }
+                }
+            };
+
+            match read_result {
+                Ok(n) if n > 0 => {
+                    match buffer.lock() {
+                        Ok(mut b) => {
+                            b.extend_from_slice(&buf[..n]);
+
+                            if b.len() > MAX_BUFFER_BYTES {
+                                if truncate_to_tail(&mut b, MAX_BUFFER_BYTES) {
+                                    shlog_trace!("SSH reader thread: buffer truncated to {} bytes", b.len());
+                                }
+                            }
+
+                            total_bytes.fetch_add(n, Ordering::Release);
+                            shlog_trace!("SSH reader thread: read {} bytes, buffer now {} bytes", n, b.len());
+                        }
+                        Err(e) => {
+                            shlog_trace!("SSH reader thread: buffer lock poisoned: {}", e);
+                            break;
+                        }
+                    }
+                }
+                Ok(_) => {
+                    // EOF — connection closed
+                    alive.store(false, Ordering::Release);
+                    if let Ok(mut s) = state.lock() {
+                        *s = SessionState::Disconnected;
+                    }
+                    shlog_trace!("SSH reader thread: EOF detected, connection closed");
+                    break;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    // No data available, sleep briefly and try again
+                    std::thread::sleep(Duration::from_millis(READER_POLL_MS));
+                    continue;
+                }
+                Err(e) if is_connection_error(&e) => {
+                    alive.store(false, Ordering::Release);
+                    if let Ok(mut s) = state.lock() {
+                        *s = SessionState::Disconnected;
+                    }
+                    shlog_trace!("SSH reader thread: connection error: {}", e);
+                    break;
+                }
+                Err(e) => {
+                    // Other errors — might be transient, log and sleep
+                    shlog_trace!("SSH reader thread: read error (non-fatal): {}", e);
+                    std::thread::sleep(Duration::from_millis(READER_POLL_MS));
+                }
+            }
+        }
+        shlog_trace!("SSH reader thread finished");
+    })
+}
+
+// Helper: write to channel, handling connection errors
+fn write_to_channel(ssh_shell: &SSHShell, data: &[u8]) -> Result<(), &'static str> {
+    let mut channel = match ssh_shell.channel.lock() {
+        Ok(guard) => guard,
+        Err(_) => {
+            mark_session_corrupted(ssh_shell, "channel lock poisoned during write");
+            return Err("Channel lock poisoned");
+        }
+    };
+
+    // Set blocking for writes to ensure they complete
+    if let Ok(sess) = ssh_shell.session.lock() {
+        sess.set_blocking(true);
     }
 
-    // Keep last ~93% of max_bytes to avoid repeated truncation on every read
-    let keep_bytes = (max_bytes * 93) / 100;
-    let truncate_msg = b"[... output truncated ...]\n";
+    if let Err(e) = channel.write_all(data) {
+        // Restore non-blocking
+        if let Ok(sess) = ssh_shell.session.lock() {
+            sess.set_blocking(false);
+        }
+        if is_connection_error(&e) {
+            ssh_shell.is_connected.store(false, Ordering::Release);
+            if let Ok(mut s) = ssh_shell.state.lock() {
+                *s = SessionState::Disconnected;
+            }
+            shlog_trace!("Connection lost during write: {:?}", e);
+            return Err("SSH connection lost");
+        }
+        return Err("Failed to write to SSH channel");
+    }
 
-    // Remove from the front, keep the tail
-    let skip = buffer.len() - keep_bytes + truncate_msg.len();
-    let tail: Vec<u8> = buffer.drain(skip..).collect();
-    buffer.clear();
-    buffer.extend_from_slice(truncate_msg);
-    buffer.extend_from_slice(&tail);
+    let _ = channel.flush();
 
-    true
+    // Restore non-blocking
+    if let Ok(sess) = ssh_shell.session.lock() {
+        sess.set_blocking(false);
+    }
+
+    Ok(())
+}
+
+// Helper: capture exit code by sending `echo $?` after command completes
+fn capture_exit_code(ssh_shell: &SSHShell, marker: Option<&str>) -> Option<i64> {
+    // Clear buffer, send echo $?, wait for prompt, parse result
+    {
+        let mut buf = match ssh_shell.output_buffer.lock() {
+            Ok(b) => b,
+            Err(_) => return None,
+        };
+        buf.clear();
+        ssh_shell.total_bytes_written.store(0, Ordering::Release);
+        ssh_shell.read_position.store(0, Ordering::Release);
+    }
+
+    if write_to_channel(ssh_shell, b"echo $?\n").is_err() {
+        return None;
+    }
+
+    // Wait for response
+    std::thread::sleep(Duration::from_millis(200));
+
+    for _ in 0..10 {
+        let snapshot = {
+            let buf = ssh_shell.output_buffer.lock().ok()?;
+            buf.clone()
+        };
+
+        let output = String::from_utf8_lossy(&snapshot);
+        if is_prompt_or_marker(&output, marker) {
+            let stripped = strip_ansi_escapes::strip(output.as_bytes());
+            let cleaned = String::from_utf8_lossy(&stripped);
+            for line in cleaned.lines() {
+                let trimmed = line.trim();
+                if trimmed == "echo $?" || trimmed.is_empty() {
+                    continue;
+                }
+                if is_prompt_or_marker(trimmed, marker) {
+                    continue;
+                }
+                if let Ok(code) = trimmed.parse::<i64>() {
+                    return Some(code);
+                }
+            }
+            return None;
+        }
+
+        std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
+    }
+
+    None
+}
+
+/// Render raw PTY output through a virtual VT100 terminal to get properly-spaced text.
+fn render_through_virtual_terminal(raw_bytes: &[u8], rows: u16, cols: u16) -> String {
+    let mut parser = vt100::Parser::new(rows, cols, 0);
+    parser.process(raw_bytes);
+
+    let screen = parser.screen();
+    let mut output = String::new();
+
+    for row in 0..rows {
+        let row_text = screen.contents_between(row, 0, row, cols);
+        let trimmed = row_text.trim_end();
+        if !trimmed.is_empty() || !output.is_empty() {
+            if !output.is_empty() {
+                output.push('\n');
+            }
+            output.push_str(trimmed);
+        }
+    }
+
+    output.trim().to_string()
+}
+
+// Interpret escape sequences in input strings for PTY writing.
+fn interpret_escape_sequences(input: &str) -> Vec<u8> {
+    let mut result = Vec::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            match chars.peek() {
+                Some('n') => { chars.next(); result.push(0x0A); }
+                Some('r') => { chars.next(); result.push(0x0D); }
+                Some('t') => { chars.next(); result.push(0x09); }
+                Some('\\') => { chars.next(); result.push(b'\\'); }
+                Some('x') => {
+                    chars.next();
+                    let mut hex = String::new();
+                    for _ in 0..2 {
+                        if let Some(&c) = chars.peek() {
+                            if c.is_ascii_hexdigit() {
+                                hex.push(c);
+                                chars.next();
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                        result.push(byte);
+                    }
+                }
+                _ => { result.push(b'\\'); }
+            }
+        } else if ch == '\n' {
+            // Bare LF → CR: terminal Enter sends CR to PTY master
+            result.push(0x0D);
+        } else {
+            let mut buf = [0u8; 4];
+            let encoded = ch.encode_utf8(&mut buf);
+            result.extend_from_slice(encoded.as_bytes());
+        }
+    }
+
+    result
 }
 
 // ============================================================================
@@ -208,6 +577,12 @@ pub struct ConnectShard {
     #[shard_param("Timeout", "Connection timeout in seconds (default: 10)", [common_type::int, common_type::int_var])]
     timeout_secs: ParamVar,
 
+    #[shard_param("Rows", "PTY rows (default: 24)", [common_type::int, common_type::int_var, common_type::none])]
+    rows: ParamVar,
+
+    #[shard_param("Cols", "PTY columns (default: 80)", [common_type::int, common_type::int_var, common_type::none])]
+    cols: ParamVar,
+
     output: ClonedVar,
 }
 
@@ -221,6 +596,8 @@ impl Default for ConnectShard {
             key_path: ParamVar::new(Var::default()),
             password: ParamVar::new(Var::default()),
             timeout_secs: ParamVar::new(10i64.into()),
+            rows: ParamVar::new(24i64.into()),
+            cols: ParamVar::new(80i64.into()),
             output: ClonedVar::default(),
         }
     }
@@ -267,10 +644,21 @@ impl BlockingShard for ConnectShard {
         let key_path_var = self.key_path.get();
         let password_var = self.password.get();
 
+        // Get PTY size params
+        let rows_val = self.rows.get();
+        let cols_val = self.cols.get();
+        let rows: u16 = if rows_val.is_none() { 24 } else {
+            let v: i64 = rows_val.as_ref().try_into().unwrap_or(24);
+            v.max(1).min(u16::MAX as i64) as u16
+        };
+        let cols: u16 = if cols_val.is_none() { 80 } else {
+            let v: i64 = cols_val.as_ref().try_into().unwrap_or(80);
+            v.max(1).min(u16::MAX as i64) as u16
+        };
+
         // Connect to SSH server
         let addr = format!("{}:{}", host, port);
 
-        // Resolve hostname to socket address
         let socket_addrs: Vec<_> = addr
             .to_socket_addrs()
             .map_err(|_| "Failed to resolve hostname")?
@@ -311,102 +699,151 @@ impl BlockingShard for ConnectShard {
             return Err("Authentication failed");
         }
 
-        // Open channel and request PTY
+        // Open channel and request PTY with size
         let mut channel = sess.channel_session().map_err(|_| "Failed to open channel")?;
         channel
-            .request_pty("xterm", None, None)
+            .request_pty("xterm-256color", None, Some((cols as u32, rows as u32, 0, 0)))
             .map_err(|_| "Failed to request PTY")?;
         channel.shell().map_err(|_| "Failed to start shell")?;
 
-        // Set non-blocking mode for timeout-based reads
+        // Set non-blocking mode for reads
         sess.set_blocking(false);
 
-        // Drain initial prompt (wait for shell to be ready)
-        std::thread::sleep(Duration::from_millis(500));
-        let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
-        for _ in 0..10 {
-            match channel.read(&mut temp_buf) {
-                Ok(n) if n > 0 => {
-                    output_buffer.extend_from_slice(&temp_buf[..n]);
-                    let output_str = String::from_utf8_lossy(&output_buffer);
+        // Create shared state
+        let channel_arc = Arc::new(Mutex::new(channel));
+        let session_arc = Arc::new(Mutex::new(sess));
+        let output_buffer = Arc::new(Mutex::new(Vec::new()));
+        let total_bytes_written = Arc::new(AtomicUsize::new(0));
+        let is_connected = Arc::new(AtomicBool::new(true));
+        let state = Arc::new(Mutex::new(SessionState::Running));
+
+        // Start reader thread BEFORE waiting for initial prompt
+        let reader_thread = start_reader_thread(
+            Arc::clone(&channel_arc),
+            Arc::clone(&session_arc),
+            Arc::clone(&output_buffer),
+            Arc::clone(&total_bytes_written),
+            Arc::clone(&is_connected),
+            Arc::clone(&state),
+        );
+
+        // Wait for initial prompt by polling the shared buffer
+        std::thread::sleep(Duration::from_millis(INITIAL_PROMPT_WAIT_MS));
+
+        for _ in 0..INITIAL_PROMPT_MAX_RETRIES {
+            {
+                let buf = output_buffer.lock().map_err(|_| "Buffer lock poisoned")?;
+                if !buf.is_empty() {
+                    let output_str = String::from_utf8_lossy(&buf);
                     if is_prompt(&output_str) {
+                        shlog_trace!("Initial prompt detected");
                         break;
                     }
                 }
-                _ => {}
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         shlog_trace!("Shell ready, attempting to switch to bash for consistent behavior");
 
-        // Try to switch to bash (inherits environment from login shell)
-        // This is necessary because zsh ignores stty -icanon -echo due to ZLE
-        // If bash is not available, we'll continue with the current shell
-        let _ = channel.write_all(b"command -v bash >/dev/null 2>&1 && exec bash --login\n");
-        let _ = channel.flush();
+        // Helper closure to write to channel (needs blocking mode for reliable writes)
+        let write_cmd = |channel_arc: &Arc<Mutex<ssh2::Channel>>, session_arc: &Arc<Mutex<Session>>, data: &[u8]| -> Result<(), &'static str> {
+            if let Ok(sess) = session_arc.lock() {
+                sess.set_blocking(true);
+            }
+            let result = {
+                let mut ch = channel_arc.lock().map_err(|_| "Channel lock poisoned")?;
+                ch.write_all(data).map_err(|_| "Write failed")?;
+                ch.flush().map_err(|_| "Flush failed")
+            };
+            if let Ok(sess) = session_arc.lock() {
+                sess.set_blocking(false);
+            }
+            result
+        };
 
-        // Wait for bash to start (or current shell to continue) and show prompt
+        // Try to switch to bash
+        let _ = write_cmd(&channel_arc, &session_arc, b"command -v bash >/dev/null 2>&1 && exec bash --login\n");
+
+        // Wait for bash to start and show prompt
         std::thread::sleep(Duration::from_millis(500));
-        output_buffer.clear();
+
         let mut bash_switched = false;
         for _ in 0..10 {
-            match channel.read(&mut temp_buf) {
-                Ok(n) if n > 0 => {
-                    output_buffer.extend_from_slice(&temp_buf[..n]);
-                    let output_str = String::from_utf8_lossy(&output_buffer);
-                    // If we see a prompt, we're ready (either bash started or still in original shell)
-                    if is_prompt(&output_str) {
-                        // Check if output contains "bash" to see if we switched
-                        bash_switched = !output_str.contains("command not found") &&
-                                       !output_str.contains("not found");
-                        break;
-                    }
-                }
-                _ => {}
+            let buf = output_buffer.lock().map_err(|_| "Buffer lock poisoned")?;
+            let output_str = String::from_utf8_lossy(&buf);
+            if is_prompt(&output_str) {
+                bash_switched = !output_str.contains("command not found") &&
+                               !output_str.contains("not found");
+                break;
             }
-            std::thread::sleep(Duration::from_millis(100));
+            drop(buf);
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
         if bash_switched {
-            shlog_trace!("Switched to bash, disabling echo and canonical mode");
+            shlog_trace!("Switched to bash");
         } else {
             shlog_trace!("Bash not available or switch failed, continuing with current shell");
         }
 
-        // Disable echo and canonical mode to prevent command echoes
-        // -echo: stops kernel echo
-        // -icanon: disables canonical mode (line buffering)
-        // This works reliably in bash (unlike zsh where ZLE interferes)
-        let _ = channel.write_all(b"stty -icanon -echo\n");
-        let _ = channel.flush();
+        // Try to set PS1 sentinel marker for reliable prompt detection
+        let marker = format!("__SHARDS_PROMPT_{:x}__", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() & 0xFFFFFFFF);
 
-        // Drain the command and its output
-        std::thread::sleep(Duration::from_millis(300));
-        output_buffer.clear();
-        for _ in 0..10 {
-            match channel.read(&mut temp_buf) {
-                Ok(n) if n > 0 => {
-                    output_buffer.extend_from_slice(&temp_buf[..n]);
-                    let output_str = String::from_utf8_lossy(&output_buffer);
-                    if is_prompt(&output_str) {
-                        break;
+        let prompt_marker = {
+            let ps1_cmd = format!("export PS1='{}'\n", marker);
+            let set_ok = write_cmd(&channel_arc, &session_arc, ps1_cmd.as_bytes()).is_ok();
+
+            if set_ok {
+                // Wait for the marker to appear
+                std::thread::sleep(Duration::from_millis(300));
+
+                let marker_found = if let Ok(buf) = output_buffer.lock() {
+                    let s = String::from_utf8_lossy(&buf);
+                    s.contains(&marker)
+                } else {
+                    false
+                };
+
+                if marker_found {
+                    shlog_trace!("Sentinel prompt marker set: {}", marker);
+                    // Clear buffer after marker setup
+                    if let Ok(mut buf) = output_buffer.lock() {
+                        buf.clear();
                     }
+                    total_bytes_written.store(0, Ordering::Release);
+                    Some(marker)
+                } else {
+                    shlog_trace!("Sentinel prompt marker not detected, falling back to pattern matching");
+                    if let Ok(mut buf) = output_buffer.lock() {
+                        buf.clear();
+                    }
+                    total_bytes_written.store(0, Ordering::Release);
+                    None
                 }
-                _ => {}
+            } else {
+                None
             }
-            std::thread::sleep(Duration::from_millis(100));
-        }
+        };
 
-        shlog_trace!("SSH connection established, echo disabled");
+        shlog_trace!("SSH connection established");
 
-        // Create SSHShell object
         let ssh_shell = SSHShell {
-            session: Arc::new(Mutex::new(sess)),
-            channel: Arc::new(Mutex::new(channel)),
+            session: session_arc,
+            channel: channel_arc,
             pending_interactive: Arc::new(Mutex::new(None)),
-            is_connected: Arc::new(Mutex::new(true)),
+            is_connected,
+            state,
+            output_buffer,
+            total_bytes_written,
+            read_position: Arc::new(AtomicUsize::new(0)),
+            reader_thread: Arc::new(Mutex::new(Some(reader_thread))),
+            prompt_marker,
+            term_rows: Arc::new(AtomicU16::new(rows)),
+            term_cols: Arc::new(AtomicU16::new(cols)),
         };
 
         let shell_var = Var::new_ref_counted(ssh_shell, &*SSH_SHELL_TYPE);
@@ -495,122 +932,75 @@ impl BlockingShard for ExecuteShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
-        // Extract SSH shell object
-        let ssh_shell = unsafe {
-            Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
-        };
-        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
+        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
+        let timeout_secs = if timeout_secs <= 0 { 30 } else { timeout_secs };
+        let max_iterations = (timeout_secs as usize) * 10;
 
-        // Check if connection is still alive
-        {
-            let is_connected = ssh_shell.is_connected.lock()
-                .map_err(|_| "Connection state lock poisoned")?;
-            if !*is_connected {
-                return Err("SSH connection lost");
-            }
-        }
+        let ssh_shell = get_session(&session_var)?;
+        check_session_alive(ssh_shell)?;
+
+        let marker = ssh_shell.prompt_marker.as_deref();
 
         // Check if there's a pending interactive command
         {
-            let mut pending = ssh_shell.pending_interactive.lock()
-                .map_err(|_| "Interactive state lock poisoned")?;
+            let mut pending = match ssh_shell.pending_interactive.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_corrupted(ssh_shell, "interactive lock poisoned in Execute");
+                    return Err("Interactive state lock poisoned");
+                }
+            };
             if pending.is_some() {
                 shlog_trace!("New command received while interactive command was pending, sending Ctrl+C");
-
-                // Send Ctrl+C to cancel the interactive command
-                {
-                    let mut channel = ssh_shell.channel.lock()
-                        .map_err(|_| "SSH channel lock poisoned")?;
-                    let _ = channel.write_all(&[3]);
-                    let _ = channel.flush();
-                }
-
-                // Give the shell time to process Ctrl+C
+                write_to_channel(ssh_shell, &[3])?;
                 std::thread::sleep(Duration::from_millis(300));
-
-                // Drain any Ctrl+C response or garbage from the buffer
-                // This ensures the channel is clean before we send the next command
-                {
-                    let mut channel = ssh_shell.channel.lock()
-                        .map_err(|_| "SSH channel lock poisoned")?;
-                    let mut drain_buf = [0u8; 4096];
-                    // Try to drain for up to 500ms
-                    for _ in 0..5 {
-                        match channel.read(&mut drain_buf) {
-                            Ok(n) if n > 0 => {
-                                shlog_trace!("Drained {} bytes after Ctrl+C", n);
-                            }
-                            _ => break, // No more data or would block
-                        }
-                        std::thread::sleep(Duration::from_millis(100));
-                    }
-                }
-
                 *pending = None;
             }
         }
 
-        // Send command
-        let cmd_with_newline = format!("{}\n", cmd);
+        // Clear shared buffer and reset monotonic counter before sending command
         {
-            let mut channel = ssh_shell.channel.lock()
-                .map_err(|_| "SSH channel lock poisoned")?;
-            if let Err(e) = channel.write_all(cmd_with_newline.as_bytes()) {
-                if is_connection_error(&e) {
-                    *ssh_shell.is_connected.lock()
-                        .map_err(|_| "Connection state lock poisoned")? = false;
-                    shlog_trace!("Connection lost during write: {:?}", e);
-                    return Err("SSH connection lost");
+            let mut shared_buffer = match ssh_shell.output_buffer.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_corrupted(ssh_shell, "buffer lock poisoned before command");
+                    return Err("Buffer lock poisoned");
                 }
-                return Err("Failed to send command");
-            }
-            // Flush to ensure command is fully transmitted before we start reading
-            let _ = channel.flush();
+            };
+            shared_buffer.clear();
+            ssh_shell.total_bytes_written.store(0, Ordering::Release);
+            ssh_shell.read_position.store(0, Ordering::Release);
+            shlog_trace!("Cleared shared buffer and reset counters before command");
         }
 
-        // Read output with timeout-based prompt detection
+        // Send command
+        let cmd_with_newline = format!("{}\n", cmd);
+        write_to_channel(ssh_shell, cmd_with_newline.as_bytes())?;
+
+        // Read output using monotonic byte counter
         let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
+        let mut last_total_bytes = 0usize;
         let mut no_data_count = 0;
-        let max_iterations = 50; // 5 seconds total (50 * 100ms)
         let mut prompt_detected = false;
         let mut was_truncated = false;
 
-        shlog_trace!("Starting to read command output");
-
-        // Give shell time to process and echo the command
-        std::thread::sleep(Duration::from_millis(200));
+        shlog_trace!("Starting to read command output from shared buffer");
+        std::thread::sleep(Duration::from_millis(COMMAND_OUTPUT_WAIT_MS));
 
         for iteration in 0..max_iterations {
-            let read_result = {
-                let mut channel = ssh_shell.channel.lock()
-                    .map_err(|_| "SSH channel lock poisoned")?;
-                channel.read(&mut temp_buf)
-            };
+            let current_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+            let has_new_data = current_total > last_total_bytes;
 
-            let bytes_read = match read_result {
-                Ok(n) => n,
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => 0,
-                Err(e) if is_connection_error(&e) => {
-                    *ssh_shell.is_connected.lock()
-                        .map_err(|_| "Connection state lock poisoned")? = false;
-                    shlog_trace!("Connection lost during read: {:?}", e);
+            if has_new_data {
+                let snapshot = {
+                    let shared_buffer = ssh_shell.output_buffer.lock()
+                        .map_err(|_| "Buffer lock poisoned")?;
+                    shared_buffer.clone()
+                };
 
-                    // Return connection_lost status instead of error
-                    let mut result_table = AutoTableVar::new();
-                    result_table.0.insert_fast_static("status", &Var::ephemeral_string("connection_lost"));
-                    result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
-                    result_table.0.insert_fast_static("message", &Var::ephemeral_string("SSH connection lost"));
-                    self.output = result_table.to_cloned();
-                    return Ok(self.output.0);
-                }
-                Err(_) => 0, // Other errors treated as no data
-            };
+                output_buffer = snapshot;
+                last_total_bytes = current_total;
 
-            if bytes_read > 0 {
-                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
-
-                // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
                     was_truncated = true;
                     shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
@@ -619,20 +1009,25 @@ impl BlockingShard for ExecuteShard {
                 let output_str = String::from_utf8_lossy(&output_buffer);
 
                 shlog_trace!(
-                    "Read {} bytes (iteration {}), buffer size: {}, last line: {:?}",
-                    bytes_read,
+                    "Read data (iteration {}), total_bytes: {}, buffer size: {}, last line: {:?}",
                     iteration,
+                    current_total,
                     output_buffer.len(),
                     output_str.lines().last()
                 );
 
-                // Check for prompt
-                if is_prompt(&output_str) {
+                if is_prompt_or_marker(&output_str, marker) {
                     prompt_detected = true;
                     shlog_trace!("Prompt detected in output, command completed");
                     break;
                 }
-                no_data_count = 0; // Reset no-data count on new data
+
+                if is_interactive_prompt(&output_str) {
+                    shlog_trace!("Interactive prompt pattern detected early: {:?}", output_str.lines().last());
+                    break;
+                }
+
+                no_data_count = 0;
             } else {
                 no_data_count += 1;
                 shlog_trace!(
@@ -642,43 +1037,49 @@ impl BlockingShard for ExecuteShard {
                     output_buffer.is_empty()
                 );
 
-                // Only consider interactive if we have output AND consistent no-data period
-                // AND we're past the minimum wait time
-                if no_data_count >= 20 && !output_buffer.is_empty() && iteration >= 10 {
-                    // Check one more time if there's a prompt we might have missed
+                if no_data_count >= INTERACTIVE_DETECTION_ITERATIONS && !output_buffer.is_empty() && iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 {
                     let output_str = String::from_utf8_lossy(&output_buffer);
-                    if is_prompt(&output_str) {
+
+                    if is_prompt_or_marker(&output_str, marker) {
                         prompt_detected = true;
                         shlog_trace!("Prompt detected on final check");
                         break;
                     }
-                    // No output for 2 seconds after having received some data, likely interactive
-                    shlog_trace!("Command appears to be interactive (no new data for 2s)");
+
+                    if is_interactive_prompt(&output_str) {
+                        shlog_trace!("Interactive prompt pattern detected: {:?}", output_str.lines().last());
+                        break;
+                    }
+
+                    shlog_trace!("Command appears to be interactive (no new data for 3s, no prompt detected)");
                     break;
                 }
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        // Determine status and prepare output
+        // Build result table
         let mut result_table = AutoTableVar::new();
         let output_str = String::from_utf8_lossy(&output_buffer).to_string();
 
         if prompt_detected {
-            // Command completed normally
+            let exit_code = capture_exit_code(ssh_shell, marker);
+
             let final_output = if should_clean {
-                clean_output(&output_str)
+                clean_output_with_marker(&output_str, marker)
             } else {
                 output_str
             };
 
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("completed"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
+            if let Some(code) = exit_code {
+                result_table.0.insert_fast_static("exit_code", &Var::from(code));
+            }
             if was_truncated {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         } else {
-            // Command is interactive (waiting for input)
             {
                 let mut pending = ssh_shell.pending_interactive.lock()
                     .map_err(|_| "Interactive state lock poisoned")?;
@@ -688,7 +1089,7 @@ impl BlockingShard for ExecuteShard {
             }
 
             let partial_output = if should_clean {
-                clean_output(&output_str)
+                clean_output_with_marker(&output_str, marker)
             } else {
                 output_str
             };
@@ -703,6 +1104,10 @@ impl BlockingShard for ExecuteShard {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         }
+
+        // Sync read position
+        let final_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+        ssh_shell.read_position.store(final_total, Ordering::Release);
 
         self.output = result_table.to_cloned();
         Ok(self.output.0)
@@ -784,108 +1189,117 @@ impl BlockingShard for SendInputShard {
         let max_output_bytes: i64 = self.max_output_bytes.get().as_ref().try_into()?;
         let max_output_bytes = if max_output_bytes <= 0 { usize::MAX } else { max_output_bytes as usize };
 
-        // Extract SSH shell object
-        let ssh_shell = unsafe {
-            Var::from_ref_counted_object::<SSHShell>(&session_var, &*SSH_SHELL_TYPE)?
-        };
-        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
+        let timeout_secs: i64 = self.timeout_secs.get().as_ref().try_into()?;
+        let timeout_secs = if timeout_secs <= 0 { 10 } else { timeout_secs };
+        let max_iterations = (timeout_secs as usize) * 10;
 
-        // Check if connection is still alive
-        {
-            let is_connected = ssh_shell.is_connected.lock()
-                .map_err(|_| "Connection state lock poisoned")?;
-            if !*is_connected {
-                return Err("SSH connection lost");
-            }
-        }
+        let ssh_shell = get_session(&session_var)?;
+        check_session_alive(ssh_shell)?;
+
+        let marker = ssh_shell.prompt_marker.as_deref();
 
         // Check if there's a pending interactive command
         {
-            let pending = ssh_shell.pending_interactive.lock()
-                .map_err(|_| "Interactive state lock poisoned")?;
+            let pending = match ssh_shell.pending_interactive.lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    mark_session_corrupted(ssh_shell, "interactive lock poisoned in SendInput");
+                    return Err("Interactive state lock poisoned");
+                }
+            };
             if pending.is_none() {
                 return Err("No interactive command is pending");
             }
         }
 
-        // Send input (if not empty - empty means just check output)
+        // Record monotonic position before sending input
+        let start_total_bytes = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+
+        // Send input (if not empty)
         if !input_str.is_empty() {
             let input_with_newline = format!("{}\n", input_str);
-            let mut channel = ssh_shell.channel.lock()
-                .map_err(|_| "SSH channel lock poisoned")?;
-            if let Err(e) = channel.write_all(input_with_newline.as_bytes()) {
-                if is_connection_error(&e) {
-                    *ssh_shell.is_connected.lock()
-                        .map_err(|_| "Connection state lock poisoned")? = false;
-                    shlog_trace!("Connection lost during write: {:?}", e);
-                    return Err("SSH connection lost");
-                }
-                return Err("Failed to send input");
-            }
+            shlog_trace!("SendInput: Writing {} bytes: {:?}", input_with_newline.len(), input_with_newline);
+            write_to_channel(ssh_shell, input_with_newline.as_bytes())?;
+            shlog_trace!("SendInput: Write succeeded");
         }
 
         // Wait for output
-        std::thread::sleep(Duration::from_secs(2));
+        std::thread::sleep(Duration::from_millis(SENDINPUT_INITIAL_WAIT_MS));
+        shlog_trace!("SendInput: Starting to read output after input (start_total_bytes={})", start_total_bytes);
 
-        // Read output
         let mut output_buffer = Vec::new();
-        let mut temp_buf = [0u8; 4096];
+        let mut last_total_bytes = start_total_bytes;
         let mut was_truncated = false;
-        for _ in 0..10 {
-            let read_result = {
-                let mut channel = ssh_shell.channel.lock()
-                    .map_err(|_| "SSH channel lock poisoned")?;
-                channel.read(&mut temp_buf)
-            };
+        let mut no_data_count = 0;
+        let mut prompt_detected = false;
 
-            let bytes_read = match read_result {
-                Ok(n) => n,
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => 0,
-                Err(e) if is_connection_error(&e) => {
-                    *ssh_shell.is_connected.lock()
-                        .map_err(|_| "Connection state lock poisoned")? = false;
-                    shlog_trace!("Connection lost during read: {:?}", e);
+        for iteration in 0..max_iterations {
+            let current_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+            let has_new_data = current_total > last_total_bytes;
 
-                    // Return connection_lost status
-                    let mut result_table = AutoTableVar::new();
-                    result_table.0.insert_fast_static("status", &Var::ephemeral_string("connection_lost"));
-                    result_table.0.insert_fast_static("output", &Var::ephemeral_string(""));
-                    result_table.0.insert_fast_static("message", &Var::ephemeral_string("SSH connection lost"));
-                    self.output = result_table.to_cloned();
-                    return Ok(self.output.0);
-                }
-                Err(_) => 0, // Other errors treated as no data
-            };
+            if has_new_data {
+                let snapshot = {
+                    let shared_buffer = ssh_shell.output_buffer.lock()
+                        .map_err(|_| "Buffer lock poisoned")?;
+                    shared_buffer.clone()
+                };
 
-            if bytes_read > 0 {
-                output_buffer.extend_from_slice(&temp_buf[..bytes_read]);
+                output_buffer = snapshot;
+                last_total_bytes = current_total;
 
-                // Truncate if buffer exceeds max size
                 if truncate_to_tail(&mut output_buffer, max_output_bytes) {
                     was_truncated = true;
-                    shlog_trace!("Output buffer truncated to tail ({} bytes)", max_output_bytes);
+                }
+
+                let output_str = String::from_utf8_lossy(&output_buffer);
+                shlog_trace!(
+                    "SendInput: Read data (iteration {}), total_bytes: {}, buffer size: {}",
+                    iteration, current_total, output_buffer.len()
+                );
+
+                no_data_count = 0;
+
+                if is_prompt_or_marker(&output_str, marker) {
+                    shlog_trace!("SendInput: Prompt detected in new output, exiting early");
+                    prompt_detected = true;
+                    break;
+                }
+            } else {
+                no_data_count += 1;
+                shlog_trace!("SendInput: No new data (iteration {}), no_data_count: {}",
+                    iteration, no_data_count);
+
+                if no_data_count >= SENDINPUT_NO_DATA_THRESHOLD {
+                    let output_str = String::from_utf8_lossy(&output_buffer);
+                    if is_prompt_or_marker(&output_str, marker) {
+                        shlog_trace!("SendInput: Prompt detected after silence, exiting");
+                        prompt_detected = true;
+                        break;
+                    }
                 }
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
         }
 
-        // Check for prompt
-        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
-        let prompt_detected = is_prompt(&output_str);
+        // Final prompt check
+        if !prompt_detected {
+            let output_str = String::from_utf8_lossy(&output_buffer);
+            prompt_detected = is_prompt_or_marker(&output_str, marker);
+        }
 
         // Clean output
+        let output_str = String::from_utf8_lossy(&output_buffer).to_string();
         let stripped_bytes = strip_ansi_escapes::strip(&output_str);
         let cleaned = String::from_utf8_lossy(&stripped_bytes);
         let mut lines: Vec<&str> = cleaned.lines().collect();
         if prompt_detected && !lines.is_empty() {
-            lines.pop(); // Remove prompt line
+            lines.pop();
         }
         let final_output = lines.join("\n");
 
         let mut result_table = AutoTableVar::new();
 
         if prompt_detected {
-            // Interactive session completed
             {
                 let mut pending = ssh_shell.pending_interactive.lock()
                     .map_err(|_| "Interactive state lock poisoned")?;
@@ -898,7 +1312,6 @@ impl BlockingShard for SendInputShard {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         } else {
-            // Still waiting for more input/output
             result_table.0.insert_fast_static("status", &Var::ephemeral_string("pending_output"));
             result_table.0.insert_fast_static("output", &Var::ephemeral_string(&final_output));
             result_table.0.insert_fast_static(
@@ -909,6 +1322,10 @@ impl BlockingShard for SendInputShard {
                 result_table.0.insert_fast_static("truncated", &true.into());
             }
         }
+
+        // Sync read position
+        let final_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+        ssh_shell.read_position.store(final_total, Ordering::Release);
 
         self.output = result_table.to_cloned();
         Ok(self.output.0)
@@ -967,19 +1384,337 @@ impl Shard for IsConnectedShard {
     }
 
     fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-        // Extract SSH shell object
-        let ssh_shell =
-            unsafe { Var::from_ref_counted_object::<SSHShell>(&input, &*SSH_SHELL_TYPE)? };
-        let ssh_shell = unsafe { &*(ssh_shell as *const SSHShell) };
-
-        // Check connection status flag
-        // Note: We don't probe the connection here to avoid consuming data from the channel
-        // The flag is set to false whenever a connection error is detected in Execute/SendInput
-        let is_connected = ssh_shell.is_connected.lock()
-            .map_err(|_| "Connection state lock poisoned")?;
-
-        self.output = (*is_connected).into();
+        let ssh_shell = get_session(input)?;
+        let is_connected = ssh_shell.is_connected.load(Ordering::Acquire);
+        self.output = is_connected.into();
         Ok(Some(self.output.0))
+    }
+}
+
+// ============================================================================
+// SSH.Read Shard — raw non-blocking read
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "SSH.Read",
+    "Read raw output from SSH session (non-blocking)"
+)]
+pub struct ReadShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE, *SSH_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("MaxBytes", "Maximum bytes to read (default: 65536)", [common_type::int, common_type::int_var])]
+    max_bytes: ParamVar,
+
+    #[shard_param("StripAnsi", "Strip ANSI escape sequences (default: false)", [common_type::bool, common_type::bool_var])]
+    strip_ansi: ParamVar,
+
+    #[shard_param("Timeout", "Timeout in milliseconds, 0 = immediate (default: 0)", [common_type::int, common_type::int_var])]
+    timeout_ms: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for ReadShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            max_bytes: ParamVar::new(65536i64.into()),
+            strip_ansi: ParamVar::new(false.into()),
+            timeout_ms: ParamVar::new(0i64.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for ReadShard {
+    fn input_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+        let session_var = *self.session.get();
+        let max_bytes: i64 = self.max_bytes.get().as_ref().try_into()?;
+        let max_bytes = if max_bytes <= 0 { 65536usize } else { max_bytes as usize };
+        let strip: bool = self.strip_ansi.get().as_ref().try_into()?;
+        let timeout_ms: i64 = self.timeout_ms.get().as_ref().try_into()?;
+        let timeout_ms = if timeout_ms < 0 { 0u64 } else { timeout_ms as u64 };
+
+        let ssh_shell = get_session(&session_var)?;
+        check_session_alive(ssh_shell)?;
+
+        let read_pos = &ssh_shell.read_position;
+
+        let deadline = if timeout_ms > 0 {
+            Some(std::time::Instant::now() + Duration::from_millis(timeout_ms))
+        } else {
+            None
+        };
+
+        let mut result_data = Vec::new();
+
+        // Settle time scales with timeout
+        let settle_ms = if timeout_ms > 0 {
+            (timeout_ms / 5).max(100).min(2000)
+        } else {
+            100
+        };
+        let mut last_data_time: Option<std::time::Instant> = None;
+        let mut prev_total = read_pos.load(Ordering::Acquire);
+
+        loop {
+            let current_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+
+            if current_total > prev_total {
+                last_data_time = Some(std::time::Instant::now());
+                prev_total = current_total;
+            }
+
+            if let Some(dl) = deadline {
+                if std::time::Instant::now() >= dl {
+                    break;
+                }
+                if let Some(ldt) = last_data_time {
+                    if std::time::Instant::now().duration_since(ldt) >= Duration::from_millis(settle_ms) {
+                        break;
+                    }
+                }
+                shards::core::suspend(context, 0.01);
+            } else {
+                break;
+            }
+        }
+
+        // Final snapshot of accumulated data
+        let final_total = ssh_shell.total_bytes_written.load(Ordering::Acquire);
+        let final_consumed = read_pos.load(Ordering::Acquire);
+        if final_total > final_consumed {
+            let snapshot = {
+                let buf = ssh_shell.output_buffer.lock()
+                    .map_err(|_| "Buffer lock poisoned")?;
+                buf.clone()
+            };
+
+            let new_byte_count = final_total - final_consumed;
+            let available = snapshot.len().min(new_byte_count).min(max_bytes);
+            result_data = snapshot[snapshot.len().saturating_sub(available)..].to_vec();
+            read_pos.store(final_total, Ordering::Release);
+        }
+
+        let output_str = if strip {
+            let term_rows = ssh_shell.term_rows.load(Ordering::Acquire);
+            let term_cols = ssh_shell.term_cols.load(Ordering::Acquire);
+            render_through_virtual_terminal(&result_data, term_rows, term_cols)
+        } else {
+            String::from_utf8_lossy(&result_data).to_string()
+        };
+
+        self.output = Var::ephemeral_string(&output_str).into();
+        Ok(Some(self.output.0))
+    }
+}
+
+// ============================================================================
+// SSH.Write Shard — raw byte write
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "SSH.Write",
+    "Write raw bytes to SSH session"
+)]
+pub struct WriteShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE, *SSH_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("AppendNewline", "Append newline after input (default: false)", [common_type::bool, common_type::bool_var])]
+    append_newline: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for WriteShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            append_newline: ParamVar::new(false.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for WriteShard {
+    fn input_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &STRING_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+        let input_str: &str = input.try_into()?;
+        let session_var = *self.session.get();
+        let append_nl: bool = self.append_newline.get().as_ref().try_into()?;
+
+        let ssh_shell = get_session(&session_var)?;
+        check_session_alive(ssh_shell)?;
+
+        let bytes = interpret_escape_sequences(input_str);
+        write_to_channel(ssh_shell, &bytes)?;
+        if append_nl {
+            write_to_channel(ssh_shell, b"\r")?;
+        }
+
+        // Passthrough input
+        self.output = input.into();
+        Ok(Some(self.output.0))
+    }
+}
+
+// ============================================================================
+// SSH.Resize Shard — PTY resize
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+    "SSH.Resize",
+    "Resize the PTY terminal of an SSH session"
+)]
+pub struct ResizeShard {
+    #[shard_required]
+    required: ExposedTypes,
+
+    #[shard_param("Session", "SSH shell session object", [*SSH_SHELL_TYPE, *SSH_SHELL_VAR_TYPE])]
+    session: ParamVar,
+
+    #[shard_param("Rows", "Number of rows", [common_type::int, common_type::int_var])]
+    rows: ParamVar,
+
+    #[shard_param("Cols", "Number of columns", [common_type::int, common_type::int_var])]
+    cols: ParamVar,
+
+    output: ClonedVar,
+}
+
+impl Default for ResizeShard {
+    fn default() -> Self {
+        Self {
+            required: ExposedTypes::new(),
+            session: ParamVar::default(),
+            rows: ParamVar::new(24i64.into()),
+            cols: ParamVar::new(80i64.into()),
+            output: ClonedVar::default(),
+        }
+    }
+}
+
+#[shards::shard_impl]
+impl Shard for ResizeShard {
+    fn input_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn output_types(&mut self) -> &Types {
+        &NONE_TYPES
+    }
+
+    fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+        self.warmup_helper(ctx)?;
+        Ok(())
+    }
+
+    fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+        self.cleanup_helper(ctx)?;
+        self.output = ClonedVar::default();
+        Ok(())
+    }
+
+    fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+        self.compose_helper(data)?;
+        Ok(self.output_types()[0])
+    }
+
+    fn activate(&mut self, _context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+        let session_var = *self.session.get();
+        let rows_val: i64 = self.rows.get().as_ref().try_into()?;
+        let cols_val: i64 = self.cols.get().as_ref().try_into()?;
+
+        let rows = rows_val.max(1).min(u16::MAX as i64) as u16;
+        let cols = cols_val.max(1).min(u16::MAX as i64) as u16;
+
+        let ssh_shell = get_session(&session_var)?;
+        check_session_alive(ssh_shell)?;
+
+        // Set blocking for the resize request
+        if let Ok(sess) = ssh_shell.session.lock() {
+            sess.set_blocking(true);
+        }
+
+        {
+            let mut channel = ssh_shell.channel.lock()
+                .map_err(|_| "Channel lock poisoned")?;
+            channel.request_pty_size(cols as u32, rows as u32, None, None)
+                .map_err(|_| "Failed to resize PTY")?;
+        }
+
+        // Restore non-blocking
+        if let Ok(sess) = ssh_shell.session.lock() {
+            sess.set_blocking(false);
+        }
+
+        ssh_shell.term_rows.store(rows, Ordering::Release);
+        ssh_shell.term_cols.store(cols, Ordering::Release);
+        shlog_trace!("SSH PTY resized to {}x{}", cols, rows);
+
+        Ok(None)
     }
 }
 
@@ -1003,6 +1738,9 @@ pub extern "C" fn shardsRegister_ssh_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<ExecuteShard>();
     register_shard::<SendInputShard>();
     register_shard::<IsConnectedShard>();
+    register_shard::<ReadShard>();
+    register_shard::<WriteShard>();
+    register_shard::<ResizeShard>();
 
     shlog_trace!("SSH module registered");
 }

@@ -6376,11 +6376,11 @@ version = "0.1.0"
 dependencies = [
  "compile-time-crc32",
  "lazy_static",
- "regex",
  "shards",
  "shellexpand",
  "ssh2",
  "strip-ansi-escapes",
+ "vt100",
 ]
 
 [[package]]

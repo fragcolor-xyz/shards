@@ -15,5 +15,5 @@ shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
 ssh2 = "0.9"
 strip-ansi-escapes = "0.2"
-regex = "1.10"
 shellexpand = "3.1"
+vt100 = "0.15"
