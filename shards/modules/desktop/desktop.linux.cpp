@@ -6,6 +6,7 @@
 #include "desktop.portal.linux.hpp"
 #include "desktop.capture.linux.hpp"
 #include "desktop.uinput.linux.hpp"
+#include "desktop.wayland_input.linux.hpp"
 
 #include <shards/core/shared.hpp>
 #include <shards/core/params.hpp>
@@ -66,23 +67,71 @@ static void removeCapture(PortalSession *session) {
   g_captures.erase(session);
 }
 
-// Global UInputDevice singleton for input injection
-static std::unique_ptr<UInputDevice> g_uinput;
-static std::mutex g_uinputMutex;
+// Input device abstraction — common interface for Wayland virtual input and uinput
+struct InputDevice {
+  virtual ~InputDevice() = default;
+  virtual bool isAvailable() const = 0;
+  virtual void keyboardKey(uint32_t keycode, bool pressed) = 0;
+  virtual void pointerMotionRelative(int dx, int dy) = 0;
+  virtual void pointerMotionAbsolute(int x, int y, int screenW, int screenH) = 0;
+  virtual void pointerButton(uint32_t button, bool pressed) = 0;
+  virtual void scrollVertical(int amount) = 0;
+  virtual void scrollHorizontal(int amount) = 0;
+};
 
-static UInputDevice *getOrCreateUInput() {
-  std::lock_guard<std::mutex> lock(g_uinputMutex);
-  if (g_uinput && g_uinput->isAvailable())
-    return g_uinput.get();
+struct WaylandInputAdapter : InputDevice {
+  WaylandVirtualInput dev;
+  bool init() { return dev.init(); }
+  bool isAvailable() const override { return dev.isAvailable(); }
+  void keyboardKey(uint32_t k, bool p) override { dev.keyboardKey(k, p); }
+  void pointerMotionRelative(int dx, int dy) override { dev.pointerMotionRelative(dx, dy); }
+  void pointerMotionAbsolute(int x, int y, int w, int h) override { dev.pointerMotionAbsolute(x, y, w, h); }
+  void pointerButton(uint32_t b, bool p) override { dev.pointerButton(b, p); }
+  void scrollVertical(int a) override { dev.scrollVertical(a); }
+  void scrollHorizontal(int a) override { dev.scrollHorizontal(a); }
+};
 
-  if (!g_uinput) {
-    g_uinput = std::make_unique<UInputDevice>();
-    if (!g_uinput->init()) {
-      g_uinput.reset();
-      return nullptr;
+struct UInputAdapter : InputDevice {
+  UInputDevice dev;
+  bool init() { return dev.init(); }
+  bool isAvailable() const override { return dev.isAvailable(); }
+  void keyboardKey(uint32_t k, bool p) override { dev.keyboardKey(k, p); }
+  void pointerMotionRelative(int dx, int dy) override { dev.pointerMotionRelative(dx, dy); }
+  void pointerMotionAbsolute(int x, int y, int w, int h) override { dev.pointerMotionAbsolute(x, y, w, h); }
+  void pointerButton(uint32_t b, bool p) override { dev.pointerButton(b, p); }
+  void scrollVertical(int a) override { dev.scrollVertical(a); }
+  void scrollHorizontal(int a) override { dev.scrollHorizontal(a); }
+};
+
+// Global input device — prefers Wayland virtual input, falls back to uinput
+static std::unique_ptr<InputDevice> g_input;
+static std::mutex g_inputMutex;
+
+static InputDevice *getOrCreateInput() {
+  std::lock_guard<std::mutex> lock(g_inputMutex);
+  if (g_input && g_input->isAvailable())
+    return g_input.get();
+
+  if (!g_input) {
+    // Try Wayland virtual input first (works in headless compositors)
+    if (getenv("WAYLAND_DISPLAY")) {
+      auto wayland = std::make_unique<WaylandInputAdapter>();
+      if (wayland->init()) {
+        g_input = std::move(wayland);
+        return g_input.get();
+      }
     }
+
+    // Fall back to uinput (requires /dev/uinput permissions)
+    auto uinput = std::make_unique<UInputAdapter>();
+    if (uinput->init()) {
+      g_input = std::move(uinput);
+      return g_input.get();
+    }
+
+    return nullptr;
   }
-  return g_uinput.get();
+  return g_input.get();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -130,7 +179,7 @@ struct StartSession {
     }
 
     // Also initialize UInput for input injection
-    getOrCreateUInput();
+    getOrCreateInput();
 
     _output = Var::Object(_session, CoreCC, windowCC);
     return _output;
@@ -210,7 +259,7 @@ struct StartDirectCapture {
     }
 
     // Also initialize UInput for input injection
-    getOrCreateUInput();
+    getOrCreateInput();
 
     _output = Var::Object(_session, CoreCC, windowCC);
     return _output;
@@ -417,15 +466,15 @@ struct SendKeyEvent {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int state = input.payload.int2Value[0];
     int keycode = input.payload.int2Value[1];
     bool pressed = (state == 0); // 0 = down/pressed
 
-    uinput->keyboardKey(static_cast<uint32_t>(keycode), pressed);
+    inputDev->keyboardKey(static_cast<uint32_t>(keycode), pressed);
     return input;
   }
 };
@@ -458,9 +507,9 @@ struct SetMousePos {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int x = input.payload.int2Value[0];
     int y = input.payload.int2Value[1];
@@ -469,7 +518,7 @@ struct SetMousePos {
     int screenW = 1920, screenH = 1080; // defaults
     getCaptureSizeForSession(_session.get(), screenW, screenH);
 
-    uinput->pointerMotionAbsolute(x, y, screenW, screenH);
+    inputDev->pointerMotionAbsolute(x, y, screenW, screenH);
     return input;
   }
 };
@@ -502,13 +551,13 @@ struct SetMouseRelativePos {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int dx = input.payload.int2Value[0];
     int dy = input.payload.int2Value[1];
-    uinput->pointerMotionRelative(dx, dy);
+    inputDev->pointerMotionRelative(dx, dy);
     return input;
   }
 };
@@ -535,9 +584,9 @@ struct ClickBase {
 
 protected:
   SHVar doClick(SHContext *context, const SHVar &input, uint32_t button) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int x = input.payload.int2Value[0];
     int y = input.payload.int2Value[1];
@@ -547,9 +596,9 @@ protected:
     getCaptureSizeForSession(_session.get(), screenW, screenH);
 
     // Move to position first, then click
-    uinput->pointerMotionAbsolute(x, y, screenW, screenH);
-    uinput->pointerButton(button, true);
-    uinput->pointerButton(button, false);
+    inputDev->pointerMotionAbsolute(x, y, screenW, screenH);
+    inputDev->pointerButton(button, true);
+    inputDev->pointerButton(button, false);
 
     return input;
   }
@@ -593,12 +642,12 @@ struct ScrollVertical {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int amount = static_cast<int>(input.payload.floatValue);
-    uinput->scrollVertical(amount);
+    inputDev->scrollVertical(amount);
     return input;
   }
 };
@@ -622,12 +671,12 @@ struct ScrollHorizontal {
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-    auto *uinput = getOrCreateUInput();
-    if (!uinput)
-      throw ActivationError("UInput not available - check /dev/uinput permissions");
+    auto *inputDev = getOrCreateInput();
+    if (!inputDev)
+      throw ActivationError("Input injection not available");
 
     int amount = static_cast<int>(input.payload.floatValue);
-    uinput->scrollHorizontal(amount);
+    inputDev->scrollHorizontal(amount);
     return input;
   }
 };

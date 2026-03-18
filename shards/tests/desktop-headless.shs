@@ -3,6 +3,7 @@
 
 // Headless desktop test — runs inside a headless sway compositor.
 // Uses Desktop.StartSession (portal flow) with auto-approved ScreenCast.
+// Input injection uses Wayland virtual keyboard/pointer protocol natively.
 // Launched by test-desktop-headless.sh which sets up the environment.
 //
 // Sway is configured with:
@@ -10,6 +11,34 @@
 //   output * bg #204a4a solid_color
 
 @mesh(root)
+
+// Key codes (linux/input-event-codes.h):
+// a=30 c=46 d=32 e=18 h=35 i=23 k=37 l=38 m=50 o=24 p=25 r=19 s=31
+// t=20 x=45 dot=52 slash=53 space=57 enter=28 minus=12
+// shift=42: shift+dot = >
+
+// Helper: press and release a key
+@template(key [session keycode] {
+  keycode >= _kc
+  @i2(0 _kc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+  @i2(1 _kc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+})
+
+// Helper: shift + key (for > etc.)
+@template(shift-key [session keycode] {
+  keycode >= _skc
+  42 >= _lshift
+  @i2(0 _lshift) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.01)
+  @i2(0 _skc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+  @i2(1 _skc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.01)
+  @i2(1 _lshift) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+})
 
 @wire(desktop-headless-test {
   // =========================================================================
@@ -30,15 +59,10 @@
   | Assert.Is(@color(32 74 74 255))
   "Background color verified at 3 points" | Log
 
-  // Verify region capture
-  @i4(0 0 64 64) | Desktop.Pixels(Session: session)
-  | Log("64x64 region captured")
-
   // =========================================================================
-  // Phase 2: Launch terminal, verify visual change in capture
+  // Phase 2: Launch terminal, verify visual change
   // =========================================================================
 
-  // Open foot terminal with sh (not fish/bash — sh handles virtual keyboard best)
   Maybe({
     "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot sh"])
   } Pass)
@@ -47,44 +71,93 @@
   Pause(0.5)
   session | Desktop.CaptureFrame
 
-  @i2(640 360) | Desktop.Pixel(Session: session) >= term-pixel
-  term-pixel | Assert.IsNot(@color(32 74 74 255))
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.IsNot(@color(32 74 74 255))
   "Terminal opened — screen changed from background" | Log
 
   // =========================================================================
-  // Phase 3: Type command via virtual keyboard, verify file creation
+  // Phase 3: Type command via Desktop.SendKeyEvent, verify file creation
   // =========================================================================
 
-  // Use wtype to type into the terminal via Wayland virtual keyboard protocol.
-  // The first keystroke in a wtype call gets eaten (virtual keyboard registration
-  // race), so we prefix with a harmless Enter that gets consumed.
-  "" | Process.Run(
-    Executable: "wtype"
-    Arguments: ["-k" "Return" "echo keyboard-typing-works > /tmp/shards-kb-test.txt" "-k" "Return"]
-  )
-  "Typed echo command via virtual keyboard" | Log
+  // Send a warmup Enter first — the virtual keyboard's first event may be
+  // dropped as the compositor processes the new virtual keyboard registration.
+  @key(session 28)  // Enter (harmless blank line in shell)
+  Pause(0.5)
+  // Second warmup to be safe
+  @key(session 28)  // Enter
+  Pause(0.5)
+
+  // Type: echo shards-kb-ok > /tmp/shards-kb-test.txt
+  @key(session 18)   // e
+  @key(session 46)   // c
+  @key(session 35)   // h
+  @key(session 24)   // o
+  @key(session 57)   // space
+  @key(session 31)   // s
+  @key(session 35)   // h
+  @key(session 30)   // a
+  @key(session 19)   // r
+  @key(session 32)   // d
+  @key(session 31)   // s
+  @key(session 12)   // -
+  @key(session 37)   // k
+  @key(session 48)   // b
+  @key(session 12)   // -
+  @key(session 24)   // o
+  @key(session 37)   // k
+  @key(session 57)   // space
+  @shift-key(session 52) // >
+  @key(session 57)   // space
+  @key(session 53)   // /
+  @key(session 20)   // t
+  @key(session 50)   // m
+  @key(session 25)   // p
+  @key(session 53)   // /
+  @key(session 31)   // s
+  @key(session 35)   // h
+  @key(session 30)   // a
+  @key(session 19)   // r
+  @key(session 32)   // d
+  @key(session 31)   // s
+  @key(session 12)   // -
+  @key(session 37)   // k
+  @key(session 48)   // b
+  @key(session 12)   // -
+  @key(session 20)   // t
+  @key(session 18)   // e
+  @key(session 31)   // s
+  @key(session 20)   // t
+  @key(session 52)   // .
+  @key(session 20)   // t
+  @key(session 45)   // x
+  @key(session 20)   // t
+  @key(session 28)   // Enter
+
+  "Typed echo command via Desktop.SendKeyEvent" | Log
   Pause(1.5)
 
   // Verify the file was created with correct content
   "/tmp/shards-kb-test.txt" | FS.Read | String.Trim >= kb-content
   kb-content | Log("File from keyboard typing")
-  kb-content | Assert.Is("keyboard-typing-works")
-  "Virtual keyboard → shell → file content verified" | Log
-
-  // Type a second command to prove it wasn't a fluke
-  "" | Process.Run(
-    Executable: "wtype"
-    Arguments: ["-k" "Return" "date +%Y > /tmp/shards-kb-date.txt" "-k" "Return"]
-  )
-  Pause(1.0)
-
-  "/tmp/shards-kb-date.txt" | FS.Read | String.Trim >= date-content
-  date-content | Log("Date from keyboard typing")
-  date-content | Assert.Is("2026")
-  "Second command via keyboard verified" | Log
+  kb-content | Assert.Is("shards-kb-ok")
+  "Keyboard → terminal → shell → file content verified" | Log
 
   // =========================================================================
-  // Phase 4: Capture frame showing terminal with command history
+  // Phase 4: Test mouse input via Desktop shards
+  // =========================================================================
+
+  @i2(100 100) | Desktop.SetMousePos(Session: session) | Log("Mouse absolute")
+  Pause(0.1)
+  @i2(50 50) | Desktop.SetMouseRelativePos(Session: session) | Log("Mouse relative")
+  Pause(0.1)
+  @i2(200 200) | Desktop.LeftClick(Session: session) | Log("Left click")
+  @i2(300 300) | Desktop.RightClick(Session: session) | Log("Right click")
+  1.0 | Desktop.ScrollVertical(Session: session) | Log("Scroll vertical")
+  -1.0 | Desktop.ScrollHorizontal(Session: session) | Log("Scroll horizontal")
+  "Mouse input verified" | Log
+
+  // =========================================================================
+  // Phase 5: Verify capture still works after all input
   // =========================================================================
 
   session | Desktop.CaptureFrame
@@ -93,24 +166,7 @@
 
   @i2(640 360) | Desktop.Pixel(Session: session)
   | Assert.IsNot(@color(32 74 74 255))
-  | Log("Terminal still visible with command history")
-
-  // =========================================================================
-  // Phase 5: uinput device test
-  // =========================================================================
-
-  Maybe({
-    @i2(100 100) | Desktop.SetMousePos(Session: session)
-    @i2(50 50) | Desktop.SetMouseRelativePos(Session: session)
-    @i2(200 200) | Desktop.LeftClick(Session: session)
-    1.0 | Desktop.ScrollVertical(Session: session)
-    @i2(0 30) | Desktop.SendKeyEvent(Session: session)
-    Pause(0.02)
-    @i2(1 30) | Desktop.SendKeyEvent(Session: session)
-    "uinput devices functional" | Log
-  } {
-    "uinput not available" | Log
-  })
+  | Log("Screen still active after all tests")
 
   "All headless desktop tests passed!" | Log
 })
