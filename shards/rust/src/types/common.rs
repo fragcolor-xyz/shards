@@ -438,6 +438,7 @@ unsafe impl Send for Var {}
 unsafe impl Send for Context {}
 unsafe impl Send for Shard {}
 unsafe impl Sync for Var {}
+unsafe impl Send for SHOptionalString {}
 unsafe impl Sync for SHOptionalString {}
 unsafe impl Sync for ClonedVar {}
 unsafe impl Sync for ExternalVar {}

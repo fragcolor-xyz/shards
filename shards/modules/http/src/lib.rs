@@ -1134,6 +1134,13 @@ pub extern "C" fn shardsRegister_http_rust(core: *mut shards::shardsc::SHCore) {
     shards::core::Core = core;
   }
 
+  // Install ring as the rustls crypto provider when using rustls-ring feature
+  // (avoids aws-lc-rs C build issues with cross-compilation)
+  #[cfg(feature = "rustls-ring")]
+  {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+  }
+
   register_legacy_shard::<Get>();
   register_legacy_shard::<Head>();
   register_legacy_shard::<Post>();

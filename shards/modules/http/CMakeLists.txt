@@ -12,10 +12,10 @@ if(HTTP_SUPPORTED)
   # For Zig cross-compilation, use Rust-only implementation (no C++ Server shard)
   # C++ http.cpp requires OpenSSL via Boost.Asio SSL
   if(ZIG_MUSL)
-    # Rust-only build with rustls
+    # Rust-only build with rustls (ring crypto provider to avoid aws-lc-rs C build)
     add_rust_library(NAME shards-http
       PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-      FEATURES rustls socks)
+      FEATURES rustls-ring socks)
 
     add_shards_module(http
       RUST_TARGETS shards-http-rust
