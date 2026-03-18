@@ -49,11 +49,11 @@ public:
   // Direct PipeWire connection — bypasses portal, connects to PipeWire daemon directly.
   // Use for headless/automated scenarios where no portal consent dialog is possible.
   bool initDirect(uint32_t nodeId) {
-    return initInternal(nodeId, -1);
+    return initInternal(nodeId, -1, true);
   }
 
 private:
-  bool initInternal(uint32_t nodeId, int pipewireFd) {
+  bool initInternal(uint32_t nodeId, int pipewireFd, bool direct = false) {
     pw_init(nullptr, nullptr);
 
     _loop = pw_thread_loop_new("shards-capture", nullptr);
@@ -126,10 +126,23 @@ private:
                                        SPA_VIDEO_FORMAT_xRGB, SPA_VIDEO_FORMAT_ARGB};
     static const int numFormats = sizeof(formats) / sizeof(formats[0]);
 
-    // params[0..numFormats-1]: one per format WITH modifier (for DMA-BUF sources like Hyprland)
-    // params[numFormats]: all formats WITHOUT modifier (SHM fallback for GNOME/KDE)
+    // Build params list. For portal capture (DMA-BUF compositors like Hyprland), DMA-BUF
+    // params come first. For direct capture (SHM sources like GStreamer), SHM-only params
+    // come first since the source won't have DMA-BUF support.
     const struct spa_pod *paramsList[numFormats + 1];
+    int paramIdx = 0;
 
+    // SHM params: all formats, no modifier
+    auto *shmParam = static_cast<const struct spa_pod *>(spa_pod_builder_add_object(
+        &b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
+        SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
+        SPA_POD_CHOICE_ENUM_Id(8, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_RGBx, SPA_VIDEO_FORMAT_RGBA,
+                               SPA_VIDEO_FORMAT_xBGR, SPA_VIDEO_FORMAT_ABGR, SPA_VIDEO_FORMAT_xRGB, SPA_VIDEO_FORMAT_ARGB),
+        SPA_FORMAT_VIDEO_size, SPA_POD_CHOICE_RANGE_Rectangle(&sizeDefault, &sizeMin, &sizeMax), SPA_FORMAT_VIDEO_framerate,
+        SPA_POD_CHOICE_RANGE_Fraction(&fpsDefault, &fpsMin, &fpsMax)));
+
+    // DMA-BUF params: one per format WITH modifier
+    const struct spa_pod *dmabufParams[numFormats];
     for (int i = 0; i < numFormats; i++) {
       struct spa_pod_frame f;
       spa_pod_builder_push_object(&b, &f, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
@@ -145,17 +158,21 @@ private:
       spa_pod_builder_long(&b, DRM_FORMAT_MOD_INVALID); // any
       spa_pod_builder_long(&b, DRM_FORMAT_MOD_LINEAR);  // linear (unmodified)
       spa_pod_builder_pop(&b, &fChoice);
-      paramsList[i] = static_cast<const struct spa_pod *>(spa_pod_builder_pop(&b, &f));
+      dmabufParams[i] = static_cast<const struct spa_pod *>(spa_pod_builder_pop(&b, &f));
     }
 
-    // SHM fallback: all formats, no modifier
-    paramsList[numFormats] = static_cast<const struct spa_pod *>(spa_pod_builder_add_object(
-        &b, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat, SPA_FORMAT_mediaType, SPA_POD_Id(SPA_MEDIA_TYPE_video),
-        SPA_FORMAT_mediaSubtype, SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), SPA_FORMAT_VIDEO_format,
-        SPA_POD_CHOICE_ENUM_Id(8, SPA_VIDEO_FORMAT_BGRx, SPA_VIDEO_FORMAT_BGRA, SPA_VIDEO_FORMAT_RGBx, SPA_VIDEO_FORMAT_RGBA,
-                               SPA_VIDEO_FORMAT_xBGR, SPA_VIDEO_FORMAT_ABGR, SPA_VIDEO_FORMAT_xRGB, SPA_VIDEO_FORMAT_ARGB),
-        SPA_FORMAT_VIDEO_size, SPA_POD_CHOICE_RANGE_Rectangle(&sizeDefault, &sizeMin, &sizeMax), SPA_FORMAT_VIDEO_framerate,
-        SPA_POD_CHOICE_RANGE_Fraction(&fpsDefault, &fpsMin, &fpsMax)));
+    int numParams;
+    if (direct) {
+      // Direct capture: SHM only (no DMA-BUF from non-compositor sources)
+      paramsList[0] = shmParam;
+      numParams = 1;
+    } else {
+      // Portal capture: DMA-BUF first (compositors prefer it), SHM fallback last
+      for (int i = 0; i < numFormats; i++)
+        paramsList[paramIdx++] = dmabufParams[i];
+      paramsList[paramIdx++] = shmParam;
+      numParams = numFormats + 1;
+    }
 
     pw_thread_loop_lock(_loop);
 
@@ -167,7 +184,7 @@ private:
     }
 
     auto connectFlags = static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS);
-    if (pw_stream_connect(_stream, PW_DIRECTION_INPUT, nodeId, connectFlags, paramsList, numFormats + 1) < 0) {
+    if (pw_stream_connect(_stream, PW_DIRECTION_INPUT, nodeId, connectFlags, paramsList, numParams) < 0) {
       SPDLOG_LOGGER_ERROR(getCaptureLogger(), "Failed to connect PipeWire stream to node {}", nodeId);
       pw_thread_loop_unlock(_loop);
       shutdown();

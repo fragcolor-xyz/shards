@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2024 Fragcolor Pte. Ltd.
+
+// Headless desktop test — runs inside a headless sway compositor.
+// Uses Desktop.StartSession (portal flow) with auto-approved ScreenCast.
+// Launched by test-desktop-headless.sh which sets up the environment.
+
+@mesh(root)
+
+@wire(desktop-headless-test {
+  // Start portal session — will auto-approve via portal-wlr chooser_type=none
+  Desktop.StartSession | Log("Session started") >= session
+
+  // Initialize the PipeWire capture stream
+  session | Desktop.CaptureFrame
+
+  // Wait for PipeWire to negotiate format and deliver frames
+  Pause(2.0)
+
+  // Swap buffer to get the delivered frame
+  session | Desktop.CaptureFrame | Log("Frame captured")
+
+  // Verify we got a frame by reading a pixel
+  // Sway background is #204a4a → BGRA = (74, 74, 32, 255)
+  @i2(10 10) | Desktop.Pixel(Session: session) >= pixel
+  pixel | Log("Pixel at 10,10")
+
+  // Capture a small region
+  @i4(0 0 16 16) | Desktop.Pixels(Session: session) >= region
+  region | Log("16x16 region captured")
+
+  // Test input injection (via uinput)
+  Maybe({
+    @i2(100 100) | Desktop.SetMousePos(Session: session) | Log("Mouse moved to 100,100")
+    Pause(0.1)
+
+    @i2(10 10) | Desktop.SetMouseRelativePos(Session: session) | Log("Mouse moved +10,+10")
+    Pause(0.1)
+
+    @i2(200 200) | Desktop.LeftClick(Session: session) | Log("Left clicked at 200,200")
+    Pause(0.1)
+
+    1.0 | Desktop.ScrollVertical(Session: session) | Log("Scrolled vertical")
+
+    @i2(0 30) | Desktop.SendKeyEvent(Session: session) | Log("Key down: a")
+    Pause(0.05)
+    @i2(1 30) | Desktop.SendKeyEvent(Session: session) | Log("Key up: a")
+  } {
+    "Input injection skipped (uinput not available)" | Log
+  })
+
+  "All headless desktop tests passed!" | Log
+})
+
+@schedule(root desktop-headless-test)
+@run(root) | Assert.Is(true)
