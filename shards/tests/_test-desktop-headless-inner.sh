@@ -83,7 +83,7 @@ PIDS+=($!)
 sleep 1
 
 # Clean up any leftover test files
-rm -f /tmp/shards-test.txt /tmp/shards-exec-test.txt
+rm -f /tmp/shards-kb-test.txt /tmp/shards-kb-date.txt
 
 echo "=== Running headless desktop test ==="
 "$SHARDS_BIN" run "$SCRIPT_DIR/desktop-headless.shs"

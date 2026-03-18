@@ -31,18 +31,18 @@
   "Background color verified at 3 points" | Log
 
   // Verify region capture
-  @i4(0 0 64 64) | Desktop.Pixels(Session: session) >= region
-  region | Log("64x64 region captured")
+  @i4(0 0 64 64) | Desktop.Pixels(Session: session)
+  | Log("64x64 region captured")
 
   // =========================================================================
   // Phase 2: Launch terminal, verify visual change in capture
   // =========================================================================
 
-  // Open foot terminal — verify capture detects visual change
+  // Open foot terminal with sh (not fish/bash — sh handles virtual keyboard best)
   Maybe({
-    "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot"])
+    "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot sh"])
   } Pass)
-  Pause(1.5)
+  Pause(2.0)
   session | Desktop.CaptureFrame
   Pause(0.5)
   session | Desktop.CaptureFrame
@@ -52,41 +52,53 @@
   "Terminal opened — screen changed from background" | Log
 
   // =========================================================================
-  // Phase 3: Run shell command in compositor, verify file + visual output
+  // Phase 3: Type command via virtual keyboard, verify file creation
   // =========================================================================
 
-  // Execute a command inside the compositor environment via foot -e.
-  // The command writes a file, and we verify the content.
-  Maybe({
-    "" | Process.Run(
-      Executable: "swaymsg"
-      Arguments: ["exec" "foot -e bash -c 'echo shards-headless-ok > /tmp/shards-test.txt && sleep 2'"]
-    )
-  } Pass)
-  Pause(1.0)
+  // Use wtype to type into the terminal via Wayland virtual keyboard protocol.
+  // The first keystroke in a wtype call gets eaten (virtual keyboard registration
+  // race), so we prefix with a harmless Enter that gets consumed.
+  "" | Process.Run(
+    Executable: "wtype"
+    Arguments: ["-k" "Return" "echo keyboard-typing-works > /tmp/shards-kb-test.txt" "-k" "Return"]
+  )
+  "Typed echo command via virtual keyboard" | Log
+  Pause(1.5)
 
   // Verify the file was created with correct content
-  "/tmp/shards-test.txt" | FS.Read | String.Trim >= file-content
-  file-content | Assert.Is("shards-headless-ok")
-  "Shell wrote file, content verified" | Log
+  "/tmp/shards-kb-test.txt" | FS.Read | String.Trim >= kb-content
+  kb-content | Log("File from keyboard typing")
+  kb-content | Assert.Is("keyboard-typing-works")
+  "Virtual keyboard → shell → file content verified" | Log
 
-  // Capture frame — should show the new terminal window with command output
+  // Type a second command to prove it wasn't a fluke
+  "" | Process.Run(
+    Executable: "wtype"
+    Arguments: ["-k" "Return" "date +%Y > /tmp/shards-kb-date.txt" "-k" "Return"]
+  )
+  Pause(1.0)
+
+  "/tmp/shards-kb-date.txt" | FS.Read | String.Trim >= date-content
+  date-content | Log("Date from keyboard typing")
+  date-content | Assert.Is("2026")
+  "Second command via keyboard verified" | Log
+
+  // =========================================================================
+  // Phase 4: Capture frame showing terminal with command history
+  // =========================================================================
+
   session | Desktop.CaptureFrame
   Pause(0.5)
   session | Desktop.CaptureFrame
 
-  // The new terminal should be visible (might overlap or tile with the first)
-  @i2(640 360) | Desktop.Pixel(Session: session) >= cmd-pixel
-  cmd-pixel | Assert.IsNot(@color(32 74 74 255))
-  cmd-pixel | Log("Screen with command output")
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.IsNot(@color(32 74 74 255))
+  | Log("Terminal still visible with command history")
 
   // =========================================================================
-  // Phase 4: uinput device creation test
+  // Phase 5: uinput device test
   // =========================================================================
 
-  // Verify uinput devices were created (they were during StartSession).
-  // In headless mode without libinput, uinput events don't reach sway's seat,
-  // but the devices are created and functional at the kernel level.
   Maybe({
     @i2(100 100) | Desktop.SetMousePos(Session: session)
     @i2(50 50) | Desktop.SetMouseRelativePos(Session: session)
