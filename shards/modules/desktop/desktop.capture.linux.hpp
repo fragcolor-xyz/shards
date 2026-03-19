@@ -396,15 +396,17 @@ private:
       self->_newFrame = true;
     }
 
-    pw_stream_queue_buffer(self->_stream, buf);
-
-    // Unmap DMA-BUF if we mapped it manually
+    // Unmap DMA-BUF before returning the buffer to PipeWire.
+    // After pw_stream_queue_buffer(), PipeWire owns the buffer and may
+    // recycle it from another thread — writing to spa_buf after that is UB.
     if (self->_dmabufMapped) {
       munmap(self->_dmabufMapped, self->_dmabufMapSize);
       spa_buf->datas[0].data = nullptr; // clear so we re-map next time
       self->_dmabufMapped = nullptr;
       self->_dmabufMapSize = 0;
     }
+
+    pw_stream_queue_buffer(self->_stream, buf);
   }
 
   struct pw_thread_loop *_loop = nullptr;

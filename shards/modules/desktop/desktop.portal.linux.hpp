@@ -11,6 +11,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <unistd.h>
 
 namespace Desktop {
 
@@ -107,6 +108,10 @@ public:
     if (_connection) {
       g_object_unref(_connection);
       _connection = nullptr;
+    }
+
+    if (_pipewireFd >= 0) {
+      close(_pipewireFd);
     }
 
     _state = State::Idle;
@@ -300,10 +305,12 @@ private:
         int32_t fdIndex = 0;
         g_variant_get(fdResult, "(h)", &fdIndex);
         _pipewireFd = g_unix_fd_list_get(fdList, fdIndex, nullptr);
-        g_variant_unref(fdResult);
-        g_object_unref(fdList);
         SPDLOG_LOGGER_INFO(getLogger(), "PipeWire fd: {}", _pipewireFd);
       }
+      if (fdResult)
+        g_variant_unref(fdResult);
+      if (fdList)
+        g_object_unref(fdList);
 
       _state = State::Active;
       SPDLOG_LOGGER_INFO(getLogger(), "Portal session is now active (mode: {})", _useRemoteDesktop ? "RemoteDesktop" : "ScreenCast");
