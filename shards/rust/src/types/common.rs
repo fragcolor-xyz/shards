@@ -445,6 +445,11 @@ unsafe impl Sync for ExternalVar {}
 /*
 SHTypeInfo & co
 */
+unsafe impl Send for SHTypeInfo {}
+unsafe impl Send for SHExposedTypeInfo {}
+unsafe impl Send for SHExtendedObjectTypeInfo {}
+unsafe impl Send for SHParameterInfo {}
+unsafe impl Send for SHStrings {}
 unsafe impl Send for SHObjectInfo {}
 unsafe impl Sync for SHTypeInfo {}
 unsafe impl Sync for SHExposedTypeInfo {}

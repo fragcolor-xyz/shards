@@ -39,4 +39,4 @@ rustls-pki-types = "1.11.0"
 base64 = "0.22.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-jsonwebtoken = { version = "9", features = ["use_pem"] }
+jsonwebtoken = { version = "10", features = ["use_pem", "rust_crypto"] }
