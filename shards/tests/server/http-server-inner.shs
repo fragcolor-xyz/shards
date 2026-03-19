@@ -88,8 +88,8 @@ Cond([
         Count(action-queue) | When(IsMore(0) {
           @srv-log("Erasing action")
           Erase(0 action-queue)
-          "" | Http.Response(Status: 200)
         })
+        "" | Http.Response(Status: 200)
       }
       {true} {
         "Method not allowed" | Http.Response(Status: 405 ContentType: "text/plain")
