@@ -35,6 +35,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
+          brew unlink llvm@15 || true
           brew install clang-format
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
@@ -68,6 +69,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo xcode-select --switch /Applications/Xcode.app
+          brew unlink llvm@15 || true
           brew install clang-format
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV

@@ -38,8 +38,7 @@ jobs:
           rustup component add rust-src --toolchain $RUSTUP_TOOLCHAIN
       - name: Build and Test
         env:
-          # Suppression file available at ../valgrind.supp if needed for false positives
-          VALGRIND_OPTS: "--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes"
+          VALGRIND_OPTS: "--exit-on-first-error=yes --error-exitcode=1 --fair-sched=yes --suppressions=../valgrind.supp"
         run: |
           mkdir build
           cd build
@@ -65,7 +64,7 @@ jobs:
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/capture-logs.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/fs-security.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/fileops.shs
-          valgrind $VALGRIND_OPTS --exit-on-first-error=no --leak-check=full ./test-runtime
+          valgrind $VALGRIND_OPTS --exit-on-first-error=no --leak-check=full --show-leak-kinds=definite ./test-runtime
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/complex-deserialize.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/table-seq-push.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/traits.shs
