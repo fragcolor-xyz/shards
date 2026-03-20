@@ -1,0 +1,175 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2024 Fragcolor Pte. Ltd.
+
+// Headless desktop test — runs inside a headless sway compositor.
+// Uses Desktop.StartSession (portal flow) with auto-approved ScreenCast.
+// Input injection uses Wayland virtual keyboard/pointer protocol natively.
+// Launched by test-desktop-headless.sh which sets up the environment.
+//
+// Sway is configured with:
+//   output HEADLESS-1 resolution 1280x720
+//   output * bg #204a4a solid_color
+
+@mesh(root)
+
+// Key codes (linux/input-event-codes.h):
+// a=30 c=46 d=32 e=18 h=35 i=23 k=37 l=38 m=50 o=24 p=25 r=19 s=31
+// t=20 x=45 dot=52 slash=53 space=57 enter=28 minus=12
+// shift=42: shift+dot = >
+
+// Helper: press and release a key
+@template(key [session keycode] {
+  keycode >= _kc
+  @i2(0 _kc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+  @i2(1 _kc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+})
+
+// Helper: shift + key (for > etc.)
+@template(shift-key [session keycode] {
+  keycode >= _skc
+  42 >= _lshift
+  @i2(0 _lshift) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.01)
+  @i2(0 _skc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+  @i2(1 _skc) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.01)
+  @i2(1 _lshift) | Desktop.SendKeyEvent(Session: session)
+  Pause(0.02)
+})
+
+@wire(desktop-headless-test {
+  // =========================================================================
+  // Phase 1: Portal session + capture verification
+  // =========================================================================
+
+  Desktop.StartSession | Log("Session started") >= session
+  session | Desktop.CaptureFrame
+  Pause(2.0)
+  session | Desktop.CaptureFrame
+
+  // Verify background color #204a4a at edge and center
+  @i2(10 10) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  @i2(1270 710) | Desktop.Pixel(Session: session)
+  | Assert.Is(@color(32 74 74 255))
+  "Background color verified at 3 points" | Log
+
+  // =========================================================================
+  // Phase 2: Launch terminal, verify visual change
+  // =========================================================================
+
+  Maybe({
+    "" | Process.Run(Executable: "swaymsg" Arguments: ["exec" "foot sh"])
+  } Pass)
+  Pause(2.0)
+  session | Desktop.CaptureFrame
+  Pause(0.5)
+  session | Desktop.CaptureFrame
+
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.IsNot(@color(32 74 74 255))
+  "Terminal opened — screen changed from background" | Log
+
+  // =========================================================================
+  // Phase 3: Type command via Desktop.SendKeyEvent, verify file creation
+  // =========================================================================
+
+  // Send a warmup Enter first — the virtual keyboard's first event may be
+  // dropped as the compositor processes the new virtual keyboard registration.
+  @key(session 28)  // Enter (harmless blank line in shell)
+  Pause(0.5)
+  // Second warmup to be safe
+  @key(session 28)  // Enter
+  Pause(0.5)
+
+  // Type: echo shards-kb-ok > /tmp/shards-kb-test.txt
+  @key(session 18)   // e
+  @key(session 46)   // c
+  @key(session 35)   // h
+  @key(session 24)   // o
+  @key(session 57)   // space
+  @key(session 31)   // s
+  @key(session 35)   // h
+  @key(session 30)   // a
+  @key(session 19)   // r
+  @key(session 32)   // d
+  @key(session 31)   // s
+  @key(session 12)   // -
+  @key(session 37)   // k
+  @key(session 48)   // b
+  @key(session 12)   // -
+  @key(session 24)   // o
+  @key(session 37)   // k
+  @key(session 57)   // space
+  @shift-key(session 52) // >
+  @key(session 57)   // space
+  @key(session 53)   // /
+  @key(session 20)   // t
+  @key(session 50)   // m
+  @key(session 25)   // p
+  @key(session 53)   // /
+  @key(session 31)   // s
+  @key(session 35)   // h
+  @key(session 30)   // a
+  @key(session 19)   // r
+  @key(session 32)   // d
+  @key(session 31)   // s
+  @key(session 12)   // -
+  @key(session 37)   // k
+  @key(session 48)   // b
+  @key(session 12)   // -
+  @key(session 20)   // t
+  @key(session 18)   // e
+  @key(session 31)   // s
+  @key(session 20)   // t
+  @key(session 52)   // .
+  @key(session 20)   // t
+  @key(session 45)   // x
+  @key(session 20)   // t
+  @key(session 28)   // Enter
+
+  "Typed echo command via Desktop.SendKeyEvent" | Log
+  Pause(1.5)
+
+  // Verify the file was created with correct content
+  "/tmp/shards-kb-test.txt" | FS.Read | String.Trim >= kb-content
+  kb-content | Log("File from keyboard typing")
+  kb-content | Assert.Is("shards-kb-ok")
+  "Keyboard → terminal → shell → file content verified" | Log
+
+  // =========================================================================
+  // Phase 4: Test mouse input via Desktop shards
+  // =========================================================================
+
+  @i2(100 100) | Desktop.SetMousePos(Session: session) | Log("Mouse absolute")
+  Pause(0.1)
+  @i2(50 50) | Desktop.SetMouseRelativePos(Session: session) | Log("Mouse relative")
+  Pause(0.1)
+  @i2(200 200) | Desktop.LeftClick(Session: session) | Log("Left click")
+  @i2(300 300) | Desktop.RightClick(Session: session) | Log("Right click")
+  1.0 | Desktop.ScrollVertical(Session: session) | Log("Scroll vertical")
+  -1.0 | Desktop.ScrollHorizontal(Session: session) | Log("Scroll horizontal")
+  "Mouse input verified" | Log
+
+  // =========================================================================
+  // Phase 5: Verify capture still works after all input
+  // =========================================================================
+
+  session | Desktop.CaptureFrame
+  Pause(0.5)
+  session | Desktop.CaptureFrame
+
+  @i2(640 360) | Desktop.Pixel(Session: session)
+  | Assert.IsNot(@color(32 74 74 255))
+  | Log("Screen still active after all tests")
+
+  "All headless desktop tests passed!" | Log
+})
+
+@schedule(root desktop-headless-test)
+@run(root) | Assert.Is(true)

@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2024 Fragcolor Pte. Ltd.
+
+// Desktop module test - requires Wayland, xdg-desktop-portal, and PipeWire
+// A consent dialog will appear - select a screen/window to share
+// Input injection requires /dev/uinput access (user must be in 'input' group)
+
+@mesh(root)
+
+@wire(desktop-test {
+  // Start a portal session (user must approve the consent dialog)
+  // Tries RemoteDesktop first, falls back to ScreenCast on Hyprland/wlroots
+  Desktop.StartSession | Log("Session started") >= session
+
+  // Initialize the PipeWire capture stream (first call creates it)
+  session | Desktop.CaptureFrame
+
+  // Wait for PipeWire to connect and deliver first frame
+  Pause(2.0)
+
+  // Now swap the buffer to get the delivered frame
+  session | Desktop.CaptureFrame | Log("Frame captured")
+
+  // Read a pixel at (10, 10)
+  @i2(10 10) | Desktop.Pixel(Session: session) | Log("Pixel at 10,10")
+
+  // Capture a region of pixels
+  @i4(0 0 64 64) | Desktop.Pixels(Session: session) | Log("64x64 region captured")
+
+  // Test input injection (via uinput - requires /dev/uinput access)
+  // Wrapped in Maybe so capture tests pass even without uinput permissions
+  Maybe({
+    // Test mouse movement
+    @i2(100 100) | Desktop.SetMousePos(Session: session) | Log("Mouse moved to 100,100")
+    Pause(0.5)
+
+    // Test relative mouse movement
+    @i2(50 50) | Desktop.SetMouseRelativePos(Session: session) | Log("Mouse moved +50,+50")
+    Pause(0.5)
+
+    // Test left click
+    @i2(200 200) | Desktop.LeftClick(Session: session) | Log("Left clicked at 200,200")
+    Pause(0.5)
+
+    // Test scroll
+    1.0 | Desktop.ScrollVertical(Session: session) | Log("Scrolled vertical")
+
+    // Test keyboard: press and release 'a' (keycode 30)
+    @i2(0 30) | Desktop.SendKeyEvent(Session: session) | Log("Key down: a")
+    Pause(0.05)
+    @i2(1 30) | Desktop.SendKeyEvent(Session: session) | Log("Key up: a")
+  } {
+    "Input injection skipped (uinput not available)" | Log
+  })
+
+  "All desktop tests passed!" | Log
+})
+
+@schedule(root desktop-test)
+@run(root) | Assert.Is(true)

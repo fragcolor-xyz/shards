@@ -49,7 +49,8 @@ RUN --mount=type=cache,id=cargo-${TARGETARCH},target=/root/.cargo \
   -DRUST_BUILD_TYPE=Small \
   .. \
   && ninja -j$(nproc) shards \
-  && cp shards /usr/local/bin/shards
+  && cp shards /usr/local/bin/shards \
+  && strip --strip-all /usr/local/bin/shards
 
 # Runtime stage
 FROM fedora:42
