@@ -4,7 +4,7 @@ use shards::simple_shard;
 #[simple_shard("Yaml.ToJson", "A shard that converts YAML to JSON.")]
 fn yaml_to_json(yaml: &str) -> Result<String, &'static str> {
   // Deserialize YAML into a serde_json::Value
-  let data: serde_json::Value = serde_yml::from_str(yaml).map_err(|_| "Failed to parse YAML")?;
+  let data: serde_json::Value = serde_yaml_ng::from_str(yaml).map_err(|_| "Failed to parse YAML")?;
 
   // Serialize the data to a JSON string
   let json_string = serde_json::to_string(&data).map_err(|_| "Failed to serialize to JSON")?;
@@ -18,7 +18,7 @@ fn json_to_yaml(json: &str) -> Result<String, &'static str> {
   let data: serde_json::Value = serde_json::from_str(json).map_err(|_| "Failed to parse JSON")?;
 
   // Serialize the data to a YAML string
-  let yaml_string = serde_yml::to_string(&data).map_err(|_| "Failed to serialize to YAML")?;
+  let yaml_string = serde_yaml_ng::to_string(&data).map_err(|_| "Failed to serialize to YAML")?;
 
   Ok(yaml_string)
 }

@@ -12,13 +12,17 @@ crate-type = ["rlib", "staticlib"]
 [features]
 # No default - must explicitly choose native-tls or rustls
 native-tls = ["reqwest/native-tls"]
-rustls = ["reqwest/rustls-tls"]
+rustls = ["reqwest/rustls"]
+# rustls with ring crypto provider (avoids aws-lc-rs C build, better for cross-compilation)
+rustls-ring = ["reqwest/rustls-no-provider", "dep:rustls", "dep:ring"]
 socks = ["reqwest/socks"]
 
 [dependencies]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-reqwest = { version = "0.12.5", default-features = false, features = ["blocking", "json", "multipart", "stream", "cookies"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "multipart", "stream", "cookies", "query", "form"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"], optional = true }
+ring = { version = "0.17", optional = true }

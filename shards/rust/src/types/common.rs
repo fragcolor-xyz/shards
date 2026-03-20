@@ -438,6 +438,7 @@ unsafe impl Send for Var {}
 unsafe impl Send for Context {}
 unsafe impl Send for Shard {}
 unsafe impl Sync for Var {}
+unsafe impl Send for SHOptionalString {}
 unsafe impl Sync for SHOptionalString {}
 unsafe impl Sync for ClonedVar {}
 unsafe impl Sync for ExternalVar {}
@@ -445,6 +446,11 @@ unsafe impl Sync for ExternalVar {}
 /*
 SHTypeInfo & co
 */
+unsafe impl Send for SHTypeInfo {}
+unsafe impl Send for SHExposedTypeInfo {}
+unsafe impl Send for SHExtendedObjectTypeInfo {}
+unsafe impl Send for SHParameterInfo {}
+unsafe impl Send for SHStrings {}
 unsafe impl Send for SHObjectInfo {}
 unsafe impl Sync for SHTypeInfo {}
 unsafe impl Sync for SHExposedTypeInfo {}
