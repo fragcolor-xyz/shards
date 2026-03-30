@@ -30,6 +30,11 @@ on:
         required: false
         default: false
         type: boolean
+      vulkan:
+        description: Enable Vulkan GPU backend for llama.cpp?
+        required: false
+        default: true
+        type: boolean
   workflow_call:
     inputs:
       build-type:
@@ -48,18 +53,22 @@ on:
         required: false
         default: true
         type: boolean
+      vulkan:
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   #
   # Build shards for Windows
   #
   Windows:
-    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit)
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ', Vulkan' || '' }})
     runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
-      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
+      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ' Vulkan' || '' }}
     steps:
       - name: Setup
         id: setup
@@ -119,10 +128,11 @@ jobs:
         run: |
           choco install -y --force --version=20.1.7 llvm
           choco install -y ninja
-          choco install -y vulkan-sdk
-      - name: Set up Vulkan SDK
+      - name: Install Vulkan SDK
+        if: ${{ github.event.inputs.vulkan || inputs.vulkan }}
         shell: bash
         run: |
+          choco install -y vulkan-sdk
           # Find the Vulkan SDK path (choco installs to a versioned directory)
           VULKAN_PATH=$(ls -d "C:/VulkanSDK/"* 2>/dev/null | head -1)
           if [ -n "$VULKAN_PATH" ]; then
@@ -138,11 +148,16 @@ jobs:
         run: |
           mkdir build
           cd build
+          VULKAN_FLAG=""
+          if [ "${{ github.event.inputs.vulkan || inputs.vulkan }}" == "true" ]; then
+            VULKAN_FLAG="-DGGML_VULKAN=ON"
+          fi
           cmake -G Ninja \
             -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
             "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
             "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
             "-DRUST_DEFAULT_TARGET_PATH=C:\shards-rust-target" \
+            $VULKAN_FLAG \
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
@@ -191,7 +206,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}
+          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ' Vulkan' || '' }}
           path: ${{ steps.setup.outputs.artifact-path }}
           if-no-files-found: error
           retention-days: 1
