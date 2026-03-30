@@ -482,8 +482,8 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
 
   CPMAddPackage(
     NAME llama.cpp
-    GITHUB_REPOSITORY shards-lang/llama.cpp
-    GIT_TAG 226f295f4dd92ad714533adc5497afed5fa88bb8
+    GITHUB_REPOSITORY ggml-org/llama.cpp
+    GIT_TAG b8575
   )
 
   # whisper.cpp configuration
@@ -493,7 +493,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME whisper.cpp
     GITHUB_REPOSITORY ggml-org/whisper.cpp
-    GIT_TAG 322c2adb753a9506f0becee134a7f75e2a6b5687
+    GIT_TAG v1.8.4
   )
 endif()
 

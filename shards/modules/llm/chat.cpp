@@ -7,10 +7,11 @@
 #include <vector>
 #include <mutex>
 
+// Build info globals required by llama.cpp common library
 int LLAMA_BUILD_NUMBER = 1;
-char const *LLAMA_COMMIT = "1";
+char const *LLAMA_COMMIT = "shards";
 char const *LLAMA_COMPILER = "shards";
-char const *LLAMA_BUILD_TARGET = "unknown";
+char const *LLAMA_BUILD_TARGET = "shards";
 
 namespace shards {
 namespace llm {
@@ -227,8 +228,7 @@ struct Chat {
         ctx_params.use_gpu = true;
         ctx_params.print_timings = false;
         ctx_params.n_threads = _data->n_threads;
-        ctx_params.verbosity = GGML_LOG_LEVEL_INFO;
-        ctx_params.image_marker = MTMD_DEFAULT_IMAGE_MARKER;
+        ctx_params.media_marker = MTMD_DEFAULT_IMAGE_MARKER;
 
         // Initialize MTMD context
         _data->mtmd_ctx = mtmd_init_from_file(mmproj_path.c_str(), model, ctx_params);
