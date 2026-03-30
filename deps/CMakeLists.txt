@@ -451,9 +451,8 @@ endif()
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
-  if(WIN32)
-    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
-  endif()
+  # GGML_VULKAN can be enabled via -DGGML_VULKAN=ON at cmake configure time
+  # Requires Vulkan SDK (glslc shader compiler + vulkan headers/libs)
 
   set(GGML_BUILD_NUMBER 1)
   set(GGML_STATIC ON CACHE BOOL "" FORCE)
