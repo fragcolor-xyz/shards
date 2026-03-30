@@ -451,7 +451,7 @@ endif()
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
-  if(WIN32 OR LINUX)
+  if(WIN32)
     set(GGML_VULKAN ON CACHE BOOL "" FORCE)
   endif()
 
