@@ -119,6 +119,18 @@ jobs:
         run: |
           choco install -y --force --version=20.1.7 llvm
           choco install -y ninja
+          choco install -y vulkan-sdk
+      - name: Set up Vulkan SDK
+        shell: bash
+        run: |
+          # Find the Vulkan SDK path (choco installs to a versioned directory)
+          VULKAN_PATH=$(ls -d "C:/VulkanSDK/"* 2>/dev/null | head -1)
+          if [ -n "$VULKAN_PATH" ]; then
+            echo "VULKAN_SDK=$VULKAN_PATH" >> $GITHUB_ENV
+            echo "Found Vulkan SDK at $VULKAN_PATH"
+          else
+            echo "Warning: Vulkan SDK not found after install"
+          fi
       - name: Build
         env:
           RUST_BACKTRACE: full

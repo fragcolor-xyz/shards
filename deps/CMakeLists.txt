@@ -451,9 +451,8 @@ endif()
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
-  # TODO vulkan build support
   if(WIN32 OR LINUX)
-    # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+    set(GGML_VULKAN ON CACHE BOOL "" FORCE)
   endif()
 
   set(GGML_BUILD_NUMBER 1)

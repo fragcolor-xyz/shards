@@ -65,7 +65,17 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev libclang-dev
+          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev libclang-dev libvulkan-dev
+      - name: Install Vulkan SDK (for glslc shader compiler)
+        run: |
+          VULKAN_SDK_VERSION=$(curl -s https://vulkan.lunarg.com/sdk/latest/linux.txt)
+          echo "Installing Vulkan SDK $VULKAN_SDK_VERSION"
+          wget -q "https://sdk.lunarg.com/sdk/download/$VULKAN_SDK_VERSION/linux/vulkan_sdk.tar.xz" -O /tmp/vulkan_sdk.tar.xz
+          sudo mkdir -p /opt/vulkan-sdk
+          sudo tar xf /tmp/vulkan_sdk.tar.xz -C /opt/vulkan-sdk --strip-components=1
+          rm /tmp/vulkan_sdk.tar.xz
+          echo "VULKAN_SDK=/opt/vulkan-sdk" >> $GITHUB_ENV
+          echo "PATH=/opt/vulkan-sdk/bin:$PATH" >> $GITHUB_ENV
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
