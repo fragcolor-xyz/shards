@@ -210,6 +210,7 @@ jobs:
           path: ${{ steps.setup.outputs.artifact-path }}
           if-no-files-found: error
           retention-days: 1
+          overwrite: true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -217,6 +218,7 @@ jobs:
           path: shards/gfx/tests/data/default/rejected
           if-no-files-found: ignore
           retention-days: 1
+          overwrite: true
 
   #
   # Test shards for Windows
