@@ -451,10 +451,8 @@ endif()
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
-  # TODO vulkan build support
-  if(WIN32 OR LINUX)
-    # set(GGML_VULKAN ON CACHE BOOL "" FORCE)
-  endif()
+  # GGML_VULKAN can be enabled via -DGGML_VULKAN=ON at cmake configure time.
+  # Requires Vulkan SDK installed (glslc shader compiler + vulkan headers/libs).
 
   set(GGML_BUILD_NUMBER 1)
   set(GGML_STATIC ON CACHE BOOL "" FORCE)
@@ -482,8 +480,8 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
 
   CPMAddPackage(
     NAME llama.cpp
-    GITHUB_REPOSITORY shards-lang/llama.cpp
-    GIT_TAG 226f295f4dd92ad714533adc5497afed5fa88bb8
+    GITHUB_REPOSITORY ggml-org/llama.cpp
+    GIT_TAG b8575
   )
 
   # whisper.cpp configuration
@@ -493,7 +491,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME whisper.cpp
     GITHUB_REPOSITORY ggml-org/whisper.cpp
-    GIT_TAG 322c2adb753a9506f0becee134a7f75e2a6b5687
+    GIT_TAG v1.8.4
   )
 endif()
 

@@ -99,6 +99,7 @@ jobs:
     with:
       build-type: Debug
       run-tests: true
+      vulkan: true
   Windows-Release:
     needs: Setup
     uses: ./.github/workflows/build-windows.yml
@@ -106,12 +107,21 @@ jobs:
     with:
       build-type: Release
       run-tests: true
+      vulkan: false
+  Windows-Release-Vulkan:
+    needs: Setup
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      build-type: Release
+      run-tests: true
+      vulkan: true
 
   #
   # Build the documentation
   #
   docs:
-    needs: [Windows-Debug, Windows-Release]
+    needs: [Windows-Debug, Windows-Release, Windows-Release-Vulkan]
     uses: ./.github/workflows/build-doc.yml
     secrets: inherit
     with:
