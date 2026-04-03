@@ -2,8 +2,9 @@ use image::DynamicImage;
 use mistralrs::blocking::BlockingModel;
 use mistralrs::{
   AudioInput, ChatCompletionResponse, GgufModelBuilder, IsqBits, ModelBuilder,
-  MultimodalMessages, TextMessageRole,
+  MultimodalMessages, TextMessageRole, UqffMultimodalModelBuilder,
 };
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use shards::fourCharacterCode;
@@ -186,8 +187,11 @@ pub(crate) struct ModelShard {
   #[shard_param("ISQ", "In-situ quantization bit width. Quantizes at load time.", ISQBITSENUM_TYPES)]
   isq: ClonedVar,
 
-  #[shard_param("Files", "GGUF filename(s) within the repo. When set, uses GGUF loader instead of auto-detect.", [common_type::string, common_type::none])]
+  #[shard_param("Files", "GGUF filename(s) within the repo. When set, uses GGUF loader.", [common_type::string, common_type::none])]
   files: ClonedVar,
+
+  #[shard_param("UQFF", "UQFF filename (e.g. 'q4k-0.uqff'). When set, loads pre-quantized UQFF model — no ISQ needed.", [common_type::string, common_type::none])]
+  uqff: ClonedVar,
 
   output: ClonedVar,
 }
@@ -198,6 +202,7 @@ impl Default for ModelShard {
       required: ExposedTypes::new(),
       isq: ISQBitsEnum::None.into(),
       files: ClonedVar::default(),
+      uqff: ClonedVar::default(),
       output: ClonedVar::default(),
     }
   }
@@ -234,8 +239,31 @@ impl Shard for ModelShard {
     let isq_bits: ISQBitsEnum = self.isq.0.as_ref().try_into().unwrap_or(ISQBitsEnum::None);
 
     let has_files = !self.files.0.is_none();
+    let has_uqff = !self.uqff.0.is_none();
 
-    let model = if has_files {
+    let model = if has_uqff {
+      // UQFF path: pre-quantized model, instant load
+      let uqff_file: &str = self.uqff.0.as_ref().try_into()
+        .map_err(|_| "UQFF parameter must be a string")?;
+
+      let builder = UqffMultimodalModelBuilder::new(
+        model_id,
+        vec![PathBuf::from(uqff_file)],
+      ).into_inner().with_logging();
+
+      let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| {
+          shlog_error!("Failed to create runtime: {}", e);
+          "Failed to create tokio runtime"
+        })?;
+      let inner = rt.block_on(builder.build()).map_err(|e| {
+        shlog_error!("Failed to load UQFF model: {}", e);
+        "Failed to load UQFF model"
+      })?;
+      BlockingModel::new(inner, Arc::new(rt))
+    } else if has_files {
       // GGUF path: extract filenames
       let mut gguf_files: Vec<String> = Vec::new();
       if let Ok(s) = <&str>::try_from(self.files.0.as_ref()) {
