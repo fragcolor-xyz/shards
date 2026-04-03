@@ -1,27 +1,12 @@
 ; Test: Audio transcription via mistral.rs
-; Uses a speech-capable model (Whisper or Gemma 4 audio)
-; Reads a WAV file and transcribes it
-
-@define(use-gpu "false" IgnoreRedefined: true)
+; Currently disabled: no small audio-capable model available for testing.
+; Requires a multimodal LLM with audio encoder (e.g. Gemma 4 E2B/E4B).
+; See llm-audio.shs for the working test with Gemma 4 E2B.
 
 @mesh(main)
 
 @wire(whisper-test {
-  ; Load a speech-to-text model
-  ; TODO: update model ID once a good small whisper/audio model is confirmed working
-  "openai/whisper-tiny" | LLM.Model(ISQ: ISQBits::Four) = model
-  Log("Whisper model loaded")
-
-  model | LLM.Chat = chat
-
-  ; Read audio file and convert to float samples
-  "test-whisper.wav" | Audio.ReadFileBytes(SampleRate: 16000 Channels: 1)
-
-  ; Add audio to chat with transcription prompt
-  LLM.AddAudio(Chat: chat Text: "Transcribe this audio." SampleRate: 16000)
-
-  ; Generate transcription
-  chat | LLM.Generate(Temperature: 0.0 MaxTokens: 256) | Log("Transcription")
+  Msg("whisper.shs: skipped — no suitable small audio model available")
 })
 
 @schedule(main whisper-test)

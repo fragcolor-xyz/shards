@@ -47,7 +47,7 @@ Features flow from CMakeLists.txt → Cargo via `add_rust_library(... FEATURES .
 ### Object Types
 
 - **`LLMModel`** (fourCC: `aiMD`) — wraps `mistralrs::blocking::BlockingModel`. The BlockingModel owns its own tokio runtime internally. Stored as ref-counted object.
-- **`LLMChat`** (fourCC: `aiCH`) — wraps a model reference + message history (`Vec<ChatMessage>`). The model reference is a `Var` that keeps the LLMModel's refcount alive.
+- **`LLMChat`** (fourCC: `aiCH`) — wraps a model reference + message history (`Vec<ChatMessage>`). The model reference is a `ClonedVar` that properly maintains the LLMModel's refcount via `cloneVar`/`destroyVar`.
 
 ### Shards
 
@@ -121,7 +121,7 @@ chat | LLM.Reset
 
 **BlockingModel lifetime:** The `BlockingModel` from mistral.rs owns a tokio runtime. It MUST NOT be created inside an existing tokio context (panics). Since shard `activate()` is always called from the C++ runtime's synchronous thread, this is safe. For GGUF/UQFF paths, we create the tokio runtime manually via `tokio::runtime::Builder` since `BlockingModel::from_builder` only accepts `TextModelBuilder`/`ModelBuilder`.
 
-**Chat message storage:** Messages are stored as `Vec<ChatMessage>` where `ChatMessage` is an enum with `Text`, `Image`, and `Audio` variants. On each `LLM.Generate` call, messages are rebuilt into a `MultimodalMessages` struct. This is cheap since it's just building an index — the actual image/audio data is cloned but this happens once per generation call.
+**Chat message storage:** Messages are stored as `Vec<ChatMessage>` where `ChatMessage` is an enum with `Text`, `Image`, and `Audio` variants. On each `LLM.Generate` call, messages are rebuilt into a `RequestBuilder`. Image and audio data is cloned during this rebuild (once per generation call). The `RequestBuilder` also carries sampling parameters (temperature, top_p, max_tokens).
 
 **ref_counted_object_type_impl macro conflict:** Each invocation of this macro generates module-level statics (`TYPE_OBJECT_NAME`, `TYPE_OBJECT_INFO`). Two invocations in the same module conflict. Solution: wrap each object type in its own inner module (`mod model_obj`, `mod chat_obj`).
 

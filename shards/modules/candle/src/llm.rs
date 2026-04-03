@@ -2,7 +2,7 @@ use image::DynamicImage;
 use mistralrs::blocking::BlockingModel;
 use mistralrs::{
   AudioInput, ChatCompletionResponse, GgufModelBuilder, IsqBits, ModelBuilder,
-  MultimodalMessages, TextMessageRole, UqffMultimodalModelBuilder,
+  RequestBuilder, TextMessageRole, UqffMultimodalModelBuilder,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -42,18 +42,18 @@ pub enum ChatMessage {
   },
 }
 
-fn build_multimodal_messages(messages: &[ChatMessage]) -> MultimodalMessages {
-  let mut mm = MultimodalMessages::new();
+fn build_request(messages: &[ChatMessage]) -> RequestBuilder {
+  let mut rb = RequestBuilder::new();
   for msg in messages {
     match msg {
       ChatMessage::Text { role, text } => {
-        mm = mm.add_message(role.clone(), text);
+        rb = rb.add_message(role.clone(), text);
       }
       ChatMessage::Image { role, text, image } => {
-        mm = mm.add_image_message(role.clone(), text, vec![image.clone()]);
+        rb = rb.add_image_message(role.clone(), text, vec![image.clone()]);
       }
       ChatMessage::Audio { role, text, audio } => {
-        mm = mm.add_audio_message(
+        rb = rb.add_audio_message(
           role.clone(),
           text,
           vec![AudioInput {
@@ -65,7 +65,7 @@ fn build_multimodal_messages(messages: &[ChatMessage]) -> MultimodalMessages {
       }
     }
   }
-  mm
+  rb
 }
 
 // --- Object Types ---
@@ -80,7 +80,7 @@ pub use model_obj::LLMModel;
 mod chat_obj {
   use super::*;
   pub struct LLMChat {
-    pub model_var: Var,
+    pub model_var: ClonedVar,
     pub messages: Vec<ChatMessage>,
   }
   ref_counted_object_type_impl!(LLMChat);
@@ -88,7 +88,7 @@ mod chat_obj {
   impl LLMChat {
     pub fn model(&self) -> Result<&BlockingModel, &'static str> {
       let model =
-        unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var, &*LLM_MODEL_TYPE)? };
+        unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var.0, &*LLM_MODEL_TYPE)? };
       Ok(&model.0)
     }
   }
@@ -366,7 +366,7 @@ impl Shard for ChatShard {
       unsafe { &*Var::from_ref_counted_object::<LLMModel>(input, &*LLM_MODEL_TYPE)? };
 
     let chat = LLMChat {
-      model_var: *input,
+      model_var: input.into(),
       messages: Vec::new(),
     };
 
@@ -677,10 +677,20 @@ impl Shard for GenerateShard {
       &mut *Var::from_ref_counted_object::<LLMChat>(input, &*LLM_CHAT_TYPE)?
     };
 
-    let messages = build_multimodal_messages(&chat.messages);
+    let mut request = build_request(&chat.messages);
+
+    let temperature: f64 = self.temperature.0.as_ref().try_into().unwrap_or(0.7);
+    let top_p: f64 = self.top_p.0.as_ref().try_into().unwrap_or(0.95);
+    let max_tokens: i64 = self.max_tokens.0.as_ref().try_into().unwrap_or(256);
+
+    request = request
+      .set_sampler_temperature(temperature)
+      .set_sampler_topp(top_p)
+      .set_sampler_max_len(max_tokens as usize);
+
     let model = chat.model()?;
 
-    let response: ChatCompletionResponse = model.send_chat_request(messages).map_err(|e| {
+    let response: ChatCompletionResponse = model.send_chat_request(request).map_err(|e| {
       shlog_error!("Failed to generate: {}", e);
       "Failed to generate response"
     })?;

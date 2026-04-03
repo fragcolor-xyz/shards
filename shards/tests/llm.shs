@@ -1,1 +1,11 @@
-@include("ml-test.shs")
+; Old llama.cpp embedding tests — disabled after migration to mistral.rs.
+; The embeddings library (lib/ml/embeddings.shs) depends on LLM.Context/LLM.Embed/LLM.Tokenize
+; which were provided by the C++ llama.cpp module, now replaced by Rust mistral.rs shards.
+; See llm-mistral.shs and llm-gguf.shs for the new LLM tests.
+
+@mesh(main)
+@wire(llm-placeholder {
+  Msg("llm.shs: skipped — old embedding pipeline disabled, see llm-mistral.shs / llm-gguf.shs")
+})
+@schedule(main llm-placeholder)
+@run(main) | Assert.Is(true)
