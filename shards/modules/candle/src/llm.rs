@@ -75,13 +75,25 @@ fn build_request(messages: &[ChatMessage]) -> RequestBuilder {
 
 mod model_obj {
   use super::*;
-  pub struct LLMModel {
-    pub blocking: BlockingModel,
-    pub rt: Arc<tokio::runtime::Runtime>,
+  use crate::quantized_bert::QuantizedBertModel;
+
+  pub enum LLMModelInner {
+    /// mistral.rs model (chat, multimodal, embedding via EmbeddingModelBuilder)
+    Mistral {
+      blocking: BlockingModel,
+      rt: Arc<tokio::runtime::Runtime>,
+    },
+    /// Quantized BERT from GGUF (embedding only, uses candle directly)
+    QuantizedBert {
+      model: QuantizedBertModel,
+      tokenizer: tokenizers::Tokenizer,
+    },
   }
+
+  pub struct LLMModel(pub LLMModelInner);
   ref_counted_object_type_impl!(LLMModel);
 }
-pub use model_obj::LLMModel;
+pub use model_obj::{LLMModel, LLMModelInner};
 
 mod chat_obj {
   use super::*;
@@ -92,10 +104,13 @@ mod chat_obj {
   ref_counted_object_type_impl!(LLMChat);
 
   impl LLMChat {
-    pub fn model(&self) -> Result<&LLMModel, &'static str> {
+    pub fn blocking_model(&self) -> Result<(&BlockingModel, &Arc<tokio::runtime::Runtime>), &'static str> {
       let model =
         unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var.0, &*LLM_MODEL_TYPE)? };
-      Ok(model)
+      match &model.0 {
+        LLMModelInner::Mistral { blocking, rt } => Ok((blocking, rt)),
+        LLMModelInner::QuantizedBert { .. } => Err("Cannot use a GGUF BERT model for chat"),
+      }
     }
   }
 }
@@ -264,10 +279,69 @@ impl Shard for ModelShard {
       Ok(Arc::new(rt))
     };
 
-    let (blocking, rt) = if is_embedding {
-      // Embedding model path
+    // Embedding + GGUF file → Quantized BERT path (candle native, no mistral.rs)
+    if is_embedding && has_files {
+      let gguf_file: &str = self.files.0.as_ref().try_into()
+        .map_err(|_| "Files parameter must be a string for GGUF embedding models")?;
+
+      let device = crate::get_global_device();
+
+      let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(gguf_file, device)
+        .map_err(|e| {
+          shlog_error!("Failed to load GGUF file: {}", e);
+          "Failed to load GGUF file"
+        })?;
+
+      // Read GGUF metadata for config
+      let mut reader = std::io::BufReader::new(std::fs::File::open(gguf_file).map_err(|e| {
+        shlog_error!("Failed to open GGUF file: {}", e);
+        "Failed to open GGUF file"
+      })?);
+      let content = candle_core::quantized::gguf_file::Content::read(&mut reader).map_err(|e| {
+        shlog_error!("Failed to read GGUF metadata: {}", e);
+        "Failed to read GGUF metadata"
+      })?;
+
+      let cfg = crate::quantized_bert::BertConfig::from_gguf_metadata(&content.metadata)
+        .map_err(|e| {
+          shlog_error!("Failed to parse BERT config from GGUF: {}", e);
+          "Failed to parse BERT config from GGUF"
+        })?;
+
+      let bert_model = crate::quantized_bert::QuantizedBertModel::load(&cfg, &vb)
+        .map_err(|e| {
+          shlog_error!("Failed to load quantized BERT: {}", e);
+          "Failed to load quantized BERT model"
+        })?;
+
+      // Load tokenizer from model_id on HuggingFace (or local path)
+      let tokenizer = {
+        let api = hf_hub::api::sync::Api::new().map_err(|e| {
+          shlog_error!("Failed to create HF API: {}", e);
+          "Failed to create HuggingFace API"
+        })?;
+        let repo = api.model(model_id.to_string());
+        let tokenizer_path = repo.get("tokenizer.json").map_err(|e| {
+          shlog_error!("Failed to download tokenizer: {}", e);
+          "Failed to download tokenizer.json"
+        })?;
+        tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| {
+          shlog_error!("Failed to load tokenizer: {}", e);
+          "Failed to load tokenizer"
+        })?
+      };
+
+      let inner = LLMModelInner::QuantizedBert {
+        model: bert_model,
+        tokenizer,
+      };
+      self.output = Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE).into();
+      return Ok(Some(self.output.0));
+    }
+
+    let inner = if is_embedding {
+      // Embedding model path (mistral.rs EmbeddingModelBuilder)
       let rt = make_rt()?;
-      // Use BF16 instead of F16 on CPU to avoid NaN issues with half-precision
       let mut builder = EmbeddingModelBuilder::new(model_id)
         .with_logging()
         .with_dtype(ModelDType::F32);
@@ -279,13 +353,12 @@ impl Shard for ModelShard {
         ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
       }
 
-      let inner = rt.block_on(builder.build()).map_err(|e| {
+      let model = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load embedding model: {}", e);
         "Failed to load embedding model"
       })?;
-      (BlockingModel::new(inner, rt.clone()), rt)
+      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
     } else if has_uqff {
-      // UQFF path: pre-quantized model, instant load
       let uqff_file: &str = self.uqff.0.as_ref().try_into()
         .map_err(|_| "UQFF parameter must be a string")?;
 
@@ -295,13 +368,12 @@ impl Shard for ModelShard {
       ).into_inner().with_logging();
 
       let rt = make_rt()?;
-      let inner = rt.block_on(builder.build()).map_err(|e| {
+      let model = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load UQFF model: {}", e);
         "Failed to load UQFF model"
       })?;
-      (BlockingModel::new(inner, rt.clone()), rt)
+      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
     } else if has_files {
-      // GGUF path: extract filenames
       let mut gguf_files: Vec<String> = Vec::new();
       if let Ok(s) = <&str>::try_from(self.files.0.as_ref()) {
         gguf_files.push(s.to_string());
@@ -317,13 +389,12 @@ impl Shard for ModelShard {
       let builder = GgufModelBuilder::new(model_id, gguf_files).with_logging();
 
       let rt = make_rt()?;
-      let inner = rt.block_on(builder.build()).map_err(|e| {
+      let model = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load GGUF model: {}", e);
         "Failed to load GGUF model"
       })?;
-      (BlockingModel::new(inner, rt.clone()), rt)
+      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
     } else {
-      // Auto-detect path (safetensors from HuggingFace)
       let mut builder = ModelBuilder::new(model_id).with_logging();
 
       match isq_bits {
@@ -334,14 +405,14 @@ impl Shard for ModelShard {
       }
 
       let rt = make_rt()?;
-      let inner = rt.block_on(builder.build()).map_err(|e| {
+      let model = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load model: {}", e);
         "Failed to load model"
       })?;
-      (BlockingModel::new(inner, rt.clone()), rt)
+      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
     };
 
-    self.output = Var::new_ref_counted(LLMModel { blocking, rt }, &*LLM_MODEL_TYPE).into();
+    self.output = Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -719,9 +790,9 @@ impl Shard for GenerateShard {
       .set_sampler_topp(top_p)
       .set_sampler_max_len(max_tokens as usize);
 
-    let llm_model = chat.model()?;
+    let (blocking, _rt) = chat.blocking_model()?;
 
-    let response: ChatCompletionResponse = llm_model.blocking.send_chat_request(request).map_err(|e| {
+    let response: ChatCompletionResponse = blocking.send_chat_request(request).map_err(|e| {
       shlog_error!("Failed to generate: {}", e);
       "Failed to generate response"
     })?;
@@ -901,30 +972,69 @@ impl Shard for EmbedShard {
 
     let norm_type: i64 = self.normalization.0.as_ref().try_into().unwrap_or(-1);
 
-    // Build embedding request — accept either text or token IDs
-    let request = if let Ok(text) = <&str>::try_from(input) {
-      EmbeddingRequest::builder().add_prompt(text)
-    } else if let Ok(seq) = SeqVar::try_from(input) {
-      let tokens: Vec<u32> = seq.iter()
-        .map(|v| {
-          let i: i64 = v.as_ref().try_into().unwrap_or(0);
-          i as u32
-        })
-        .collect();
-      EmbeddingRequest::builder().add_tokens(tokens)
-    } else {
-      return Err("Input must be a string or sequence of integers");
+    let mut embedding = match &llm_model.0 {
+      LLMModelInner::Mistral { blocking, rt } => {
+        // Build embedding request — accept either text or token IDs
+        let request = if let Ok(text) = <&str>::try_from(input) {
+          EmbeddingRequest::builder().add_prompt(text)
+        } else if let Ok(seq) = SeqVar::try_from(input) {
+          let tokens: Vec<u32> = seq.iter()
+            .map(|v| {
+              let i: i64 = v.as_ref().try_into().unwrap_or(0);
+              i as u32
+            })
+            .collect();
+          EmbeddingRequest::builder().add_tokens(tokens)
+        } else {
+          return Err("Input must be a string or sequence of integers");
+        };
+
+        let embeddings = rt.block_on(
+          blocking.inner().generate_embeddings(request)
+        ).map_err(|e| {
+          shlog_error!("Failed to generate embedding: {}", e);
+          "Failed to generate embedding"
+        })?;
+
+        embeddings.into_iter().next().ok_or("No embedding returned")?
+      }
+      LLMModelInner::QuantizedBert { model, tokenizer } => {
+        // For quantized BERT, we tokenize and run the model directly
+        let text: &str = if let Ok(t) = <&str>::try_from(input) {
+          t
+        } else {
+          return Err("Quantized BERT embedding only accepts text input");
+        };
+
+        let encoding = tokenizer.encode(text, true).map_err(|e| {
+          shlog_error!("Failed to tokenize: {}", e);
+          "Failed to tokenize for BERT embedding"
+        })?;
+
+        let device = crate::get_global_device();
+        let token_ids = encoding.get_ids();
+        let input_ids = candle_core::Tensor::new(
+          &token_ids[..],
+          device,
+        ).map_err(|_| "Failed to create input tensor")?
+          .unsqueeze(0).map_err(|_| "Failed to unsqueeze")?;
+
+        let token_type_ids = candle_core::Tensor::zeros_like(&input_ids)
+          .map_err(|_| "Failed to create token_type_ids")?;
+
+        let embedding_tensor = model.embed(&input_ids, &token_type_ids)
+          .map_err(|e| {
+            shlog_error!("Failed to run BERT forward: {}", e);
+            "Failed to generate BERT embedding"
+          })?;
+
+        // Extract [1, hidden_size] -> Vec<f32>
+        embedding_tensor.squeeze(0)
+          .map_err(|_| "Failed to squeeze")?
+          .to_vec1::<f32>()
+          .map_err(|_| "Failed to convert embedding to Vec<f32>")?
+      }
     };
-
-    let embeddings = llm_model.rt.block_on(
-      llm_model.blocking.inner().generate_embeddings(request)
-    ).map_err(|e| {
-      shlog_error!("Failed to generate embedding: {}", e);
-      "Failed to generate embedding"
-    })?;
-
-    let mut embedding = embeddings.into_iter().next()
-      .ok_or("No embedding returned")?;
 
     // Apply normalization
     normalize_embedding(&mut embedding, norm_type);
@@ -999,18 +1109,26 @@ impl Shard for TokenizeShard {
       &*Var::from_ref_counted_object::<LLMModel>(&self.model.get(), &*LLM_MODEL_TYPE)?
     };
 
-    let tokens = llm_model.rt.block_on(
-      llm_model.blocking.inner().tokenize(
-        Either::Right(text.to_string()),
-        None,   // tools
-        true,   // add_special_tokens
-        false,  // add_generation_prompt
-        None,   // enable_thinking
-      )
-    ).map_err(|e| {
-      shlog_error!("Failed to tokenize: {}", e);
-      "Failed to tokenize"
-    })?;
+    let tokens: Vec<u32> = match &llm_model.0 {
+      LLMModelInner::Mistral { blocking, rt } => {
+        rt.block_on(
+          blocking.inner().tokenize(
+            Either::Right(text.to_string()),
+            None, true, false, None,
+          )
+        ).map_err(|e| {
+          shlog_error!("Failed to tokenize: {}", e);
+          "Failed to tokenize"
+        })?
+      }
+      LLMModelInner::QuantizedBert { tokenizer, .. } => {
+        let encoding = tokenizer.encode(text, true).map_err(|e| {
+          shlog_error!("Failed to tokenize: {}", e);
+          "Failed to tokenize"
+        })?;
+        encoding.get_ids().to_vec()
+      }
+    };
 
     self.output.0.clear();
     for token in tokens {
@@ -1088,12 +1206,22 @@ impl Shard for DetokenizeShard {
       })
       .collect();
 
-    let text = llm_model.rt.block_on(
-      llm_model.blocking.inner().detokenize(tokens, true)
-    ).map_err(|e| {
-      shlog_error!("Failed to detokenize: {}", e);
-      "Failed to detokenize"
-    })?;
+    let text = match &llm_model.0 {
+      LLMModelInner::Mistral { blocking, rt } => {
+        rt.block_on(
+          blocking.inner().detokenize(tokens, true)
+        ).map_err(|e| {
+          shlog_error!("Failed to detokenize: {}", e);
+          "Failed to detokenize"
+        })?
+      }
+      LLMModelInner::QuantizedBert { tokenizer, .. } => {
+        tokenizer.decode(&tokens, true).map_err(|e| {
+          shlog_error!("Failed to detokenize: {}", e);
+          "Failed to detokenize"
+        })?
+      }
+    };
 
     self.output = Var::ephemeral_string(&text).into();
     Ok(Some(self.output.0))

@@ -10,6 +10,7 @@ use candle_core::{DType, Device, Tensor as CandleTensor};
 #[cfg(feature = "llm")]
 pub mod llm;
 pub mod model;
+pub mod quantized_bert;
 mod tensor;
 pub mod tokenizer;
 mod umap;
