@@ -447,9 +447,10 @@ else()
   target_include_directories(TracyClient INTERFACE ${CMAKE_CURRENT_LIST_DIR}/tracy_stub)
 endif()
 
-# Check if llm module is enabled (provides llama.cpp and whisper.cpp functionality)
+# llama.cpp and whisper.cpp - DISABLED: replaced by mistral.rs in shards/modules/candle
+# To re-enable, remove the FALSE below and re-enable shards/modules/llm/CMakeLists.txt
 is_module_enabled(LLM_ENABLED llm)
-if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
+if(FALSE AND LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
   # GGML_VULKAN can be enabled via -DGGML_VULKAN=ON at cmake configure time.
   # Requires Vulkan SDK installed (glslc shader compiler + vulkan headers/libs).

@@ -1,60 +1,28 @@
+; Test: Audio transcription via mistral.rs
+; Uses a speech-capable model (Whisper or Gemma 4 audio)
+; Reads a WAV file and transcribes it
+
 @define(use-gpu "false" IgnoreRedefined: true)
 
-@wire(whisper-it {
-  = mel-input
+@mesh(main)
 
-  "data/whisper-tokenizer.json"
-  FS.Read | ML.Tokenizer = tokenizer
-  
-  "data/whisper-config.json"
-  FS.Read | FromJson | ExpectTable = config | Log
-  
-  "data/whisper-model.safetensors"
-  FS.Read(Bytes: true)
-  ML.Model(Model: MLModels::Whisper Format: MLFormats::SafeTensor Configuration: config GPU: #(@use-gpu | Is("true"))) = whisper-model
-  
-  mel-input | ML.SpeechToText(Model: whisper-model Tokenizer: tokenizer Language: "en" Task: "transcribe") = jfk-transcript
-  Log
-})
+@wire(whisper-test {
+  ; Load a speech-to-text model
+  ; TODO: update model ID once a good small whisper/audio model is confirmed working
+  "openai/whisper-tiny" | LLM.Model(ISQ: ISQBits::Four) = model
+  Log("Whisper model loaded")
 
-@wire(basic-test {
+  model | LLM.Chat = chat
+
+  ; Read audio file and convert to float samples
   "test-whisper.wav" | Audio.ReadFileBytes(SampleRate: 16000 Channels: 1)
-  // "data/samples_jfk.wav" | Audio.ReadFileBytes(SampleRate: 16000 Channels: 1)
-  ML.AudioToMel(GPU: #(@use-gpu | Is("true"))) = mel
-  Tensor.ToString | Log
-  
-  mel | Do(whisper-it)
+
+  ; Add audio to chat with transcription prompt
+  LLM.AddAudio(Chat: chat Text: "Transcribe this audio." SampleRate: 16000)
+
+  ; Generate transcription
+  chat | LLM.Generate(Temperature: 0.0 MaxTokens: 256) | Log("Transcription")
 })
 
-@wire(audio-data-receiver {
-  "0x" | HexToBytes >= audio-bytes
-  Detach(device-test)
-  
-  Msg("Recording started")
-  Repeat({
-    Consume("W.Audio" @type(Type::Audio)) | Audio.Resample(SampleRate: 16000)
-    AudioToBytes | AppendTo(audio-bytes)
-    // for testing purposes, we write the audio to a file
-    BytesToAudio(SampleRate: 16000 Channels: 1)
-    Audio.WriteFile("test-whisper.wav" SampleRate: 16000 Channels: 1)
-  } Times: 1000)
-  audio-bytes | Log("Recording stopped")
-  Stop(device-test)
-  
-  audio-bytes | ML.AudioToMel(GPU: #(@use-gpu | Is("true"))) = me-mel
-  Tensor.ToString | Log
-
-  me-mel | Do(whisper-it)
-})
-
-@wire(device-test {
-  Audio.Device(InputChannels: 1 OutputChannels: 0)
-  Audio.Channel(Shards: {
-    Produce("W.Audio") // make sure we passthrough the audio data
-  })
-} Looped: true)
-
-@mesh(root)
-// @schedule(root audio-data-receiver)
-@schedule(root basic-test)
-@run(root 0.01) | Assert.Is(true)
+@schedule(main whisper-test)
+@run(main) | Assert.Is(true)
