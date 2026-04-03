@@ -310,6 +310,8 @@ jobs:
           ./shards new ../shards/tests/traits.shs
           echo "Running llm"
           ./shards new ../shards/tests/llm.shs
+          echo "Running llm-mistral"
+          ./shards new ../shards/tests/llm-mistral.shs
           echo "Running jinja"
           ./shards new ../shards/tests/jinja.shs
           echo "Running crdts"

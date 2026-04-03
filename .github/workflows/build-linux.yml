@@ -168,6 +168,7 @@ jobs:
           ./shards new ../shards/tests/crdt-benchmarks.shs
           ./shards new ../shards/tests/localshell.shs
           ./shards new ../shards/tests/geo.shs
+          ./shards new ../shards/tests/llm-mistral.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
