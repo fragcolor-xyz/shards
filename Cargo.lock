@@ -8500,6 +8500,7 @@ dependencies = [
  "candle-nn",
  "candle-transformers",
  "compile-time-crc32",
+ "image",
  "lazy_static",
  "mistralrs",
  "ndarray",

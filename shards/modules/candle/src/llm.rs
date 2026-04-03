@@ -1,56 +1,105 @@
+use image::DynamicImage;
 use mistralrs::blocking::BlockingModel;
 use mistralrs::{
-  ChatCompletionResponse, IsqBits, ModelBuilder, TextMessageRole, TextMessages,
+  AudioInput, ChatCompletionResponse, IsqBits, ModelBuilder, MultimodalMessages, TextMessageRole,
 };
 
 use shards::fourCharacterCode;
 use shards::ref_counted_object_type_impl;
 use shards::shard::Shard;
+use shards::shardsc::{SHImage, SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT};
 use shards::shlog_error;
 use shards::types::common_type;
 use shards::types::ExposedTypes;
+use shards::types::IMAGE_TYPES;
 use shards::types::InstanceData;
 use shards::types::ParamVar;
+use shards::types::SeqVar;
 use shards::types::FRAG_CC;
+use shards::types::SEQ_OF_FLOAT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, Type, Types, Var};
 
+// --- Chat message types ---
+
+pub enum ChatMessage {
+  Text {
+    role: TextMessageRole,
+    text: String,
+  },
+  Image {
+    role: TextMessageRole,
+    text: String,
+    image: DynamicImage,
+  },
+  Audio {
+    role: TextMessageRole,
+    text: String,
+    audio: AudioInput,
+  },
+}
+
+fn build_multimodal_messages(messages: &[ChatMessage]) -> MultimodalMessages {
+  let mut mm = MultimodalMessages::new();
+  for msg in messages {
+    match msg {
+      ChatMessage::Text { role, text } => {
+        mm = mm.add_message(role.clone(), text);
+      }
+      ChatMessage::Image { role, text, image } => {
+        mm = mm.add_image_message(role.clone(), text, vec![image.clone()]);
+      }
+      ChatMessage::Audio { role, text, audio } => {
+        mm = mm.add_audio_message(
+          role.clone(),
+          text,
+          vec![AudioInput {
+            samples: audio.samples.clone(),
+            sample_rate: audio.sample_rate,
+            channels: audio.channels,
+          }],
+        );
+      }
+    }
+  }
+  mm
+}
+
 // --- Object Types ---
 
-// Each ref_counted_object_type_impl! must be in its own module to avoid name collisions
 mod model_obj {
   use super::*;
-  pub struct AIModel(pub BlockingModel);
-  ref_counted_object_type_impl!(AIModel);
+  pub struct LLMModel(pub BlockingModel);
+  ref_counted_object_type_impl!(LLMModel);
 }
-pub use model_obj::AIModel;
+pub use model_obj::LLMModel;
 
 mod chat_obj {
   use super::*;
-  pub struct AIChat {
+  pub struct LLMChat {
     pub model_var: Var,
-    pub messages: Vec<(TextMessageRole, String)>,
+    pub messages: Vec<ChatMessage>,
   }
-  ref_counted_object_type_impl!(AIChat);
+  ref_counted_object_type_impl!(LLMChat);
 
-  impl AIChat {
+  impl LLMChat {
     pub fn model(&self) -> Result<&BlockingModel, &'static str> {
       let model =
-        unsafe { &*Var::from_ref_counted_object::<AIModel>(&self.model_var, &*AI_MODEL_TYPE)? };
+        unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var, &*LLM_MODEL_TYPE)? };
       Ok(&model.0)
     }
   }
 }
-pub use chat_obj::AIChat;
+pub use chat_obj::LLMChat;
 
 lazy_static! {
-  pub static ref AI_MODEL_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"aiMD"));
-  pub static ref AI_MODEL_TYPE_VEC: Vec<Type> = vec![*AI_MODEL_TYPE];
-  pub static ref AI_MODEL_VAR_TYPE: Type = Type::context_variable(&AI_MODEL_TYPE_VEC);
+  pub static ref LLM_MODEL_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"aiMD"));
+  pub static ref LLM_MODEL_TYPE_VEC: Vec<Type> = vec![*LLM_MODEL_TYPE];
+  pub static ref LLM_MODEL_VAR_TYPE: Type = Type::context_variable(&LLM_MODEL_TYPE_VEC);
 
-  pub static ref AI_CHAT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"aiCH"));
-  pub static ref AI_CHAT_TYPE_VEC: Vec<Type> = vec![*AI_CHAT_TYPE];
-  pub static ref AI_CHAT_VAR_TYPE: Type = Type::context_variable(&AI_CHAT_TYPE_VEC);
+  pub static ref LLM_CHAT_TYPE: Type = Type::object(FRAG_CC, fourCharacterCode(*b"aiCH"));
+  pub static ref LLM_CHAT_TYPE_VEC: Vec<Type> = vec![*LLM_CHAT_TYPE];
+  pub static ref LLM_CHAT_VAR_TYPE: Type = Type::context_variable(&LLM_CHAT_TYPE_VEC);
 }
 
 // --- Enums ---
@@ -89,7 +138,42 @@ impl From<ChatRole> for TextMessageRole {
   }
 }
 
-// --- AI.Model ---
+// --- Helper: convert SHImage to DynamicImage ---
+
+fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
+  let w = img.width as u32;
+  let h = img.height as u32;
+  let channels = img.channels as usize;
+  let flags = img.flags as u32;
+
+  if flags & SHIMAGE_FLAGS_32BITS_FLOAT != 0 || flags & SHIMAGE_FLAGS_16BITS_INT != 0 {
+    return Err("Only 8-bit images are supported for LLM.AddImage");
+  }
+
+  let data_len = (w as usize) * (h as usize) * channels;
+  let data = unsafe { std::slice::from_raw_parts(img.data, data_len) };
+
+  match channels {
+    3 => {
+      let buf = image::ImageBuffer::<image::Rgb<u8>, _>::from_raw(w, h, data.to_vec())
+        .ok_or("Failed to create RGB image buffer")?;
+      Ok(DynamicImage::ImageRgb8(buf))
+    }
+    4 => {
+      let buf = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(w, h, data.to_vec())
+        .ok_or("Failed to create RGBA image buffer")?;
+      Ok(DynamicImage::ImageRgba8(buf))
+    }
+    1 => {
+      let buf = image::ImageBuffer::<image::Luma<u8>, _>::from_raw(w, h, data.to_vec())
+        .ok_or("Failed to create grayscale image buffer")?;
+      Ok(DynamicImage::ImageLuma8(buf))
+    }
+    _ => Err("Unsupported image channel count"),
+  }
+}
+
+// --- LLM.Model ---
 
 #[derive(shards::shard)]
 #[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture (text, vision, audio, embedding).")]
@@ -120,7 +204,7 @@ impl Shard for ModelShard {
   }
 
   fn output_types(&mut self) -> &Types {
-    &AI_MODEL_TYPE_VEC
+    &LLM_MODEL_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -157,15 +241,15 @@ impl Shard for ModelShard {
       "Failed to load model"
     })?;
 
-    self.output = Var::new_ref_counted(AIModel(model), &*AI_MODEL_TYPE).into();
+    self.output = Var::new_ref_counted(LLMModel(model), &*LLM_MODEL_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
 
-// --- AI.Chat ---
+// --- LLM.Chat ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Chat", "Create a chat session from a loaded AI model.")]
+#[shard_info("LLM.Chat", "Create a chat session from a loaded model.")]
 pub(crate) struct ChatShard {
   #[shard_required]
   required: ExposedTypes,
@@ -185,11 +269,11 @@ impl Default for ChatShard {
 #[shards::shard_impl]
 impl Shard for ChatShard {
   fn input_types(&mut self) -> &Types {
-    &AI_MODEL_TYPE_VEC
+    &LLM_MODEL_TYPE_VEC
   }
 
   fn output_types(&mut self) -> &Types {
-    &AI_CHAT_TYPE_VEC
+    &LLM_CHAT_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -210,19 +294,19 @@ impl Shard for ChatShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let _model =
-      unsafe { &*Var::from_ref_counted_object::<AIModel>(input, &*AI_MODEL_TYPE)? };
+      unsafe { &*Var::from_ref_counted_object::<LLMModel>(input, &*LLM_MODEL_TYPE)? };
 
-    let chat = AIChat {
+    let chat = LLMChat {
       model_var: *input,
       messages: Vec::new(),
     };
 
-    self.output = Var::new_ref_counted(chat, &*AI_CHAT_TYPE).into();
+    self.output = Var::new_ref_counted(chat, &*LLM_CHAT_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
 
-// --- AI.AddText ---
+// --- LLM.AddText ---
 
 #[derive(shards::shard)]
 #[shard_info("LLM.AddText", "Add a text message to a chat session.")]
@@ -230,7 +314,7 @@ pub(crate) struct AddTextShard {
   #[shard_required]
   required: ExposedTypes,
 
-  #[shard_param("Chat", "The chat session.", [*AI_CHAT_VAR_TYPE])]
+  #[shard_param("Chat", "The chat session.", [*LLM_CHAT_VAR_TYPE])]
   chat: ParamVar,
 
   #[shard_param("Role", "Message role.", CHATROLE_TYPES)]
@@ -280,15 +364,188 @@ impl Shard for AddTextShard {
     let role: ChatRole = self.role.0.as_ref().try_into().unwrap_or(ChatRole::User);
 
     let chat = unsafe {
-      &mut *Var::from_ref_counted_object::<AIChat>(&self.chat.get(), &*AI_CHAT_TYPE)?
+      &mut *Var::from_ref_counted_object::<LLMChat>(&self.chat.get(), &*LLM_CHAT_TYPE)?
     };
 
-    chat.messages.push((role.into(), text.to_string()));
+    chat.messages.push(ChatMessage::Text {
+      role: role.into(),
+      text: text.to_string(),
+    });
     Ok(Some(*input))
   }
 }
 
-// --- AI.Generate ---
+// --- LLM.AddImage ---
+
+#[derive(shards::shard)]
+#[shard_info("LLM.AddImage", "Add an image to a chat session. Requires a vision-capable model.")]
+pub(crate) struct AddImageShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Chat", "The chat session.", [*LLM_CHAT_VAR_TYPE])]
+  chat: ParamVar,
+
+  #[shard_param("Text", "Text prompt to accompany the image.", [common_type::string, common_type::string_var])]
+  text: ParamVar,
+}
+
+impl Default for AddImageShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      chat: ParamVar::default(),
+      text: ParamVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for AddImageShard {
+  fn input_types(&mut self) -> &Types {
+    &IMAGE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &IMAGE_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    if self.chat.is_none() {
+      return Err("Chat parameter is required");
+    }
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let sh_img: &SHImage = input.try_into()?;
+    let dynamic_img = sh_image_to_dynamic(sh_img)?;
+
+    let text = if self.text.is_none() {
+      String::new()
+    } else {
+      let t: &str = self.text.get().as_ref().try_into().unwrap_or("");
+      t.to_string()
+    };
+
+    let chat = unsafe {
+      &mut *Var::from_ref_counted_object::<LLMChat>(&self.chat.get(), &*LLM_CHAT_TYPE)?
+    };
+
+    chat.messages.push(ChatMessage::Image {
+      role: TextMessageRole::User,
+      text,
+      image: dynamic_img,
+    });
+
+    Ok(Some(*input))
+  }
+}
+
+// --- LLM.AddAudio ---
+
+#[derive(shards::shard)]
+#[shard_info("LLM.AddAudio", "Add audio samples to a chat session. Requires an audio-capable model (e.g. Gemma 4 E2B/E4B).")]
+pub(crate) struct AddAudioShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Chat", "The chat session.", [*LLM_CHAT_VAR_TYPE])]
+  chat: ParamVar,
+
+  #[shard_param("Text", "Text prompt to accompany the audio.", [common_type::string, common_type::string_var])]
+  text: ParamVar,
+
+  #[shard_param("SampleRate", "Audio sample rate in Hz.", [common_type::int])]
+  sample_rate: ClonedVar,
+}
+
+impl Default for AddAudioShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      chat: ParamVar::default(),
+      text: ParamVar::default(),
+      sample_rate: 16000i64.into(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for AddAudioShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    if self.chat.is_none() {
+      return Err("Chat parameter is required");
+    }
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let seq: SeqVar = input.try_into()?;
+    let sample_rate: i64 = self.sample_rate.0.as_ref().try_into().unwrap_or(16000);
+
+    let mut samples = Vec::with_capacity(seq.len());
+    for item in seq.iter() {
+      let v: f64 = item.as_ref().try_into().map_err(|_| "Expected float values in audio sequence")?;
+      samples.push(v as f32);
+    }
+
+    let text = if self.text.is_none() {
+      String::new()
+    } else {
+      let t: &str = self.text.get().as_ref().try_into().unwrap_or("");
+      t.to_string()
+    };
+
+    let chat = unsafe {
+      &mut *Var::from_ref_counted_object::<LLMChat>(&self.chat.get(), &*LLM_CHAT_TYPE)?
+    };
+
+    chat.messages.push(ChatMessage::Audio {
+      role: TextMessageRole::User,
+      text,
+      audio: AudioInput {
+        samples,
+        sample_rate: sample_rate as u32,
+        channels: 1,
+      },
+    });
+
+    Ok(Some(*input))
+  }
+}
+
+// --- LLM.Generate ---
 
 #[derive(shards::shard)]
 #[shard_info("LLM.Generate", "Generate a response from a chat session. Appends assistant reply to history.")]
@@ -323,7 +580,7 @@ impl Default for GenerateShard {
 #[shards::shard_impl]
 impl Shard for GenerateShard {
   fn input_types(&mut self) -> &Types {
-    &AI_CHAT_TYPE_VEC
+    &LLM_CHAT_TYPE_VEC
   }
 
   fn output_types(&mut self) -> &Types {
@@ -348,14 +605,10 @@ impl Shard for GenerateShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let chat = unsafe {
-      &mut *Var::from_ref_counted_object::<AIChat>(input, &*AI_CHAT_TYPE)?
+      &mut *Var::from_ref_counted_object::<LLMChat>(input, &*LLM_CHAT_TYPE)?
     };
 
-    let mut messages = TextMessages::new();
-    for (role, text) in &chat.messages {
-      messages = messages.add_message(role.clone(), text);
-    }
-
+    let messages = build_multimodal_messages(&chat.messages);
     let model = chat.model()?;
 
     let response: ChatCompletionResponse = model.send_chat_request(messages).map_err(|e| {
@@ -370,14 +623,17 @@ impl Shard for GenerateShard {
       .map(|s| s.as_str())
       .unwrap_or("");
 
-    chat.messages.push((TextMessageRole::Assistant, text.to_string()));
+    chat.messages.push(ChatMessage::Text {
+      role: TextMessageRole::Assistant,
+      text: text.to_string(),
+    });
 
     self.output = Var::ephemeral_string(text).into();
     Ok(Some(self.output.0))
   }
 }
 
-// --- AI.Reset ---
+// --- LLM.Reset ---
 
 #[derive(shards::shard)]
 #[shard_info("LLM.Reset", "Clear all message history from a chat session.")]
@@ -397,11 +653,11 @@ impl Default for ResetShard {
 #[shards::shard_impl]
 impl Shard for ResetShard {
   fn input_types(&mut self) -> &Types {
-    &AI_CHAT_TYPE_VEC
+    &LLM_CHAT_TYPE_VEC
   }
 
   fn output_types(&mut self) -> &Types {
-    &AI_CHAT_TYPE_VEC
+    &LLM_CHAT_TYPE_VEC
   }
 
   fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
@@ -421,7 +677,7 @@ impl Shard for ResetShard {
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let chat = unsafe {
-      &mut *Var::from_ref_counted_object::<AIChat>(input, &*AI_CHAT_TYPE)?
+      &mut *Var::from_ref_counted_object::<LLMChat>(input, &*LLM_CHAT_TYPE)?
     };
     chat.messages.clear();
     Ok(Some(*input))

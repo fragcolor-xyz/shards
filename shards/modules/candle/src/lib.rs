@@ -146,14 +146,16 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_object_type::<tokenizer::Tokenizer>(FRAG_CC, fourCharacterCode(*b"TOKn"));
   register_object_type::<model::Model>(FRAG_CC, fourCharacterCode(*b"cMOD"));
 
-  // AI shards (mistral.rs)
+  // LLM shards (mistral.rs)
   register_enum::<llm::ISQBitsEnum>();
   register_enum::<llm::ChatRole>();
   register_shard::<llm::ModelShard>();
   register_shard::<llm::ChatShard>();
   register_shard::<llm::AddTextShard>();
+  register_shard::<llm::AddImageShard>();
+  register_shard::<llm::AddAudioShard>();
   register_shard::<llm::GenerateShard>();
   register_shard::<llm::ResetShard>();
-  register_object_type::<llm::AIModel>(FRAG_CC, fourCharacterCode(*b"aiMD"));
-  register_object_type::<llm::AIChat>(FRAG_CC, fourCharacterCode(*b"aiCH"));
+  register_object_type::<llm::LLMModel>(FRAG_CC, fourCharacterCode(*b"aiMD"));
+  register_object_type::<llm::LLMChat>(FRAG_CC, fourCharacterCode(*b"aiCH"));
 }
