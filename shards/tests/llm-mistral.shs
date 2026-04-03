@@ -1,0 +1,19 @@
+; Test: mistral.rs LLM shards with SmolLM2-135M-Instruct
+; Auto-downloads from HuggingFace on first run
+
+@mesh(main)
+
+@wire(llm-test {
+  "HuggingFaceTB/SmolLM2-135M-Instruct"
+  LLM.Model(ISQ: ISQBits::Four) = model
+  Log("Model loaded")
+
+  model | LLM.Chat = chat
+
+  "What is 2 + 2? Answer briefly." | LLM.AddText(Chat: chat)
+
+  chat | LLM.Generate(Temperature: 0.1 MaxTokens: 64) | Log("Response")
+})
+
+@schedule(main llm-test)
+@run(main) | Assert.Is(true)

@@ -17,12 +17,10 @@ tokenizers = { version = "0.21.0", default-features = false, features = [
   "onig",
 ] }
 
-candle-core = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
-candle-transformers = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
-candle-nn = { git = "https://github.com/shards-lang/candle.git", rev = "0467cf76773722264d63c22d264b8495ed2b848c" }
-# candle-core = { path = "../../../../candle/candle-core" }
-# candle-transformers = { path = "../../../../candle/candle-transformers" }
-# candle-nn = { path = "../../../../candle/candle-nn" }
+mistralrs = { version = "0.8.1", default-features = false }
+candle-core = "0.10.2"
+candle-nn = "0.10.2"
+candle-transformers = "0.10.2"
 
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 anyhow = "1.0.80"
@@ -34,6 +32,6 @@ once_cell = "1.20.2"
 
 [features]
 default = []
-metal = ["candle-core/metal", "candle-transformers/metal", "candle-nn/metal"]
-cuda = ["candle-core/cuda", "candle-transformers/cuda", "candle-nn/cuda"]
-accelerate = ["candle-core/accelerate", "candle-transformers/accelerate", "candle-nn/accelerate"]
+metal = ["mistralrs/metal", "candle-core/metal", "candle-transformers/metal", "candle-nn/metal"]
+cuda = ["mistralrs/cuda", "candle-core/cuda", "candle-transformers/cuda", "candle-nn/cuda"]
+accelerate = ["mistralrs/accelerate", "candle-core/accelerate", "candle-transformers/accelerate", "candle-nn/accelerate"]

@@ -1,6 +1,7 @@
-# LLM module requires llama.cpp and whisper.cpp, only available on desktop platforms
+# LLM module - DISABLED: replaced by mistral.rs in shards/modules/candle
+# To re-enable, remove the FALSE below
 is_module_enabled(LLM_ENABLED llm)
-if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
+if(FALSE AND LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # Collect all mtmd model sources via glob
   file(GLOB MTMD_MODEL_SOURCES ${llama.cpp_SOURCE_DIR}/tools/mtmd/models/*.cpp)
 
