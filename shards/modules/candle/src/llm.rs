@@ -1,13 +1,16 @@
 use either::Either;
 use image::DynamicImage;
-use mistralrs::blocking::BlockingModel;
 use mistralrs::{
   AudioInput, ChatCompletionResponse, EmbeddingModelBuilder, EmbeddingRequest, GgufModelBuilder,
-  IsqBits, ModelBuilder, ModelDType, RequestBuilder, TextMessageRole, UqffMultimodalModelBuilder,
+  IsqBits, Model, ModelBuilder, ModelDType, RequestBuilder, TextMessageRole,
+  UqffMultimodalModelBuilder,
 };
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use tokio_util::sync::CancellationToken;
 
+use shards::core::run_future;
+use shards::error::FastError;
 use shards::fourCharacterCode;
 use shards::ref_counted_object_type_impl;
 use shards::shard::Shard;
@@ -25,6 +28,17 @@ use shards::types::SEQ_OF_FLOAT_TYPES;
 use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, Type, Types, Var};
+
+// Global tokio runtime shared by all LLM shards — never block_on, always run_future
+lazy_static! {
+  static ref TOKIO_RUNTIME: Arc<Mutex<tokio::runtime::Runtime>> = Arc::new(Mutex::new(
+    tokio::runtime::Builder::new_multi_thread()
+      .worker_threads(4)
+      .enable_all()
+      .build()
+      .expect("Failed to create LLM Tokio runtime")
+  ));
+}
 
 // --- Chat message types ---
 
@@ -78,11 +92,8 @@ mod model_obj {
   use crate::quantized_bert::QuantizedBertModel;
 
   pub enum LLMModelInner {
-    /// mistral.rs model (chat, multimodal, embedding via EmbeddingModelBuilder)
-    Mistral {
-      blocking: BlockingModel,
-      rt: Arc<tokio::runtime::Runtime>,
-    },
+    /// mistral.rs async model (chat, multimodal, embedding via EmbeddingModelBuilder)
+    Mistral(Arc<Model>),
     /// Quantized BERT from GGUF (embedding only, uses candle directly)
     QuantizedBert {
       model: QuantizedBertModel,
@@ -104,11 +115,11 @@ mod chat_obj {
   ref_counted_object_type_impl!(LLMChat);
 
   impl LLMChat {
-    pub fn blocking_model(&self) -> Result<(&BlockingModel, &Arc<tokio::runtime::Runtime>), &'static str> {
+    pub fn mistral_model(&self) -> Result<Arc<Model>, &'static str> {
       let model =
         unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var.0, &*LLM_MODEL_TYPE)? };
       match &model.0 {
-        LLMModelInner::Mistral { blocking, rt } => Ok((blocking, rt)),
+        LLMModelInner::Mistral(m) => Ok(m.clone()),
         LLMModelInner::QuantizedBert { .. } => Err("Cannot use a GGUF BERT model for chat"),
       }
     }
@@ -259,27 +270,16 @@ impl Shard for ModelShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let model_id: &str = input.try_into()?;
+    let model_id = model_id.to_string();
     let isq_bits: ISQBitsEnum = self.isq.0.as_ref().try_into().unwrap_or(ISQBitsEnum::None);
     let is_embedding: bool = (&self.embedding.0).try_into().unwrap_or(false);
 
     let has_files = !self.files.0.is_none();
     let has_uqff = !self.uqff.0.is_none();
 
-    // Helper to create a tokio runtime
-    let make_rt = || -> Result<Arc<tokio::runtime::Runtime>, &'static str> {
-      let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| {
-          shlog_error!("Failed to create runtime: {}", e);
-          "Failed to create tokio runtime"
-        })?;
-      Ok(Arc::new(rt))
-    };
-
-    // Embedding + GGUF file → Quantized BERT path (candle native, no mistral.rs)
+    // Embedding + GGUF file → Quantized BERT path (candle native, synchronous, fast)
     if is_embedding && has_files {
       let gguf_file: &str = self.files.0.as_ref().try_into()
         .map_err(|_| "Files parameter must be a string for GGUF embedding models")?;
@@ -292,7 +292,6 @@ impl Shard for ModelShard {
           "Failed to load GGUF file"
         })?;
 
-      // Read GGUF metadata for config
       let mut reader = std::io::BufReader::new(std::fs::File::open(gguf_file).map_err(|e| {
         shlog_error!("Failed to open GGUF file: {}", e);
         "Failed to open GGUF file"
@@ -314,22 +313,19 @@ impl Shard for ModelShard {
           "Failed to load quantized BERT model"
         })?;
 
-      // Load tokenizer from model_id on HuggingFace (or local path)
-      let tokenizer = {
-        let api = hf_hub::api::sync::Api::new().map_err(|e| {
-          shlog_error!("Failed to create HF API: {}", e);
-          "Failed to create HuggingFace API"
-        })?;
-        let repo = api.model(model_id.to_string());
-        let tokenizer_path = repo.get("tokenizer.json").map_err(|e| {
-          shlog_error!("Failed to download tokenizer: {}", e);
-          "Failed to download tokenizer.json"
-        })?;
-        tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| {
-          shlog_error!("Failed to load tokenizer: {}", e);
-          "Failed to load tokenizer"
-        })?
-      };
+      let api = hf_hub::api::sync::Api::new().map_err(|e| {
+        shlog_error!("Failed to create HF API: {}", e);
+        "Failed to create HuggingFace API"
+      })?;
+      let repo = api.model(model_id.to_string());
+      let tokenizer_path = repo.get("tokenizer.json").map_err(|e| {
+        shlog_error!("Failed to download tokenizer: {}", e);
+        "Failed to download tokenizer.json"
+      })?;
+      let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| {
+        shlog_error!("Failed to load tokenizer: {}", e);
+        "Failed to load tokenizer"
+      })?;
 
       let inner = LLMModelInner::QuantizedBert {
         model: bert_model,
@@ -339,80 +335,83 @@ impl Shard for ModelShard {
       return Ok(Some(self.output.0));
     }
 
-    let inner = if is_embedding {
-      // Embedding model path (mistral.rs EmbeddingModelBuilder)
-      let rt = make_rt()?;
-      let mut builder = EmbeddingModelBuilder::new(model_id)
-        .with_logging()
-        .with_dtype(ModelDType::F32);
+    // All mistral.rs model loading goes through run_future (async, non-blocking)
+    let cancel_token = CancellationToken::new();
+    let cancel_clone = cancel_token.clone();
 
-      match isq_bits {
-        ISQBitsEnum::None => {}
-        ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
-        ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
-        ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
-      }
+    let uqff_file = if has_uqff {
+      Some(self.uqff.0.as_ref().try_into().map(|s: &str| s.to_string())
+        .map_err(|_| "UQFF parameter must be a string")?)
+    } else { None };
 
-      let model = rt.block_on(builder.build()).map_err(|e| {
-        shlog_error!("Failed to load embedding model: {}", e);
-        "Failed to load embedding model"
-      })?;
-      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
-    } else if has_uqff {
-      let uqff_file: &str = self.uqff.0.as_ref().try_into()
-        .map_err(|_| "UQFF parameter must be a string")?;
-
-      let builder = UqffMultimodalModelBuilder::new(
-        model_id,
-        vec![PathBuf::from(uqff_file)],
-      ).into_inner().with_logging();
-
-      let rt = make_rt()?;
-      let model = rt.block_on(builder.build()).map_err(|e| {
-        shlog_error!("Failed to load UQFF model: {}", e);
-        "Failed to load UQFF model"
-      })?;
-      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
-    } else if has_files {
-      let mut gguf_files: Vec<String> = Vec::new();
+    let gguf_files = if has_files && !is_embedding {
+      let mut files = Vec::new();
       if let Ok(s) = <&str>::try_from(self.files.0.as_ref()) {
-        gguf_files.push(s.to_string());
+        files.push(s.to_string());
       } else if let Ok(seq) = SeqVar::try_from(self.files.0.as_ref()) {
         for item in seq.iter() {
           let s: &str = item.as_ref().try_into().map_err(|_| "Files must be strings")?;
-          gguf_files.push(s.to_string());
+          files.push(s.to_string());
         }
       } else {
         return Err("Files parameter must be a string or sequence of strings");
       }
+      Some(files)
+    } else { None };
 
-      let builder = GgufModelBuilder::new(model_id, gguf_files).with_logging();
+    let result = run_future(
+      context,
+      async move {
+        let runtime = TOKIO_RUNTIME.clone();
+        let task = {
+          let runtime = runtime.lock().unwrap();
+          runtime.spawn(async move {
+            let model: Model = if is_embedding {
+              let mut builder = EmbeddingModelBuilder::new(&model_id)
+                .with_logging()
+                .with_dtype(ModelDType::F32);
+              match isq_bits {
+                ISQBitsEnum::None => {}
+                ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
+                ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
+                ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
+              }
+              builder.build().await.map_err(|e| format!("Failed to load embedding model: {}", e))?
+            } else if let Some(uqff) = uqff_file {
+              UqffMultimodalModelBuilder::new(&model_id, vec![PathBuf::from(uqff)])
+                .into_inner().with_logging()
+                .build().await.map_err(|e| format!("Failed to load UQFF model: {}", e))?
+            } else if let Some(files) = gguf_files {
+              GgufModelBuilder::new(&model_id, files).with_logging()
+                .build().await.map_err(|e| format!("Failed to load GGUF model: {}", e))?
+            } else {
+              let mut builder = ModelBuilder::new(&model_id).with_logging();
+              match isq_bits {
+                ISQBitsEnum::None => {}
+                ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
+                ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
+                ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
+              }
+              builder.build().await.map_err(|e| format!("Failed to load model: {}", e))?
+            };
 
-      let rt = make_rt()?;
-      let model = rt.block_on(builder.build()).map_err(|e| {
-        shlog_error!("Failed to load GGUF model: {}", e);
-        "Failed to load GGUF model"
-      })?;
-      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
-    } else {
-      let mut builder = ModelBuilder::new(model_id).with_logging();
+            let inner = LLMModelInner::Mistral(Arc::new(model));
+            Ok::<ClonedVar, String>(
+              Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE).into()
+            )
+          })
+        };
+        task.await
+          .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+          .map_err(|e| FastError::from(e))
+      },
+      || { cancel_clone.cancel(); },
+    ).map_err(|e| {
+      shlog_error!("Failed to load model: {}", e);
+      "Failed to load model"
+    })?;
 
-      match isq_bits {
-        ISQBitsEnum::None => {}
-        ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
-        ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
-        ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
-      }
-
-      let rt = make_rt()?;
-      let model = rt.block_on(builder.build()).map_err(|e| {
-        shlog_error!("Failed to load model: {}", e);
-        "Failed to load model"
-      })?;
-      LLMModelInner::Mistral { blocking: BlockingModel::new(model, rt.clone()), rt }
-    };
-
-    self.output = Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE).into();
+    self.output = result;
     Ok(Some(self.output.0))
   }
 }
@@ -774,7 +773,7 @@ impl Shard for GenerateShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let chat = unsafe {
       &mut *Var::from_ref_counted_object::<LLMChat>(input, &*LLM_CHAT_TYPE)?
     };
@@ -790,26 +789,49 @@ impl Shard for GenerateShard {
       .set_sampler_topp(top_p)
       .set_sampler_max_len(max_tokens as usize);
 
-    let (blocking, _rt) = chat.blocking_model()?;
+    let model = chat.mistral_model()?;
+    let cancel_token = CancellationToken::new();
+    let cancel_clone = cancel_token.clone();
 
-    let response: ChatCompletionResponse = blocking.send_chat_request(request).map_err(|e| {
+    let result = run_future(
+      context,
+      async move {
+        let runtime = TOKIO_RUNTIME.clone();
+        let task = {
+          let runtime = runtime.lock().unwrap();
+          runtime.spawn(async move {
+            let response: ChatCompletionResponse = model.send_chat_request(request).await
+              .map_err(|e| format!("Failed to generate: {}", e))?;
+
+            let text = response
+              .choices
+              .first()
+              .and_then(|c| c.message.content.as_ref())
+              .map(|s| s.to_string())
+              .unwrap_or_default();
+
+            Ok::<String, String>(text)
+          })
+        };
+        let text = task.await
+          .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+          .map_err(|e| FastError::from(e))?;
+        Ok::<ClonedVar, FastError>(Var::ephemeral_string(&text).into())
+      },
+      || { cancel_clone.cancel(); },
+    ).map_err(|e| {
       shlog_error!("Failed to generate: {}", e);
       "Failed to generate response"
     })?;
 
-    let text = response
-      .choices
-      .first()
-      .and_then(|c| c.message.content.as_ref())
-      .map(|s| s.as_str())
-      .unwrap_or("");
-
+    // Extract text from result and append to chat history
+    let text: &str = result.0.as_ref().try_into().unwrap_or("");
     chat.messages.push(ChatMessage::Text {
       role: TextMessageRole::Assistant,
       text: text.to_string(),
     });
 
-    self.output = Var::ephemeral_string(text).into();
+    self.output = result;
     Ok(Some(self.output.0))
   }
 }
@@ -965,7 +987,7 @@ impl Shard for EmbedShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let llm_model = unsafe {
       &*Var::from_ref_counted_object::<LLMModel>(&self.model.get(), &*LLM_MODEL_TYPE)?
     };
@@ -973,7 +995,7 @@ impl Shard for EmbedShard {
     let norm_type: i64 = self.normalization.0.as_ref().try_into().unwrap_or(-1);
 
     let mut embedding = match &llm_model.0 {
-      LLMModelInner::Mistral { blocking, rt } => {
+      LLMModelInner::Mistral(model) => {
         // Build embedding request — accept either text or token IDs
         let request = if let Ok(text) = <&str>::try_from(input) {
           EmbeddingRequest::builder().add_prompt(text)
@@ -989,14 +1011,42 @@ impl Shard for EmbedShard {
           return Err("Input must be a string or sequence of integers");
         };
 
-        let embeddings = rt.block_on(
-          blocking.inner().generate_embeddings(request)
+        let model = model.clone();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+
+        let result = run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn(async move {
+                model.generate_embeddings(request).await
+                  .map_err(|e| format!("Failed to generate embedding: {}", e))
+              })
+            };
+            let embeddings = task.await
+              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+              .map_err(|e| FastError::from(e))?;
+            let emb = embeddings.into_iter().next()
+              .ok_or_else(|| FastError::from("No embedding returned"))?;
+            // Pack as JSON-like string to pass through ClonedVar
+            let json = serde_json::to_string(&emb)
+              .map_err(|e| FastError::from(format!("Serialization error: {}", e)))?;
+            Ok::<ClonedVar, FastError>(Var::ephemeral_string(&json).into())
+          },
+          || { cancel_clone.cancel(); },
         ).map_err(|e| {
           shlog_error!("Failed to generate embedding: {}", e);
           "Failed to generate embedding"
         })?;
 
-        embeddings.into_iter().next().ok_or("No embedding returned")?
+        // Deserialize back from JSON string
+        let json_str: &str = result.0.as_ref().try_into()
+          .map_err(|_| "Failed to read embedding result")?;
+        serde_json::from_str::<Vec<f32>>(json_str)
+          .map_err(|_| "Failed to deserialize embedding")?
       }
       LLMModelInner::QuantizedBert { model, tokenizer } => {
         // For quantized BERT, we tokenize and run the model directly
@@ -1102,7 +1152,7 @@ impl Shard for TokenizeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let text: &str = input.try_into()?;
 
     let llm_model = unsafe {
@@ -1110,16 +1160,40 @@ impl Shard for TokenizeShard {
     };
 
     let tokens: Vec<u32> = match &llm_model.0 {
-      LLMModelInner::Mistral { blocking, rt } => {
-        rt.block_on(
-          blocking.inner().tokenize(
-            Either::Right(text.to_string()),
-            None, true, false, None,
-          )
+      LLMModelInner::Mistral(model) => {
+        let model = model.clone();
+        let text_owned = text.to_string();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+
+        let result = run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn(async move {
+                model.tokenize(Either::Right(text_owned), None, true, false, None).await
+                  .map_err(|e| format!("Failed to tokenize: {}", e))
+              })
+            };
+            let tokens = task.await
+              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+              .map_err(|e| FastError::from(e))?;
+            let json = serde_json::to_string(&tokens)
+              .map_err(|e| FastError::from(format!("Serialization error: {}", e)))?;
+            Ok::<ClonedVar, FastError>(Var::ephemeral_string(&json).into())
+          },
+          || { cancel_clone.cancel(); },
         ).map_err(|e| {
           shlog_error!("Failed to tokenize: {}", e);
           "Failed to tokenize"
-        })?
+        })?;
+
+        let json_str: &str = result.0.as_ref().try_into()
+          .map_err(|_| "Failed to read tokenize result")?;
+        serde_json::from_str::<Vec<u32>>(json_str)
+          .map_err(|_| "Failed to deserialize tokens")?
       }
       LLMModelInner::QuantizedBert { tokenizer, .. } => {
         let encoding = tokenizer.encode(text, true).map_err(|e| {
@@ -1192,7 +1266,7 @@ impl Shard for DetokenizeShard {
     Ok(self.output_types()[0])
   }
 
-  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+  fn activate(&mut self, context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let seq: SeqVar = input.try_into()?;
 
     let llm_model = unsafe {
@@ -1207,13 +1281,35 @@ impl Shard for DetokenizeShard {
       .collect();
 
     let text = match &llm_model.0 {
-      LLMModelInner::Mistral { blocking, rt } => {
-        rt.block_on(
-          blocking.inner().detokenize(tokens, true)
+      LLMModelInner::Mistral(model) => {
+        let model = model.clone();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+
+        let result = run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn(async move {
+                model.detokenize(tokens, true).await
+                  .map_err(|e| format!("Failed to detokenize: {}", e))
+              })
+            };
+            let text = task.await
+              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+              .map_err(|e| FastError::from(e))?;
+            Ok::<ClonedVar, FastError>(Var::ephemeral_string(&text).into())
+          },
+          || { cancel_clone.cancel(); },
         ).map_err(|e| {
           shlog_error!("Failed to detokenize: {}", e);
           "Failed to detokenize"
-        })?
+        })?;
+
+        let s: &str = result.0.as_ref().try_into().unwrap_or("");
+        s.to_string()
       }
       LLMModelInner::QuantizedBert { tokenizer, .. } => {
         tokenizer.decode(&tokens, true).map_err(|e| {

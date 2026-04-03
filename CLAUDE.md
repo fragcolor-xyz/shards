@@ -72,6 +72,8 @@ When working on Rust modules or the graphics subsystem:
 
 **IMPORTANT**: Always use `just cargo-check` instead of `cargo check` directly. The project uses a specific Rust toolchain, and the just command ensures the correct toolchain is used.
 
+**CRITICAL — Async in Rust shards**: NEVER use `block_on()`, `BlockingModel`, or any thread-blocking call inside a shard's `activate()`. Shards uses coroutine scheduling — blocking stalls the entire wire. Use `shards::core::run_future(context, async { ... }, on_cancel)` with a shared `TOKIO_RUNTIME`. See `shards/modules/http/src/lib.rs` for the canonical pattern.
+
 ### Testing
 - **Test Files**: `shards/tests/*.shs` contain language-level tests
 - **Test Runner**: `just tests` runs the test suite through shards executable

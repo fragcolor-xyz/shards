@@ -128,9 +128,45 @@ Generate text embeddings using an embedding model. The model must be loaded with
 
 Supported embedding models include `google/embeddinggemma-300m`, `Qwen/Qwen3-Embedding-0.6B`, and any model supported by mistral.rs's `EmbeddingModelBuilder`. Uses F32 dtype on CPU to avoid F16 NaN issues.
 
-### Internal Design Notes
+### CRITICAL: Async Pattern for Rust Shards
 
-**BlockingModel lifetime:** The `BlockingModel` from mistral.rs owns a tokio runtime. It MUST NOT be created inside an existing tokio context (panics). Since shard `activate()` is always called from the C++ runtime's synchronous thread, this is safe. For GGUF/UQFF paths, we create the tokio runtime manually via `tokio::runtime::Builder` since `BlockingModel::from_builder` only accepts `TextModelBuilder`/`ModelBuilder`.
+**NEVER use `block_on`, `BlockingModel`, or any thread-blocking call inside `activate()`.** Shards uses coroutine-based concurrency — blocking a thread stalls the entire wire scheduler.
+
+**Required pattern:** Use `shards::core::run_future(context, async { ... }, on_cancel)` with a global `TOKIO_RUNTIME`. This suspends the shards coroutine (yields to the scheduler) while async work runs on a tokio thread pool.
+
+**Canonical example:** `shards/modules/http/src/lib.rs` — study this before writing any async Rust shard.
+
+```rust
+// Global runtime (shared across all shard instances)
+lazy_static! {
+  static ref TOKIO_RUNTIME: Arc<Mutex<tokio::runtime::Runtime>> = Arc::new(Mutex::new(
+    tokio::runtime::Builder::new_multi_thread()
+      .worker_threads(4)
+      .enable_all()
+      .build()
+      .expect("Failed to create Tokio runtime")
+  ));
+}
+
+// In activate():
+let cancel_token = CancellationToken::new();
+let result = run_future(context, async move {
+  let runtime = TOKIO_RUNTIME.clone();
+  let task = {
+    let runtime = runtime.lock().unwrap();
+    runtime.spawn(async move {
+      // actual async work here (model inference, HTTP, etc.)
+    })
+  };
+  task.await.map_err(|e| FastError::from(e.to_string()))?
+}, || { cancel_token.cancel(); });
+```
+
+**For mistral.rs:** Use the async `Model` directly (not `BlockingModel`). Spawn inference on the tokio runtime via `run_future`.
+
+**For pure candle ops** (e.g. quantized BERT forward pass): If the operation is fast (<50ms), synchronous in `activate()` is acceptable. For heavy ops (model loading, large batch), wrap in `run_future` anyway.
+
+### Internal Design Notes
 
 **Chat message storage:** Messages are stored as `Vec<ChatMessage>` where `ChatMessage` is an enum with `Text`, `Image`, and `Audio` variants. On each `LLM.Generate` call, messages are rebuilt into a `RequestBuilder`. Image and audio data is cloned during this rebuild (once per generation call). The `RequestBuilder` also carries sampling parameters (temperature, top_p, max_tokens).
 
