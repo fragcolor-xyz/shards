@@ -1,8 +1,10 @@
 use image::DynamicImage;
 use mistralrs::blocking::BlockingModel;
 use mistralrs::{
-  AudioInput, ChatCompletionResponse, IsqBits, ModelBuilder, MultimodalMessages, TextMessageRole,
+  AudioInput, ChatCompletionResponse, GgufModelBuilder, IsqBits, ModelBuilder,
+  MultimodalMessages, TextMessageRole,
 };
+use std::sync::Arc;
 
 use shards::fourCharacterCode;
 use shards::ref_counted_object_type_impl;
@@ -176,13 +178,16 @@ fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
 // --- LLM.Model ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture (text, vision, audio, embedding).")]
+#[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter.")]
 pub(crate) struct ModelShard {
   #[shard_required]
   required: ExposedTypes,
 
   #[shard_param("ISQ", "In-situ quantization bit width. Quantizes at load time.", ISQBITSENUM_TYPES)]
   isq: ClonedVar,
+
+  #[shard_param("Files", "GGUF filename(s) within the repo. When set, uses GGUF loader instead of auto-detect.", [common_type::string, common_type::none])]
+  files: ClonedVar,
 
   output: ClonedVar,
 }
@@ -192,6 +197,7 @@ impl Default for ModelShard {
     Self {
       required: ExposedTypes::new(),
       isq: ISQBitsEnum::None.into(),
+      files: ClonedVar::default(),
       output: ClonedVar::default(),
     }
   }
@@ -227,19 +233,54 @@ impl Shard for ModelShard {
     let model_id: &str = input.try_into()?;
     let isq_bits: ISQBitsEnum = self.isq.0.as_ref().try_into().unwrap_or(ISQBitsEnum::None);
 
-    let mut builder = ModelBuilder::new(model_id).with_logging();
+    let has_files = !self.files.0.is_none();
 
-    match isq_bits {
-      ISQBitsEnum::None => {}
-      ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
-      ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
-      ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
-    }
+    let model = if has_files {
+      // GGUF path: extract filenames
+      let mut gguf_files: Vec<String> = Vec::new();
+      if let Ok(s) = <&str>::try_from(self.files.0.as_ref()) {
+        gguf_files.push(s.to_string());
+      } else if let Ok(seq) = SeqVar::try_from(self.files.0.as_ref()) {
+        for item in seq.iter() {
+          let s: &str = item.as_ref().try_into().map_err(|_| "Files must be strings")?;
+          gguf_files.push(s.to_string());
+        }
+      } else {
+        return Err("Files parameter must be a string or sequence of strings");
+      }
 
-    let model = BlockingModel::from_auto_builder(builder).map_err(|e| {
-      shlog_error!("Failed to load model: {}", e);
-      "Failed to load model"
-    })?;
+      let builder = GgufModelBuilder::new(model_id, gguf_files).with_logging();
+
+      // GgufModelBuilder doesn't have from_builder on BlockingModel,
+      // so we create the runtime manually
+      let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| {
+          shlog_error!("Failed to create runtime: {}", e);
+          "Failed to create tokio runtime"
+        })?;
+      let inner = rt.block_on(builder.build()).map_err(|e| {
+        shlog_error!("Failed to load GGUF model: {}", e);
+        "Failed to load GGUF model"
+      })?;
+      BlockingModel::new(inner, Arc::new(rt))
+    } else {
+      // Auto-detect path (safetensors from HuggingFace)
+      let mut builder = ModelBuilder::new(model_id).with_logging();
+
+      match isq_bits {
+        ISQBitsEnum::None => {}
+        ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
+        ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
+        ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
+      }
+
+      BlockingModel::from_auto_builder(builder).map_err(|e| {
+        shlog_error!("Failed to load model: {}", e);
+        "Failed to load model"
+      })?
+    };
 
     self.output = Var::new_ref_counted(LLMModel(model), &*LLM_MODEL_TYPE).into();
     Ok(Some(self.output.0))

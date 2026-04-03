@@ -312,6 +312,8 @@ jobs:
           ./shards new ../shards/tests/llm.shs
           echo "Running llm-mistral"
           ./shards new ../shards/tests/llm-mistral.shs
+          echo "Running llm-gguf"
+          ./shards new ../shards/tests/llm-gguf.shs
           echo "Running jinja"
           ./shards new ../shards/tests/jinja.shs
           echo "Running crdts"

@@ -8510,6 +8510,7 @@ dependencies = [
  "serde_json",
  "shards",
  "tokenizers 0.21.4",
+ "tokio",
 ]
 
 [[package]]

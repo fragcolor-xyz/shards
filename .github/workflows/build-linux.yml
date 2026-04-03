@@ -169,6 +169,7 @@ jobs:
           ./shards new ../shards/tests/localshell.shs
           ./shards new ../shards/tests/geo.shs
           ./shards new ../shards/tests/llm-mistral.shs
+          ./shards new ../shards/tests/llm-gguf.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

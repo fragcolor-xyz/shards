@@ -1,0 +1,20 @@
+; Test: Gemma 4 E2B via mistral.rs (gated model - requires HF_TOKEN)
+; Set HF_TOKEN env var or run `huggingface-cli login` first
+; Skip this test in CI unless HF_TOKEN is configured
+
+@mesh(main)
+
+@wire(gemma4-test {
+  "google/gemma-4-E2B-it"
+  LLM.Model(ISQ: ISQBits::Four) = model
+  Log("Gemma 4 E2B loaded")
+
+  model | LLM.Chat = chat
+
+  "What is the capital of Japan? Answer in one word." | LLM.AddText(Chat: chat)
+
+  chat | LLM.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
+})
+
+@schedule(main gemma4-test)
+@run(main) | Assert.Is(true)
