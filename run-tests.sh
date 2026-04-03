@@ -264,6 +264,7 @@ if [ "$WITH_CPU" = true ]; then
         "shards/tests/llm.shs||"
         "shards/tests/llm-mistral.shs||"
         "shards/tests/llm-gguf.shs||"
+        "shards/tests/llm-embed.shs||"
     )
 fi
 

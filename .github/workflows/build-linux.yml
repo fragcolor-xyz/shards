@@ -170,6 +170,7 @@ jobs:
           ./shards new ../shards/tests/geo.shs
           ./shards new ../shards/tests/llm-mistral.shs
           ./shards new ../shards/tests/llm-gguf.shs
+          ./shards new ../shards/tests/llm-embed.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

@@ -159,6 +159,9 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
     register_shard::<llm::AddAudioShard>();
     register_shard::<llm::GenerateShard>();
     register_shard::<llm::ResetShard>();
+    register_shard::<llm::EmbedShard>();
+    register_shard::<llm::TokenizeShard>();
+    register_shard::<llm::DetokenizeShard>();
     register_object_type::<llm::LLMModel>(FRAG_CC, fourCharacterCode(*b"aiMD"));
     register_object_type::<llm::LLMChat>(FRAG_CC, fourCharacterCode(*b"aiCH"));
   }

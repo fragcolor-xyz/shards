@@ -1,8 +1,9 @@
+use either::Either;
 use image::DynamicImage;
 use mistralrs::blocking::BlockingModel;
 use mistralrs::{
-  AudioInput, ChatCompletionResponse, GgufModelBuilder, IsqBits, ModelBuilder,
-  RequestBuilder, TextMessageRole, UqffMultimodalModelBuilder,
+  AudioInput, ChatCompletionResponse, EmbeddingModelBuilder, EmbeddingRequest, GgufModelBuilder,
+  IsqBits, ModelBuilder, ModelDType, RequestBuilder, TextMessageRole, UqffMultimodalModelBuilder,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use shards::shard::Shard;
 use shards::shardsc::{SHImage, SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT};
 use shards::shlog_error;
 use shards::types::common_type;
+use shards::types::AutoSeqVar;
 use shards::types::ExposedTypes;
 use shards::types::IMAGE_TYPES;
 use shards::types::InstanceData;
@@ -20,6 +22,7 @@ use shards::types::ParamVar;
 use shards::types::SeqVar;
 use shards::types::FRAG_CC;
 use shards::types::SEQ_OF_FLOAT_TYPES;
+use shards::types::SEQ_OF_INT_TYPES;
 use shards::types::STRING_TYPES;
 use shards::types::{ClonedVar, Context, Type, Types, Var};
 
@@ -72,7 +75,10 @@ fn build_request(messages: &[ChatMessage]) -> RequestBuilder {
 
 mod model_obj {
   use super::*;
-  pub struct LLMModel(pub BlockingModel);
+  pub struct LLMModel {
+    pub blocking: BlockingModel,
+    pub rt: Arc<tokio::runtime::Runtime>,
+  }
   ref_counted_object_type_impl!(LLMModel);
 }
 pub use model_obj::LLMModel;
@@ -86,10 +92,10 @@ mod chat_obj {
   ref_counted_object_type_impl!(LLMChat);
 
   impl LLMChat {
-    pub fn model(&self) -> Result<&BlockingModel, &'static str> {
+    pub fn model(&self) -> Result<&LLMModel, &'static str> {
       let model =
         unsafe { &*Var::from_ref_counted_object::<LLMModel>(&self.model_var.0, &*LLM_MODEL_TYPE)? };
-      Ok(&model.0)
+      Ok(model)
     }
   }
 }
@@ -179,7 +185,7 @@ fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
 // --- LLM.Model ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter.")]
+#[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter. For embedding models, set Embedding: true.")]
 pub(crate) struct ModelShard {
   #[shard_required]
   required: ExposedTypes,
@@ -193,6 +199,9 @@ pub(crate) struct ModelShard {
   #[shard_param("UQFF", "UQFF filename (e.g. 'q4k-0.uqff'). When set, loads pre-quantized UQFF model — no ISQ needed.", [common_type::string, common_type::none])]
   uqff: ClonedVar,
 
+  #[shard_param("Embedding", "When true, loads as an embedding model for use with LLM.Embed.", [common_type::bool])]
+  embedding: ClonedVar,
+
   output: ClonedVar,
 }
 
@@ -203,6 +212,7 @@ impl Default for ModelShard {
       isq: ISQBitsEnum::None.into(),
       files: ClonedVar::default(),
       uqff: ClonedVar::default(),
+      embedding: false.into(),
       output: ClonedVar::default(),
     }
   }
@@ -237,11 +247,44 @@ impl Shard for ModelShard {
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
     let model_id: &str = input.try_into()?;
     let isq_bits: ISQBitsEnum = self.isq.0.as_ref().try_into().unwrap_or(ISQBitsEnum::None);
+    let is_embedding: bool = (&self.embedding.0).try_into().unwrap_or(false);
 
     let has_files = !self.files.0.is_none();
     let has_uqff = !self.uqff.0.is_none();
 
-    let model = if has_uqff {
+    // Helper to create a tokio runtime
+    let make_rt = || -> Result<Arc<tokio::runtime::Runtime>, &'static str> {
+      let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| {
+          shlog_error!("Failed to create runtime: {}", e);
+          "Failed to create tokio runtime"
+        })?;
+      Ok(Arc::new(rt))
+    };
+
+    let (blocking, rt) = if is_embedding {
+      // Embedding model path
+      let rt = make_rt()?;
+      // Use BF16 instead of F16 on CPU to avoid NaN issues with half-precision
+      let mut builder = EmbeddingModelBuilder::new(model_id)
+        .with_logging()
+        .with_dtype(ModelDType::F32);
+
+      match isq_bits {
+        ISQBitsEnum::None => {}
+        ISQBitsEnum::Two => { builder = builder.with_auto_isq(IsqBits::Two); }
+        ISQBitsEnum::Four => { builder = builder.with_auto_isq(IsqBits::Four); }
+        ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
+      }
+
+      let inner = rt.block_on(builder.build()).map_err(|e| {
+        shlog_error!("Failed to load embedding model: {}", e);
+        "Failed to load embedding model"
+      })?;
+      (BlockingModel::new(inner, rt.clone()), rt)
+    } else if has_uqff {
       // UQFF path: pre-quantized model, instant load
       let uqff_file: &str = self.uqff.0.as_ref().try_into()
         .map_err(|_| "UQFF parameter must be a string")?;
@@ -251,18 +294,12 @@ impl Shard for ModelShard {
         vec![PathBuf::from(uqff_file)],
       ).into_inner().with_logging();
 
-      let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| {
-          shlog_error!("Failed to create runtime: {}", e);
-          "Failed to create tokio runtime"
-        })?;
+      let rt = make_rt()?;
       let inner = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load UQFF model: {}", e);
         "Failed to load UQFF model"
       })?;
-      BlockingModel::new(inner, Arc::new(rt))
+      (BlockingModel::new(inner, rt.clone()), rt)
     } else if has_files {
       // GGUF path: extract filenames
       let mut gguf_files: Vec<String> = Vec::new();
@@ -279,20 +316,12 @@ impl Shard for ModelShard {
 
       let builder = GgufModelBuilder::new(model_id, gguf_files).with_logging();
 
-      // GgufModelBuilder doesn't have from_builder on BlockingModel,
-      // so we create the runtime manually
-      let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| {
-          shlog_error!("Failed to create runtime: {}", e);
-          "Failed to create tokio runtime"
-        })?;
+      let rt = make_rt()?;
       let inner = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load GGUF model: {}", e);
         "Failed to load GGUF model"
       })?;
-      BlockingModel::new(inner, Arc::new(rt))
+      (BlockingModel::new(inner, rt.clone()), rt)
     } else {
       // Auto-detect path (safetensors from HuggingFace)
       let mut builder = ModelBuilder::new(model_id).with_logging();
@@ -304,13 +333,15 @@ impl Shard for ModelShard {
         ISQBitsEnum::Eight => { builder = builder.with_auto_isq(IsqBits::Eight); }
       }
 
-      BlockingModel::from_auto_builder(builder).map_err(|e| {
+      let rt = make_rt()?;
+      let inner = rt.block_on(builder.build()).map_err(|e| {
         shlog_error!("Failed to load model: {}", e);
         "Failed to load model"
-      })?
+      })?;
+      (BlockingModel::new(inner, rt.clone()), rt)
     };
 
-    self.output = Var::new_ref_counted(LLMModel(model), &*LLM_MODEL_TYPE).into();
+    self.output = Var::new_ref_counted(LLMModel { blocking, rt }, &*LLM_MODEL_TYPE).into();
     Ok(Some(self.output.0))
   }
 }
@@ -362,8 +393,8 @@ impl Shard for ChatShard {
   }
 
   fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
-    let _model =
-      unsafe { &*Var::from_ref_counted_object::<LLMModel>(input, &*LLM_MODEL_TYPE)? };
+    // Validate that input is a valid LLMModel
+    let _ = unsafe { &*Var::from_ref_counted_object::<LLMModel>(input, &*LLM_MODEL_TYPE)? };
 
     let chat = LLMChat {
       model_var: input.into(),
@@ -688,9 +719,9 @@ impl Shard for GenerateShard {
       .set_sampler_topp(top_p)
       .set_sampler_max_len(max_tokens as usize);
 
-    let model = chat.model()?;
+    let llm_model = chat.model()?;
 
-    let response: ChatCompletionResponse = model.send_chat_request(request).map_err(|e| {
+    let response: ChatCompletionResponse = llm_model.blocking.send_chat_request(request).map_err(|e| {
       shlog_error!("Failed to generate: {}", e);
       "Failed to generate response"
     })?;
@@ -760,5 +791,311 @@ impl Shard for ResetShard {
     };
     chat.messages.clear();
     Ok(Some(*input))
+  }
+}
+
+// --- Normalization helper ---
+
+fn normalize_embedding(embedding: &mut Vec<f32>, norm_type: i64) {
+  match norm_type {
+    -1 => {} // no normalization
+    0 => {
+      // max absolute value normalization
+      let max_abs = embedding.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
+      if max_abs > 0.0 {
+        for v in embedding.iter_mut() {
+          *v /= max_abs;
+        }
+      }
+    }
+    2 => {
+      // L2 (euclidean) normalization
+      let norm: f32 = embedding.iter().map(|v| v * v).sum::<f32>().sqrt();
+      if norm > 0.0 {
+        for v in embedding.iter_mut() {
+          *v /= norm;
+        }
+      }
+    }
+    p if p > 2 => {
+      // p-norm normalization
+      let p_f = p as f32;
+      let norm: f32 = embedding.iter().map(|v| v.abs().powf(p_f)).sum::<f32>().powf(1.0 / p_f);
+      if norm > 0.0 {
+        for v in embedding.iter_mut() {
+          *v /= norm;
+        }
+      }
+    }
+    _ => {} // unsupported, no normalization
+  }
+}
+
+// --- LLM.Embed ---
+
+lazy_static! {
+  static ref SEQ_OF_INT: Type = Type::seq(&INT_TYPES_VEC);
+  static ref EMBED_INPUT_TYPES: Types = vec![common_type::string, *SEQ_OF_INT];
+  static ref INT_TYPES_VEC: Vec<Type> = vec![common_type::int];
+}
+
+#[derive(shards::shard)]
+#[shard_info("LLM.Embed", "Generate embeddings from text or token IDs using an embedding model. The model must be loaded with Embedding: true.")]
+pub(crate) struct EmbedShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Model", "The embedding model.", [*LLM_MODEL_VAR_TYPE])]
+  model: ParamVar,
+
+  #[shard_param("Normalization", "Normalization type: -1 (none), 0 (max absolute), 2 (L2/euclidean), >2 (p-norm).", [common_type::int])]
+  normalization: ClonedVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for EmbedShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      model: ParamVar::default(),
+      normalization: (-1i64).into(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for EmbedShard {
+  fn input_types(&mut self) -> &Types {
+    &EMBED_INPUT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_FLOAT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    if self.model.is_none() {
+      return Err("Model parameter is required");
+    }
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let llm_model = unsafe {
+      &*Var::from_ref_counted_object::<LLMModel>(&self.model.get(), &*LLM_MODEL_TYPE)?
+    };
+
+    let norm_type: i64 = self.normalization.0.as_ref().try_into().unwrap_or(-1);
+
+    // Build embedding request — accept either text or token IDs
+    let request = if let Ok(text) = <&str>::try_from(input) {
+      EmbeddingRequest::builder().add_prompt(text)
+    } else if let Ok(seq) = SeqVar::try_from(input) {
+      let tokens: Vec<u32> = seq.iter()
+        .map(|v| {
+          let i: i64 = v.as_ref().try_into().unwrap_or(0);
+          i as u32
+        })
+        .collect();
+      EmbeddingRequest::builder().add_tokens(tokens)
+    } else {
+      return Err("Input must be a string or sequence of integers");
+    };
+
+    let embeddings = llm_model.rt.block_on(
+      llm_model.blocking.inner().generate_embeddings(request)
+    ).map_err(|e| {
+      shlog_error!("Failed to generate embedding: {}", e);
+      "Failed to generate embedding"
+    })?;
+
+    let mut embedding = embeddings.into_iter().next()
+      .ok_or("No embedding returned")?;
+
+    // Apply normalization
+    normalize_embedding(&mut embedding, norm_type);
+
+    // Convert Vec<f32> to sequence of floats
+    self.output.0.clear();
+    for val in embedding {
+      self.output.0.push(&(val as f64).into());
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+// --- LLM.Tokenize ---
+
+#[derive(shards::shard)]
+#[shard_info("LLM.Tokenize", "Tokenize text into token IDs using the model's tokenizer.")]
+pub(crate) struct TokenizeShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Model", "The model whose tokenizer to use.", [*LLM_MODEL_VAR_TYPE])]
+  model: ParamVar,
+
+  output: AutoSeqVar,
+}
+
+impl Default for TokenizeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      model: ParamVar::default(),
+      output: AutoSeqVar::new(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for TokenizeShard {
+  fn input_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &SEQ_OF_INT_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = AutoSeqVar::new();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    if self.model.is_none() {
+      return Err("Model parameter is required");
+    }
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let text: &str = input.try_into()?;
+
+    let llm_model = unsafe {
+      &*Var::from_ref_counted_object::<LLMModel>(&self.model.get(), &*LLM_MODEL_TYPE)?
+    };
+
+    let tokens = llm_model.rt.block_on(
+      llm_model.blocking.inner().tokenize(
+        Either::Right(text.to_string()),
+        None,   // tools
+        true,   // add_special_tokens
+        false,  // add_generation_prompt
+        None,   // enable_thinking
+      )
+    ).map_err(|e| {
+      shlog_error!("Failed to tokenize: {}", e);
+      "Failed to tokenize"
+    })?;
+
+    self.output.0.clear();
+    for token in tokens {
+      self.output.0.push(&(token as i64).into());
+    }
+
+    Ok(Some(self.output.0 .0))
+  }
+}
+
+// --- LLM.Detokenize ---
+
+#[derive(shards::shard)]
+#[shard_info("LLM.Detokenize", "Convert token IDs back to text using the model's tokenizer.")]
+pub(crate) struct DetokenizeShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Model", "The model whose tokenizer to use.", [*LLM_MODEL_VAR_TYPE])]
+  model: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for DetokenizeShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      model: ParamVar::default(),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for DetokenizeShard {
+  fn input_types(&mut self) -> &Types {
+    &SEQ_OF_INT_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    if self.model.is_none() {
+      return Err("Model parameter is required");
+    }
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, _context: &Context, input: &Var) -> Result<Option<Var>, &str> {
+    let seq: SeqVar = input.try_into()?;
+
+    let llm_model = unsafe {
+      &*Var::from_ref_counted_object::<LLMModel>(&self.model.get(), &*LLM_MODEL_TYPE)?
+    };
+
+    let tokens: Vec<u32> = seq.iter()
+      .map(|v| {
+        let i: i64 = v.as_ref().try_into().unwrap_or(0);
+        i as u32
+      })
+      .collect();
+
+    let text = llm_model.rt.block_on(
+      llm_model.blocking.inner().detokenize(tokens, true)
+    ).map_err(|e| {
+      shlog_error!("Failed to detokenize: {}", e);
+      "Failed to detokenize"
+    })?;
+
+    self.output = Var::ephemeral_string(&text).into();
+    Ok(Some(self.output.0))
   }
 }

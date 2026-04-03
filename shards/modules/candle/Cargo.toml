@@ -29,12 +29,13 @@ rand_distr = "0.4"
 
 image = { version = "0.25", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
+either = { version = "1", optional = true }
 serde_json = "1.0.136"
 once_cell = "1.20.2"
 
 [features]
 default = []
-llm = ["dep:mistralrs", "dep:image", "dep:tokio"]
+llm = ["dep:mistralrs", "dep:image", "dep:tokio", "dep:either"]
 metal = ["mistralrs?/metal", "candle-core/metal", "candle-transformers/metal", "candle-nn/metal"]
 cuda = ["mistralrs?/cuda", "candle-core/cuda", "candle-transformers/cuda", "candle-nn/cuda"]
 accelerate = ["mistralrs?/accelerate", "candle-core/accelerate", "candle-transformers/accelerate", "candle-nn/accelerate"]

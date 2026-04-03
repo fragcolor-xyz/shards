@@ -161,6 +161,7 @@ jobs:
           ./shards new ../shards/tests/llm.shs
           ./shards new ../shards/tests/llm-mistral.shs
           ./shards new ../shards/tests/llm-gguf.shs
+          ./shards new ../shards/tests/llm-embed.shs
           ./shards new ../shards/tests/stdio.shs <<< "Hello world"
           ./shards new ../shards/tests/jinja.shs
           ./shards new ../shards/tests/crdts.shs

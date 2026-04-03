@@ -69,6 +69,7 @@ Load any model from HuggingFace or local path. Auto-detects architecture.
 - `ISQ` — In-situ quantization (None/Two/Four/Eight). Only for auto-detect path.
 - `Files` — GGUF filename(s). Switches to GGUF loader.
 - `UQFF` — UQFF filename. Switches to UQFF loader (recommended for pre-quantized).
+- `Embedding` — When true, loads as an embedding model for use with LLM.Embed. Uses F32 dtype on CPU to avoid F16 NaN issues.
 
 **Loading paths:**
 1. **Auto-detect** (no Files/UQFF): Downloads safetensors from HF, auto-detects architecture, optionally applies ISQ. Slowest for first load but supports everything.
@@ -117,6 +118,16 @@ Clears chat message history.
 chat | LLM.Reset
 ```
 
+#### LLM.Embed
+Generate text embeddings using an embedding model. The model must be loaded with `Embedding: true`.
+
+```shards
+"google/embeddinggemma-300m" | LLM.Model(Embedding: true) = model
+"What is graphene?" | LLM.Embed(Model: model) ; outputs [Float] (768-dim for embeddinggemma-300m)
+```
+
+Supported embedding models include `google/embeddinggemma-300m`, `Qwen/Qwen3-Embedding-0.6B`, and any model supported by mistral.rs's `EmbeddingModelBuilder`. Uses F32 dtype on CPU to avoid F16 NaN issues.
+
 ### Internal Design Notes
 
 **BlockingModel lifetime:** The `BlockingModel` from mistral.rs owns a tokio runtime. It MUST NOT be created inside an existing tokio context (panics). Since shard `activate()` is always called from the C++ runtime's synchronous thread, this is safe. For GGUF/UQFF paths, we create the tokio runtime manually via `tokio::runtime::Builder` since `BlockingModel::from_builder` only accepts `TextModelBuilder`/`ModelBuilder`.
@@ -159,5 +170,6 @@ The Rust shards now override these names. The C++ module and its llama.cpp/whisp
 | `llm-gguf.shs` | Qwen3-0.6B (GGUF) | GGUF loading, text gen | Yes |
 | `llm-gemma4.shs` | Gemma 4 E2B (safetensors, gated) | Gated model + ISQ | No (needs HF_TOKEN) |
 | `llm-multimodal.shs` | Gemma 4 E2B UQFF (ungated) | Vision + multi-turn + reset | No (slow on CPU) |
+| `llm-embed.shs` | embeddinggemma-300m | Text embeddings (768-dim) | Yes |
 | `ml.shs` / `ml-test.shs` | BERT (safetensors) | Tensor ops, embeddings | Yes |
 | `whisper.shs` | (placeholder) | Audio transcription | No (needs audio model) |
