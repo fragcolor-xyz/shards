@@ -55,8 +55,8 @@ mistralrs-audio = { opt-level = 3 }
 mistralrs-vision = { opt-level = 3 }
 mistralrs-paged-attn = { opt-level = 3 }
 mistralrs-macros = { opt-level = 3 }
-toktrie = { opt-level = 3 }
-toktrie_hf_tokenizers = { opt-level = 3 }
+toktrie = { opt-level = 3, codegen-units = 1 }
+toktrie_hf_tokenizers = { opt-level = 3, codegen-units = 1 }
 log = { opt-level = 3 }
 
 # The profile settings are required to get reasonable performance
