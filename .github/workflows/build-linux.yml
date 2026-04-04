@@ -170,7 +170,6 @@ jobs:
           ./shards new ../shards/tests/geo.shs
           ./shards new ../shards/tests/ai-mistral.shs
           ./shards new ../shards/tests/ai-gguf.shs
-          ./shards new ../shards/tests/ai-embed.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

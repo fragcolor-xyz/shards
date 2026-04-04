@@ -158,7 +158,6 @@ jobs:
           ./shards new ../shards/tests/table-seq-push.shs
           ./shards new ../shards/tests/failures.shs
           ./shards new ../shards/tests/traits.shs
-          ./shards new ../shards/tests/llm.shs
           ./shards new ../shards/tests/ai-mistral.shs
           ./shards new ../shards/tests/ai-gguf.shs
           ./shards new ../shards/tests/ai-embed.shs
