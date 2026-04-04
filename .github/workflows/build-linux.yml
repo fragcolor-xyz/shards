@@ -65,7 +65,7 @@ jobs:
       - name: Set up dependencies
         run: |
           sudo apt-get -y update
-          sudo apt-get -y install build-essential git cmake wget clang ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev libclang-dev
+          sudo apt-get -y install build-essential git cmake wget clang lld ninja-build xorg-dev libdbus-1-dev libssl-dev lcov mesa-utils libgtk-3-dev libclang-dev
           RUSTUP_TOOLCHAIN=`cat rust.version`
           echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
           rustup toolchain install $RUSTUP_TOOLCHAIN
@@ -75,7 +75,7 @@ jobs:
           cd build
 
           if [ "${{ steps.setup.outputs.build-type }}" == "Debug" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DWITH_SQLITE_VEC=ON -DUSE_UBSAN=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DWITH_SQLITE_VEC=ON -DUSE_UBSAN=ON -DUSE_LLD=ON -DTRACY_ENABLE=ON -DTRACY_TIMER_FALLBACK=ON ..
           else
             cmake -G Ninja -DWITH_SQLITE_VEC=ON -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} -DCMAKE_BUILD_TYPE=Release ..
           fi
