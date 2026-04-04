@@ -82,7 +82,10 @@ impl From<DType> for TensorType {
       DType::F16 => TensorType::F16,
       DType::F32 => TensorType::F32,
       DType::F64 => TensorType::F64,
-      _ => TensorType::F32, // default for new dtypes added in newer candle versions
+      other => {
+        shards::shlog_warn!("Unsupported candle DType {:?}, defaulting to F32", other);
+        TensorType::F32
+      }
     }
   }
 }

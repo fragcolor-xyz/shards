@@ -16,6 +16,7 @@ use shards::ref_counted_object_type_impl;
 use shards::shard::Shard;
 use shards::shardsc::{SHImage, SHIMAGE_FLAGS_16BITS_INT, SHIMAGE_FLAGS_32BITS_FLOAT};
 use shards::shlog_error;
+use shards::shlog_warn;
 use shards::types::common_type;
 use shards::types::AutoSeqVar;
 use shards::types::ExposedTypes;
@@ -182,25 +183,40 @@ fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
   let flags = img.flags as u32;
 
   if flags & SHIMAGE_FLAGS_32BITS_FLOAT != 0 || flags & SHIMAGE_FLAGS_16BITS_INT != 0 {
-    return Err("Only 8-bit images are supported for LLM.AddImage");
+    return Err("Only 8-bit images are supported for AI.AddImage");
   }
 
-  let data_len = (w as usize) * (h as usize) * channels;
-  let data = unsafe { std::slice::from_raw_parts(img.data, data_len) };
+  let expected_stride = (w as usize) * channels;
+  let row_stride = img.rowStride as usize;
+  let has_padding = row_stride > 0 && row_stride != expected_stride;
+
+  let data = if has_padding {
+    // Copy row-by-row, stripping stride padding
+    let mut tight = Vec::with_capacity((h as usize) * expected_stride);
+    for y in 0..(h as usize) {
+      let row_start = y * row_stride;
+      let src = unsafe { std::slice::from_raw_parts(img.data.add(row_start), expected_stride) };
+      tight.extend_from_slice(src);
+    }
+    tight
+  } else {
+    let data_len = (h as usize) * expected_stride;
+    unsafe { std::slice::from_raw_parts(img.data, data_len) }.to_vec()
+  };
 
   match channels {
     3 => {
-      let buf = image::ImageBuffer::<image::Rgb<u8>, _>::from_raw(w, h, data.to_vec())
+      let buf = image::ImageBuffer::<image::Rgb<u8>, _>::from_raw(w, h, data)
         .ok_or("Failed to create RGB image buffer")?;
       Ok(DynamicImage::ImageRgb8(buf))
     }
     4 => {
-      let buf = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(w, h, data.to_vec())
+      let buf = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(w, h, data)
         .ok_or("Failed to create RGBA image buffer")?;
       Ok(DynamicImage::ImageRgba8(buf))
     }
     1 => {
-      let buf = image::ImageBuffer::<image::Luma<u8>, _>::from_raw(w, h, data.to_vec())
+      let buf = image::ImageBuffer::<image::Luma<u8>, _>::from_raw(w, h, data)
         .ok_or("Failed to create grayscale image buffer")?;
       Ok(DynamicImage::ImageLuma8(buf))
     }
@@ -208,7 +224,7 @@ fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
   }
 }
 
-// --- LLM.Model ---
+// --- AI.Model ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter. For embedding models, set Embedding: true.")]
@@ -225,7 +241,7 @@ pub(crate) struct ModelShard {
   #[shard_param("UQFF", "UQFF filename (e.g. 'q4k-0.uqff'). When set, loads pre-quantized UQFF model — no ISQ needed.", [common_type::string, common_type::none])]
   uqff: ClonedVar,
 
-  #[shard_param("Embedding", "When true, loads as an embedding model for use with LLM.Embed.", [common_type::bool])]
+  #[shard_param("Embedding", "When true, loads as an embedding model for use with AI.Embed.", [common_type::bool])]
   embedding: ClonedVar,
 
   output: ClonedVar,
@@ -279,59 +295,68 @@ impl Shard for ModelShard {
     let has_files = !self.files.0.is_none();
     let has_uqff = !self.uqff.0.is_none();
 
-    // Embedding + GGUF file → Quantized BERT path (candle native, synchronous, fast)
+    // Embedding + GGUF file → Quantized BERT path (candle native, loaded via run_future)
     if is_embedding && has_files {
-      let gguf_file: &str = self.files.0.as_ref().try_into()
+      let gguf_file: String = <&str>::try_from(self.files.0.as_ref())
+        .map(|s| s.to_string())
         .map_err(|_| "Files parameter must be a string for GGUF embedding models")?;
+      let model_id_owned = model_id.clone();
 
-      let device = crate::get_global_device();
+      let cancel_token = CancellationToken::new();
+      let cancel_clone = cancel_token.clone();
 
-      let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(gguf_file, device)
-        .map_err(|e| {
-          shlog_error!("Failed to load GGUF file: {}", e);
-          "Failed to load GGUF file"
-        })?;
+      let result = run_future(
+        context,
+        async move {
+          let runtime = TOKIO_RUNTIME.clone();
+          let task = {
+            let runtime = runtime.lock().unwrap();
+            runtime.spawn_blocking(move || {
+              let device = crate::get_global_device();
 
-      let mut reader = std::io::BufReader::new(std::fs::File::open(gguf_file).map_err(|e| {
-        shlog_error!("Failed to open GGUF file: {}", e);
-        "Failed to open GGUF file"
-      })?);
-      let content = candle_core::quantized::gguf_file::Content::read(&mut reader).map_err(|e| {
-        shlog_error!("Failed to read GGUF metadata: {}", e);
-        "Failed to read GGUF metadata"
+              let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(&gguf_file, device)
+                .map_err(|e| format!("Failed to load GGUF file: {}", e))?;
+
+              let mut reader = std::io::BufReader::new(
+                std::fs::File::open(&gguf_file)
+                  .map_err(|e| format!("Failed to open GGUF file: {}", e))?
+              );
+              let content = candle_core::quantized::gguf_file::Content::read(&mut reader)
+                .map_err(|e| format!("Failed to read GGUF metadata: {}", e))?;
+
+              let cfg = crate::quantized_bert::BertConfig::from_gguf_metadata(&content.metadata)
+                .map_err(|e| format!("Failed to parse BERT config from GGUF: {}", e))?;
+
+              let bert_model = crate::quantized_bert::QuantizedBertModel::load(&cfg, &vb)
+                .map_err(|e| format!("Failed to load quantized BERT model: {}", e))?;
+
+              let api = hf_hub::api::sync::Api::new()
+                .map_err(|e| format!("Failed to create HuggingFace API: {}", e))?;
+              let repo = api.model(model_id_owned);
+              let tokenizer_path = repo.get("tokenizer.json")
+                .map_err(|e| format!("Failed to download tokenizer.json: {}", e))?;
+              let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
+                .map_err(|e| format!("Failed to load tokenizer: {}", e))?;
+
+              let inner = LLMModelInner::QuantizedBert {
+                model: bert_model,
+                tokenizer,
+              };
+              Ok::<_, String>(Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE))
+            })
+          };
+          let var = task.await
+            .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+            .map_err(|e| FastError::from(e))?;
+          Ok::<ClonedVar, FastError>(var.into())
+        },
+        || { cancel_clone.cancel(); },
+      ).map_err(|e| {
+        shlog_error!("Failed to load quantized BERT: {}", e);
+        "Failed to load quantized BERT model"
       })?;
 
-      let cfg = crate::quantized_bert::BertConfig::from_gguf_metadata(&content.metadata)
-        .map_err(|e| {
-          shlog_error!("Failed to parse BERT config from GGUF: {}", e);
-          "Failed to parse BERT config from GGUF"
-        })?;
-
-      let bert_model = crate::quantized_bert::QuantizedBertModel::load(&cfg, &vb)
-        .map_err(|e| {
-          shlog_error!("Failed to load quantized BERT: {}", e);
-          "Failed to load quantized BERT model"
-        })?;
-
-      let api = hf_hub::api::sync::Api::new().map_err(|e| {
-        shlog_error!("Failed to create HF API: {}", e);
-        "Failed to create HuggingFace API"
-      })?;
-      let repo = api.model(model_id.to_string());
-      let tokenizer_path = repo.get("tokenizer.json").map_err(|e| {
-        shlog_error!("Failed to download tokenizer: {}", e);
-        "Failed to download tokenizer.json"
-      })?;
-      let tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path).map_err(|e| {
-        shlog_error!("Failed to load tokenizer: {}", e);
-        "Failed to load tokenizer"
-      })?;
-
-      let inner = LLMModelInner::QuantizedBert {
-        model: bert_model,
-        tokenizer,
-      };
-      self.output = Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE).into();
+      self.output = result;
       return Ok(Some(self.output.0));
     }
 
@@ -416,7 +441,7 @@ impl Shard for ModelShard {
   }
 }
 
-// --- LLM.Chat ---
+// --- AI.Chat ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Chat", "Create a chat session from a loaded model.")]
@@ -476,7 +501,7 @@ impl Shard for ChatShard {
   }
 }
 
-// --- LLM.AddText ---
+// --- AI.AddText ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.AddText", "Add a text message to a chat session.")]
@@ -545,7 +570,7 @@ impl Shard for AddTextShard {
   }
 }
 
-// --- LLM.AddImage ---
+// --- AI.AddImage ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.AddImage", "Add an image to a chat session. Requires a vision-capable model.")]
@@ -623,7 +648,7 @@ impl Shard for AddImageShard {
   }
 }
 
-// --- LLM.AddAudio ---
+// --- AI.AddAudio ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.AddAudio", "Add audio samples to a chat session. Requires an audio-capable model (e.g. Gemma 4 E2B/E4B).")]
@@ -715,7 +740,7 @@ impl Shard for AddAudioShard {
   }
 }
 
-// --- LLM.Generate ---
+// --- AI.Generate ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Generate", "Generate a response from a chat session. Appends assistant reply to history.")]
@@ -836,7 +861,7 @@ impl Shard for GenerateShard {
   }
 }
 
-// --- LLM.Reset ---
+// --- AI.Reset ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Reset", "Clear all message history from a chat session.")]
@@ -901,6 +926,15 @@ fn normalize_embedding(embedding: &mut Vec<f32>, norm_type: i64) {
         }
       }
     }
+    1 => {
+      // L1 (Manhattan) normalization
+      let norm: f32 = embedding.iter().map(|v| v.abs()).sum();
+      if norm > 0.0 {
+        for v in embedding.iter_mut() {
+          *v /= norm;
+        }
+      }
+    }
     2 => {
       // L2 (euclidean) normalization
       let norm: f32 = embedding.iter().map(|v| v * v).sum::<f32>().sqrt();
@@ -920,11 +954,13 @@ fn normalize_embedding(embedding: &mut Vec<f32>, norm_type: i64) {
         }
       }
     }
-    _ => {} // unsupported, no normalization
+    other => {
+      shlog_warn!("Unsupported normalization type {}, skipping normalization", other);
+    }
   }
 }
 
-// --- LLM.Embed ---
+// --- AI.Embed ---
 
 lazy_static! {
   static ref SEQ_OF_INT: Type = Type::seq(&INT_TYPES_VEC);
@@ -1096,7 +1132,7 @@ impl Shard for EmbedShard {
   }
 }
 
-// --- LLM.Tokenize ---
+// --- AI.Tokenize ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Tokenize", "Tokenize text into token IDs using the model's tokenizer.")]
@@ -1209,7 +1245,7 @@ impl Shard for TokenizeShard {
   }
 }
 
-// --- LLM.Detokenize ---
+// --- AI.Detokenize ---
 
 #[derive(shards::shard)]
 #[shard_info("AI.Detokenize", "Convert token IDs back to text using the model's tokenizer.")]

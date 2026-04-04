@@ -10,7 +10,7 @@ This module provides all ML/AI inference shards. It combines two subsystems:
 ### Dependencies
 
 ```
-mistralrs 0.8.1          — LLM inference engine (BlockingModel API)
+mistralrs 0.8.1          — LLM inference engine (async Model API)
 candle-core 0.10.2       — tensor operations (same version mistral.rs uses internally)
 candle-nn 0.10.2         — neural network layers (for BERT)
 candle-transformers 0.10.2 — pre-built model architectures (BERT)
@@ -46,7 +46,7 @@ Features flow from CMakeLists.txt → Cargo via `add_rust_library(... FEATURES .
 
 ### Object Types
 
-- **`LLMModel`** (fourCC: `aiMD`) — wraps `mistralrs::blocking::BlockingModel`. The BlockingModel owns its own tokio runtime internally. Stored as ref-counted object.
+- **`LLMModel`** (fourCC: `aiMD`) — wraps `Arc<mistralrs::Model>`. The Model is used via `run_future` + `TOKIO_RUNTIME` for async inference. Stored as ref-counted object.
 - **`LLMChat`** (fourCC: `aiCH`) — wraps a model reference + message history (`Vec<ChatMessage>`). The model reference is a `ClonedVar` that properly maintains the LLMModel's refcount via `cloneVar`/`destroyVar`.
 
 ### Shards
@@ -182,7 +182,7 @@ let result = run_future(context, async move {
 ### Model Compatibility
 - **GGUF architecture support is limited in mistral.rs 0.8.1.** Only: Llama, Qwen2, Qwen3, Phi2, Phi3, Starcoder2, Mistral3, Mamba, Falcon, etc. No Gemma in GGUF. Use safetensors auto-detect or UQFF for Gemma.
 - **Gated models require HF token.** Google Gemma 4 is gated. Set `HF_TOKEN` env var or run `hf login`. The `mistralrs-community/*-UQFF` variants are ungated.
-- **Embeddings are async-only in mistral.rs.** `BlockingModel` doesn't expose `generate_embeddings`. An `AI.Embed` shard would need to access the inner async model via `inner()` and `rt.block_on()`.
+- **Embeddings use the async Model.** `AI.Embed` calls `model.generate_embeddings()` via `run_future` + `TOKIO_RUNTIME`, consistent with all other inference shards.
 
 ### visionOS Metal Support
 candle 0.10.2 uses `objc2-metal` which supports visionOS, but needs cfg condition patches:
@@ -190,13 +190,12 @@ candle 0.10.2 uses `objc2-metal` which supports visionOS, but needs cfg conditio
 - Until merged, fork mistral.rs or cherry-pick the ~10-line fix
 - Remove `-DDISABLE_CANDLE_METAL=ON` from `.github/workflows/build-ios.yml` visionOS build after fix
 
-### C++ LLM Module (Disabled)
-The old C++ module at `shards/modules/llm/` is disabled but not deleted. It provided:
-- `AI.Model`, `AI.Chat`, `AI.AddText`, `AI.AddImage`, `AI.Generate` (via llama.cpp)
+### C++ LLM Module (Re-enabled)
+The C++ module at `shards/modules/llm/` has been re-enabled, gated on `LLM_ENABLED`. It provides:
+- `LLM.Context`, `LLM.Chat`, `LLM.Generate` (via llama.cpp, with Vulkan GPU support)
 - `Whisper.Load`, `Whisper.Transcribe` (via whisper.cpp)
-- `LLM.Context`, `AI.Embed`, `AI.Tokenize`, `AI.Detokenize`
 
-The Rust shards now override these names. The C++ module and its llama.cpp/whisper.cpp deps in `deps/CMakeLists.txt` are both disabled via `if(FALSE ...)` guards. Delete entirely once the Rust shards reach full parity.
+The Rust `AI.*` shards (mistral.rs) and C++ `LLM.*` shards (llama.cpp) coexist as a three-tier architecture: AI.* for broad model support, LLM.* for Vulkan GPU acceleration, ML.* for tensor ops.
 
 ## Test Files
 
