@@ -31,14 +31,17 @@ metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.
 
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 
+[profile.dev.package."*"]
+opt-level = 1
+
 [profile.dev.package]
-tiny-skia = { opt-level = 3 } 
+tiny-skia = { opt-level = 3 }
 resvg = { opt-level = 3 }
 usvg = { opt-level = 3 }
 shards-lang = { opt-level = 3 }
 shards-langffi = { opt-level = 3 }
-pest = { opt-level = 3, debug-assertions = false }  # This will apply to all profiles
-pest_derive = { opt-level = 3, debug-assertions = false }  # This will apply to all profiles
+pest = { opt-level = 3, debug-assertions = false }
+pest_derive = { opt-level = 3, debug-assertions = false }
 syntect = { opt-level = 3 }
 flate2 = { opt-level = 3 }
 bincode = { opt-level = 3 }
@@ -54,9 +57,8 @@ mistralrs-quant = { opt-level = 3 }
 mistralrs-audio = { opt-level = 3 }
 mistralrs-vision = { opt-level = 3 }
 mistralrs-paged-attn = { opt-level = 3 }
-mistralrs-macros = { opt-level = 3 }
-toktrie = { opt-level = 3, codegen-units = 1 }
-toktrie_hf_tokenizers = { opt-level = 3, codegen-units = 1 }
+toktrie = { opt-level = 3 }
+toktrie_hf_tokenizers = { opt-level = 3 }
 log = { opt-level = 3 }
 
 # The profile settings are required to get reasonable performance
