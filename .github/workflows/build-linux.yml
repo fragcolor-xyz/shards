@@ -19,10 +19,8 @@ on:
         default: Debug
         type: string
 
-# Required for <compare> and <=> support
-env:
-  CC: gcc-13
-  CXX: g++-13
+# Ubuntu 24.04 default gcc (13) supports <compare> and <=> natively
+# No CC/CXX override needed
 
 jobs:
   #
