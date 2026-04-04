@@ -6,14 +6,14 @@
 
 @wire(gemma4-test {
   "google/gemma-4-E2B-it"
-  LLM.Model(ISQ: ISQBits::Four) = model
+  AI.Model(ISQ: ISQBits::Four) = model
   Log("Gemma 4 E2B loaded")
 
-  model | LLM.Chat = chat
+  model | AI.Chat = chat
 
-  "What is the capital of Japan? Answer in one word." | LLM.AddText(Chat: chat)
+  "What is the capital of Japan? Answer in one word." | AI.AddText(Chat: chat)
 
-  chat | LLM.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
 })
 
 @schedule(main gemma4-test)

@@ -5,14 +5,14 @@
 
 @wire(gguf-test {
   "unsloth/Qwen3-0.6B-GGUF"
-  LLM.Model(Files: "Qwen3-0.6B-Q4_K_M.gguf") = model
+  AI.Model(Files: "Qwen3-0.6B-Q4_K_M.gguf") = model
   Log("GGUF model loaded")
 
-  model | LLM.Chat = chat
+  model | AI.Chat = chat
 
-  "What is 2 + 2? Answer briefly." | LLM.AddText(Chat: chat)
+  "What is 2 + 2? Answer briefly." | AI.AddText(Chat: chat)
 
-  chat | LLM.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
 })
 
 @schedule(main gguf-test)

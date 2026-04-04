@@ -7,20 +7,20 @@
 @wire(audio-test {
   ; Load Gemma 4 E2B pre-quantized UQFF (supports text, vision, audio)
   "mistralrs-community/gemma-4-E2B-it-UQFF"
-  LLM.Model(UQFF: "q4k-0.uqff") = model
+  AI.Model(UQFF: "q4k-0.uqff") = model
   Log("Model loaded")
 
-  model | LLM.Chat = chat
+  model | AI.Chat = chat
 
   ; Read entire WAV file as raw float32 bytes, convert to float sequence
   "./data/samples_jfk.wav" | Audio.ReadFileBytes(SampleRate: 16000 Channels: 1)
   | BytesToAudio(SampleRate: 16000 Channels: 1) | AudioToFloats
 
   ; Add audio with transcription prompt
-  | LLM.AddAudio(Chat: chat Text: "Transcribe this audio." SampleRate: 16000)
+  | AI.AddAudio(Chat: chat Text: "Transcribe this audio." SampleRate: 16000)
 
   ; Generate transcription
-  chat | LLM.Generate(Temperature: 0.0 MaxTokens: 128) | Log("Transcription")
+  chat | AI.Generate(Temperature: 0.0 MaxTokens: 128) | Log("Transcription")
 })
 
 @schedule(main audio-test)

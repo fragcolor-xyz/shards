@@ -1,33 +1,33 @@
-; Test: LLM.Embed, LLM.Tokenize, LLM.Detokenize via mistral.rs
+; Test: AI.Embed, AI.Tokenize, AI.Detokenize via mistral.rs
 ; Uses a small embedding model from HuggingFace
 
 @mesh(main)
 
 @wire(embed-test {
   ; Load a small embedding model
-  "google/embeddinggemma-300m" | LLM.Model(Embedding: true) = model
+  "google/embeddinggemma-300m" | AI.Model(Embedding: true) = model
   Log("Embedding model loaded")
 
   ; --- Text embedding ---
-  "What is the capital of France?" | LLM.Embed(Model: model) = embedding
+  "What is the capital of France?" | AI.Embed(Model: model) = embedding
   embedding | Count | Log("Embedding dimensions")
   embedding | Count | Assert.Is(768)
 
   ; --- L2 normalized embedding ---
-  "What is the capital of France?" | LLM.Embed(Model: model Normalization: 2) = norm-embedding
+  "What is the capital of France?" | AI.Embed(Model: model Normalization: 2) = norm-embedding
   norm-embedding | Count | Assert.Is(768)
 
   ; --- Tokenize ---
-  "Hello world" | LLM.Tokenize(Model: model) = tokens
+  "Hello world" | AI.Tokenize(Model: model) = tokens
   tokens | Count | Log("Token count")
   tokens | Count | Assert.IsNot(0)
 
   ; --- Embed from tokens ---
-  tokens | LLM.Embed(Model: model Normalization: 2) = token-embedding
+  tokens | AI.Embed(Model: model Normalization: 2) = token-embedding
   token-embedding | Count | Assert.Is(768)
 
   ; --- Detokenize ---
-  tokens | LLM.Detokenize(Model: model) | Log("Detokenized")
+  tokens | AI.Detokenize(Model: model) | Log("Detokenized")
 })
 
 @schedule(main embed-test)

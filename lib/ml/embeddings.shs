@@ -5,27 +5,21 @@
 @define(ml/embeddings/size 768)
 @define(ml/embeddings/model-id "google/embeddinggemma-300m")
 
-@wire(ml/embeddings/load {
-  @ml/embeddings/model-id | LLM.Model(Embedding: true) = ml/embeddings/model
-  ml/embeddings/model
-} Pure: true)
-
 @define(ml/embeddings/prepare {
   Once({
     Msg("Loading embeddings model...")
-    Detach(ml/embeddings/load)
-    Wait(ml/embeddings/load)
+    @ml/embeddings/model-id | AI.Model(Embedding: true) >= ml/embeddings/model
   })
 })
 
 @wire(ml/embed/activate {
   ; Embed token IDs with L2 normalization
-  LLM.Embed(Model: ml/embeddings/model Normalization: 2)
+  AI.Embed(Model: ml/embeddings/model Normalization: 2)
 })
 
 @wire(ml/embed {
   Await({
-    LLM.Tokenize(Model: ml/embeddings/model) = tokens
+    AI.Tokenize(Model: ml/embeddings/model) = tokens
     Count(tokens)
     If(IsMore(@ml/embeddings/max-tokens) {
         = num-tokens

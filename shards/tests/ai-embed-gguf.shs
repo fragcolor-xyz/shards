@@ -5,21 +5,21 @@
 
 @wire(embed-gguf-test {
   ; Load quantized BERT from GGUF + tokenizer from HF
-  "intfloat/e5-small-v2" | LLM.Model(Embedding: true Files: "/tmp/e5-test/e5-small-v2.Q5_K_M.gguf") = model
+  "intfloat/e5-small-v2" | AI.Model(Embedding: true Files: "/tmp/e5-test/e5-small-v2.Q5_K_M.gguf") = model
   Log("GGUF BERT model loaded")
 
   ; Generate embedding
-  "What is the capital of France?" | LLM.Embed(Model: model Normalization: 2) = embedding
+  "What is the capital of France?" | AI.Embed(Model: model Normalization: 2) = embedding
   embedding | Count | Log("Embedding dimensions")
   embedding | Count | Assert.Is(384)
 
   ; Tokenize
-  "Hello world" | LLM.Tokenize(Model: model) = tokens
+  "Hello world" | AI.Tokenize(Model: model) = tokens
   tokens | Count | Log("Token count")
   tokens | Count | Assert.IsNot(0)
 
   ; Detokenize
-  tokens | LLM.Detokenize(Model: model) | Log("Detokenized")
+  tokens | AI.Detokenize(Model: model) | Log("Detokenized")
 })
 
 @schedule(main embed-gguf-test)

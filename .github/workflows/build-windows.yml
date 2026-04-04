@@ -310,12 +310,12 @@ jobs:
           ./shards new ../shards/tests/traits.shs
           echo "Running llm"
           ./shards new ../shards/tests/llm.shs
-          echo "Running llm-mistral"
-          ./shards new ../shards/tests/llm-mistral.shs
-          echo "Running llm-gguf"
-          ./shards new ../shards/tests/llm-gguf.shs
-          echo "Running llm-embed"
-          ./shards new ../shards/tests/llm-embed.shs
+          echo "Running ai-mistral"
+          ./shards new ../shards/tests/ai-mistral.shs
+          echo "Running ai-gguf"
+          ./shards new ../shards/tests/ai-gguf.shs
+          echo "Running ai-embed"
+          ./shards new ../shards/tests/ai-embed.shs
           echo "Running jinja"
           ./shards new ../shards/tests/jinja.shs
           echo "Running crdts"

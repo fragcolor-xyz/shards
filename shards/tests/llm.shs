@@ -1,11 +1,41 @@
-; Old llama.cpp embedding tests — disabled after migration to mistral.rs.
-; The embeddings library (lib/ml/embeddings.shs) depends on LLM.Context/LLM.Embed/LLM.Tokenize
-; which were provided by the C++ llama.cpp module, now replaced by Rust mistral.rs shards.
-; See llm-mistral.shs and llm-gguf.shs for the new LLM tests.
+; Test: LLM shards (llama.cpp C++ module)
+; Downloads Qwen3-0.6B GGUF via huggingface — same model used by ai-gguf.shs
+; The model is cached after first download.
+
+@define(gguf-model-id "unsloth/Qwen3-0.6B-GGUF" IgnoreRedefined: true)
+@define(gguf-filename "Qwen3-0.6B-Q4_K_M.gguf" IgnoreRedefined: true)
 
 @mesh(main)
-@wire(llm-placeholder {
-  Msg("llm.shs: skipped — old embedding pipeline disabled, see llm-mistral.shs / llm-gguf.shs")
+
+@wire(llm-test {
+  ; Download/resolve GGUF to local cache path
+  "" | Process.Run("hf" ["download" @gguf-model-id @gguf-filename]) | String.Trim = gguf-path
+  gguf-path | Log("GGUF path")
+
+  ; Load model via llama.cpp
+  gguf-path | LLM.Model(UseMmap: true GPULayers: 0) = model
+  Log("LLM model loaded")
+
+  model | LLM.Chat(ContextSize: 512) = chat
+
+  ; Simple generation test
+  "<|im_start|>user\nWhat is 2+2? Answer with just the number. /no_think<|im_end|>\n<|im_start|>assistant\n"
+  LLM.AddText(Chat: chat NeedLogits: true)
+
+  chat | LLM.Generate(Temperature: 0.0) = response
+  response | Log("LLM Response")
+  response | Count | Assert.IsNot(0 true)
+
+  ; Test reset and second generation
+  chat | LLM.Reset
+
+  "<|im_start|>user\nSay hello. /no_think<|im_end|>\n<|im_start|>assistant\n"
+  LLM.AddText(Chat: chat NeedLogits: true)
+
+  chat | LLM.Generate(Temperature: 0.0) = response2
+  response2 | Log("LLM Response 2")
+  response2 | Count | Assert.IsNot(0 true)
 })
-@schedule(main llm-placeholder)
+
+@schedule(main llm-test)
 @run(main) | Assert.Is(true)

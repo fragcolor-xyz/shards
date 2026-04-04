@@ -168,9 +168,9 @@ jobs:
           ./shards new ../shards/tests/crdt-benchmarks.shs
           ./shards new ../shards/tests/localshell.shs
           ./shards new ../shards/tests/geo.shs
-          ./shards new ../shards/tests/llm-mistral.shs
-          ./shards new ../shards/tests/llm-gguf.shs
-          ./shards new ../shards/tests/llm-embed.shs
+          ./shards new ../shards/tests/ai-mistral.shs
+          ./shards new ../shards/tests/ai-gguf.shs
+          ./shards new ../shards/tests/ai-embed.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

@@ -211,7 +211,7 @@ fn sh_image_to_dynamic(img: &SHImage) -> Result<DynamicImage, &'static str> {
 // --- LLM.Model ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter. For embedding models, set Embedding: true.")]
+#[shard_info("AI.Model", "Load a model via mistral.rs. Accepts a HuggingFace model ID or local path. Auto-detects architecture. For GGUF models, set the Files parameter. For embedding models, set Embedding: true.")]
 pub(crate) struct ModelShard {
   #[shard_required]
   required: ExposedTypes,
@@ -419,7 +419,7 @@ impl Shard for ModelShard {
 // --- LLM.Chat ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Chat", "Create a chat session from a loaded model.")]
+#[shard_info("AI.Chat", "Create a chat session from a loaded model.")]
 pub(crate) struct ChatShard {
   #[shard_required]
   required: ExposedTypes,
@@ -479,7 +479,7 @@ impl Shard for ChatShard {
 // --- LLM.AddText ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.AddText", "Add a text message to a chat session.")]
+#[shard_info("AI.AddText", "Add a text message to a chat session.")]
 pub(crate) struct AddTextShard {
   #[shard_required]
   required: ExposedTypes,
@@ -548,7 +548,7 @@ impl Shard for AddTextShard {
 // --- LLM.AddImage ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.AddImage", "Add an image to a chat session. Requires a vision-capable model.")]
+#[shard_info("AI.AddImage", "Add an image to a chat session. Requires a vision-capable model.")]
 pub(crate) struct AddImageShard {
   #[shard_required]
   required: ExposedTypes,
@@ -626,7 +626,7 @@ impl Shard for AddImageShard {
 // --- LLM.AddAudio ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.AddAudio", "Add audio samples to a chat session. Requires an audio-capable model (e.g. Gemma 4 E2B/E4B).")]
+#[shard_info("AI.AddAudio", "Add audio samples to a chat session. Requires an audio-capable model (e.g. Gemma 4 E2B/E4B).")]
 pub(crate) struct AddAudioShard {
   #[shard_required]
   required: ExposedTypes,
@@ -718,7 +718,7 @@ impl Shard for AddAudioShard {
 // --- LLM.Generate ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Generate", "Generate a response from a chat session. Appends assistant reply to history.")]
+#[shard_info("AI.Generate", "Generate a response from a chat session. Appends assistant reply to history.")]
 pub(crate) struct GenerateShard {
   #[shard_required]
   required: ExposedTypes,
@@ -839,7 +839,7 @@ impl Shard for GenerateShard {
 // --- LLM.Reset ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Reset", "Clear all message history from a chat session.")]
+#[shard_info("AI.Reset", "Clear all message history from a chat session.")]
 pub(crate) struct ResetShard {
   #[shard_required]
   required: ExposedTypes,
@@ -933,7 +933,7 @@ lazy_static! {
 }
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Embed", "Generate embeddings from text or token IDs using an embedding model. The model must be loaded with Embedding: true.")]
+#[shard_info("AI.Embed", "Generate embeddings from text or token IDs using an embedding model. The model must be loaded with Embedding: true.")]
 pub(crate) struct EmbedShard {
   #[shard_required]
   required: ExposedTypes,
@@ -1014,8 +1014,10 @@ impl Shard for EmbedShard {
         let model = model.clone();
         let cancel_token = CancellationToken::new();
         let cancel_clone = cancel_token.clone();
+        let result_holder: Arc<Mutex<Option<Vec<f32>>>> = Arc::new(Mutex::new(None));
+        let holder = result_holder.clone();
 
-        let result = run_future(
+        run_future(
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
@@ -1031,10 +1033,8 @@ impl Shard for EmbedShard {
               .map_err(|e| FastError::from(e))?;
             let emb = embeddings.into_iter().next()
               .ok_or_else(|| FastError::from("No embedding returned"))?;
-            // Pack as JSON-like string to pass through ClonedVar
-            let json = serde_json::to_string(&emb)
-              .map_err(|e| FastError::from(format!("Serialization error: {}", e)))?;
-            Ok::<ClonedVar, FastError>(Var::ephemeral_string(&json).into())
+            *holder.lock().unwrap() = Some(emb);
+            Ok::<ClonedVar, FastError>(Var::default().into())
           },
           || { cancel_clone.cancel(); },
         ).map_err(|e| {
@@ -1042,11 +1042,8 @@ impl Shard for EmbedShard {
           "Failed to generate embedding"
         })?;
 
-        // Deserialize back from JSON string
-        let json_str: &str = result.0.as_ref().try_into()
-          .map_err(|_| "Failed to read embedding result")?;
-        serde_json::from_str::<Vec<f32>>(json_str)
-          .map_err(|_| "Failed to deserialize embedding")?
+        let emb = result_holder.lock().unwrap().take();
+        emb.ok_or("No embedding result")?
       }
       LLMModelInner::QuantizedBert { model, tokenizer } => {
         // For quantized BERT, we tokenize and run the model directly
@@ -1102,7 +1099,7 @@ impl Shard for EmbedShard {
 // --- LLM.Tokenize ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Tokenize", "Tokenize text into token IDs using the model's tokenizer.")]
+#[shard_info("AI.Tokenize", "Tokenize text into token IDs using the model's tokenizer.")]
 pub(crate) struct TokenizeShard {
   #[shard_required]
   required: ExposedTypes,
@@ -1165,8 +1162,10 @@ impl Shard for TokenizeShard {
         let text_owned = text.to_string();
         let cancel_token = CancellationToken::new();
         let cancel_clone = cancel_token.clone();
+        let result_holder: Arc<Mutex<Option<Vec<u32>>>> = Arc::new(Mutex::new(None));
+        let holder = result_holder.clone();
 
-        let result = run_future(
+        run_future(
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
@@ -1180,9 +1179,8 @@ impl Shard for TokenizeShard {
             let tokens = task.await
               .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
               .map_err(|e| FastError::from(e))?;
-            let json = serde_json::to_string(&tokens)
-              .map_err(|e| FastError::from(format!("Serialization error: {}", e)))?;
-            Ok::<ClonedVar, FastError>(Var::ephemeral_string(&json).into())
+            *holder.lock().unwrap() = Some(tokens);
+            Ok::<ClonedVar, FastError>(Var::default().into())
           },
           || { cancel_clone.cancel(); },
         ).map_err(|e| {
@@ -1190,10 +1188,8 @@ impl Shard for TokenizeShard {
           "Failed to tokenize"
         })?;
 
-        let json_str: &str = result.0.as_ref().try_into()
-          .map_err(|_| "Failed to read tokenize result")?;
-        serde_json::from_str::<Vec<u32>>(json_str)
-          .map_err(|_| "Failed to deserialize tokens")?
+        let toks = result_holder.lock().unwrap().take();
+        toks.ok_or("No tokenize result")?
       }
       LLMModelInner::QuantizedBert { tokenizer, .. } => {
         let encoding = tokenizer.encode(text, true).map_err(|e| {
@@ -1216,7 +1212,7 @@ impl Shard for TokenizeShard {
 // --- LLM.Detokenize ---
 
 #[derive(shards::shard)]
-#[shard_info("LLM.Detokenize", "Convert token IDs back to text using the model's tokenizer.")]
+#[shard_info("AI.Detokenize", "Convert token IDs back to text using the model's tokenizer.")]
 pub(crate) struct DetokenizeShard {
   #[shard_required]
   required: ExposedTypes,

@@ -1,12 +1,11 @@
-; Test: Audio transcription via mistral.rs
-; Currently disabled: no small audio-capable model available for testing.
-; Requires a multimodal LLM with audio encoder (e.g. Gemma 4 E2B/E4B).
-; See llm-audio.shs for the working test with Gemma 4 E2B.
+; Test: Whisper audio transcription (llama.cpp C++ module)
+; Requires a whisper GGUF model — not available in CI.
+; To run locally: download ggml-tiny.bin from huggingface.co/ggerganov/whisper.cpp
 
 @mesh(main)
 
 @wire(whisper-test {
-  Msg("whisper.shs: skipped — no suitable small audio model available")
+  Msg("whisper.shs: skipped — requires whisper model download")
 })
 
 @schedule(main whisper-test)
