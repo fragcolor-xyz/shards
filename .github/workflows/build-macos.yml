@@ -160,7 +160,7 @@ jobs:
           ./shards new ../shards/tests/traits.shs
           ./shards new ../shards/tests/ai-mistral.shs
           ./shards new ../shards/tests/ai-gguf.shs
-          ./shards new ../shards/tests/ai-embed.shs
+          # ai-embed.shs skipped: embeddinggemma-300m is gated, needs HF_TOKEN
           ./shards new ../shards/tests/stdio.shs <<< "Hello world"
           ./shards new ../shards/tests/jinja.shs
           ./shards new ../shards/tests/crdts.shs

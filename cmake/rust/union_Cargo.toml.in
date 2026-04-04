@@ -53,6 +53,8 @@ mistralrs-core = { opt-level = 3 }
 mistralrs-quant = { opt-level = 3 }
 mistralrs-audio = { opt-level = 3 }
 mistralrs-vision = { opt-level = 3 }
+mistralrs-paged-attn = { opt-level = 3 }
+mistralrs-macros = { opt-level = 3 }
 toktrie = { opt-level = 3 }
 toktrie_hf_tokenizers = { opt-level = 3 }
 log = { opt-level = 3 }
