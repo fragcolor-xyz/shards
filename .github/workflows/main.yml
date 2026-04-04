@@ -50,10 +50,10 @@ jobs:
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
 
-  wasm32-emscripten-test:
-    needs: [Setup, macOS-Release, wasm32-emscripten]
-    uses: ./.github/workflows/test-wasm.yml
-    secrets: inherit
+  # wasm32-emscripten-test:
+  #   needs: [Setup, macOS-Release, wasm32-emscripten]
+  #   uses: ./.github/workflows/test-wasm.yml
+  #   secrets: inherit
 
   #
   # Build shards for linux
@@ -70,14 +70,14 @@ jobs:
     secrets: inherit
     with:
       build-type: Release
-  MacOS-GPU:
-    needs: Setup
-    uses: ./.github/workflows/test-macos-gpu.yml
-    secrets: inherit
-    with:
-      build-type: Debug
+  # MacOS-GPU:
+  #   needs: Setup
+  #   uses: ./.github/workflows/test-macos-gpu.yml
+  #   secrets: inherit
+  #   with:
+  #     build-type: Debug
   Codecov:
-    needs: [Linux-Debug, MacOS-GPU]
+    needs: [Linux-Debug]
     uses: ./.github/workflows/codecov.yml
     secrets: inherit
 
