@@ -47,8 +47,8 @@ TEST_CASE("Naga Basic", "[naga]") {
               .struct_ =
                   TypeInner::Struct_Body{
                       .members = outStructMembers.data(),
-                      .span = sizeof(float) * 4 * 2,
                       .members_len = uint32_t(outStructMembers.size()),
+                      .span = sizeof(float) * 4 * 2,
                   },
           },
   };
