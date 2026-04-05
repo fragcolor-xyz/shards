@@ -33,7 +33,7 @@ jobs:
   #
   MacOS:
     name: Test (${{ github.event.inputs.build-type || inputs.build-type }})
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Setup
         id: setup
@@ -181,7 +181,7 @@ jobs:
             --output-file coverage/coverage-macos-gpu.info \
             --ignore-errors inconsistent,gcov,range,format
           # convert absolute path to relative path
-          sed -i '' -e "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
+          sed -i "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
 
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
