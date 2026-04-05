@@ -22,10 +22,10 @@ candle-core = "0.10.2"
 candle-nn = "0.10.2"
 candle-transformers = "0.10.2"
 
-rand = { version = "0.8", default-features = false, features = ["std_rng"] }
+rand = { version = "0.9", default-features = false, features = ["std_rng"] }
 anyhow = "1.0.80"
 ndarray = "0.15"
-rand_distr = "0.4"
+rand_distr = "0.5"
 
 image = { version = "0.25", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }

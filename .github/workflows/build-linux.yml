@@ -205,12 +205,12 @@ jobs:
           # capture
           lcov \
             --capture \
-            --ignore-errors negative \
+            --ignore-errors negative,mismatch \
             --directory build/src \
             --output-file coverage/coverage.info
           # remove external dependencies
           lcov \
-            --ignore-errors negative \
+            --ignore-errors negative,mismatch \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" \
             --output-file coverage/coverage.linux.info
           # convert absolute path to relative path
