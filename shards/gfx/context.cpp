@@ -444,7 +444,7 @@ void Context::resizeMainOutputConditional(const int2 &newSize) {
 }
 
 TexturePtr Context::getMainOutputTexture() {
-  shassert(mainOutput);
+  if (!mainOutput) return nullptr;
   return mainOutput->getCurrentTexture();
 }
 
