@@ -57,7 +57,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DENABLE_PYTHON_SHARDS=ON
+          cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DUSE_LLD=ON -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DENABLE_PYTHON_SHARDS=ON
           cmake --build build --target shards test-gfx
 
       - name: Checkout glTF-Sample-Assets
