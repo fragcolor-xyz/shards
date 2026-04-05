@@ -51,7 +51,7 @@ jobs:
     secrets: inherit
 
   wasm32-emscripten-test:
-    needs: [Setup, macOS-Release, wasm32-emscripten]
+    needs: [Setup, Linux-Release, wasm32-emscripten]
     uses: ./.github/workflows/test-wasm.yml
     secrets: inherit
 
