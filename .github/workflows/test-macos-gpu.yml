@@ -80,15 +80,13 @@ jobs:
 
           echo ""
           echo "Running graphics test scripts"
-          # Skip in headless mode:
-          #   gfx-text* — compile-time font eval hangs without display
-          #   gfx-pbr   — uses UI() which needs egui context (no window)
-          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs' ! -name 'gfx-text*' ! -name 'gfx-pbr*');
+          # Skip gfx-text*.shs — compile-time font eval hangs without display
+          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs' ! -name 'gfx-text*');
           do
             echo "Running $i"
             build/shards new "$i"
           done
-          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs' ! -name 'gfx-text*' ! -name 'gfx-pbr*');
+          for i in $(find shards/tests -maxdepth 1 -name 'gfx*.shs' ! -name 'gfx-text*');
           do
             echo "Running $i"
             build/shards new "$i"

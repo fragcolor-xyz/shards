@@ -322,22 +322,25 @@ struct MainWindow final {
         _inlineInputContext->time = _windowContext->time;
         _inlineInputContext->deltaTime = _windowContext->deltaTime;
 
+        // Push root input region
+        auto &inputStack = _inlineInputContext->inputStack;
+        inputStack.reset();
         if (!headless) {
-          // Push root input region
-          auto &inputStack = _inlineInputContext->inputStack;
-          inputStack.reset();
           inputStack.push(input::InputStack::Item{
               .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
           });
-
-          SHVar _shardsOutput{};
-          _contents.activate(shContext, input, _shardsOutput);
-
-          inputStack.pop();
         } else {
-          SHVar _shardsOutput{};
-          _contents.activate(shContext, input, _shardsOutput);
+          inputStack.push(input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion{
+                  .region = input::Rect(0, 0, (int)*_width, (int)*_height),
+              },
+          });
         }
+
+        SHVar _shardsOutput{};
+        _contents.activate(shContext, input, _shardsOutput);
+
+        inputStack.pop();
 
         if (_renderer) {
           _renderer->end();
