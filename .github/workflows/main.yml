@@ -50,10 +50,12 @@ jobs:
     uses: ./.github/workflows/build-wasm.yml
     secrets: inherit
 
-  wasm32-emscripten-test:
-    needs: [Setup, Linux-Release, wasm32-emscripten]
-    uses: ./.github/workflows/test-wasm.yml
-    secrets: inherit
+  # wasm32-emscripten-test:
+  #   needs: [Setup, Linux-Release, wasm32-emscripten]
+  #   uses: ./.github/workflows/test-wasm.yml
+  #   secrets: inherit
+  #   NOTE: Disabled — Chrome WebGPU requires a GPU-capable display server,
+  #   which isn't available on the headless self-hosted Linux runner.
 
   #
   # Build shards for linux
