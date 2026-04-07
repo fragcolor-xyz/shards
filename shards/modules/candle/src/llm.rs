@@ -97,8 +97,8 @@ mod model_obj {
     Mistral(Arc<Model>),
     /// Quantized BERT from GGUF (embedding only, uses candle directly)
     QuantizedBert {
-      model: QuantizedBertModel,
-      tokenizer: tokenizers::Tokenizer,
+      model: Arc<QuantizedBertModel>,
+      tokenizer: Arc<tokenizers::Tokenizer>,
     },
   }
 
@@ -339,8 +339,8 @@ impl Shard for ModelShard {
                 .map_err(|e| format!("Failed to load tokenizer: {}", e))?;
 
               let inner = LLMModelInner::QuantizedBert {
-                model: bert_model,
-                tokenizer,
+                model: Arc::new(bert_model),
+                tokenizer: Arc::new(tokenizer),
               };
               Ok::<_, String>(Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE))
             })
@@ -822,20 +822,26 @@ impl Shard for GenerateShard {
       context,
       async move {
         let runtime = TOKIO_RUNTIME.clone();
+        let cancel_token_async = cancel_token.clone();
         let task = {
           let runtime = runtime.lock().unwrap();
           runtime.spawn(async move {
-            let response: ChatCompletionResponse = model.send_chat_request(request).await
-              .map_err(|e| format!("Failed to generate: {}", e))?;
+            tokio::select! {
+              result = model.send_chat_request(request) => {
+                let response: ChatCompletionResponse = result
+                  .map_err(|e| format!("Failed to generate: {}", e))?;
 
-            let text = response
-              .choices
-              .first()
-              .and_then(|c| c.message.content.as_ref())
-              .map(|s| s.to_string())
-              .unwrap_or_default();
+                let text = response
+                  .choices
+                  .first()
+                  .and_then(|c| c.message.content.as_ref())
+                  .map(|s| s.to_string())
+                  .unwrap_or_default();
 
-            Ok::<String, String>(text)
+                Ok::<String, String>(text)
+              }
+              _ = cancel_token_async.cancelled() => Err("Generation cancelled".to_string())
+            }
           })
         };
         let text = task.await
@@ -1057,18 +1063,25 @@ impl Shard for EmbedShard {
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
             let task = {
               let runtime = runtime.lock().unwrap();
               runtime.spawn(async move {
-                model.generate_embeddings(request).await
-                  .map_err(|e| format!("Failed to generate embedding: {}", e))
+                tokio::select! {
+                  result = model.generate_embeddings(request) => {
+                    let embeddings = result
+                      .map_err(|e| format!("Failed to generate embedding: {}", e))?;
+                    let emb = embeddings.into_iter().next()
+                      .ok_or_else(|| "No embedding returned".to_string())?;
+                    Ok::<Vec<f32>, String>(emb)
+                  }
+                  _ = cancel_token_async.cancelled() => Err("Embedding cancelled".to_string())
+                }
               })
             };
-            let embeddings = task.await
+            let emb = task.await
               .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
               .map_err(|e| FastError::from(e))?;
-            let emb = embeddings.into_iter().next()
-              .ok_or_else(|| FastError::from("No embedding returned"))?;
             *holder.lock().unwrap() = Some(emb);
             Ok::<ClonedVar, FastError>(Var::default().into())
           },
@@ -1082,40 +1095,65 @@ impl Shard for EmbedShard {
         emb.ok_or("No embedding result")?
       }
       LLMModelInner::QuantizedBert { model, tokenizer } => {
-        // For quantized BERT, we tokenize and run the model directly
+        // For quantized BERT, we tokenize and run the model via run_future + spawn_blocking
         let text: &str = if let Ok(t) = <&str>::try_from(input) {
           t
         } else {
           return Err("Quantized BERT embedding only accepts text input");
         };
 
-        let encoding = tokenizer.encode(text, true).map_err(|e| {
-          shlog_error!("Failed to tokenize: {}", e);
-          "Failed to tokenize for BERT embedding"
+        let text_owned = text.to_string();
+        let model = model.clone();
+        let tokenizer = tokenizer.clone();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+        let result_holder: Arc<Mutex<Option<Vec<f32>>>> = Arc::new(Mutex::new(None));
+        let holder = result_holder.clone();
+
+        run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn_blocking(move || {
+                let encoding = tokenizer.encode(text_owned.as_str(), true)
+                  .map_err(|e| format!("Failed to tokenize: {}", e))?;
+
+                let device = crate::get_global_device();
+                let token_ids = encoding.get_ids();
+                let input_ids = candle_core::Tensor::new(
+                  &token_ids[..],
+                  device,
+                ).map_err(|e| format!("Failed to create input tensor: {}", e))?
+                  .unsqueeze(0).map_err(|e| format!("Failed to unsqueeze: {}", e))?;
+
+                let token_type_ids = candle_core::Tensor::zeros_like(&input_ids)
+                  .map_err(|e| format!("Failed to create token_type_ids: {}", e))?;
+
+                let embedding_tensor = model.embed(&input_ids, &token_type_ids)
+                  .map_err(|e| format!("Failed to run BERT forward: {}", e))?;
+
+                embedding_tensor.squeeze(0)
+                  .map_err(|e| format!("Failed to squeeze: {}", e))?
+                  .to_vec1::<f32>()
+                  .map_err(|e| format!("Failed to convert embedding to Vec<f32>: {}", e))
+              })
+            };
+            let emb = task.await
+              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+              .map_err(|e| FastError::from(e))?;
+            *holder.lock().unwrap() = Some(emb);
+            Ok::<ClonedVar, FastError>(Var::default().into())
+          },
+          || { cancel_clone.cancel(); },
+        ).map_err(|e| {
+          shlog_error!("Failed to generate BERT embedding: {}", e);
+          "Failed to generate BERT embedding"
         })?;
 
-        let device = crate::get_global_device();
-        let token_ids = encoding.get_ids();
-        let input_ids = candle_core::Tensor::new(
-          &token_ids[..],
-          device,
-        ).map_err(|_| "Failed to create input tensor")?
-          .unsqueeze(0).map_err(|_| "Failed to unsqueeze")?;
-
-        let token_type_ids = candle_core::Tensor::zeros_like(&input_ids)
-          .map_err(|_| "Failed to create token_type_ids")?;
-
-        let embedding_tensor = model.embed(&input_ids, &token_type_ids)
-          .map_err(|e| {
-            shlog_error!("Failed to run BERT forward: {}", e);
-            "Failed to generate BERT embedding"
-          })?;
-
-        // Extract [1, hidden_size] -> Vec<f32>
-        embedding_tensor.squeeze(0)
-          .map_err(|_| "Failed to squeeze")?
-          .to_vec1::<f32>()
-          .map_err(|_| "Failed to convert embedding to Vec<f32>")?
+        let emb = result_holder.lock().unwrap().take();
+        emb.ok_or("No BERT embedding result")?
       }
     };
 
@@ -1205,11 +1243,16 @@ impl Shard for TokenizeShard {
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
             let task = {
               let runtime = runtime.lock().unwrap();
               runtime.spawn(async move {
-                model.tokenize(Either::Right(text_owned), None, true, false, None).await
-                  .map_err(|e| format!("Failed to tokenize: {}", e))
+                tokio::select! {
+                  result = model.tokenize(Either::Right(text_owned), None, true, false, None) => {
+                    result.map_err(|e| format!("Failed to tokenize: {}", e))
+                  }
+                  _ = cancel_token_async.cancelled() => Err("Tokenize cancelled".to_string())
+                }
               })
             };
             let tokens = task.await
@@ -1322,11 +1365,16 @@ impl Shard for DetokenizeShard {
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
             let task = {
               let runtime = runtime.lock().unwrap();
               runtime.spawn(async move {
-                model.detokenize(tokens, true).await
-                  .map_err(|e| format!("Failed to detokenize: {}", e))
+                tokio::select! {
+                  result = model.detokenize(tokens, true) => {
+                    result.map_err(|e| format!("Failed to detokenize: {}", e))
+                  }
+                  _ = cancel_token_async.cancelled() => Err("Detokenize cancelled".to_string())
+                }
               })
             };
             let text = task.await

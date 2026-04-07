@@ -262,9 +262,9 @@ if [ "$WITH_CPU" = true ]; then
         "shards/tests/markdown.shs||"
         "shards/tests/jinja.shs||"
         "shards/tests/llm.shs||"
-        "shards/tests/llm-mistral.shs||"
-        "shards/tests/llm-gguf.shs||"
-        "shards/tests/llm-embed.shs||"
+        "shards/tests/ai-mistral.shs||"
+        "shards/tests/ai-gguf.shs||"
+        "shards/tests/ai-embed.shs||"
     )
 fi
 

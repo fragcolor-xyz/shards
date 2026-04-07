@@ -76,12 +76,14 @@ impl Shard for RandomName {
     let words_count: i64 = self.words_count.0.as_ref().try_into()?;
     let separator: &str = self.separator.0.as_ref().try_into()?;
     let mut rng = rand::rng();
-    let words: Vec<&str> = (0..words_count as usize)
+    let count = words_count as usize;
+    let words: Vec<&str> = (0..count)
       .map(|i| {
-        if i % 2 == 0 {
-          *ADJECTIVES.choose(&mut rng).unwrap_or(&"unknown")
-        } else {
+        if i == count - 1 {
+          // Last word is always a noun (petname convention: adj-adj-...-noun)
           *NOUNS.choose(&mut rng).unwrap_or(&"thing")
+        } else {
+          *ADJECTIVES.choose(&mut rng).unwrap_or(&"unknown")
         }
       })
       .collect();
