@@ -185,10 +185,7 @@ let result = run_future(context, async move {
 - **Embeddings use the async Model.** `AI.Embed` calls `model.generate_embeddings()` via `run_future` + `TOKIO_RUNTIME`, consistent with all other inference shards.
 
 ### visionOS Metal Support
-candle 0.10.2 uses `objc2-metal` which supports visionOS, but needs cfg condition patches:
-- mistral.rs PR #1911 adds `target_os = "visionos"` to Metal cfg conditions
-- Until merged, fork mistral.rs or cherry-pick the ~10-line fix
-- Remove `-DDISABLE_CANDLE_METAL=ON` from `.github/workflows/build-ios.yml` visionOS build after fix
+candle 0.10.2 uses `objc2-metal` which supports visionOS. Metal is enabled for visionOS builds (no `DISABLE_CANDLE_METAL` flag needed).
 
 ### C++ LLM Module (Re-enabled)
 The C++ module at `shards/modules/llm/` has been re-enabled, gated on `LLM_ENABLED`. It provides:
