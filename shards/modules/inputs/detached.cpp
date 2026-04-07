@@ -219,8 +219,13 @@ struct InputThreadHandler : public std::enable_shared_from_this<InputThreadHandl
     inputStack.push(InputStack::Item(lastInputStackState));
     DEFER({ inputStack.pop(); });
 
-    auto baseRegion = getWindowInputRegion(*inputContext.window.get());
-    mappedRegion = int4(0, 0, baseRegion.pixelSize.x, baseRegion.pixelSize.y);
+    if (inputContext.window) {
+      auto baseRegion = getWindowInputRegion(*inputContext.window.get());
+      mappedRegion = int4(0, 0, baseRegion.pixelSize.x, baseRegion.pixelSize.y);
+    } else {
+      // Headless — use mapped region from input stack
+      mappedRegion = int4(0, 0, 1280, 720);
+    }
     if (inputStack.getTop().windowMapping) {
       auto &windowRegion = inputStack.getTop().windowMapping.value();
       std::visit(
@@ -409,9 +414,17 @@ struct Detached {
         // Inherit parent context's input stack
         inputStackState = parentContext->getInputStack().getTop();
       } else {
-        inputStackState = input::InputStack::Item{
-            .windowMapping = input::WindowSubRegion::fromEntireWindow(*getWindowContext().window.get()),
-        };
+        auto &wnd = getWindowContext().window;
+        if (wnd) {
+          inputStackState = input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion::fromEntireWindow(*wnd.get()),
+          };
+        } else {
+          // Headless — use a default region
+          inputStackState = input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion{.region = input::Rect(0, 0, 1280, 720)},
+          };
+        }
       }
 
       Var &windowRegionVar = (Var &)_windowRegion.get();

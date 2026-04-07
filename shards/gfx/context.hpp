@@ -74,6 +74,10 @@ public:
   WGPUAdapter wgpuAdapter = nullptr;
   WGPUDevice wgpuDevice = nullptr;
   WGPUQueue wgpuQueue = nullptr;
+
+  // Resolution for headless rendering (no window/surface)
+  int2 headlessResolution{1280, 720};
+
 #if WEBGPU_NATIVE
   WGPUInstanceBackend instanceBackends{};
 #endif
