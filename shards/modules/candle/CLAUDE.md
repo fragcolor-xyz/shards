@@ -202,6 +202,6 @@ The Rust `AI.*` shards (mistral.rs) and C++ `LLM.*` shards (llama.cpp) coexist a
 | `ai-gguf.shs` | Qwen3-0.6B (GGUF) | GGUF loading, text gen | Yes |
 | `ai-gemma4.shs` | Gemma 4 E2B (safetensors, gated) | Gated model + ISQ | No (needs HF_TOKEN) |
 | `ai-multimodal.shs` | Gemma 4 E2B UQFF (ungated) | Vision + multi-turn + reset | No (slow on CPU) |
-| `ai-embed.shs` | embeddinggemma-300m | Text embeddings (768-dim) | Yes |
+| `ai-embed.shs` | embeddinggemma-300m | Text embeddings (768-dim) | No (needs HF_TOKEN) |
 | `ml.shs` / `ml-test.shs` | BERT (safetensors) | Tensor ops, embeddings | Yes |
 | `whisper.shs` | (placeholder) | Audio transcription | No (needs audio model) |

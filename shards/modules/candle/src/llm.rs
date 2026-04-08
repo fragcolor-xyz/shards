@@ -309,6 +309,7 @@ impl Shard for ModelShard {
         context,
         async move {
           let runtime = TOKIO_RUNTIME.clone();
+          let cancel_token_async = cancel_token.clone();
           let task = {
             let runtime = runtime.lock().unwrap();
             runtime.spawn_blocking(move || {
@@ -345,10 +346,15 @@ impl Shard for ModelShard {
               Ok::<_, String>(Var::new_ref_counted(LLMModel(inner), &*LLM_MODEL_TYPE))
             })
           };
-          let var = task.await
-            .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
-            .map_err(|e| FastError::from(e))?;
-          Ok::<ClonedVar, FastError>(var.into())
+          tokio::select! {
+            result = task => {
+              let var = result
+                .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+                .map_err(|e| FastError::from(e))?;
+              Ok::<ClonedVar, FastError>(var.into())
+            }
+            _ = cancel_token_async.cancelled() => Err(FastError::from("Model loading cancelled"))
+          }
         },
         || { cancel_clone.cancel(); },
       ).map_err(|e| {
@@ -388,6 +394,7 @@ impl Shard for ModelShard {
       context,
       async move {
         let runtime = TOKIO_RUNTIME.clone();
+        let cancel_token_async = cancel_token.clone();
         let task = {
           let runtime = runtime.lock().unwrap();
           runtime.spawn(async move {
@@ -426,9 +433,14 @@ impl Shard for ModelShard {
             )
           })
         };
-        task.await
-          .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
-          .map_err(|e| FastError::from(e))
+        tokio::select! {
+          result = task => {
+            result
+              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+              .map_err(|e| FastError::from(e))
+          }
+          _ = cancel_token_async.cancelled() => Err(FastError::from("Model loading cancelled"))
+        }
       },
       || { cancel_clone.cancel(); },
     ).map_err(|e| {
