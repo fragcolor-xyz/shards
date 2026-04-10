@@ -1326,7 +1326,8 @@ impl Shard for TokenizeShard {
           "Failed to tokenize"
         })?;
 
-        result_holder.lock().unwrap().take().ok_or("No tokenize result")?
+        let toks = result_holder.lock().unwrap().take();
+        toks.ok_or("No tokenize result")?
       }
     };
 
