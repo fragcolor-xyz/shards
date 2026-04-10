@@ -482,7 +482,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
-    GIT_TAG b8575
+    GIT_TAG b8690
   )
 
   # whisper.cpp configuration
