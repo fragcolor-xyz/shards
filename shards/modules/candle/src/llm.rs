@@ -315,14 +315,14 @@ impl Shard for ModelShard {
             runtime.spawn_blocking(move || {
               let device = crate::get_global_device();
 
-              let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf(&gguf_file, device)
+              let file_bytes = std::fs::read(&gguf_file)
+                .map_err(|e| format!("Failed to read GGUF file: {}", e))?;
+
+              let vb = candle_transformers::quantized_var_builder::VarBuilder::from_gguf_buffer(&file_bytes, device)
                 .map_err(|e| format!("Failed to load GGUF file: {}", e))?;
 
-              let mut reader = std::io::BufReader::new(
-                std::fs::File::open(&gguf_file)
-                  .map_err(|e| format!("Failed to open GGUF file: {}", e))?
-              );
-              let content = candle_core::quantized::gguf_file::Content::read(&mut reader)
+              let mut cursor = std::io::Cursor::new(&file_bytes);
+              let content = candle_core::quantized::gguf_file::Content::read(&mut cursor)
                 .map_err(|e| format!("Failed to read GGUF metadata: {}", e))?;
 
               let cfg = crate::quantized_bert::BertConfig::from_gguf_metadata(&content.metadata)
@@ -1126,6 +1126,7 @@ impl Shard for EmbedShard {
           context,
           async move {
             let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
             let task = {
               let runtime = runtime.lock().unwrap();
               runtime.spawn_blocking(move || {
@@ -1152,11 +1153,16 @@ impl Shard for EmbedShard {
                   .map_err(|e| format!("Failed to convert embedding to Vec<f32>: {}", e))
               })
             };
-            let emb = task.await
-              .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
-              .map_err(|e| FastError::from(e))?;
-            *holder.lock().unwrap() = Some(emb);
-            Ok::<ClonedVar, FastError>(Var::default().into())
+            tokio::select! {
+              result = task => {
+                let emb = result
+                  .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+                  .map_err(|e| FastError::from(e))?;
+                *holder.lock().unwrap() = Some(emb);
+                Ok::<ClonedVar, FastError>(Var::default().into())
+              }
+              _ = cancel_token_async.cancelled() => Err(FastError::from("BERT embedding cancelled"))
+            }
           },
           || { cancel_clone.cancel(); },
         ).map_err(|e| {
@@ -1283,11 +1289,44 @@ impl Shard for TokenizeShard {
         toks.ok_or("No tokenize result")?
       }
       LLMModelInner::QuantizedBert { tokenizer, .. } => {
-        let encoding = tokenizer.encode(text, true).map_err(|e| {
+        let tokenizer = tokenizer.clone();
+        let text_owned = text.to_string();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+        let result_holder: Arc<Mutex<Option<Vec<u32>>>> = Arc::new(Mutex::new(None));
+        let holder = result_holder.clone();
+
+        run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn_blocking(move || {
+                let encoding = tokenizer.encode(text_owned.as_str(), true)
+                  .map_err(|e| format!("Failed to tokenize: {}", e))?;
+                Ok::<Vec<u32>, String>(encoding.get_ids().to_vec())
+              })
+            };
+            tokio::select! {
+              result = task => {
+                let tokens = result
+                  .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+                  .map_err(|e| FastError::from(e))?;
+                *holder.lock().unwrap() = Some(tokens);
+                Ok::<ClonedVar, FastError>(Var::default().into())
+              }
+              _ = cancel_token_async.cancelled() => Err(FastError::from("Tokenize cancelled"))
+            }
+          },
+          || { cancel_clone.cancel(); },
+        ).map_err(|e| {
           shlog_error!("Failed to tokenize: {}", e);
           "Failed to tokenize"
         })?;
-        encoding.get_ids().to_vec()
+
+        result_holder.lock().unwrap().take().ok_or("No tokenize result")?
       }
     };
 
@@ -1404,10 +1443,40 @@ impl Shard for DetokenizeShard {
         s.to_string()
       }
       LLMModelInner::QuantizedBert { tokenizer, .. } => {
-        tokenizer.decode(&tokens, true).map_err(|e| {
+        let tokenizer = tokenizer.clone();
+        let cancel_token = CancellationToken::new();
+        let cancel_clone = cancel_token.clone();
+
+        let result = run_future(
+          context,
+          async move {
+            let runtime = TOKIO_RUNTIME.clone();
+            let cancel_token_async = cancel_token.clone();
+            let task = {
+              let runtime = runtime.lock().unwrap();
+              runtime.spawn_blocking(move || {
+                tokenizer.decode(&tokens, true)
+                  .map_err(|e| format!("Failed to detokenize: {}", e))
+              })
+            };
+            tokio::select! {
+              result = task => {
+                let text = result
+                  .map_err(|e| FastError::from(format!("Task join error: {}", e)))?
+                  .map_err(|e| FastError::from(e))?;
+                Ok::<ClonedVar, FastError>(Var::ephemeral_string(&text).into())
+              }
+              _ = cancel_token_async.cancelled() => Err(FastError::from("Detokenize cancelled"))
+            }
+          },
+          || { cancel_clone.cancel(); },
+        ).map_err(|e| {
           shlog_error!("Failed to detokenize: {}", e);
           "Failed to detokenize"
-        })?
+        })?;
+
+        let s: &str = result.0.as_ref().try_into().unwrap_or("");
+        s.to_string()
       }
     };
 
