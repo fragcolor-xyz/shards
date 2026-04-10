@@ -68,5 +68,23 @@ debug-assertions = false
 [profile.rel-with-deb-info.package."wgpu-native"]
 debug-assertions = false
 
+# mistralrs-core and candle are very large crates with heavy generic monomorphization.
+# With codegen-units=1 (release default) they require >7GB RAM per compilation unit,
+# which exceeds what the macOS CI runner provides, causing OOM/SIGBUS crashes.
+# codegen-units=16 splits each crate into 16 smaller LLVM modules, cutting peak memory
+# use dramatically at the cost of cross-unit inlining (acceptable for ML library code).
+[profile.release.package.mistralrs-core]
+codegen-units = 16
+[profile.release.package.mistralrs-quant]
+codegen-units = 16
+[profile.release.package.mistralrs-vision]
+codegen-units = 16
+[profile.release.package.candle-core]
+codegen-units = 16
+[profile.release.package.candle-transformers]
+codegen-units = 16
+[profile.release.package.candle-nn]
+codegen-units = 16
+
 # Prevent being absorbed by parent workspace
 [workspace]
