@@ -811,6 +811,14 @@ impl BlockingShard for ExecuteShard {
             let has_new_data = current_total > last_total_bytes;
 
             if has_new_data {
+                // Mark that the command has started producing output.
+                // Done before truncation so that small MaxOutputBytes or
+                // fast/large output can't cause us to miss the signal.
+                if !seen_command_echo {
+                    seen_command_echo = true;
+                    shlog_trace!("Command has started producing output");
+                }
+
                 // New data arrived — snapshot the buffer contents
                 let snapshot = {
                     let shared_buffer = local_shell.output_buffer.lock()
@@ -828,16 +836,6 @@ impl BlockingShard for ExecuteShard {
                 }
 
                 let output_str = String::from_utf8_lossy(&output_buffer);
-
-                // Track whether the command echo-back has been received.
-                // The PTY echoes the command text followed by a newline before
-                // producing actual output. Don't start counting silence until
-                // we've seen this echo, to avoid false requires_interaction on
-                // commands that are slow to produce their first real output.
-                if !seen_command_echo && output_str.contains('\n') {
-                    seen_command_echo = true;
-                    shlog_trace!("Command echo-back detected");
-                }
 
                 shlog_trace!(
                     "Read data (iteration {}), total_bytes: {}, buffer size: {}, last line: {:?}",
@@ -872,9 +870,9 @@ impl BlockingShard for ExecuteShard {
                 );
 
                 // Fallback interactive detection after silence threshold expires.
-                // Only trigger if we've seen the command echo-back — before that,
-                // the command hasn't had a chance to produce output yet.
-                if no_data_count >= silence_threshold && !output_buffer.is_empty() && seen_command_echo {
+                // Only trigger if the command has started producing output —
+                // before that, the command hasn't had a chance to run yet.
+                if no_data_count >= silence_threshold && seen_command_echo {
                     let output_str = String::from_utf8_lossy(&output_buffer);
 
                     if is_prompt_or_marker(&output_str, marker) {
