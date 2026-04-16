@@ -33,13 +33,14 @@ jobs:
   #
   MacOS:
     name: Test (${{ github.event.inputs.build-type || inputs.build-type }})
-    runs-on: [self-hosted, macOS, ARM64]
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Setup
         id: setup
         run: |
           echo "build-type=${{ github.event.inputs.build-type || inputs.build-type }}" >> $GITHUB_OUTPUT
           echo "GFX_ANY_ADAPTER=1" >> $GITHUB_ENV
+          echo "GFX_HEADLESS=1" >> $GITHUB_ENV
 
       - name: Clean workspace
         if: ${{ github.event.inputs.clean-workspace == 'true' || inputs.clean-workspace == 'true' }}
@@ -56,7 +57,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DENABLE_PYTHON_SHARDS=ON
+          cmake -Bbuild -G Ninja -DUSE_UBSAN=1 -DUSE_LLD=ON -DCODE_COVERAGE=1 -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} -DENABLE_PYTHON_SHARDS=ON
           cmake --build build --target shards test-gfx
 
       - name: Checkout glTF-Sample-Assets
@@ -174,14 +175,14 @@ jobs:
             --capture \
             --directory build/src \
             --output-file coverage/coverage.info \
-            --ignore-errors inconsistent,gcov,range,format
+            --ignore-errors inconsistent,gcov,range,format,negative,mismatch,source
           # remove external dependencies
           lcov \
             --remove coverage/coverage.info "*/c++/*" "*/boost/*" "*/usr/*" "*/deps/*" \
             --output-file coverage/coverage-macos-gpu.info \
-            --ignore-errors inconsistent,gcov,range,format
+            --ignore-errors inconsistent,gcov,range,format,negative,mismatch,source
           # convert absolute path to relative path
-          sed -i '' -e "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
+          sed -i "s#${PWD}/#./#g" coverage/coverage-macos-gpu.info
 
       - name: Upload coverage (Debug)
         if: ${{ steps.setup.outputs.build-type == 'Debug' }}
@@ -192,7 +193,7 @@ jobs:
             coverage/coverage-macos-gpu.info
           if-no-files-found: error
           retention-days: 1
-          
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

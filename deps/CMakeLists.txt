@@ -447,7 +447,8 @@ else()
   target_include_directories(TracyClient INTERFACE ${CMAKE_CURRENT_LIST_DIR}/tracy_stub)
 endif()
 
-# Check if llm module is enabled (provides llama.cpp and whisper.cpp functionality)
+# llama.cpp and whisper.cpp - provides LLM.* and Whisper.* shards (Vulkan/Metal/CUDA)
+# See also shards/modules/candle for AI.* shards (mistral.rs/candle, Metal/CUDA)
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # llama.cpp configuration
@@ -481,7 +482,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
-    GIT_TAG b8575
+    GIT_TAG b8690
   )
 
   # whisper.cpp configuration

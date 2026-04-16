@@ -25,7 +25,7 @@ where
             match from_c_message {
                 Some(PollnetMessage::Text(msg)) => {
                     debug!("WS outgoing text: {:}", msg.len());
-                    if let Err(e) = ws_stream.send(Message::Text(msg)).await {
+                    if let Err(e) = ws_stream.send(Message::Text(msg.into())).await {
                         debug!("WS send error.");
                         send_error(io.tx, e);
                         return Ok(());
@@ -33,7 +33,7 @@ where
                 },
                 Some(PollnetMessage::Binary(msg)) => {
                     debug!("WS outgoing binary: {:}", msg.len());
-                    if let Err(e) = ws_stream.send(Message::Binary(msg)).await {
+                    if let Err(e) = ws_stream.send(Message::Binary(msg.into())).await {
                         debug!("WS send error.");
                         send_error(io.tx, e);
                         return Ok(());
@@ -57,7 +57,7 @@ where
                 Some(Ok(msg)) => {
                     if msg.is_text() || msg.is_binary() {
                         debug!("WS incoming msg: {:}", msg.len());
-                        check_tx(io.tx.send(PollnetMessage::Binary(msg.into_data())))?;
+                        check_tx(io.tx.send(PollnetMessage::Binary(msg.into_data().to_vec())))?;
                     } else if msg.is_close() {
                         debug!("Received close!");
                         send_disconnect(io.tx);
@@ -153,7 +153,7 @@ impl PollnetContext {
       };
 
       info!("WS client attempting to connect to {}", url);
-      match connect_async(real_url).await {
+      match connect_async(real_url.as_str()).await {
         Ok((ws_stream, _)) => {
           websocket_poll_loop(ws_stream, reactor_io).await;
         }

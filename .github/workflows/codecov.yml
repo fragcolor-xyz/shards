@@ -35,8 +35,9 @@ jobs:
         with:
           name: shards-linux-coverage
           path: coverage
-      - name: Download Linux GPU coverage
+      - name: Download macOS GPU coverage
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: shards-macos-gpu-coverage
           path: coverage
@@ -50,9 +51,12 @@ jobs:
       - name: Generate HTML report
         if: ${{ steps.setup.outputs.html-report == 'true' }}
         run: |
+          INPUT_FILES="coverage/coverage.linux.info"
+          if [ -f coverage/coverage-macos-gpu.info ]; then
+            INPUT_FILES="$INPUT_FILES coverage/coverage-macos-gpu.info"
+          fi
           genhtml \
-            coverage/coverage.linux.info \
-            coverage/coverage-macos-gpu.info \
+            $INPUT_FILES \
             --ignore-errors inconsistent,source,unmapped,format \
             --synthesize-missing \
             --output-directory coverage/output

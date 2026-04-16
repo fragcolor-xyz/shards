@@ -22,7 +22,7 @@ const BROWSER_PATH = process.env.PUPPETEER_EXECUTABLE_PATH;
         '--js-flags=--experimental-wasm-jspi',
         ...(DEBUG_MODE ? ['--auto-open-devtools-for-tabs'] : []),
       ],
-      headless: false,
+      headless: DEBUG_MODE ? false : 'new',
       devtools: DEBUG_MODE,
     };
 

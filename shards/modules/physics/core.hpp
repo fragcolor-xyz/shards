@@ -299,8 +299,8 @@ struct BodyAssociatedData {
   uint64_t paramHash1;
   uint64_t shapeUid;
 
-  // Stores a event array only valid for the current frame
-  std::optional<pmr::vector<Event *>> events;
+  // Stores event pointers only valid for the current frame
+  std::optional<std::vector<Event *>> events;
 
   JPH::Body *getPhysicsObject() const { return body; }
   bool getPhysicsObjectAdded() const { return bodyAdded; }
@@ -594,7 +594,7 @@ public:
       if (src->neededCollisionEvents > 0) {
         auto it = eventMap.find(node->body);
         if (it != eventMap.end()) {
-          auto &dstEvents = node->events.emplace(&eventCollector.tempAllocator);
+          auto &dstEvents = node->events.emplace();
           for (auto &evt : it->second) {
             dstEvents.push_back(evt);
           }

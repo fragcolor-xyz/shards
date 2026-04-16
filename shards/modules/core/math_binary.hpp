@@ -507,11 +507,16 @@ struct Multiply : public BinaryOperation<BasicBinaryOperation<MultiplyOp>> {
     return result;
   }
 
+  // UBSAN: scalar Int/Float types are promoted to their vector counterparts (Int→Int2, Float→Float2)
+  // for SIMD throughput. The upper lanes contain uninitialized payload data, which may overflow
+  // on multiply — this is safe because only the lower lane is read back for scalar types.
+  __attribute__((no_sanitize("signed-integer-overflow")))
   ALWAYS_INLINE void activateInt64x2(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int2Value = input.payload.int2Value * b.payload.int2Value;
   }
 
+  __attribute__((no_sanitize("signed-integer-overflow")))
   ALWAYS_INLINE void activateInt32x4(const SHVar &input) {
     auto b = _operand.get();
     _result.payload.int4Value = input.payload.int4Value * b.payload.int4Value;

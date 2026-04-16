@@ -31,27 +31,34 @@ metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.
 
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 
-[profile.dev.package]
-tiny-skia = { opt-level = 3 } 
-resvg = { opt-level = 3 }
-usvg = { opt-level = 3 }
-shards-lang = { opt-level = 3 }
-shards-langffi = { opt-level = 3 }
-pest = { opt-level = 3, debug-assertions = false }  # This will apply to all profiles
-pest_derive = { opt-level = 3, debug-assertions = false }  # This will apply to all profiles
-syntect = { opt-level = 3 }
-flate2 = { opt-level = 3 }
-bincode = { opt-level = 3 }
-flexbuffers = { opt-level = 3 }
-bitcode = { opt-level = 3 }
-tokenizers = { opt-level = 3 }
-candle-core = { opt-level = 3 }
-candle-transformers = { opt-level = 3 }
-candle-nn = { opt-level = 3 } 
+# Optimize all dependencies in debug builds for usable performance.
+# Using a single opt-level for all deps avoids symbol visibility mismatches
+# between crates compiled at different levels (which breaks GNU ld).
+[profile.dev.package."*"]
+opt-level = 2
 
-# The profile settings are required to get reasonable performance
-# some validations are enabled by default based on debug-assertions
-# including synchronization validation which adds about 60ms every frame
+# pest needs debug-assertions disabled regardless of opt-level
+[profile.dev.package.pest]
+opt-level = 2
+debug-assertions = false
+[profile.dev.package.pest_derive]
+opt-level = 2
+debug-assertions = false
+
+# wgpu needs debug-assertions disabled to avoid 60ms/frame sync validation
+[profile.dev.package."wgpu-hal"]
+opt-level = 2
+debug-assertions = false
+[profile.dev.package."wgpu-core"]
+opt-level = 2
+debug-assertions = false
+[profile.dev.package."wgpu-types"]
+opt-level = 2
+debug-assertions = false
+[profile.dev.package."wgpu-native"]
+opt-level = 2
+debug-assertions = false
+
 [profile.rel-with-deb-info.package."wgpu-hal"]
 debug-assertions = false
 [profile.rel-with-deb-info.package."wgpu-core"]
@@ -61,19 +68,23 @@ debug-assertions = false
 [profile.rel-with-deb-info.package."wgpu-native"]
 debug-assertions = false
 
-# For debug mode too, disable to actually debug
-[profile.dev.package."wgpu-hal"]
-debug-assertions = false
-opt-level = 3
-[profile.dev.package."wgpu-core"]
-debug-assertions = false
-opt-level = 3
-[profile.dev.package."wgpu-types"]
-debug-assertions = false
-opt-level = 3
-[profile.dev.package."wgpu-native"]
-opt-level = 3
-debug-assertions = false
+# mistralrs-core and candle are very large crates with heavy generic monomorphization.
+# With codegen-units=1 (release default) they require >7GB RAM per compilation unit,
+# which exceeds what the macOS CI runner provides, causing OOM/SIGBUS crashes.
+# codegen-units=16 splits each crate into 16 smaller LLVM modules, cutting peak memory
+# use dramatically at the cost of cross-unit inlining (acceptable for ML library code).
+[profile.release.package.mistralrs-core]
+codegen-units = 16
+[profile.release.package.mistralrs-quant]
+codegen-units = 16
+[profile.release.package.mistralrs-vision]
+codegen-units = 16
+[profile.release.package.candle-core]
+codegen-units = 16
+[profile.release.package.candle-transformers]
+codegen-units = 16
+[profile.release.package.candle-nn]
+codegen-units = 16
 
 # Prevent being absorbed by parent workspace
 [workspace]

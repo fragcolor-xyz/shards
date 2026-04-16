@@ -1,4 +1,5 @@
-# LLM module requires llama.cpp and whisper.cpp, only available on desktop platforms
+# LLM module - llama.cpp/whisper.cpp based shards (LLM.* and Whisper.*)
+# See also shards/modules/candle for AI.* shards (mistral.rs/candle)
 is_module_enabled(LLM_ENABLED llm)
 if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   # Collect all mtmd model sources via glob

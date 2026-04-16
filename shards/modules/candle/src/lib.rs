@@ -7,7 +7,11 @@ use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
 use candle_core::{DType, Device, Tensor as CandleTensor};
 
+#[cfg(feature = "llm")]
+pub mod llm;
 pub mod model;
+#[cfg(feature = "llm")]
+pub mod quantized_bert;
 mod tensor;
 pub mod tokenizer;
 mod umap;
@@ -79,6 +83,10 @@ impl From<DType> for TensorType {
       DType::F16 => TensorType::F16,
       DType::F32 => TensorType::F32,
       DType::F64 => TensorType::F64,
+      other => {
+        shards::shlog_warn!("Unsupported candle DType {:?}, defaulting to F32", other);
+        TensorType::F32
+      }
     }
   }
 }
@@ -143,4 +151,23 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_object_type::<Tensor>(FRAG_CC, fourCharacterCode(*b"cTEN"));
   register_object_type::<tokenizer::Tokenizer>(FRAG_CC, fourCharacterCode(*b"TOKn"));
   register_object_type::<model::Model>(FRAG_CC, fourCharacterCode(*b"cMOD"));
+
+  // LLM shards (mistral.rs) — requires tokio + mistralrs, not available on wasm/visionOS
+  #[cfg(feature = "llm")]
+  {
+    register_enum::<llm::ISQBitsEnum>();
+    register_enum::<llm::ChatRole>();
+    register_shard::<llm::ModelShard>();
+    register_shard::<llm::ChatShard>();
+    register_shard::<llm::AddTextShard>();
+    register_shard::<llm::AddImageShard>();
+    register_shard::<llm::AddAudioShard>();
+    register_shard::<llm::GenerateShard>();
+    register_shard::<llm::ResetShard>();
+    register_shard::<llm::EmbedShard>();
+    register_shard::<llm::TokenizeShard>();
+    register_shard::<llm::DetokenizeShard>();
+    register_object_type::<llm::LLMModel>(FRAG_CC, fourCharacterCode(*b"aiMD"));
+    register_object_type::<llm::LLMChat>(FRAG_CC, fourCharacterCode(*b"aiCH"));
+  }
 }

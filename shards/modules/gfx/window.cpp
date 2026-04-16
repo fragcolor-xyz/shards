@@ -74,10 +74,11 @@ struct MainWindow final {
   PARAM_VAR(_notFocusable, "NotFocusable", "When enabled, the window will not be focusable.", {CoreInfo::BoolType});
   PARAM_VAR(_alwaysOnTop, "AlwaysOnTop", "When enabled, the window will be always on top.", {CoreInfo::BoolType});
   PARAM_VAR(_borderless, "Borderless", "When enabled, the window will have no border.", {CoreInfo::NoneType, CoreInfo::BoolType});
+  PARAM_VAR(_headless, "Headless", "When enabled, no window is created and rendering is done offscreen. Useful for headless CI/server environments.", {CoreInfo::BoolType});
   PARAM_IMPL(PARAM_IMPL_FOR(_title), PARAM_IMPL_FOR(_width), PARAM_IMPL_FOR(_height), PARAM_IMPL_FOR(_contents),
              PARAM_IMPL_FOR(_detachRenderer), PARAM_IMPL_FOR(_handleCloseEvent), PARAM_IMPL_FOR(_useDisplayScaling),
              PARAM_IMPL_FOR(_transparent), PARAM_IMPL_FOR(_notFocusable), PARAM_IMPL_FOR(_alwaysOnTop),
-             PARAM_IMPL_FOR(_borderless));
+             PARAM_IMPL_FOR(_borderless), PARAM_IMPL_FOR(_headless));
 
   static inline Type OutputType = Type(WindowContext::Type);
 
@@ -95,9 +96,11 @@ struct MainWindow final {
     _notFocusable = Var(false);
     _alwaysOnTop = Var(false);
     _borderless = Var(false);
+    _headless = Var(false);
   }
 
   Window _window;
+  bool _headlessInitialized{false};
 
   std::optional<WindowContext> _windowContext;
   SHVar *_windowContextVar{};
@@ -167,7 +170,20 @@ struct MainWindow final {
     return OutputType;
   }
 
+  bool isHeadless() const {
+    if ((bool)*_headless) return true;
+    // Also check env var so existing tests work in headless CI without modification
+    static bool envHeadless = (std::getenv("GFX_HEADLESS") != nullptr);
+    return envHeadless;
+  }
+
   void initWindow(SHContext *shContext) {
+    if (isHeadless()) {
+      SHLOG_DEBUG("Creating headless context (no window)");
+      _windowContext->windowMesh = shContext->main->mesh;
+      return;
+    }
+
     SHLOG_DEBUG("Creating window");
 
     WindowCreationOptions windowOptions = {};
@@ -260,8 +276,13 @@ struct MainWindow final {
   }
 
   SHVar activate(SHContext *shContext, const SHVar &input) {
-    if (!_windowContext->window) {
+    bool headless = isHeadless();
+
+    if (!headless && !_windowContext->window) {
       callOnMeshThread(shContext, [&]() { initWindow(shContext); });
+    } else if (headless && !_headlessInitialized) {
+      callOnMeshThread(shContext, [&]() { initWindow(shContext); });
+      _headlessInitialized = true;
     }
 
     double deltaTime = _deltaTimer.update();
@@ -272,22 +293,27 @@ struct MainWindow final {
 
     bool shouldRun = true;
     if (_renderer) {
+      if (headless) {
+        _renderer->_headlessResolution = int2((int)*_width, (int)*_height);
+      }
       if (!_renderer->begin(shContext, _windowContext.value()))
         shouldRun = false;
     }
 
     if (shouldRun) {
-      // Poll & distribute input events
-      callOnMeshThread(shContext, [&]() {
-        window->update();
-        _windowContext->inputMaster.update(*window.get());
-      });
+      if (!headless) {
+        // Poll & distribute input events
+        callOnMeshThread(shContext, [&]() {
+          window->update();
+          _windowContext->inputMaster.update(*window.get());
+        });
 
-      for (auto &event : _windowContext->inputMaster.getEvents()) {
-        if (std::holds_alternative<RequestCloseEvent>(event.event)) {
-          bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
-          if (handleClose) {
-            throw MainWindowQuitException();
+        for (auto &event : _windowContext->inputMaster.getEvents()) {
+          if (std::holds_alternative<RequestCloseEvent>(event.event)) {
+            bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
+            if (handleClose) {
+              throw MainWindowQuitException();
+            }
           }
         }
       }
@@ -299,9 +325,17 @@ struct MainWindow final {
         // Push root input region
         auto &inputStack = _inlineInputContext->inputStack;
         inputStack.reset();
-        inputStack.push(input::InputStack::Item{
-            .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
-        });
+        if (!headless) {
+          inputStack.push(input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion::fromEntireWindow(*window.get()),
+          });
+        } else {
+          inputStack.push(input::InputStack::Item{
+              .windowMapping = input::WindowSubRegion{
+                  .region = input::Rect(0, 0, (int)*_width, (int)*_height),
+              },
+          });
+        }
 
         SHVar _shardsOutput{};
         _contents.activate(shContext, input, _shardsOutput);

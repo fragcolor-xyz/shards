@@ -10,6 +10,34 @@ use shards::{
   SHCore,
 };
 
+use rand::seq::IndexedRandom;
+
+const ADJECTIVES: &[&str] = &[
+  "able", "acid", "angry", "apt", "aware", "back", "bad", "bare", "basic", "best",
+  "big", "bold", "brave", "brief", "broad", "brown", "busy", "calm", "cheap", "chief",
+  "civil", "clean", "clear", "close", "cold", "cool", "crude", "cute", "dark", "dear",
+  "deep", "dense", "dirty", "dry", "dual", "dull", "dumb", "eager", "early", "easy",
+  "equal", "even", "evil", "exact", "extra", "faint", "fair", "false", "fancy", "far",
+  "fast", "fat", "few", "final", "fine", "firm", "first", "fit", "flat", "fond",
+  "free", "fresh", "full", "fun", "giant", "glad", "good", "grand", "grave", "gray",
+  "great", "green", "gross", "happy", "hard", "harsh", "heavy", "high", "holy", "hot",
+  "huge", "human", "humble", "ideal", "ill", "inner", "keen", "key", "kind", "known",
+  "large", "last", "late", "lazy", "left", "legal", "light", "live", "local", "long",
+];
+
+const NOUNS: &[&str] = &[
+  "acid", "age", "air", "angle", "ant", "apple", "arc", "arm", "army", "art",
+  "atom", "award", "baby", "back", "badge", "bag", "ball", "band", "bank", "bar",
+  "base", "basin", "bat", "bath", "bear", "beat", "bed", "bell", "bench", "berry",
+  "bird", "blade", "block", "board", "boat", "body", "bolt", "bomb", "bone", "book",
+  "booth", "bow", "box", "brain", "brand", "bread", "brick", "bridge", "brush", "buddy",
+  "bug", "bulk", "bus", "buyer", "cabin", "cake", "camp", "cap", "car", "card",
+  "cargo", "case", "cash", "cast", "cat", "chain", "chair", "chart", "cheek", "chest",
+  "child", "chip", "chunk", "city", "claim", "clan", "cliff", "clock", "cloud", "coach",
+  "coast", "code", "coin", "color", "colt", "comet", "coral", "core", "court", "craft",
+  "crane", "crash", "cream", "crew", "cross", "crowd", "crown", "crush", "curve", "cycle",
+];
+
 #[derive(shards::shard)]
 #[shard_info("Random.Name", "Generate a random name (Petname)")]
 pub struct RandomName {
@@ -47,8 +75,19 @@ impl Shard for RandomName {
   fn activate(&mut self, _: &Context, _: &Var) -> Result<Option<Var>, &str> {
     let words_count: i64 = self.words_count.0.as_ref().try_into()?;
     let separator: &str = self.separator.0.as_ref().try_into()?;
-    let mut rng = rand::thread_rng();
-    let pname = petname::Petnames::default().generate(&mut rng, words_count as u8, separator);
+    let mut rng = rand::rng();
+    let count = words_count as usize;
+    let words: Vec<&str> = (0..count)
+      .map(|i| {
+        if i == count - 1 {
+          // Last word is always a noun (petname convention: adj-adj-...-noun)
+          *NOUNS.choose(&mut rng).unwrap_or(&"thing")
+        } else {
+          *ADJECTIVES.choose(&mut rng).unwrap_or(&"unknown")
+        }
+      })
+      .collect();
+    let pname = words.join(separator);
     self.output = pname.into();
     Ok(Some(self.output.0))
   }

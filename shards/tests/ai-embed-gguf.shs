@@ -1,0 +1,26 @@
+; Test: Quantized BERT GGUF embedding via candle
+; Uses e5-small-v2 Q5_K_M GGUF (384-dim, BERT-based)
+
+@mesh(main)
+
+@wire(embed-gguf-test {
+  ; Load quantized BERT from GGUF + tokenizer from HF
+  "intfloat/e5-small-v2" | AI.Model(Embedding: true Files: "/tmp/e5-test/e5-small-v2.Q5_K_M.gguf") = model
+  Log("GGUF BERT model loaded")
+
+  ; Generate embedding
+  "What is the capital of France?" | AI.Embed(Model: model Normalization: 2) = embedding
+  embedding | Count | Log("Embedding dimensions")
+  embedding | Count | Assert.Is(384)
+
+  ; Tokenize
+  "Hello world" | AI.Tokenize(Model: model) = tokens
+  tokens | Count | Log("Token count")
+  tokens | Count | Assert.IsNot(0)
+
+  ; Detokenize
+  tokens | AI.Detokenize(Model: model) | Log("Detokenized")
+})
+
+@schedule(main embed-gguf-test)
+@run(main) | Assert.Is(true)
