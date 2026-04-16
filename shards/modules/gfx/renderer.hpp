@@ -38,6 +38,7 @@ struct ShardsRenderer {
   gfx::Loop _loop;
 
   bool _ignoreCompilationErrors{};
+  int2 _headlessResolution{1280, 720};
 
   void compose(SHInstanceData &data) {
     // Require extra stack space for the wire containing the renderer
@@ -54,7 +55,13 @@ struct ShardsRenderer {
 
     ContextCreationOptions contextOptions = {};
     _graphicsContext.context = std::make_shared<Context>();
-    _graphicsContext.context->init(*_graphicsContext.window.get(), contextOptions);
+    if (window) {
+      _graphicsContext.context->init(*window.get(), contextOptions);
+    } else {
+      // Headless mode — no window, no surface
+      _graphicsContext.context->init(contextOptions);
+      _graphicsContext.context->headlessResolution = _headlessResolution;
+    }
 
     _graphicsContext.renderer = std::make_shared<Renderer>(*_graphicsContext.context.get());
     _graphicsContext.renderer->setIgnoreCompilationErrors(_ignoreCompilationErrors);

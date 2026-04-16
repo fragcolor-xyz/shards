@@ -1,0 +1,19 @@
+; Test: GGUF model loading via mistral.rs
+; Uses Qwen3-0.6B GGUF (smallest available, ungated)
+
+@mesh(main)
+
+@wire(gguf-test {
+  "unsloth/Qwen3-0.6B-GGUF"
+  AI.Model(Files: "Qwen3-0.6B-Q4_K_M.gguf") = model
+  Log("GGUF model loaded")
+
+  model | AI.Chat = chat
+
+  "What is 2 + 2? Answer briefly." | AI.AddText(Chat: chat)
+
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Response")
+})
+
+@schedule(main gguf-test)
+@run(main) | Assert.Is(true)

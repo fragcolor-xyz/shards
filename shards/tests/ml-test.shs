@@ -6,7 +6,7 @@
   "Hello world!" | Do(ml/embed) | ForEach({
     Log
   })
-  @read("../../readme.md") | Do(ml/embed) | ForEach({
+  @read("../../README.md") | Do(ml/embed) | ForEach({
     {
       = floats
       Count(floats) | Assert.Is(@ml/embeddings/size)

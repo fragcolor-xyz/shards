@@ -1,0 +1,34 @@
+; Test: Gemma 4 E2B multimodal - text + image via UQFF (pre-quantized, fast load)
+; Uses ungated mistralrs-community UQFF model
+
+@mesh(main)
+
+@wire(multimodal-test {
+  ; Load Gemma 4 E2B pre-quantized UQFF (no ISQ needed, ~1.5GB download)
+  "mistralrs-community/gemma-4-E2B-it-UQFF"
+  AI.Model(UQFF: "q4k-0.uqff") = model
+  Log("Model loaded")
+
+  model | AI.Chat = chat
+
+  ; Load a test image
+  LoadImage("../../assets/simple1.PNG") = test-image
+
+  ; Add the image with a question
+  test-image | AI.AddImage(Chat: chat Text: "Describe this image briefly.")
+
+  ; Generate response
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 64) | Log("Vision response")
+
+  ; Multi-turn: text follow-up
+  "And what is 1 + 1?" | AI.AddText(Chat: chat)
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 32) | Log("Follow-up response")
+
+  ; Test reset and fresh conversation
+  chat | AI.Reset
+  "Say hello." | AI.AddText(Chat: chat)
+  chat | AI.Generate(Temperature: 0.1 MaxTokens: 32) | Log("After reset")
+})
+
+@schedule(main multimodal-test)
+@run(main) | Assert.Is(true)

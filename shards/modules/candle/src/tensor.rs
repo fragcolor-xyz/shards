@@ -239,6 +239,14 @@ impl Shard for TensorShard {
       self.shape_candle.as_ref().ok_or("Shape is required")?
     };
 
+    // Validate element count matches shape (candle 0.10.2 doesn't check this in from_slice)
+    let expected = shape.elem_count();
+    let actual = seq.len();
+    if actual != expected {
+      shlog_error!("Shape {:?} requires {} elements but got {}", shape, expected, actual);
+      return Err("Element count does not match shape");
+    }
+
     let gpu: bool = self.device.0.as_ref().try_into()?;
     let device = if gpu {
       get_global_device()

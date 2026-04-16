@@ -1,3 +1,21 @@
+# LLM feature (mistral.rs) — requires tokio, not available on wasm or visionOS
+option(ENABLE_MISTRALRS "Enable mistral.rs LLM inference (AI.* shards)" ON)
+
+set(ML_HAS_LLM TRUE)
+if(NOT ENABLE_MISTRALRS)
+  set(ML_HAS_LLM FALSE)
+endif()
+if(EMSCRIPTEN)
+  set(ML_HAS_LLM FALSE)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+  set(ML_HAS_LLM FALSE)
+endif()
+
+if(ML_HAS_LLM)
+  list(APPEND ML_RUST_FEATURES "llm")
+endif()
+
 # Platform-specific features
 if(APPLE)
   if(NOT DISABLE_CANDLE_METAL)

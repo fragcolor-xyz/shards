@@ -87,6 +87,7 @@ struct RendererImpl final : public ContextData {
   Renderer::MainOutput mainOutput;
   RenderTargetPtr mainOutputRenderTarget;
   bool shouldUpdateMainOutputFromContext = false;
+  TexturePtr headlessTexture;
 
   bool ignoreCompilationErrors = false;
 
@@ -165,7 +166,11 @@ struct RendererImpl final : public ContextData {
   void updateMainOutputFromContext() {
     ZoneScoped;
 
-    mainOutput.texture = context.getMainOutputTexture();
+    auto tex = context.getMainOutputTexture();
+    if (tex) {
+      mainOutput.texture = tex;
+    }
+    // In headless mode, mainOutput.texture stays null — rendering goes to offscreen targets only
   }
 
   CachedView &getCachedView(const ViewPtr &view) {
@@ -555,8 +560,21 @@ struct RendererImpl final : public ContextData {
     // Update main render target
     if (!mainOutputRenderTarget)
       mainOutputRenderTarget = std::make_shared<RenderTarget>("mainOutput");
-    mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
-    mainOutputRenderTarget->resizeFixed(mainOutput.texture->getResolution());
+
+    if (mainOutput.texture) {
+      mainOutputRenderTarget->attachments["color"].texture = mainOutput.texture;
+      mainOutputRenderTarget->resizeFixed(mainOutput.texture->getResolution());
+    } else if (context.isHeadless()) {
+      // Headless: create offscreen render attachment sized to headlessResolution
+      auto res = context.headlessResolution;
+      if (!headlessTexture) {
+        headlessTexture = Texture::makeRenderAttachment(
+            WGPUTextureFormat_BGRA8UnormSrgb, "headlessOutput");
+      }
+      headlessTexture->initWithResolution(res);
+      mainOutputRenderTarget->attachments["color"].texture = headlessTexture;
+      mainOutputRenderTarget->resizeFixed(res);
+    }
 
     storage.frameStats.reset();
 
@@ -564,7 +582,7 @@ struct RendererImpl final : public ContextData {
 
     resetWorkerMemory();
 
-    auto mainOutputResolution = mainOutput.texture->getResolution();
+    auto mainOutputResolution = mainOutput.texture ? mainOutput.texture->getResolution() : context.headlessResolution;
     pushView(ViewStack::Item{
         .referenceSize = mainOutputResolution,
         .renderTarget = mainOutputRenderTarget,
