@@ -203,6 +203,32 @@ LocalShell.Read(Session: shell-session StripAnsi: false Timeout: 1000) >= raw-an
 raw-ansi | ExpectString | String.Contains("UNDERLINE") | Assert.Is(true)
 "StripAnsi works" | Log
 
+; Test: slow command that is silent then produces output should complete (not false requires_interaction)
+"Testing slow command completion (sleep then output)" | Log
+"sleep 2 && echo 'delayed_result_ok'" | LocalShell.Execute(Session: shell-session Timeout: 15) >= slow-result
+slow-result.status | Assert.Is("completed")
+slow-result.output | ExpectString | String.Contains("delayed_result_ok") | Assert.Is(true)
+"Slow command completed without false requires_interaction" | Log
+
+; Test: command output ending with prompt-like characters should not cause premature completion
+; With sentinel marker active, only the sentinel should trigger completion — not generic patterns
+"Testing output ending with prompt-like characters" | Log
+"echo 'price is 100$'" | LocalShell.Execute(Session: shell-session) >= dollar-result
+dollar-result.status | Assert.Is("completed")
+dollar-result.output | ExpectString | String.Contains("price is 100$") | Assert.Is(true)
+"echo 'choice A > choice B'" | LocalShell.Execute(Session: shell-session) >= gt-result
+gt-result.status | Assert.Is("completed")
+gt-result.output | ExpectString | String.Contains("choice A > choice B") | Assert.Is(true)
+"Prompt-like output handled correctly" | Log
+
+; Test: heredoc should complete without false interaction detection
+"Testing heredoc command" | Log
+"cat <<'HEREDOC_END'\nheredoc_line_1\nheredoc_line_2\nHEREDOC_END" | LocalShell.Execute(Session: shell-session Timeout: 10) >= heredoc-result
+heredoc-result.status | Assert.Is("completed")
+heredoc-result.output | ExpectString | String.Contains("heredoc_line_1") | Assert.Is(true)
+heredoc-result.output | ExpectString | String.Contains("heredoc_line_2") | Assert.Is(true)
+"Heredoc completed correctly" | Log
+
 ; Test session alive check
 "Testing session alive check" | Log
 shell-session | LocalShell.IsAlive | Assert.Is(true)

@@ -166,9 +166,11 @@ fn is_prompt_or_marker(text: &str, marker: Option<&str>) -> bool {
 
         // Check sentinel marker first (most reliable)
         if let Some(m) = marker {
-            if trimmed.contains(m) {
-                return true;
-            }
+            // When sentinel marker is set, ONLY trust the sentinel.
+            // Generic prompt patterns ($ # > %) cause false positives with
+            // heredoc continuation prompts and command output that happens
+            // to end with these characters.
+            return trimmed.contains(m);
         }
 
         // Exclude interactive program prompts like >>> (Python), >> (continuation)
@@ -176,7 +178,7 @@ fn is_prompt_or_marker(text: &str, marker: Option<&str>) -> bool {
             return false;
         }
 
-        // Check for common SHELL prompt patterns
+        // Check for common SHELL prompt patterns (fallback when no sentinel)
         trimmed.ends_with("$ ")
             || trimmed.ends_with("$")
             || trimmed.ends_with("# ")
@@ -790,8 +792,17 @@ impl BlockingShard for ExecuteShard {
         let mut no_data_count = 0;
         let mut prompt_detected = false;
         let mut was_truncated = false;
+        let mut seen_command_echo = false;
 
-        shlog_trace!("Starting to read command output from shared buffer");
+        // Scale silence threshold with timeout: at least 1/3 of max_iterations,
+        // but no less than the default 3 seconds. This prevents false
+        // requires_interaction on slow commands (network I/O, compilation, etc.)
+        let silence_threshold = std::cmp::max(
+            INTERACTIVE_DETECTION_ITERATIONS,
+            max_iterations / 3,
+        );
+
+        shlog_trace!("Starting to read command output from shared buffer (silence_threshold={})", silence_threshold);
         std::thread::sleep(Duration::from_millis(COMMAND_OUTPUT_WAIT_MS));
 
         for iteration in 0..max_iterations {
@@ -800,6 +811,14 @@ impl BlockingShard for ExecuteShard {
             let has_new_data = current_total > last_total_bytes;
 
             if has_new_data {
+                // Mark that the command has started producing output.
+                // Done before truncation so that small MaxOutputBytes or
+                // fast/large output can't cause us to miss the signal.
+                if !seen_command_echo {
+                    seen_command_echo = true;
+                    shlog_trace!("Command has started producing output");
+                }
+
                 // New data arrived — snapshot the buffer contents
                 let snapshot = {
                     let shared_buffer = local_shell.output_buffer.lock()
@@ -833,7 +852,7 @@ impl BlockingShard for ExecuteShard {
                     break;
                 }
 
-                // Bug 3 fix: check for interactive prompt IMMEDIATELY when we have data
+                // Check for interactive prompt IMMEDIATELY when we have data
                 if is_interactive_prompt(&output_str) {
                     shlog_trace!("Interactive prompt pattern detected early: {:?}", output_str.lines().last());
                     break;
@@ -843,14 +862,17 @@ impl BlockingShard for ExecuteShard {
             } else {
                 no_data_count += 1;
                 shlog_trace!(
-                    "No data (iteration {}), no_data_count: {}, buffer_empty: {}",
+                    "No data (iteration {}), no_data_count: {}, buffer_empty: {}, seen_echo: {}",
                     iteration,
                     no_data_count,
-                    output_buffer.is_empty()
+                    output_buffer.is_empty(),
+                    seen_command_echo
                 );
 
-                // Fallback interactive detection after 3 seconds of silence with some output
-                if no_data_count >= INTERACTIVE_DETECTION_ITERATIONS && !output_buffer.is_empty() && iteration >= INTERACTIVE_DETECTION_ITERATIONS / 2 {
+                // Fallback interactive detection after silence threshold expires.
+                // Only trigger if the command has started producing output —
+                // before that, the command hasn't had a chance to run yet.
+                if no_data_count >= silence_threshold && seen_command_echo {
                     let output_str = String::from_utf8_lossy(&output_buffer);
 
                     if is_prompt_or_marker(&output_str, marker) {
@@ -864,7 +886,8 @@ impl BlockingShard for ExecuteShard {
                         break;
                     }
 
-                    shlog_trace!("Command appears to be interactive (no new data for 3s, no prompt detected)");
+                    shlog_trace!("Command appears to be interactive (no new data for {}ms, no prompt detected)",
+                        silence_threshold as u64 * ITERATION_SLEEP_MS);
                     break;
                 }
             }
