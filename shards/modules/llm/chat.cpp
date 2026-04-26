@@ -451,11 +451,7 @@ struct ChatAddImage {
 
     // Get the model for embedding dimensions
     auto model = llama_get_model(chatData.ctx.get());
-    const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
-
-    // Calculate the maximum tokens we'll allow for the image
-    // This is limited by both the user-specified ImageTokens parameter and the context size
-    const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
+    const int n_batch = llama_n_batch(chatData.ctx.get());
 
     // Create a mtmd_bitmap from the image data
     mtmd_bitmap *bitmap = mtmd_bitmap_init(image->width, image->height, image->data);
@@ -499,11 +495,8 @@ struct ChatAddImage {
       throw ActivationError("No image tokens found after tokenization");
     }
 
-    // Get the number of tokens in the image
-    size_t n_image_tokens = mtmd_image_tokens_get_n_tokens(mtmd_input_chunk_get_tokens_image(image_chunk));
-
-    // Ensure we don't exceed our maximum token count for the LLM
-    int actual_n_tokens = std::min((int)n_image_tokens, max_tokens);
+    // Get the total number of tokens in the image (use all of them, like the reference impl)
+    int32_t n_image_tokens = (int32_t)mtmd_image_tokens_get_n_tokens(mtmd_input_chunk_get_tokens_image(image_chunk));
 
     // Prefix tokens if provided
     if (_prefixTokens.get().valueType != SHType::None) {
@@ -546,8 +539,9 @@ struct ChatAddImage {
       // Get the embedding dimension from the model
       int n_mmproj_embd = llama_model_n_embd(model);
 
-      // Create embedding batch with proper positioning
-      decode_embd_batch batch_img(image_embd, actual_n_tokens, n_pos_per_embd, n_mmproj_embd);
+      // Create embedding batch with ALL image tokens and proper positioning
+      // (following mtmd-helper.cpp reference implementation)
+      decode_embd_batch batch_img(image_embd, n_image_tokens, n_pos_per_embd, n_mmproj_embd);
 
       // Set positions based on whether we're using M-RoPE or not
       if (use_mrope) {
@@ -563,13 +557,21 @@ struct ChatAddImage {
         batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
       }
 
-      // Process the batch
-      if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
-        throw ActivationError("Failed to decode image");
+      // Decode image embeddings in sub-batches (like mtmd-helper.cpp reference)
+      // This ensures all image tokens are processed even when n_image_tokens > n_batch
+      int32_t n_img_batches = (n_image_tokens + n_batch - 1) / n_batch;
+      for (int32_t i_batch = 0; i_batch < n_img_batches; i_batch++) {
+        int pos_offset = i_batch * n_batch;
+        int n_tokens_batch = std::min(n_batch, n_image_tokens - pos_offset);
+        llama_batch batch_view = batch_img.get_view(pos_offset, n_tokens_batch);
+        if (llama_decode(chatData.ctx.get(), batch_view)) {
+          throw ActivationError("Failed to decode image");
+        }
       }
 
-      // Update n_past based on whether we're using M-RoPE or not
-      // For M-RoPE, the whole image counts as a single position
+      // Update n_past using the canonical position count from mtmd
+      // For M-RoPE: n_pos is 1 (whole image = 1 temporal position)
+      // For normal: n_pos equals n_image_tokens
       llama_pos n_pos = mtmd_image_tokens_get_n_pos(mtmd_input_chunk_get_tokens_image(image_chunk));
       chatData.n_past += n_pos;
     }
