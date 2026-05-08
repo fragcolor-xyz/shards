@@ -95,6 +95,17 @@ if(APPLE)
       endif()
     endif()
   endif()
+
+  # Workaround for Apple libc++ bug shipped in CLT 26.4.1 / Xcode SDK at this version:
+  # <complex> uses __promote_t<> directly but does not include <__type_traits/promote.h>
+  # which defines it. Pulled in transitively via <Accelerate/Accelerate.h> in modules
+  # like core/math_base.hpp. Force-include the missing header before any TU is parsed.
+  # Harmless once Apple ships a fixed SDK (the include just becomes a no-op).
+  # NOTE: using CMAKE_CXX_FLAGS rather than add_compile_options() with a generator
+  # expression — CMake mangles `SHELL:-include foo` inside a nested $<...:...> form,
+  # splitting it into broken arg pairs at the closing `>`.
+  # See CLAUDE.md "Native macOS Build — Known Issues".
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include __type_traits/promote.h")
 endif()
 
 if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
