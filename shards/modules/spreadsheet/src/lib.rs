@@ -42,7 +42,7 @@ use shards::types::{
   common_type, AutoSeqVar, AutoTableVar, ClonedVar, Context, ExposedTypes, InstanceData, ParamVar,
   Type, Types, Var, FRAG_CC,
 };
-use shards::types::{SEQ_OF_ANY_TABLE, SEQ_OF_STRINGS_TYPES};
+use shards::types::SEQ_OF_STRINGS_TYPES;
 use shards::{fourCharacterCode, ref_counted_object_type_impl};
 
 // ============================================================================
@@ -121,9 +121,13 @@ lazy_static! {
   ];
 
   pub static ref ANY_TABLE_TYPES: Vec<Type> = vec![common_type::any_table];
+  /// Seq of header-keyed Tables — Dense layout output type.
+  /// Defined locally because shards::types only re-exports `SEQ_OF_ANY_TABLE_TYPES`
+  /// (the Vec wrapper), not the bare `Type` constant.
+  pub static ref SEQ_OF_ANY_TABLE_TYPE: Type = Type::seq(&ANY_TABLE_TYPES);
   /// Spreadsheet.Read advertises both possible output shapes — `compose()` narrows
   /// to either `Seq[Table[Any]]` (Dense, header-keyed rows) or `Table[Any]` (Sparse).
-  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE, common_type::any_table];
+  pub static ref READ_OUTPUT_TYPES: Vec<Type> = vec![*SEQ_OF_ANY_TABLE_TYPE, common_type::any_table];
 }
 
 // ============================================================================
@@ -533,7 +537,7 @@ impl Shard for SpreadsheetReadShard {
     self.compose_helper(data)?;
     let layout: Layout = self.layout.0.as_ref().try_into().unwrap_or(Layout::Dense);
     Ok(match layout {
-      Layout::Dense => *SEQ_OF_ANY_TABLE,       // [{Any}] : seq of header-keyed row tables
+      Layout::Dense => *SEQ_OF_ANY_TABLE_TYPE,  // [{Any}] : seq of header-keyed row tables
       Layout::Sparse => common_type::any_table, // {Any}   : table of int-keyed row tables
     })
   }

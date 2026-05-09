@@ -155,17 +155,29 @@ Pulled in via `Accelerate.framework → vecLib → Sparse/Solve.h → <complex>`
 
 **Root cause:** Apple's libc++ shipped in **Command Line Tools 26.4.1** (and the matching Xcode SDK) has a bug where `<complex>` uses `__promote_t<>` directly but only includes `<__type_traits/conditional.h>`, not `<__type_traits/promote.h>` where `__promote_t` is defined. Both the CLT and Xcode SDK at this version are affected — switching SDKs does not help.
 
-**Workaround applied:** `cmake/Platform.cmake` adds the following inside the `if(APPLE) ... endif()` block:
+**Status:** Apple appears to have patched this upstream — `clang++ -c <one-liner that includes <complex>>` now compiles cleanly on the same CLT 26.4.1. No workaround is currently active in the tree. **If you hit this error again**, the recipe is:
 ```cmake
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include __type_traits/promote.h")
+# In cmake/Platform.cmake, inside if(APPLE):
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("#include <complex>\nint main(){ return 0; }" SHARDS_LIBCXX_COMPLEX_OK)
+if(NOT SHARDS_LIBCXX_COMPLEX_OK)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include __type_traits/promote.h")
+endif()
 ```
-This forces `__promote_t`'s definition to be parsed before any `<complex>` usage. The flag is harmless once Apple fixes the SDK (the include just becomes a no-op). Remove the line at that point if you want to be tidy.
+**Crucially, the gating is required** — injecting `-include` globally breaks PCH on Xcode-generator builds (iOS CI). clang requires `-include cmake_pch.hxx` to be the *first* `-include` flag; any earlier injection produces "PCH was ignored because not first '-include'" + "cmake_pch.hxx file not found" errors. iOS CI runners may not have the libc++ bug at all, so the detection check legitimately stays no-op there. If you reuse this pattern, also note that `check_cxx_source_compiles` on a bare `#include <complex>` may not reproduce the failure even when the bug is present — the trigger is template instantiation through some Accelerate header chain. You may need a probe that actually instantiates `std::pow(complex<T>, complex<U>)` to detect the bug reliably.
 
 **Why `CMAKE_CXX_FLAGS` and not `add_compile_options(...)`?** The natural form
 ```cmake
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:SHELL:-include __type_traits/promote.h>)
 ```
 **does not work** in this codebase. CMake mangles options containing a space when they're wrapped in a *nested* generator expression — even with the `SHELL:` prefix. The output ends up as two broken args (`$<1:SHELL:-include` and `__type_traits/promote.h>`) because the inner expression's closing `>` is consumed by the outer `$<COMPILE_LANGUAGE:CXX>:...>`. `CMAKE_CXX_FLAGS` is C++-scoped by definition, so we get the "language filter" without needing a generator expression at all. **Generic CMake lesson: prefer `CMAKE_<LANG>_FLAGS` for language-scoped flags with embedded spaces; reserve `SHELL:` generator-expression form for non-nested uses.**
+
+**`-include` flag and PCH ordering** — when injecting a `-include foo.h` flag globally, beware that clang's PCH support requires `-include cmake_pch.hxx` to be the **first** `-include` flag. Any earlier injection causes:
+```
+clang: warning: precompiled header '...cmake_pch.hxx.gch' was ignored because '-include ...cmake_pch.hxx' is not first '-include'
+<built-in>:2:10: fatal error: '...cmake_pch.hxx' file not found
+```
+This is mostly an issue with Xcode-generator builds (iOS CI). Ninja/Make tend to pass flags in source order so it works there. If you must inject `-include` globally, gate it on whether you actually need it (as we do for the libc++ bug above).
 
 ### CLT 26.x: AddressSanitizer Deadlocks at Startup
 

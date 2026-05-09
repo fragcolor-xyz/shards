@@ -96,16 +96,18 @@ if(APPLE)
     endif()
   endif()
 
-  # Workaround for Apple libc++ bug shipped in CLT 26.4.1 / Xcode SDK at this version:
-  # <complex> uses __promote_t<> directly but does not include <__type_traits/promote.h>
-  # which defines it. Pulled in transitively via <Accelerate/Accelerate.h> in modules
-  # like core/math_base.hpp. Force-include the missing header before any TU is parsed.
-  # Harmless once Apple ships a fixed SDK (the include just becomes a no-op).
-  # NOTE: using CMAKE_CXX_FLAGS rather than add_compile_options() with a generator
-  # expression — CMake mangles `SHELL:-include foo` inside a nested $<...:...> form,
-  # splitting it into broken arg pairs at the closing `>`.
-  # See CLAUDE.md "Native macOS Build — Known Issues".
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include __type_traits/promote.h")
+  # NOTE: A previous revision force-included <__type_traits/promote.h> here as
+  # a workaround for a libc++ bug in early CLT 26.4.1 (<complex> referenced
+  # __promote_t<> without including the defining header). The workaround was
+  # removed because:
+  #  - The bug now appears to be patched upstream (probes for `<complex>` and
+  #    `<Accelerate/Accelerate.h>` compile cleanly on the same toolchain).
+  #  - Injecting a global `-include` ahead of PCH attachment broke Xcode-
+  #    generator (iOS) builds: clang requires `-include cmake_pch.hxx` to be
+  #    the first `-include` flag.
+  # If you hit the libc++ <complex> error again, see CLAUDE.md
+  # "Native macOS Build — Known Issues" for the diagnosis and a tested
+  # gated-by-detection workaround.
 endif()
 
 if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
