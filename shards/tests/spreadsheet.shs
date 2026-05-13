@@ -22,10 +22,11 @@
   ; ===========================================================================
   wb | Spreadsheet.Sheets = sheet-names
   sheet-names | Log("sheets")
-  sheet-names | Count | Assert.Is(3 true)
+  sheet-names | Count | Assert.Is(4 true)
   sheet-names | Take(0) | Assert.Is("People" true)
   sheet-names | Take(1) | Assert.Is("Sparse" true)
   sheet-names | Take(2) | Assert.Is("DupHeaders" true)
+  sheet-names | Take(3) | Assert.Is("Formulas" true)
 
   ; ===========================================================================
   ; Spreadsheet.Read - Dense layout (header-keyed Seq of row-Tables)
@@ -98,6 +99,33 @@
   ; ReadAll over an already-loaded Workbook (no re-parse)
   wb | Spreadsheet.ReadAll(Layout: SpreadsheetLayout::Sparse) = all-sparse
   all-sparse | Take("Sparse") | ExpectTable | Take(0) | ExpectTable | Take(0) | Assert.Is("Item" true)
+
+  ; ===========================================================================
+  ; CellSource: Formulas — formula text overlay
+  ;   Formulas sheet: row 1 has headers [A B Sum Product]
+  ;                   row 2 has [10 20 =A2+B2 =A2*B2]
+  ;                   row 3 has [ 3  4 =A3+B3 =A3*B3]
+  ;   openpyxl writes formulas WITHOUT computing them, so the cached values for
+  ;   C2/D2/C3/D3 are stale (None/0) — exactly the Xero export situation.
+  ; ===========================================================================
+  Msg("=== Formulas sheet, Values mode (cached, stale here) ===")
+  wb | Spreadsheet.Read(Sheet: "Formulas" CellSource: SpreadsheetCellSource::Values) = vals
+  vals | Log("values mode")
+  ; A and B columns have literal values
+  vals | Take(0) | ExpectTable | Take("A") | Assert.Is(10.0 true)
+  vals | Take(0) | ExpectTable | Take("B") | Assert.Is(20.0 true)
+
+  Msg("=== Formulas sheet, Formulas mode (formula text) ===")
+  wb | Spreadsheet.Read(Sheet: "Formulas" CellSource: SpreadsheetCellSource::Formulas) = formulas-out
+  formulas-out | Log("formulas mode")
+  ; Literal A/B cells still come through as their values (no formula = fall back)
+  formulas-out | Take(0) | ExpectTable | Take("A") | Assert.Is(10.0 true)
+  formulas-out | Take(0) | ExpectTable | Take("B") | Assert.Is(20.0 true)
+  ; Formula cells now show the formula text prefixed with =
+  formulas-out | Take(0) | ExpectTable | Take("Sum")     | Assert.Is("=A2+B2" true)
+  formulas-out | Take(0) | ExpectTable | Take("Product") | Assert.Is("=A2*B2" true)
+  formulas-out | Take(1) | ExpectTable | Take("Sum")     | Assert.Is("=A3+B3" true)
+  formulas-out | Take(1) | ExpectTable | Take("Product") | Assert.Is("=A3*B3" true)
 
   ; ===========================================================================
   ; Bytes input path: load from in-memory bytes (the iOS upload story)

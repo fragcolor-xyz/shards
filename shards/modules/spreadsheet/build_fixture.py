@@ -53,6 +53,19 @@ ws = wb.create_sheet("DupHeaders")
 ws.append(["Score", "Score", None])
 ws.append([1, 2, 3])
 
+# ---- Sheet 4: Formulas ----
+# openpyxl writes formula strings as-is and does NOT compute their results,
+# so cached values come out as 0/None — which is exactly the "stale cache"
+# scenario we want to exercise the CellSource: Formulas mode against.
+ws = wb.create_sheet("Formulas")
+ws.append(["A", "B", "Sum", "Product"])
+ws.append([10, 20, None, None])
+ws["C2"] = "=A2+B2"        # cached value will be None (stale)
+ws["D2"] = "=A2*B2"        # cached value will be None (stale)
+ws.append([3,  4,  None, None])
+ws["C3"] = "=A3+B3"
+ws["D3"] = "=A3*B3"
+
 OUT.parent.mkdir(parents=True, exist_ok=True)
 wb.save(OUT)
 print(f"Wrote {OUT}")
