@@ -13,5 +13,5 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-calamine = { version = "0.34", features = ["dates"] }
+calamine = { version = "0.35", features = ["dates"] }
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
