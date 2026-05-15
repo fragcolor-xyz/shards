@@ -179,6 +179,12 @@ clang: warning: precompiled header '...cmake_pch.hxx.gch' was ignored because '-
 ```
 This is mostly an issue with Xcode-generator builds (iOS CI). Ninja/Make tend to pass flags in source order so it works there. If you must inject `-include` globally, gate it on whether you actually need it (as we do for the libc++ bug above).
 
+**Confirming you have the bug:**
+```bash
+grep -c "promote.h" $(xcrun --show-sdk-path)/usr/include/c++/v1/complex
+# 0 means buggy; >0 means fixed.
+```
+
 ### CLT 26.x: AddressSanitizer Deadlocks at Startup
 
 **Symptom:** Debug builds (which enable `-fsanitize=address` by default) hang at startup before any user code runs. Even `build/Debug/shards --help` hangs forever, with `LOG_shards=trace` producing zero output. The hang is in `dyld`'s `runAllInitializersForMain` and never returns.
@@ -195,12 +201,6 @@ The ASan runtime in `libclang_rt.asan_osx_dynamic.dylib` shipped with CLT 17 / m
 **Workaround:** use **Release** builds for testing until Apple ships a fixed `libclang_rt.asan` (`just build-rel` then `build/Release/shards <script>`). Release does not link ASan. Or, build Debug with ASan disabled — set `SH_USE_ASAN=OFF` if shards' CMake exposes that, or remove the `-fsanitize=address` flag in `cmake/Sanitizers.cmake` for macOS 26.x.
 
 **Confirming you have the bug:** run `sample $(pgrep -n shards) 2 -mayDie` on the hung process — if you see `__sanitizer::StaticSpinMutex::LockSlow` and `swtch_pri` dominating the call counts, that's it.
-
-**Confirming you have the bug:**
-```bash
-grep -c "promote.h" $(xcrun --show-sdk-path)/usr/include/c++/v1/complex
-# 0 means buggy; >0 means fixed.
-```
 
 ## Emscripten / WebAssembly Build
 
