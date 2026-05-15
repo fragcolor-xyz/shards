@@ -166,6 +166,7 @@ jobs:
           ./shards new ../shards/tests/crdts.shs
           ./shards new ../shards/tests/crdt-benchmarks.shs
           ./shards new ../shards/tests/geo.shs
+          ./shards new ../shards/tests/spreadsheet.shs
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
