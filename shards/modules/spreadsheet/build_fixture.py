@@ -5,7 +5,7 @@ Generate the test fixture spreadsheet for the Spreadsheet module.
 Run with: uv run --with openpyxl python3 build_fixture.py
 or:       ./build_fixture.py     (uv interprets the shebang)
 
-Produces shards/tests/fixtures/spreadsheet_test.xlsx with:
+Produces shards/tests/data/spreadsheet_test.xlsx with:
 
   Sheet "People":
     A1: Name      B1: Age   C1: Active   D1: Joined

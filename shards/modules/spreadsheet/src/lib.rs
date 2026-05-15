@@ -30,7 +30,7 @@ extern crate shards;
 #[macro_use]
 extern crate lazy_static;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::io::Cursor;
 
@@ -277,8 +277,13 @@ fn formula_at<'a>(
 
 /// Build header names from the first row, replacing empties with `col_<idx>`
 /// and disambiguating duplicates with `Foo`, `Foo_2`, `Foo_3` ... .
+///
+/// Collision-safe: a synthesized suffix (e.g. `Foo_2`) is also checked against
+/// already-taken names, so a sheet with headers like `["Score", "Score", "Score_2"]`
+/// produces `["Score", "Score_2", "Score_3"]` rather than silently colliding on
+/// the second `Score_2`.
 fn build_headers(first_row: &[Data]) -> Vec<String> {
-  let mut counts: HashMap<String, usize> = HashMap::new();
+  let mut taken: HashSet<String> = HashSet::new();
   let mut out: Vec<String> = Vec::with_capacity(first_row.len());
 
   for (idx, cell) in first_row.iter().enumerate() {
@@ -296,13 +301,19 @@ fn build_headers(first_row: &[Data]) -> Vec<String> {
       raw
     };
 
-    let n = counts.entry(base.clone()).or_insert(0);
-    *n += 1;
-    let final_name = if *n == 1 {
+    let final_name = if !taken.contains(&base) {
       base
     } else {
-      format!("{}_{}", base, *n)
+      let mut n = 2usize;
+      loop {
+        let candidate = format!("{}_{}", base, n);
+        if !taken.contains(&candidate) {
+          break candidate;
+        }
+        n += 1;
+      }
     };
+    taken.insert(final_name.clone());
     out.push(final_name);
   }
   out
@@ -343,15 +354,19 @@ fn range_to_dense(
     let abs_row = row0 + r_off as u32;
     let mut row_tbl = AutoTableVar::new();
     for (i, cell) in row.iter().enumerate() {
+      // The key string must outlive insert_fast (which reads the str pointer
+      // when cloning the key into the table). Bind any synthesized String to a
+      // named local so its lifetime extends past the call.
+      let spillover: String;
       let key = if i < headers.len() {
         Var::ephemeral_string(&headers[i])
       } else {
         // Row wider than header: synthesize spillover key.
-        Var::ephemeral_string(&format!("col_{}", i))
+        spillover = format!("col_{}", i);
+        Var::ephemeral_string(&spillover)
       };
       let abs_col = col0 + i as u32;
       let f = formula_at(formulas, abs_row, abs_col);
-      // We need the key string to outlive insert_fast, which clones the key internally.
       insert_cell_into_table(&mut row_tbl, key, cell, f);
     }
     out.0.emplace_table(row_tbl);
