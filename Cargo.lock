@@ -8452,7 +8452,6 @@ version = "0.1.0"
 dependencies = [
  "calamine",
  "chrono",
- "compile-time-crc32",
  "lazy_static",
  "shards",
 ]
