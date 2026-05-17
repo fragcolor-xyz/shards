@@ -63,12 +63,12 @@ jobs:
   # Build shards for Windows
   #
   Windows:
-    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ', Vulkan' || '' }})
+    name: Build (${{ github.event.inputs.binary-type || inputs.binary-type }}, ${{ github.event.inputs.build-type || inputs.build-type }}, 64-bit${{ (github.event.inputs.vulkan || inputs.vulkan) && ', Vulkan' || '' }})
     runs-on: windows-latest
     outputs:
       binary-type: ${{ steps.setup.outputs.binary-type }}
       run-tests: ${{ steps.setup.outputs.run-tests }}
-      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ' Vulkan' || '' }}
+      artifact-name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) && ' Vulkan' || '' }}
     steps:
       - name: Setup
         id: setup
@@ -206,7 +206,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) == 'true' && ' Vulkan' || '' }}
+          name: ${{ steps.setup.outputs.artifact }} ${{ steps.setup.outputs.build-type }}${{ (github.event.inputs.vulkan || inputs.vulkan) && ' Vulkan' || '' }}
           path: ${{ steps.setup.outputs.artifact-path }}
           if-no-files-found: error
           retention-days: 1
