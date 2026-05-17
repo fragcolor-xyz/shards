@@ -228,7 +228,7 @@ struct Chat {
         ctx_params.use_gpu = true;
         ctx_params.print_timings = false;
         ctx_params.n_threads = _data->n_threads;
-        ctx_params.media_marker = MTMD_DEFAULT_IMAGE_MARKER;
+        ctx_params.media_marker = mtmd_default_marker();
 
         // Initialize MTMD context
         _data->mtmd_ctx = mtmd_init_from_file(mmproj_path.c_str(), model, ctx_params);
@@ -466,7 +466,7 @@ struct ChatAddImage {
 
     // Create input text and chunks for tokenization
     mtmd_input_text text;
-    text.text = MTMD_DEFAULT_IMAGE_MARKER;
+    text.text = mtmd_default_marker();
     text.add_special = false;
     text.parse_special = true;
 
@@ -528,8 +528,8 @@ struct ChatAddImage {
 
     // Process the image embeddings
     {
-      // Check if we need to use non-causal attention for this model
-      bool use_non_causal = mtmd_decode_use_non_causal(chatData.mtmd_ctx);
+      // Check if we need to use non-causal attention for this model (b9019+: now per-chunk)
+      bool use_non_causal = mtmd_decode_use_non_causal(chatData.mtmd_ctx, image_chunk);
       if (use_non_causal) {
         llama_set_causal_attn(chatData.ctx.get(), false);
       }

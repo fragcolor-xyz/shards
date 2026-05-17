@@ -482,8 +482,17 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
-    GIT_TAG b8690
+    GIT_TAG b9191
   )
+
+  # llama.cpp >= b9019 uses dynamic_cast<llama_model_base*> in src/llama.cpp and
+  # src/llama-quant.cpp (PR #22004). Upstream offers no toggle, so re-enable RTTI
+  # for just the llama static lib. Mixing RTTI / -fno-rtti TUs is safe here: we
+  # never use typeid() across the boundary, and llama is a static library so
+  # there are no shared-typeinfo ODR concerns.
+  if(TARGET llama)
+    target_compile_options(llama PRIVATE -frtti)
+  endif()
 
   # whisper.cpp configuration
   set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
