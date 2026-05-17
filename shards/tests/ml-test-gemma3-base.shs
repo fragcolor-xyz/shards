@@ -1,4 +1,4 @@
-@define(text-model "/Users/sugar/Downloads/gemma-3-4b-it-q4_0.gguf" IgnoreRedefined: true)
+@define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q4_K_M.gguf" IgnoreRedefined: true)
 
 @text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat = chat-context

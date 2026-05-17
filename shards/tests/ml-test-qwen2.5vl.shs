@@ -34,7 +34,7 @@ LLM.AddBos
 "<start_of_turn>user\n" | LLM.AddText(chat-context)
 
 "<start_of_image>" | LLM.AddText(chat-context)
-LoadImage(@test-image) | StripAlpha | LLM.AddImage(chat-context ImageTokens: 256)
+LoadImage(@test-image) | StripAlpha | LLM.AddImage(chat-context)
 "<end_of_image>" | LLM.AddText(chat-context)
 
 "What is in this image?" | LLM.AddText(chat-context)
