@@ -403,10 +403,7 @@ struct ChatAddText {
 
 // Add an image to the conversation
 struct ChatAddImage {
-  ChatAddImage() {
-    _embeddings = Var(256);
-    _logitsLast = Var(false);
-  }
+  ChatAddImage() { _logitsLast = Var(false); }
 
   static SHTypesInfo inputTypes() { return shards::CoreInfo::ImageType; }
   static SHTypesInfo outputTypes() { return shards::CoreInfo::ImageType; }
@@ -415,14 +412,11 @@ struct ChatAddImage {
   PARAM_PARAMVAR(_logitsLast, "NeedLogits",
                  "Whether to add logits for the last token (true) or not (false), this is needed to prepare for generation",
                  {shards::CoreInfo::BoolType, shards::CoreInfo::BoolVarType});
-  PARAM_PARAMVAR(_embeddings, "ImageTokens", "Maximum number of tokens to use for image representation in the context window",
-                 {shards::CoreInfo::IntType, shards::CoreInfo::IntVarType});
   PARAM_PARAMVAR(_prefixTokens, "PrefixTokens", "Optional raw tokens to add to the beginning",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
   PARAM_PARAMVAR(_suffixTokens, "SuffixTokens", "Optional raw tokens to add to the end",
                  {shards::CoreInfo::NoneType, shards::CoreInfo::IntSeqType, shards::CoreInfo::IntVarSeqType});
-  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_embeddings), PARAM_IMPL_FOR(_prefixTokens),
-             PARAM_IMPL_FOR(_suffixTokens));
+  PARAM_IMPL(PARAM_IMPL_FOR(_chat), PARAM_IMPL_FOR(_logitsLast), PARAM_IMPL_FOR(_prefixTokens), PARAM_IMPL_FOR(_suffixTokens));
 
   void cleanup(SHContext *context) { PARAM_CLEANUP(context); }
 
@@ -451,11 +445,7 @@ struct ChatAddImage {
 
     // Get the model for embedding dimensions
     auto model = llama_get_model(chatData.ctx.get());
-    const int n_ubatch = llama_n_ubatch(chatData.ctx.get());
-
-    // Calculate the maximum tokens we'll allow for the image
-    // This is limited by both the user-specified ImageTokens parameter and the context size
-    const int max_tokens = std::min((int)_embeddings.get().payload.intValue, n_ubatch);
+    const int n_batch = llama_n_batch(chatData.ctx.get());
 
     // Create a mtmd_bitmap from the image data
     mtmd_bitmap *bitmap = mtmd_bitmap_init(image->width, image->height, image->data);
@@ -499,11 +489,9 @@ struct ChatAddImage {
       throw ActivationError("No image tokens found after tokenization");
     }
 
-    // Get the number of tokens in the image
-    size_t n_image_tokens = mtmd_image_tokens_get_n_tokens(mtmd_input_chunk_get_tokens_image(image_chunk));
-
-    // Ensure we don't exceed our maximum token count for the LLM
-    int actual_n_tokens = std::min((int)n_image_tokens, max_tokens);
+    // Total number of image tokens — submit all of them, sub-batched if needed
+    // (matches the canonical mtmd_helper_decode_image_chunk implementation).
+    const int32_t n_image_tokens = (int32_t)mtmd_image_tokens_get_n_tokens(mtmd_input_chunk_get_tokens_image(image_chunk));
 
     // Prefix tokens if provided
     if (_prefixTokens.get().valueType != SHType::None) {
@@ -528,7 +516,7 @@ struct ChatAddImage {
 
     // Process the image embeddings
     {
-      // Check if we need to use non-causal attention for this model (b9019+: now per-chunk)
+      // Check if we need to use non-causal attention for this model (now per-chunk in newer mtmd API)
       bool use_non_causal = mtmd_decode_use_non_causal(chatData.mtmd_ctx, image_chunk);
       if (use_non_causal) {
         llama_set_causal_attn(chatData.ctx.get(), false);
@@ -546,8 +534,8 @@ struct ChatAddImage {
       // Get the embedding dimension from the model
       int n_mmproj_embd = llama_model_n_embd(model);
 
-      // Create embedding batch with proper positioning
-      decode_embd_batch batch_img(image_embd, actual_n_tokens, n_pos_per_embd, n_mmproj_embd);
+      // Create embedding batch with ALL image tokens; we'll decode in n_batch-sized views below.
+      decode_embd_batch batch_img(image_embd, n_image_tokens, n_pos_per_embd, n_mmproj_embd);
 
       // Set positions based on whether we're using M-RoPE or not
       if (use_mrope) {
@@ -558,19 +546,28 @@ struct ChatAddImage {
         batch_img.set_position_normal(chatData.n_past, 0);
       }
 
-      // Set logits for the last token if needed
+      // Set logits for the last token if needed (only meaningful for the very last sub-batch,
+      // which is the last sub-batch we submit below).
       if (_suffixTokens.get().valueType == SHType::None && _logitsLast.get().payload.boolValue) {
         batch_img.batch.logits[batch_img.batch.n_tokens - 1] = true;
       }
 
-      // Process the batch
-      if (llama_decode(chatData.ctx.get(), batch_img.batch)) {
-        throw ActivationError("Failed to decode image");
+      // Decode the image embeddings in n_batch-sized sub-batches so we never exceed
+      // llama's batch limit even for high-resolution images.
+      const int32_t n_img_batches = (n_image_tokens + n_batch - 1) / n_batch;
+      for (int32_t i_batch = 0; i_batch < n_img_batches; i_batch++) {
+        const int pos_offset = i_batch * n_batch;
+        const int n_tokens_batch = std::min(n_batch, n_image_tokens - pos_offset);
+        llama_batch batch_view = batch_img.get_view(pos_offset, n_tokens_batch);
+        if (llama_decode(chatData.ctx.get(), batch_view)) {
+          throw ActivationError("Failed to decode image");
+        }
       }
 
-      // Update n_past based on whether we're using M-RoPE or not
-      // For M-RoPE, the whole image counts as a single position
-      llama_pos n_pos = mtmd_image_tokens_get_n_pos(mtmd_input_chunk_get_tokens_image(image_chunk));
+      // Advance n_past by the canonical position count from mtmd:
+      //   - M-RoPE: a single temporal position for the whole image (returns max(nx, ny))
+      //   - non M-RoPE: equals n_image_tokens
+      const llama_pos n_pos = mtmd_image_tokens_get_n_pos(mtmd_input_chunk_get_tokens_image(image_chunk));
       chatData.n_past += n_pos;
     }
 
