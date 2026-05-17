@@ -9,6 +9,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
     embedd.cpp
     chat.cpp
     sh_whisper.cpp
+    common_stubs.cpp
     ${llama.cpp_SOURCE_DIR}/common/common.cpp
     ${llama.cpp_SOURCE_DIR}/common/sampling.cpp
     ${llama.cpp_SOURCE_DIR}/common/log.cpp
