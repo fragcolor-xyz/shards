@@ -9,12 +9,6 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
     embedd.cpp
     chat.cpp
     sh_whisper.cpp
-    common_stubs.cpp
-    ${llama.cpp_SOURCE_DIR}/common/common.cpp
-    ${llama.cpp_SOURCE_DIR}/common/sampling.cpp
-    ${llama.cpp_SOURCE_DIR}/common/log.cpp
-    ${llama.cpp_SOURCE_DIR}/common/unicode.cpp
-    ${llama.cpp_SOURCE_DIR}/common/reasoning-budget.cpp
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/clip.cpp
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd.cpp
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-audio.cpp
@@ -28,7 +22,13 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
     REGISTER_SHARDS llm llm_chat whisper)
 
   target_include_directories(shards-module-llm PRIVATE ${whisper.cpp_SOURCE_DIR}/include)
-  target_link_libraries(shards-module-llm llama)
+  # llama-common provides common_batch_*, common_tokenize, common_sampler_*,
+  # build-info, etc. — everything chat.cpp/embedd.cpp need from upstream's
+  # common/ helper layer. Linking it (instead of compiling sources directly)
+  # lets upstream's CMake handle generated files and the internal dependency
+  # graph between common.cpp / sampling.cpp / fit.cpp / speculative.cpp /
+  # build-info.cpp.
+  target_link_libraries(shards-module-llm llama llama-common)
   target_compile_definitions(shards-module-llm PRIVATE WHISPER_VERSION="shards-whisper-0.1")
 
   # Make sure clip.h, llama, mtmd, and vendor headers are in the include path

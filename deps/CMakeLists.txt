@@ -479,6 +479,17 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
     set(MATH_LIBRARY "" CACHE FILEPATH "" FORCE)
   endif()
 
+  # Build the upstream llama-common helper library so we can link against it
+  # instead of cherry-picking common/*.cpp sources. Cherry-picking is fragile:
+  # common.cpp/sampling.cpp reference symbols in sibling files (fit, speculative,
+  # build-info, ngram-*, ...) and the set keeps growing across releases.
+  set(LLAMA_BUILD_COMMON ON CACHE BOOL "" FORCE)
+  set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(LLAMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+  set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+  set(LLAMA_OPENSSL OFF CACHE BOOL "" FORCE)        # we never make HTTPS calls from llama-common
+
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
@@ -487,12 +498,14 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
 
   # llama.cpp >= b9019 uses dynamic_cast<llama_model_base*> in src/llama.cpp and
   # src/llama-quant.cpp (PR #22004). Upstream offers no toggle, so re-enable RTTI
-  # for just the llama static lib. Mixing RTTI / -fno-rtti TUs is safe here: we
-  # never use typeid() across the boundary, and llama is a static library so
-  # there are no shared-typeinfo ODR concerns.
-  if(TARGET llama)
-    target_compile_options(llama PRIVATE -frtti)
-  endif()
+  # for the targets that use it. Mixing RTTI / -fno-rtti TUs is safe here: we
+  # never use typeid() across the boundary, and llama / llama-common are static
+  # libraries so there are no shared-typeinfo ODR concerns.
+  foreach(_t llama llama-common llama-common-base)
+    if(TARGET ${_t})
+      target_compile_options(${_t} PRIVATE -frtti)
+    endif()
+  endforeach()
 
   # whisper.cpp configuration
   set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)

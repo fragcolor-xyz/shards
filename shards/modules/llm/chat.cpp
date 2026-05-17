@@ -7,12 +7,6 @@
 #include <vector>
 #include <mutex>
 
-// Build info globals required by llama.cpp common library
-int LLAMA_BUILD_NUMBER = 1;
-char const *LLAMA_COMMIT = "shards";
-char const *LLAMA_COMPILER = "shards";
-char const *LLAMA_BUILD_TARGET = "shards";
-
 namespace shards {
 namespace llm {
 // Data structure for MultiModal Chat
