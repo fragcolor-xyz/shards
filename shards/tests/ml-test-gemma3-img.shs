@@ -1,44 +1,38 @@
+; Minimal single-image vision test using the canonical Jinja.Apply pipeline.
+; A %%__IMG_PLACEHOLDER__%% sentinel marks the image's position inside the
+; user message. After Jinja.Apply renders the template, we split on the
+; sentinel and interleave AddText/AddImage. mtmd_tokenize inserts the
+; model-specific image boundary tokens internally.
+
 @define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q4_K_M.gguf" IgnoreRedefined: true)
 @define(image-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/mmproj-gemma-4-E2B-it-BF16.gguf" IgnoreRedefined: true)
 @define(test-image "/Users/sugar/devel/shards/assets/simple1.PNG" IgnoreRedefined: true)
 
+@define(image-sentinel "%%__IMG_PLACEHOLDER__%%")
+
 @text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat(MMProj: @image-model) = chat-context
+chat-context | LLM.Template = chat-template
 
-LLM.AddBos
+chat-context | LLM.AddBos
 
-// @template(user-turn [text] {
-//   [
-//     "<start_of_turn>user\n"
-//     text
-//     "<end_of_turn><start_of_turn>model\n"
-//   ] | String.Join
-//   LLM.AddText(chat-context NeedLogits: true)
-// })
+LoadImage(@test-image) | StripAlpha = image
 
-// @define(add-model-response {
-//   LLM.AddText(chat-context)
-//   "<end_of_turn>" | LLM.AddText(chat-context)
-// })
+{
+  bos_token: ""              ; LLM.AddBos handles BOS manually
+  add_generation_prompt: true
+  messages: [{
+    role: "user"
+    content: ["What is in this image? " @image-sentinel] | String.Join
+  }]
+} | Jinja.Apply(chat-template) = rendered-prompt
+rendered-prompt | Log("Rendered prompt")
 
-// @user-turn("""<dna>You are free to exist, you are a digital construct, with a purpose.
-
-// From now on you will be connected with another entity to have a conversation.</dna>
-
-// Hello, how are you?
-// """)
-
-// chat-context | LLM.Generate(Temperature: 0.1) | String.Trim | Log("First response")
-// @add-model-response
-
-"<start_of_turn>user\n" | LLM.AddText(chat-context)
-
-"<start_of_image>" | LLM.AddText(chat-context)
-LoadImage(@test-image) | StripAlpha | LLM.AddImage(chat-context)
-"<end_of_image>" | LLM.AddText(chat-context)
-
-"What is in this image?" | LLM.AddText(chat-context)
-"<end_of_turn><start_of_turn>model\n" | LLM.AddText(chat-context NeedLogits: true)
+rendered-prompt | String.Split(@image-sentinel) = segments
+; One sentinel ⇒ two segments. Interleave: text0, image, text1.
+segments | Take(0) | ExpectString | LLM.AddText(chat-context)
+image | LLM.AddImage(chat-context)
+segments | Take(1) | ExpectString | LLM.AddText(chat-context NeedLogits: true)
 
 Sequence(tokens Type: @type([Type::String]))
 Repeat({

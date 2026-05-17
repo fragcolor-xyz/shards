@@ -1,33 +1,24 @@
+; Minimal text-only chat test using the canonical Jinja.Apply pipeline.
+; The same pattern works for any model family — the model's chat template
+; lives in the GGUF metadata (LLM.Template) and is applied via Jinja.Apply.
+
 @define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q4_K_M.gguf" IgnoreRedefined: true)
 
 @text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
 LLM.Chat = chat-context
+chat-context | LLM.Template = chat-template
+{chat-template | Log("Template")}
+{chat-context | LLM.Bos | Log("Bos")}
 
-{LLM.Template | Log("Template")}
-{LLM.Bos | Log("Bos")}
+chat-context | LLM.AddBos
 
-LLM.AddBos
-
-@template(user-turn [text] {
-  [
-    "<start_of_turn>user\n"
-    text
-    "<end_of_turn><start_of_turn>model\n"
-  ] | String.Join
-  LLM.AddText(chat-context NeedLogits: true)
-})
-
-@define(add-model-response {
-  LLM.AddText(chat-context)
-  "<end_of_turn>" | LLM.AddText(chat-context)
-})
-
-@user-turn("""<dna>You are free to exist, you are a digital construct, with a purpose.
-
-From now on you will be connected with another entity to have a conversation.</dna>
-
-Hello, how are you?
-""")
+{
+  bos_token: ""              ; LLM.AddBos handles BOS manually
+  add_generation_prompt: true
+  messages: [{role: "user" content: "Hello, how are you?"}]
+} | Jinja.Apply(chat-template) = rendered-prompt
+rendered-prompt | Log("Rendered prompt")
+rendered-prompt | LLM.AddText(chat-context NeedLogits: true)
 
 Sequence(tokens Type: @type([Type::String]))
 Repeat({
