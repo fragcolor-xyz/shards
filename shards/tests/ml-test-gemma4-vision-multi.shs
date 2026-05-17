@@ -1,0 +1,149 @@
+; Vision pipeline test using the REAL path: render the model's Jinja chat
+; template via Jinja.Apply, with image positions held by text sentinels.
+; Split the rendered prompt on the sentinel and interleave AddText/AddImage.
+;
+; This mirrors what edge-talk's prompter-local.shs does end-to-end. The whole
+; point is to be model-agnostic: Jinja.Apply doesn't know what an image is,
+; it just passes the sentinel through verbatim, so the same code works for
+; any model family (gemma-3, gemma-4, qwen-vl, llama-vision, ...) — the only
+; per-model knowledge lives in mtmd_tokenize, which inserts the right
+; <|image>/<image|>, <start_of_image>/<end_of_image>, etc. for us.
+;
+; Scenarios:
+;   1. Single image, one user turn.
+;   2. Two images in the same user turn.
+;   3. Multi-turn with assistant message, then a follow-up that must
+;      reference an earlier image (no new image sent).
+
+@define(text-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/gemma-4-E2B-it-Q4_K_M.gguf" IgnoreRedefined: true)
+@define(image-model "/Users/sugar/.cache/lm-studio/models/lmstudio-community/gemma-4-E2B-it-GGUF/mmproj-gemma-4-E2B-it-BF16.gguf" IgnoreRedefined: true)
+@define(test-image-1 "/Users/sugar/devel/shards/assets/simple1.PNG" IgnoreRedefined: true)
+@define(test-image-2 "/Users/sugar/devel/shards/assets/ShardsLogo.png" IgnoreRedefined: true)
+
+@define(image-sentinel "%%__IMG_PLACEHOLDER__%%")
+
+@text-model | LLM.Model(UseMmap: false GPULayers: 1000) = model
+LLM.Chat(MMProj: @image-model ContextSize: 4096) = chat-context
+chat-context | LLM.Template = chat-template
+
+; Working buffers — reused across scenarios
+Sequence(messages Type: @type([{role: Type::String content: Type::String}]))
+Sequence(collected-images Type: @type([Type::Image]))
+
+; -------------------------------------------------------------
+; Render `messages` through the GGUF Jinja template, split on the
+; sentinel, and interleave AddText/AddImage into chat-context.
+; -------------------------------------------------------------
+@wire(feed-rendered-prompt {
+  {
+    bos_token: ""              ; LLM.AddBos handles BOS manually
+    add_generation_prompt: true
+    messages: messages
+  } | Jinja.Apply(chat-template) = rendered-prompt
+  rendered-prompt | Log("Rendered prompt")
+
+  Count(collected-images) | If(IsMore(0) {
+    = num-images
+    rendered-prompt | String.Split(@image-sentinel) = prompt-segments
+    Count(prompt-segments) = num-segments
+
+    num-segments | Sub(1) = num-sentinels
+    num-sentinels | When(IsNot(num-images) {
+      [num-images " images but " num-sentinels " sentinels in rendered prompt"] | String.Format
+      Log("WARN: sentinel/image mismatch")
+    })
+
+    0 >= image-index
+    0 >= segment-counter
+    prompt-segments | ForEach({
+      ExpectString = segment
+      segment | When(IsNot("") {
+        If({segment-counter | Is(num-segments | Sub(1))} {true} {false}) = is-last-text
+        Await({segment | LLM.AddText(chat-context NeedLogits: is-last-text)})
+      })
+      segment-counter | When(IsLess(num-segments | Sub(1)) {
+        collected-images | Take(image-index) | ExpectImage
+        Await(LLM.AddImage(chat-context NeedLogits: false))
+        Inc(image-index)
+      })
+      Inc(segment-counter)
+    })
+  } {
+    rendered-prompt | Await(LLM.AddText(chat-context NeedLogits: true))
+  })
+})
+
+@template(generate-response [label] {
+  Sequence(out-tokens Type: @type([Type::String]))
+  Repeat({
+    chat-context | LLM.Generate(Temperature: 0.1)
+    If(Is("") Return Pass) >> out-tokens
+  } Times: 256)
+  out-tokens | String.Join | String.Trim | Log(label)
+})
+
+; -------------------------------------------------------------
+; Scenario 1: single image, one user turn — via Jinja.Apply
+; -------------------------------------------------------------
+"=== Scenario 1: single image via Jinja.Apply ===" | Log
+
+chat-context | LLM.Reset | LLM.AddBos
+
+Clear(messages)
+Clear(collected-images)
+LoadImage(@test-image-1) | StripAlpha >> collected-images
+{
+  role: "user"
+  content: ["What is shown in this image? " @image-sentinel] | String.Join
+} | Push(messages)
+Do(feed-rendered-prompt)
+@generate-response("Scenario 1 — response")
+
+; -------------------------------------------------------------
+; Scenario 2: two images in one user turn — via Jinja.Apply
+; -------------------------------------------------------------
+"=== Scenario 2: two images in one user turn ===" | Log
+
+chat-context | LLM.Reset | LLM.AddBos
+
+Clear(messages)
+Clear(collected-images)
+LoadImage(@test-image-1) | StripAlpha >> collected-images
+LoadImage(@test-image-2) | StripAlpha >> collected-images
+{
+  role: "user"
+  content: ["I will show you two images. The first: " @image-sentinel
+            " And the second: " @image-sentinel
+            " Describe each briefly in one sentence."] | String.Join
+} | Push(messages)
+Do(feed-rendered-prompt)
+@generate-response("Scenario 2 — response")
+
+; -------------------------------------------------------------
+; Scenario 3: multi-turn — user with two images, assistant reply
+; (synthetic, fed via the template), then a follow-up user message.
+; -------------------------------------------------------------
+"=== Scenario 3: multi-turn (image, assistant, follow-up) ===" | Log
+
+chat-context | LLM.Reset | LLM.AddBos
+
+Clear(messages)
+Clear(collected-images)
+LoadImage(@test-image-1) | StripAlpha >> collected-images
+LoadImage(@test-image-2) | StripAlpha >> collected-images
+
+{
+  role: "user"
+  content: ["Here are two images: " @image-sentinel " and " @image-sentinel
+            ". Briefly describe each."] | String.Join
+} | Push(messages)
+{
+  role: "assistant"
+  content: "The first image shows a user interface with text labels. The second is a stylized logo with geometric shapes."
+} | Push(messages)
+{
+  role: "user"
+  content: "Of the two images, which one contained readable text or labels? Answer with 'first' or 'second' and a short reason."
+} | Push(messages)
+Do(feed-rendered-prompt)
+@generate-response("Scenario 3 — response")
