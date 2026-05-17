@@ -255,6 +255,7 @@ if [ "$WITH_CPU" = true ]; then
         "shards/tests/snappy.shs||"
         "shards/tests/crypto.shs||"
         "shards/tests/rust.shs||"
+        "shards/tests/spreadsheet.shs||"
         # Database tests
         "shards/tests/db.shs|with-sqlite-vec:true|"
         "shards/tests/db-paths.shs||"

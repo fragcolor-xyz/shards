@@ -122,6 +122,86 @@ The build system supports multiple platforms (macOS, Linux, Windows, iOS, etc.).
 ### Swift Integration
 Swift files provide iOS/macOS bindings. The main interface is in `include/shards/shards.swift` with module-specific implementations in various directories.
 
+## Native macOS Build — Known Issues
+
+### Asymmetric Debug-vs-Release Compile Failures (PCH staleness)
+
+**Symptom:** `just build` fails in Debug while a previously-successful Release build still appears to work. The failures are typically C++ compile errors deep inside system headers like `<complex>`, `<vector>`, `<filesystem>` — code you didn't change.
+
+**Root cause:** Several modules use precompiled headers via `target_precompile_headers(...)` (notably `shards/modules/gfx/CMakeLists.txt`). CMake/Ninja **do not track system headers under `/Library/Developer/CommandLineTools/...` or Xcode SDK paths as dependencies of the PCH.** When macOS / Command Line Tools / Xcode is updated, system headers change underneath the PCH but Ninja sees no tracked deps changed and reuses the stale PCH. Whichever build dir was *not* reconfigured since the OS update keeps "working" off the pre-update PCH; the freshly-rebuilt one fails.
+
+**Diagnostic flow:**
+```bash
+# 1. Confirm one config is using a stale PCH:
+stat -f "%Sm %N" build/{Debug,Release}/src/union/CMakeFiles/shards-cpp-union_shards-module-gfx.dir/cmake_pch.hxx.pch 2>/dev/null
+
+# 2. Compare to actual CLT install time (file mtimes can be backdated by Apple's installer):
+pkgutil --pkg-info=com.apple.pkg.CLTools_Executables | grep install-time
+# Convert that Unix epoch to a date and compare to the PCH timestamp.
+
+# 3. If PCH predates the CLT install, the "working" config is just stale.
+# Wiping `build/<config>/` will reproduce the failure on that config.
+```
+
+**Fix:** wipe and reconfigure: `rm -rf build/<broken-config>/ && just build`. If the underlying header bug is real (see next section), this won't unstick you — you need a code-level workaround.
+
+### CLT 26.x: libc++ `<complex>` Missing `__promote_t` Include
+
+**Symptom:** Building `shards/modules/gfx/shader/{linalg,math,flow,core}_shards.cpp` fails with:
+```
+.../usr/include/c++/v1/complex:1105:38: error: use of undeclared identifier '__promote_t'
+```
+Pulled in via `Accelerate.framework → vecLib → Sparse/Solve.h → <complex>` (linalg.h transitively).
+
+**Root cause:** Apple's libc++ shipped in **Command Line Tools 26.4.1** (and the matching Xcode SDK) has a bug where `<complex>` uses `__promote_t<>` directly but only includes `<__type_traits/conditional.h>`, not `<__type_traits/promote.h>` where `__promote_t` is defined. Both the CLT and Xcode SDK at this version are affected — switching SDKs does not help.
+
+**Status:** Apple appears to have patched this upstream — `clang++ -c <one-liner that includes <complex>>` now compiles cleanly on the same CLT 26.4.1. No workaround is currently active in the tree. **If you hit this error again**, the recipe is:
+```cmake
+# In cmake/Platform.cmake, inside if(APPLE):
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("#include <complex>\nint main(){ return 0; }" SHARDS_LIBCXX_COMPLEX_OK)
+if(NOT SHARDS_LIBCXX_COMPLEX_OK)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include __type_traits/promote.h")
+endif()
+```
+**Crucially, the gating is required** — injecting `-include` globally breaks PCH on Xcode-generator builds (iOS CI). clang requires `-include cmake_pch.hxx` to be the *first* `-include` flag; any earlier injection produces "PCH was ignored because not first '-include'" + "cmake_pch.hxx file not found" errors. iOS CI runners may not have the libc++ bug at all, so the detection check legitimately stays no-op there. If you reuse this pattern, also note that `check_cxx_source_compiles` on a bare `#include <complex>` may not reproduce the failure even when the bug is present — the trigger is template instantiation through some Accelerate header chain. You may need a probe that actually instantiates `std::pow(complex<T>, complex<U>)` to detect the bug reliably.
+
+**Why `CMAKE_CXX_FLAGS` and not `add_compile_options(...)`?** The natural form
+```cmake
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:SHELL:-include __type_traits/promote.h>)
+```
+**does not work** in this codebase. CMake mangles options containing a space when they're wrapped in a *nested* generator expression — even with the `SHELL:` prefix. The output ends up as two broken args (`$<1:SHELL:-include` and `__type_traits/promote.h>`) because the inner expression's closing `>` is consumed by the outer `$<COMPILE_LANGUAGE:CXX>:...>`. `CMAKE_CXX_FLAGS` is C++-scoped by definition, so we get the "language filter" without needing a generator expression at all. **Generic CMake lesson: prefer `CMAKE_<LANG>_FLAGS` for language-scoped flags with embedded spaces; reserve `SHELL:` generator-expression form for non-nested uses.**
+
+**`-include` flag and PCH ordering** — when injecting a `-include foo.h` flag globally, beware that clang's PCH support requires `-include cmake_pch.hxx` to be the **first** `-include` flag. Any earlier injection causes:
+```
+clang: warning: precompiled header '...cmake_pch.hxx.gch' was ignored because '-include ...cmake_pch.hxx' is not first '-include'
+<built-in>:2:10: fatal error: '...cmake_pch.hxx' file not found
+```
+This is mostly an issue with Xcode-generator builds (iOS CI). Ninja/Make tend to pass flags in source order so it works there. If you must inject `-include` globally, gate it on whether you actually need it (as we do for the libc++ bug above).
+
+**Confirming you have the bug:**
+```bash
+grep -c "promote.h" $(xcrun --show-sdk-path)/usr/include/c++/v1/complex
+# 0 means buggy; >0 means fixed.
+```
+
+### CLT 26.x: AddressSanitizer Deadlocks at Startup
+
+**Symptom:** Debug builds (which enable `-fsanitize=address` by default) hang at startup before any user code runs. Even `build/Debug/shards --help` hangs forever, with `LOG_shards=trace` producing zero output. The hang is in `dyld`'s `runAllInitializersForMain` and never returns.
+
+**Root cause:** `sample <pid>` shows the deadlock chain:
+```
+__asan::AsanInitFromRtl → InitializeShadowMemory → get_dyld_hdr →
+  dyld_shared_cache_iterate_text → _Block_copy → malloc →
+    __sanitizer_mz_malloc → __asan::AsanInitFromRtl (recursive!) →
+      __sanitizer::StaticSpinMutex::LockSlow → swtch_pri (spins forever)
+```
+The ASan runtime in `libclang_rt.asan_osx_dynamic.dylib` shipped with CLT 17 / macOS 26.4.1 calls `dyld_shared_cache_iterate_text` during shadow memory init. On the new dyld, that function uses `_Block_copy` which mallocs, which is intercepted by ASan and re-enters `AsanInitFromRtl` while the outer call still holds the init spinlock. Deadlock.
+
+**Workaround:** use **Release** builds for testing until Apple ships a fixed `libclang_rt.asan` (`just build-rel` then `build/Release/shards <script>`). Release does not link ASan. Or, build Debug with ASan disabled — set `SH_USE_ASAN=OFF` if shards' CMake exposes that, or remove the `-fsanitize=address` flag in `cmake/Sanitizers.cmake` for macOS 26.x.
+
+**Confirming you have the bug:** run `sample $(pgrep -n shards) 2 -mayDie` on the hung process — if you see `__sanitizer::StaticSpinMutex::LockSlow` and `swtch_pri` dominating the call counts, that's it.
+
 ## Emscripten / WebAssembly Build
 
 ### Overview

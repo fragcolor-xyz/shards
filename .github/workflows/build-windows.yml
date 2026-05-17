@@ -308,6 +308,8 @@ jobs:
           ./shards new ../shards/tests/table-seq-push.shs
           echo "Running traits"
           ./shards new ../shards/tests/traits.shs
+          echo "Running spreadsheet"
+          ./shards new ../shards/tests/spreadsheet.shs
           echo "Running ai-mistral"
           ./shards new ../shards/tests/ai-mistral.shs
           echo "Running ai-gguf"

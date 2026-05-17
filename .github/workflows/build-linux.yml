@@ -166,6 +166,7 @@ jobs:
           ./shards new ../shards/tests/crdt-benchmarks.shs
           ./shards new ../shards/tests/localshell.shs
           ./shards new ../shards/tests/geo.shs
+          ./shards new ../shards/tests/spreadsheet.shs
           ./shards new ../shards/tests/ai-mistral.shs
           ./shards new ../shards/tests/ai-gguf.shs
       - name: Test doc samples (non-UI)

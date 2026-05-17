@@ -1,0 +1,144 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright © 2026 Fragcolor Pte. Ltd.
+;
+; Tests the shards-spreadsheet module (calamine-backed XLSX/XLS/ODS reader).
+; Fixture: shards/tests/data/spreadsheet_test.xlsx
+; Built by: shards/modules/spreadsheet/build_fixture.py
+;   uv run --with openpyxl python3 shards/modules/spreadsheet/build_fixture.py
+
+@mesh(root)
+
+@wire(test {
+  "./data/spreadsheet_test.xlsx" = fixture-path
+
+  ; ===========================================================================
+  ; Spreadsheet.Load (path)
+  ; ===========================================================================
+  fixture-path | Spreadsheet.Load = wb
+  Msg("Loaded workbook from path")
+
+  ; ===========================================================================
+  ; Spreadsheet.Sheets - sheet ordering preserved
+  ; ===========================================================================
+  wb | Spreadsheet.Sheets = sheet-names
+  sheet-names | Log("sheets")
+  sheet-names | Count | Assert.Is(4 true)
+  sheet-names | Take(0) | Assert.Is("People" true)
+  sheet-names | Take(1) | Assert.Is("Sparse" true)
+  sheet-names | Take(2) | Assert.Is("DupHeaders" true)
+  sheet-names | Take(3) | Assert.Is("Formulas" true)
+
+  ; ===========================================================================
+  ; Spreadsheet.Read - Dense layout (header-keyed Seq of row-Tables)
+  ; ===========================================================================
+  wb | Spreadsheet.Read(Sheet: "People") = people
+  people | Log("people dense")
+  people | Count | Assert.Is(3 true)
+
+  ; Note: xlsx stores all numbers as float64; calamine surfaces them as Data::Float
+  ; even when the cell looks integer. So Age comes back as Float 30.0, not Int 30.
+  people | Take(0) | ExpectTable | Take("Name")   | Assert.Is("Alice" true)
+  people | Take(0) | ExpectTable | Take("Age")    | Assert.Is(30.0 true)
+  people | Take(0) | ExpectTable | Take("Active") | Assert.Is(true true)
+  people | Take(1) | ExpectTable | Take("Name")   | Assert.Is("Bob" true)
+  people | Take(1) | ExpectTable | Take("Age")    | Assert.Is(25.0 true)
+  people | Take(1) | ExpectTable | Take("Active") | Assert.Is(false true)
+  people | Take(2) | ExpectTable | Take("Name")   | Assert.Is("Charlie" true)
+
+  ; DateTime cell becomes ISO-8601 string
+  people | Take(0) | ExpectTable | Take("Joined") | ExpectString
+    | String.Starts(With: "2024-01-15") | Assert.Is(true true)
+
+  ; ===========================================================================
+  ; Spreadsheet.Read - Dense, by index
+  ; ===========================================================================
+  wb | Spreadsheet.Read(Sheet: 0) = people-by-index
+  people-by-index | Take(0) | ExpectTable | Take("Name") | Assert.Is("Alice" true)
+
+  ; ===========================================================================
+  ; Spreadsheet.Read - Sparse layout
+  ;   Row 0: cols 0 ("Item") and 2 ("Price"); col 1 absent.
+  ;   Row 2: cols 0 ("Widget") and 2 (9.99).
+  ;   Row 4: col 1 ("lonely") only.
+  ; ===========================================================================
+  wb | Spreadsheet.Read(Sheet: "Sparse" Layout: SpreadsheetLayout::Sparse) = sparse
+  sparse | Log("sparse")
+
+  sparse | Take(0) | ExpectTable | Take(0) | Assert.Is("Item" true)
+  sparse | Take(0) | ExpectTable | Take(2) | Assert.Is("Price" true)
+  sparse | Take(2) | ExpectTable | Take(0) | Assert.Is("Widget" true)
+  sparse | Take(2) | ExpectTable | Take(2) | Assert.Is(9.99 true)
+  sparse | Take(4) | ExpectTable | Take(1) | Assert.Is("lonely" true)
+
+  ; ===========================================================================
+  ; Header dedup: Score, Score -> Score, Score_2; empty header -> col_2
+  ; ===========================================================================
+  wb | Spreadsheet.Read(Sheet: "DupHeaders") = dups
+  dups | Log("dup headers")
+  dups | Count | Assert.Is(1 true)
+  dups | Take(0) | ExpectTable | Take("Score")   | Assert.Is(1.0 true)
+  dups | Take(0) | ExpectTable | Take("Score_2") | Assert.Is(2.0 true)
+  dups | Take(0) | ExpectTable | Take("col_2")   | Assert.Is(3.0 true)
+
+  ; ===========================================================================
+  ; HasHeaders: false on People -> all 4 rows, synthetic col_N keys
+  ; ===========================================================================
+  wb | Spreadsheet.Read(Sheet: "People" HasHeaders: false) = no-header
+  no-header | Count | Assert.Is(4 true)
+  no-header | Take(0) | ExpectTable | Take("col_0") | Assert.Is("Name" true)
+  no-header | Take(1) | ExpectTable | Take("col_0") | Assert.Is("Alice" true)
+
+  ; ===========================================================================
+  ; Spreadsheet.ReadAll - one-shot from path
+  ; ===========================================================================
+  fixture-path | Spreadsheet.ReadAll = all-dense
+  all-dense | Log("read-all dense")
+  all-dense | Take("People")     | ExpectSeq | Take(0) | ExpectTable | Take("Name")  | Assert.Is("Alice" true)
+  all-dense | Take("DupHeaders") | ExpectSeq | Take(0) | ExpectTable | Take("Score") | Assert.Is(1.0 true)
+
+  ; ReadAll over an already-loaded Workbook (no re-parse)
+  wb | Spreadsheet.ReadAll(Layout: SpreadsheetLayout::Sparse) = all-sparse
+  all-sparse | Take("Sparse") | ExpectTable | Take(0) | ExpectTable | Take(0) | Assert.Is("Item" true)
+
+  ; ===========================================================================
+  ; CellSource: Formulas — formula text overlay
+  ;   Formulas sheet: row 1 has headers [A B Sum Product]
+  ;                   row 2 has [10 20 =A2+B2 =A2*B2]
+  ;                   row 3 has [ 3  4 =A3+B3 =A3*B3]
+  ;   openpyxl writes formulas WITHOUT computing them, so the cached values for
+  ;   C2/D2/C3/D3 are stale (None/0) — exactly the Xero export situation.
+  ; ===========================================================================
+  Msg("=== Formulas sheet, Values mode (cached, stale here) ===")
+  wb | Spreadsheet.Read(Sheet: "Formulas" CellSource: SpreadsheetCellSource::Values) = vals
+  vals | Log("values mode")
+  ; A and B columns have literal values
+  vals | Take(0) | ExpectTable | Take("A") | Assert.Is(10.0 true)
+  vals | Take(0) | ExpectTable | Take("B") | Assert.Is(20.0 true)
+
+  Msg("=== Formulas sheet, Formulas mode (formula text) ===")
+  wb | Spreadsheet.Read(Sheet: "Formulas" CellSource: SpreadsheetCellSource::Formulas) = formulas-out
+  formulas-out | Log("formulas mode")
+  ; Literal A/B cells still come through as their values (no formula = fall back)
+  formulas-out | Take(0) | ExpectTable | Take("A") | Assert.Is(10.0 true)
+  formulas-out | Take(0) | ExpectTable | Take("B") | Assert.Is(20.0 true)
+  ; Formula cells now show the formula text prefixed with =
+  formulas-out | Take(0) | ExpectTable | Take("Sum")     | Assert.Is("=A2+B2" true)
+  formulas-out | Take(0) | ExpectTable | Take("Product") | Assert.Is("=A2*B2" true)
+  formulas-out | Take(1) | ExpectTable | Take("Sum")     | Assert.Is("=A3+B3" true)
+  formulas-out | Take(1) | ExpectTable | Take("Product") | Assert.Is("=A3*B3" true)
+
+  ; ===========================================================================
+  ; Bytes input path: load from in-memory bytes (the iOS upload story)
+  ; ===========================================================================
+  fixture-path | FS.Read(Bytes: true) = xlsx-bytes
+  xlsx-bytes | Spreadsheet.Load = wb-from-bytes
+  wb-from-bytes | Spreadsheet.Sheets | Take(0) | Assert.Is("People" true)
+
+  xlsx-bytes | Spreadsheet.ReadAll | Take("People") | ExpectSeq | Take(0) | ExpectTable | Take("Name")
+    | Assert.Is("Alice" true)
+
+  Msg("Spreadsheet test passed")
+})
+
+@schedule(root test)
+@run(root) | Assert.Is(true)

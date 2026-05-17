@@ -75,3 +75,4 @@ jobs:
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdts.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/crdt-benchmarks.shs
           valgrind $VALGRIND_OPTS ./shards new ../shards/tests/geo.shs
+          valgrind $VALGRIND_OPTS ./shards new ../shards/tests/spreadsheet.shs

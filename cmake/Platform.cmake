@@ -95,6 +95,19 @@ if(APPLE)
       endif()
     endif()
   endif()
+
+  # NOTE: A previous revision force-included <__type_traits/promote.h> here as
+  # a workaround for a libc++ bug in early CLT 26.4.1 (<complex> referenced
+  # __promote_t<> without including the defining header). The workaround was
+  # removed because:
+  #  - The bug now appears to be patched upstream (probes for `<complex>` and
+  #    `<Accelerate/Accelerate.h>` compile cleanly on the same toolchain).
+  #  - Injecting a global `-include` ahead of PCH attachment broke Xcode-
+  #    generator (iOS) builds: clang requires `-include cmake_pch.hxx` to be
+  #    the first `-include` flag.
+  # If you hit the libc++ <complex> error again, see CLAUDE.md
+  # "Native macOS Build — Known Issues" for the diagnosis and a tested
+  # gated-by-detection workaround.
 endif()
 
 if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
