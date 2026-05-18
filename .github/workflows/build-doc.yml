@@ -67,7 +67,10 @@ jobs:
       - name: Download shards
         uses: actions/download-artifact@v4
         with:
-          name: shards-win64 Debug
+          # build-windows.yml's Debug job runs with Vulkan, so the artifact
+          # is uploaded with the " Vulkan" suffix
+          # (build-windows.yml:209). Match it here.
+          name: shards-win64 Debug Vulkan
           path: ./
       - name: Generate markdown
         shell: bash
