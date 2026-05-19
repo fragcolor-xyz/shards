@@ -40,7 +40,10 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSHARDS_BUILD_DLL_ONLY=ON ..
+          # USE_FPIC makes the in-tree build and ExternalProject_Add
+          # subbuilds (boost, mozjpeg, etc.) compile position-independent,
+          # which is required for them to land inside libshards.so.
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_FPIC=ON ..
           ninja shards-dll
           # Confirm the shared library was actually produced
           ls -la lib/libshards.so*

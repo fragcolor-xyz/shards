@@ -19,18 +19,16 @@ function(setup_shards_library_target TARGET)
 endfunction()
 
 if(NOT EMSCRIPTEN)
-  if(NOT SHARDS_BUILD_DLL_ONLY)
-    # Executable
-    add_executable(shards ${cli_SOURCES})
-    setup_shards_target(shards)
-    target_link_libraries(shards shards-cpp-union)
+  # Executable
+  add_executable(shards ${cli_SOURCES})
+  setup_shards_target(shards)
+  target_link_libraries(shards shards-cpp-union)
 
-    # library
-    add_library(shards-lib)
-    setup_shards_library_target(shards-lib)
-    set_target_properties(shards-lib PROPERTIES OUTPUT_NAME "${LIB_PREFIX}shards-static")
-    target_compile_definitions(shards-lib PRIVATE "shards_EXPORTS=1")
-  endif()
+  # library
+  add_library(shards-lib)
+  setup_shards_library_target(shards-lib)
+  set_target_properties(shards-lib PROPERTIES OUTPUT_NAME "${LIB_PREFIX}shards-static")
+  target_compile_definitions(shards-lib PRIVATE "shards_EXPORTS=1")
 
   # shared
   add_library(shards-dll SHARED dll.cpp)
@@ -44,7 +42,7 @@ if(NOT EMSCRIPTEN)
   target_compile_definitions(shards-dll PRIVATE "shards_EXPORTS=1")
 
   # Apple Framework target
-  if(APPLE AND NOT SHARDS_BUILD_DLL_ONLY)
+  if(APPLE)
     add_library(shards-framework SHARED ${cli_SOURCES})
     setup_shards_target(shards-framework)
 

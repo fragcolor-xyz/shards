@@ -16,21 +16,6 @@ set(SHARDS_ROOT ${SHARDS_DIR})
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
 
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
-option(SHARDS_BUILD_DLL_ONLY "Build only the shards shared library (skip the exe and static lib targets). Implies -fPIC for all static dependencies on platforms where it applies." OFF)
-
-if(SHARDS_BUILD_DLL_ONLY)
-  # The shared lib pulls in many static dependencies (boost, llama.cpp common,
-  # mozjpeg, etc.). Linking those into a .so requires position-independent code.
-  # On Windows code is already position-independent by ABI, and clang targeting
-  # MSVC rejects -fPIC, so only enable USE_FPIC on non-Windows.
-  # USE_FPIC is consumed by cmake/Platform.cmake which:
-  #   - sets CMAKE_POSITION_INDEPENDENT_CODE for the in-tree build
-  #   - appends -DCMAKE_POSITION_INDEPENDENT_CODE=ON to EXTERNAL_CMAKE_ARGS so
-  #     ExternalProject_Add subbuilds (mozjpeg, etc.) also pick it up
-  if(NOT WIN32)
-    set(USE_FPIC ON)
-  endif()
-endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

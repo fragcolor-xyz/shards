@@ -159,17 +159,12 @@ jobs:
           if [ "${{ github.event.inputs.vulkan || inputs.vulkan }}" == "true" ]; then
             VULKAN_FLAG="-DGGML_VULKAN=ON"
           fi
-          DLL_ONLY_FLAG=""
-          if [ "${{ steps.setup.outputs.binary-type }}" != "Exe" ]; then
-            DLL_ONLY_FLAG="-DSHARDS_BUILD_DLL_ONLY=ON"
-          fi
           cmake -G Ninja \
             -DSKIP_HEAVY_INLINE=${{ steps.setup.outputs.optimized == 'false' }} \
             "-DCMAKE_C_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang.exe" \
             "-DCMAKE_CXX_COMPILER:FILEPATH=C:\Program Files\LLVM\bin\clang++.exe" \
             "-DRUST_DEFAULT_TARGET_PATH=C:\shards-rust-target" \
             $VULKAN_FLAG \
-            $DLL_ONLY_FLAG \
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
