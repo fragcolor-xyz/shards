@@ -16,6 +16,13 @@ set(SHARDS_ROOT ${SHARDS_DIR})
 message(STATUS "SHARDS_DIR = ${SHARDS_DIR}")
 
 option(SHARDS_BUILD_TESTS "Enable to build shards tests" ON)
+option(SHARDS_BUILD_DLL_ONLY "Build only the shards shared library (skip the exe and static lib targets). Implies -fPIC for all static dependencies." OFF)
+
+if(SHARDS_BUILD_DLL_ONLY)
+  # The shared lib pulls in many static dependencies (boost, llama.cpp common,
+  # etc.). Linking those into a .so requires position-independent code.
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
