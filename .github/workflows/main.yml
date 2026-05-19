@@ -72,6 +72,10 @@ jobs:
     secrets: inherit
     with:
       build-type: Release
+  Linux-Release-Library:
+    needs: Setup
+    uses: ./.github/workflows/build-linux-library.yml
+    secrets: inherit
   Linux-GPU:
     needs: Setup
     uses: ./.github/workflows/test-macos-gpu.yml
@@ -118,6 +122,15 @@ jobs:
       build-type: Release
       run-tests: true
       vulkan: true
+  Windows-Release-Library:
+    needs: Setup
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
+    with:
+      build-type: Release
+      binary-type: Library
+      run-tests: false
+      vulkan: false
 
   #
   # Build the documentation

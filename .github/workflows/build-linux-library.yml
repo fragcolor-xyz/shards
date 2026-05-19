@@ -1,0 +1,56 @@
+name: Build (Linux libshards.so)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  #
+  # Smoke-build the shards shared library (libshards.so) on Linux.
+  # Verifies the shards-dll target links cleanly. No tests.
+  #
+  Linux-library:
+    name: Build (Release, libshards.so)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+      - name: Checkout shards
+        uses: actions/checkout@v3
+        with:
+          repository: fragcolor-xyz/shards
+          fetch-depth: 1
+          submodules: recursive
+      - name: Set up dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential git cmake wget clang llvm ninja-build xorg-dev libdbus-1-dev libssl-dev mesa-utils libgtk-3-dev libclang-dev
+          RUSTUP_TOOLCHAIN=`cat rust.version`
+          echo "RUSTUP_TOOLCHAIN=$RUSTUP_TOOLCHAIN" >> $GITHUB_ENV
+          rustup toolchain install $RUSTUP_TOOLCHAIN
+      - name: Build shards-dll
+        run: |
+          mkdir -p build
+          cd build
+          # USE_FPIC makes the in-tree build and ExternalProject_Add
+          # subbuilds (boost, mozjpeg, etc.) compile position-independent,
+          # which is required for them to land inside libshards.so.
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_FPIC=ON ..
+          ninja shards-dll
+          # Confirm the shared library was actually produced
+          ls -la lib/libshards.so*
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libshards-linux Release
+          path: build/lib/libshards.so*
+          if-no-files-found: error
+          retention-days: 1

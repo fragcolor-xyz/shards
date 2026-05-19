@@ -92,7 +92,14 @@ jobs:
             echo "artifact-path=build/shards.*" >> $GITHUB_OUTPUT
           else
             echo "build-target=shards-dll" >> $GITHUB_OUTPUT
-            echo "artifact-path=build/libshards.*" >> $GITHUB_OUTPUT
+            # On Windows the clang toolchain emits 'shards.dll' (no lib prefix);
+            # the import library lives under build/lib/ per CMAKE_ARCHIVE_OUTPUT_DIRECTORY.
+            {
+              echo "artifact-path<<EOF"
+              echo "build/shards.dll"
+              echo "build/lib/shards.lib"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
           fi
 
           if [ "${{ github.event.inputs.binary-type || inputs.binary-type }}" == "Exe" ]
@@ -161,10 +168,12 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ steps.setup.outputs.build-type }} ..
           echo "Building shards"
           ninja ${{ steps.setup.outputs.build-target }}
-          echo "Building runtime tests"
-          ninja test-runtime
-          echo "Building graphics tests"
-          ninja test-gfx
+          if [ "${{ steps.setup.outputs.binary-type }}" == "Exe" ]; then
+            echo "Building runtime tests"
+            ninja test-runtime
+            echo "Building graphics tests"
+            ninja test-gfx
+          fi
       # Minimize disk usage to prevent the next steps getting stuck on glTF models
       - name: Minimize disk usage
         env:
@@ -178,6 +187,7 @@ jobs:
           rm -rf build/_deps
           rm -rf build/.cache
       - name: Test
+        if: ${{ steps.setup.outputs.binary-type == 'Exe' }}
         env:
           RUST_BACKTRACE: full
         shell: bash
