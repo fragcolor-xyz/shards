@@ -12,5 +12,6 @@ crate-type = ["rlib"]
 [dependencies]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
+regex = "1"
 strip-ansi-escapes = "0.2"
 vt100 = "0.15"

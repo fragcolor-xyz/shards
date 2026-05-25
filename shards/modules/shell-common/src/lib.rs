@@ -1205,3 +1205,88 @@ pub fn resize(s: &ShellSession, rows: i64, cols: i64) -> Result<(), &'static str
   shlog_trace!("PTY resized to {}x{}", cols, rows);
   Ok(())
 }
+
+/// Watch the session's output stream until `pattern` (a regular expression)
+/// matches, returning the matched text. Cooperatively suspends the wire (via
+/// `context`) between polls so the reader thread keeps filling the buffer and
+/// the wire stays responsive.
+///
+/// Matching is performed against output accumulated from the shared read cursor
+/// forward; on a match the cursor is advanced past everything observed so far,
+/// so a subsequent `Read`/`WaitFor` continues after the matched region. When
+/// `strip` is set, ANSI escape sequences are removed before matching (and from
+/// the returned text). `timeout_ms` of 0 means wait indefinitely (until the
+/// session ends). Returns an error on timeout or if the session ends first.
+pub fn wait_for(
+  s: &ShellSession,
+  context: &Context,
+  pattern: &str,
+  timeout_ms: i64,
+  strip: bool,
+) -> Result<String, &'static str> {
+  check_session_alive(s)?;
+
+  let re = regex::Regex::new(pattern).map_err(|_| "Invalid regex pattern")?;
+
+  let timeout_ms = if timeout_ms < 0 {
+    0u64
+  } else {
+    timeout_ms as u64
+  };
+  let deadline = if timeout_ms > 0 {
+    Some(std::time::Instant::now() + Duration::from_millis(timeout_ms))
+  } else {
+    None
+  };
+
+  // Shared read cursor, so this composes with Read/Execute on the same session.
+  let read_pos = &s.read_position;
+
+  loop {
+    let current_total = s.total_bytes_written.load(Ordering::Acquire);
+    let consumed = read_pos.load(Ordering::Acquire);
+
+    if current_total > consumed {
+      let snapshot = {
+        let buf = s.output_buffer.lock().map_err(|_| "Buffer lock poisoned")?;
+        buf.clone()
+      };
+
+      // The monotonic counter can outrun the (truncated) buffer; clamp to what
+      // is actually retained.
+      let new_count = current_total - consumed;
+      let available = snapshot.len().min(new_count);
+      let new_slice = &snapshot[snapshot.len() - available..];
+
+      let text = if strip {
+        let stripped = strip_ansi_escapes::strip(new_slice);
+        String::from_utf8_lossy(&stripped).to_string()
+      } else {
+        String::from_utf8_lossy(new_slice).to_string()
+      };
+
+      if let Some(m) = re.find(&text) {
+        let matched = m.as_str().to_string();
+        // Consume everything observed so far.
+        read_pos.store(current_total, Ordering::Release);
+        shlog_trace!("WaitFor: pattern matched: {:?}", matched);
+        return Ok(matched);
+      }
+    }
+
+    // Stop if the session ended (process exited / connection lost). Done after
+    // the match attempt so the final output is still considered.
+    if !s.is_alive.load(Ordering::Acquire) {
+      return Err(s.messages.ended);
+    }
+
+    if let Some(dl) = deadline {
+      if std::time::Instant::now() >= dl {
+        return Err("Timed out waiting for pattern");
+      }
+    }
+
+    // Yield to the scheduler instead of blocking the thread.
+    shards::core::suspend(context, 0.05);
+  }
+}

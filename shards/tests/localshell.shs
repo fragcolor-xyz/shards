@@ -229,6 +229,28 @@ heredoc-result.output | ExpectString | String.Contains("heredoc_line_1") | Asser
 heredoc-result.output | ExpectString | String.Contains("heredoc_line_2") | Assert.Is(true)
 "Heredoc completed correctly" | Log
 
+; Test: WaitFor waits for a regex on the output stream
+"Testing WaitFor" | Log
+LocalShell.Create >= wait-session
+; Background a delayed echo. The command line itself contains "READY_$((20+2))"
+; which does NOT match READY_<digits>, so a match proves we waited for the
+; actual (delayed) output, not the command echo.
+"(sleep 1 && echo \"READY_$((20+2))\") &" | LocalShell.Write(Session: wait-session AppendNewline: true)
+LocalShell.WaitFor(Session: wait-session Pattern: """READY_(\d+)""" Timeout: 8000) >= wf-match
+wf-match | Log("WaitFor matched")
+wf-match | String.Contains("READY_22") | Assert.Is(true)
+"WaitFor works" | Log
+
+; Test: WaitFor times out (errors) when the pattern never appears
+"Testing WaitFor timeout" | Log
+Maybe({
+  LocalShell.WaitFor(Session: wait-session Pattern: """THIS_NEVER_APPEARS_ZZZ""" Timeout: 1000)
+  false  ; reached only if no error was raised
+} {
+  true   ; timeout raised an error, as expected
+}) | Assert.Is(true)
+"WaitFor timeout works" | Log
+
 ; Test session alive check
 "Testing session alive check" | Log
 shell-session | LocalShell.IsAlive | Assert.Is(true)

@@ -839,6 +839,87 @@ impl Shard for ResizeShard {
 }
 
 // ============================================================================
+// LocalShell.WaitFor Shard — wait until output matches a regex
+// ============================================================================
+
+#[derive(shards::shard)]
+#[shard_info(
+  "LocalShell.WaitFor",
+  "Wait until the session output matches a regular expression, returning the matched text (errors on timeout)"
+)]
+pub struct WaitForShard {
+  #[shard_required]
+  required: ExposedTypes,
+
+  #[shard_param("Session", "Local shell session object", [*LOCAL_SHELL_TYPE, *LOCAL_SHELL_VAR_TYPE])]
+  session: ParamVar,
+
+  #[shard_param("Pattern", "Regular expression to wait for in the output", [common_type::string, common_type::string_var])]
+  pattern: ParamVar,
+
+  #[shard_param("Timeout", "Timeout in milliseconds, 0 = wait indefinitely (default: 30000)", [common_type::int, common_type::int_var])]
+  timeout_ms: ParamVar,
+
+  #[shard_param("StripAnsi", "Strip ANSI escape sequences before matching (default: true)", [common_type::bool, common_type::bool_var])]
+  strip_ansi: ParamVar,
+
+  output: ClonedVar,
+}
+
+impl Default for WaitForShard {
+  fn default() -> Self {
+    Self {
+      required: ExposedTypes::new(),
+      session: ParamVar::default(),
+      pattern: ParamVar::default(),
+      timeout_ms: ParamVar::new(30000i64.into()),
+      strip_ansi: ParamVar::new(true.into()),
+      output: ClonedVar::default(),
+    }
+  }
+}
+
+#[shards::shard_impl]
+impl Shard for WaitForShard {
+  fn input_types(&mut self) -> &Types {
+    &NONE_TYPES
+  }
+
+  fn output_types(&mut self) -> &Types {
+    &STRING_TYPES
+  }
+
+  fn warmup(&mut self, ctx: &Context) -> Result<(), &str> {
+    self.warmup_helper(ctx)?;
+    Ok(())
+  }
+
+  fn cleanup(&mut self, ctx: Option<&Context>) -> Result<(), &str> {
+    self.cleanup_helper(ctx)?;
+    self.output = ClonedVar::default();
+    Ok(())
+  }
+
+  fn compose(&mut self, data: &InstanceData) -> Result<Type, &str> {
+    self.compose_helper(data)?;
+    Ok(self.output_types()[0])
+  }
+
+  fn activate(&mut self, context: &Context, _input: &Var) -> Result<Option<Var>, &str> {
+    let session_var = *self.session.get();
+    let pattern: &str = self.pattern.get().as_ref().try_into()?;
+    let timeout_ms: i64 = self.timeout_ms.get().as_ref().try_into()?;
+    let strip: bool = self.strip_ansi.get().as_ref().try_into()?;
+
+    let s = get_session(&session_var)?;
+    let matched = sc::wait_for(s, context, pattern, timeout_ms, strip)?;
+
+    self.output = Var::ephemeral_string(&matched).into();
+    Ok(Some(self.output.0))
+  }
+}
+
+// ============================================================================
 // Module Registration
 // ============================================================================
 
@@ -859,6 +940,7 @@ pub extern "C" fn shardsRegister_localshell_rust(core: *mut shards::shardsc::SHC
   register_shard::<ReadShard>();
   register_shard::<WriteShard>();
   register_shard::<ResizeShard>();
+  register_shard::<WaitForShard>();
 
   shlog_trace!("LocalShell module registered");
 }
