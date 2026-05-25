@@ -1,0 +1,17 @@
+[package]
+name = "shards-shell-common"
+description = "Shared interactive shell-session machinery for Shards shell modules (localshell, ssh)"
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Fragcolor Pte. Ltd."]
+edition = "2021"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+lazy_static = "1.5.0"
+shards = { path = "../../rust" }
+regex = "1"
+strip-ansi-escapes = "0.2"
+vt100 = "0.15"

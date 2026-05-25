@@ -185,6 +185,18 @@ big-result.status | Assert.Is("completed")
 big-result.output | ExpectString | String.Contains("5000") | Assert.Is(true)
 "Large output completed without hanging" | Log
 
+; Regression: a tiny MaxOutputBytes (smaller than the prompt marker) must not
+; panic in truncation and must still detect completion. Detection runs on the
+; full buffer; only the returned output is capped.
+"Testing tiny MaxOutputBytes (truncation panic + detection regression)" | Log
+"for i in $(seq 1 200); do echo -n X; done; echo" | LocalShell.Execute(Session: shell-session MaxOutputBytes: 10) >= tiny-result
+tiny-result.status | ExpectString | Assert.Is("completed")
+tiny-result.truncated | Assert.Is(true)
+; boundary value that previously triggered the out-of-bounds drain panic
+"for i in $(seq 1 200); do echo -n Y; done; echo" | LocalShell.Execute(Session: shell-session MaxOutputBytes: 29) >= tiny-result2
+tiny-result2.status | ExpectString | Assert.Is("completed")
+"Tiny MaxOutputBytes handled without panic" | Log
+
 ; Test Read with StripAnsi
 "Testing StripAnsi on Read" | Log
 ; Use Execute to produce ANSI output, then Read with StripAnsi
@@ -228,6 +240,28 @@ heredoc-result.status | Assert.Is("completed")
 heredoc-result.output | ExpectString | String.Contains("heredoc_line_1") | Assert.Is(true)
 heredoc-result.output | ExpectString | String.Contains("heredoc_line_2") | Assert.Is(true)
 "Heredoc completed correctly" | Log
+
+; Test: WaitFor waits for a regex on the output stream
+"Testing WaitFor" | Log
+LocalShell.Create >= wait-session
+; Background a delayed echo. The command line itself contains "READY_$((20+2))"
+; which does NOT match READY_<digits>, so a match proves we waited for the
+; actual (delayed) output, not the command echo.
+"(sleep 1 && echo \"READY_$((20+2))\") &" | LocalShell.Write(Session: wait-session AppendNewline: true)
+LocalShell.WaitFor(Session: wait-session Pattern: """READY_(\d+)""" Timeout: 8000) >= wf-match
+wf-match | Log("WaitFor matched")
+wf-match | String.Contains("READY_22") | Assert.Is(true)
+"WaitFor works" | Log
+
+; Test: WaitFor times out (errors) when the pattern never appears
+"Testing WaitFor timeout" | Log
+Maybe({
+  LocalShell.WaitFor(Session: wait-session Pattern: """THIS_NEVER_APPEARS_ZZZ""" Timeout: 1000)
+  false  ; reached only if no error was raised
+} {
+  true   ; timeout raised an error, as expected
+}) | Assert.Is(true)
+"WaitFor timeout works" | Log
 
 ; Test session alive check
 "Testing session alive check" | Log

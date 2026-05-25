@@ -8350,8 +8350,7 @@ dependencies = [
  "lazy_static",
  "portable-pty",
  "shards",
- "strip-ansi-escapes",
- "vt100",
+ "shards-shell-common",
 ]
 
 [[package]]
@@ -8447,6 +8446,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shards-shell-common"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "regex",
+ "shards",
+ "strip-ansi-escapes",
+ "vt100",
+]
+
+[[package]]
 name = "shards-spreadsheet"
 version = "0.1.0"
 dependencies = [
@@ -8463,10 +8473,9 @@ dependencies = [
  "compile-time-crc32",
  "lazy_static",
  "shards",
+ "shards-shell-common",
  "shellexpand",
  "ssh2",
- "strip-ansi-escapes",
- "vt100",
 ]
 
 [[package]]
