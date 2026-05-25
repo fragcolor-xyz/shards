@@ -384,10 +384,21 @@ pub fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
     return false;
   }
 
-  let keep_bytes = (max_bytes * BUFFER_TRUNCATE_KEEP_RATIO) / 100;
   let truncate_msg = b"[... output truncated ...]\n";
+  let keep_bytes = (max_bytes * BUFFER_TRUNCATE_KEEP_RATIO) / 100;
 
-  let skip = buffer.len() - keep_bytes + truncate_msg.len();
+  // When max_bytes is too small to fit the truncation notice plus any tail,
+  // just keep the last keep_bytes raw (without the notice). Otherwise the
+  // skip computation below underflows and `drain` panics on an out-of-range
+  // index — reachable from user code via a small MaxOutputBytes (1..=29).
+  if keep_bytes <= truncate_msg.len() {
+    let skip = buffer.len() - keep_bytes;
+    buffer.drain(..skip);
+    return true;
+  }
+
+  let tail_len = keep_bytes - truncate_msg.len();
+  let skip = buffer.len() - tail_len;
   let tail: Vec<u8> = buffer.drain(skip..).collect();
   buffer.clear();
   buffer.extend_from_slice(truncate_msg);
@@ -595,11 +606,14 @@ pub fn setup_prompt_marker(
   };
 
   // Clear buffer + reset counter regardless — we don't want setup output in
-  // command results.
+  // command results. Reset the counter while still holding the buffer lock so
+  // the reader thread can't append bytes (and bump the counter) in the gap
+  // between the clear and the reset, which would leave the counter out of sync
+  // with the buffer (matches the ordering in execute / capture_exit_code).
   if let Ok(mut buf) = buffer.lock() {
     buf.clear();
+    total_bytes.store(0, Ordering::Release);
   }
-  total_bytes.store(0, Ordering::Release);
 
   if marker_found {
     shlog_trace!("Sentinel prompt marker set: {}", marker);
@@ -750,9 +764,9 @@ pub fn execute(
     let has_new_data = current_total > last_total_bytes;
 
     if has_new_data {
-      // Mark that the command has started producing output. Done before
-      // truncation so that a small MaxOutputBytes or fast/large output
-      // can't cause us to miss the signal.
+      // Mark that the command has started producing output as soon as any
+      // bytes arrive, so a small MaxOutputBytes or fast/large output can't
+      // cause us to miss the signal.
       if !seen_command_echo {
         seen_command_echo = true;
         shlog_trace!("Command has started producing output");
@@ -766,14 +780,10 @@ pub fn execute(
       output_buffer = snapshot;
       last_total_bytes = current_total;
 
-      if truncate_to_tail(&mut output_buffer, max_output_bytes) {
-        was_truncated = true;
-        shlog_trace!(
-          "Output buffer truncated to tail ({} bytes)",
-          max_output_bytes
-        );
-      }
-
+      // Detect prompts/interaction on the FULL buffer; the output retention
+      // cap is applied once after the loop. Truncating here would let a cap
+      // smaller than the prompt marker cut the marker off the tail and break
+      // completion detection.
       let output_str = String::from_utf8_lossy(&output_buffer);
 
       shlog_trace!(
@@ -837,6 +847,11 @@ pub fn execute(
       }
     }
     std::thread::sleep(Duration::from_millis(ITERATION_SLEEP_MS));
+  }
+
+  // Apply the output retention cap now that detection ran on the full buffer.
+  if truncate_to_tail(&mut output_buffer, max_output_bytes) {
+    was_truncated = true;
   }
 
   // Build result table.
@@ -984,10 +999,8 @@ pub fn send_input(
       output_buffer = snapshot;
       last_total_bytes = current_total;
 
-      if truncate_to_tail(&mut output_buffer, max_output_bytes) {
-        was_truncated = true;
-      }
-
+      // Detect on the FULL buffer; the retention cap is applied once after the
+      // loop so a tiny MaxOutputBytes can't truncate the prompt marker away.
       let output_str = String::from_utf8_lossy(&output_buffer);
       shlog_trace!(
         "SendInput: Read data (iteration {}), total_bytes: {}, buffer size: {}",
@@ -1027,6 +1040,11 @@ pub fn send_input(
   if !prompt_detected {
     let output_str = String::from_utf8_lossy(&output_buffer);
     prompt_detected = is_prompt_or_marker(&output_str, marker);
+  }
+
+  // Apply the output retention cap now that detection ran on the full buffer.
+  if truncate_to_tail(&mut output_buffer, max_output_bytes) {
+    was_truncated = true;
   }
 
   // Clean output.

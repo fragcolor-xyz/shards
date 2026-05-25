@@ -185,6 +185,18 @@ big-result.status | Assert.Is("completed")
 big-result.output | ExpectString | String.Contains("5000") | Assert.Is(true)
 "Large output completed without hanging" | Log
 
+; Regression: a tiny MaxOutputBytes (smaller than the prompt marker) must not
+; panic in truncation and must still detect completion. Detection runs on the
+; full buffer; only the returned output is capped.
+"Testing tiny MaxOutputBytes (truncation panic + detection regression)" | Log
+"for i in $(seq 1 200); do echo -n X; done; echo" | LocalShell.Execute(Session: shell-session MaxOutputBytes: 10) >= tiny-result
+tiny-result.status | ExpectString | Assert.Is("completed")
+tiny-result.truncated | Assert.Is(true)
+; boundary value that previously triggered the out-of-bounds drain panic
+"for i in $(seq 1 200); do echo -n Y; done; echo" | LocalShell.Execute(Session: shell-session MaxOutputBytes: 29) >= tiny-result2
+tiny-result2.status | ExpectString | Assert.Is("completed")
+"Tiny MaxOutputBytes handled without panic" | Log
+
 ; Test Read with StripAnsi
 "Testing StripAnsi on Read" | Log
 ; Use Execute to produce ANSI output, then Read with StripAnsi
