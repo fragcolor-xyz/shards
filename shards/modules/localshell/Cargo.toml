@@ -12,7 +12,6 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
+shards-shell-common = { path = "../shell-common" }
 compile-time-crc32 = "0.1.2"
-strip-ansi-escapes = "0.2"
 portable-pty = "0.8"
-vt100 = "0.15"
