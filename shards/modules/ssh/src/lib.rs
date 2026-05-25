@@ -98,27 +98,31 @@ impl sc::ShellTransport for SshTransport {
       .lock()
       .map_err(|_| sc::TransportError::Other("Channel lock poisoned"))?;
 
-    // Set blocking for writes to ensure they complete.
-    if let Ok(sess) = self.session.lock() {
-      sess.set_blocking(true);
+    // Hold the session lock across the write + flush. Setting blocking mode and
+    // releasing the session lock *before* writing leaves a window where the
+    // reader thread (which flips the session to non-blocking before every read)
+    // can make our write run non-blocking and fail with a spurious WouldBlock.
+    // Holding session here is deadlock-safe: write_all is the only path that
+    // ever holds both locks, and read_into never holds the session lock while
+    // waiting on the channel, so no lock cycle can form. A poisoned session
+    // lock is recovered (set_blocking can't panic) to keep writes best-effort.
+    let sess = self.session.lock().unwrap_or_else(|e| e.into_inner());
+    sess.set_blocking(true);
+
+    let write_result = channel.write_all(data);
+    if write_result.is_ok() {
+      let _ = channel.flush();
     }
 
-    if let Err(e) = channel.write_all(data) {
-      // Restore non-blocking before reporting.
-      if let Ok(sess) = self.session.lock() {
-        sess.set_blocking(false);
-      }
+    // Restore non-blocking before releasing the session lock.
+    sess.set_blocking(false);
+    drop(sess);
+
+    if let Err(e) = write_result {
       if is_connection_error(&e) {
         return Err(sc::TransportError::ConnectionLost);
       }
       return Err(sc::TransportError::Other("Failed to write to SSH channel"));
-    }
-
-    let _ = channel.flush();
-
-    // Restore non-blocking.
-    if let Ok(sess) = self.session.lock() {
-      sess.set_blocking(false);
     }
 
     Ok(())
