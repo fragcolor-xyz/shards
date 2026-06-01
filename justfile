@@ -34,6 +34,37 @@ build: configure
 build-rel: configure-rel
   cmake --build build/Release --target shards
 
+# install the shards binary to {{prefix}}/bin (mode=Debug|Release, falls back to sudo)
+install mode="Debug" prefix="/usr/local":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  bin="build/{{mode}}/shards"
+  if [ ! -x "$bin" ]; then
+    echo "error: $bin not found — build it first (just build / just build-rel)" >&2
+    exit 1
+  fi
+  dest="{{prefix}}/bin"
+  echo "Installing $bin -> $dest/shards"
+  if install -d "$dest" 2>/dev/null && install -m 0755 "$bin" "$dest/shards" 2>/dev/null; then
+    :
+  else
+    echo "Elevating with sudo for $dest..."
+    sudo install -d "$dest"
+    sudo install -m 0755 "$bin" "$dest/shards"
+  fi
+  echo "Installed. Try: shards --help"
+
+# remove an installed shards binary from {{prefix}}/bin
+uninstall prefix="/usr/local":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  target="{{prefix}}/bin/shards"
+  if rm -f "$target" 2>/dev/null; then
+    echo "Removed $target"
+  else
+    sudo rm -f "$target" && echo "Removed $target"
+  fi
+
 # build shards with filtered output (shows only errors and critical warnings)
 build-quiet: configure
   #!/bin/bash
