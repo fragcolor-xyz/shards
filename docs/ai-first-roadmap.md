@@ -193,11 +193,18 @@ Verify-before-run, sandbox-by-construction, fast-without-JIT, hot-swap, embedded
 
 ### Use cases, ranked by "where do alternatives structurally fail"
 
-**1. AI-generated interactive content on consumer devices.** Games, toys, interactive experiences — generated from a prompt, running on the player's device. This is where Shards was born, and the AI era doesn't change the destination; it changes who writes the code. One structural argument deserves to be explicit because it is the hardest part of the moat to replicate: **iOS bans JIT compilation.** You cannot ship V8-with-JIT in an App Store app; JavaScriptCore runs dynamic code interpreted/bytecode-only; wasm JIT is similarly constrained. Every "AI generates content, runs on iPhone" product hits this wall. A *fast interpreter* with the engine built in is not a nice-to-have there — it is the only App-Store-legal way to run dynamically generated logic fast on the largest consumer compute platform on earth. The benchmark lead is not a vanity metric; it is store compliance for the entire category. Nobody else has assembled fast-sans-JIT + sandbox + verify-before-run + gfx/physics/audio in one runtime.
+**1. AI-generated personal & interactive software on consumer devices.** One buyer, two instances of the same product shape:
+
+- **1a. Personal software** — the "home-cooked software" thesis: a user prompts a personal tool, dashboard, automation, or agent; it runs native-speed on their device, sandboxed, hot-swappable, with the agent *resident in the runtime* (3.5). This is not hypothetical: the runtime is already dogfooded this way today — local-first, CRDT-synced, agent-resident applications, with shell/SSH/inference shards as the agents' hands. The funnel sentence barely changes: *"say what you want, use it ten seconds later, change it while using it."*
+- **1b. Games & interactive UGC** — where Shards was born, and structurally the strongest market. But it does not require operating a first-party consumer platform: the Luau path has an embed/partner variant — be the runtime that someone else's "Roblox-but-AI" platform ships inside. The moat keeps; the platform-operations burden goes to whoever has the funding and appetite for it.
+
+One structural argument applies to both and deserves to be explicit because it is the hardest part of the moat to replicate: **iOS bans JIT compilation.** You cannot ship V8-with-JIT in an App Store app; JavaScriptCore runs dynamic code interpreted/bytecode-only; wasm JIT is similarly constrained. Every "AI generates software, runs on iPhone" product hits this wall. A *fast interpreter* with the engine built in is not a nice-to-have there — it is the only App-Store-legal way to run dynamically generated logic fast on the largest consumer compute platform on earth. The benchmark lead is not a vanity metric; it is store compliance for the entire category. Nobody else has assembled fast-sans-JIT + sandbox + verify-before-run + gfx/physics/audio in one runtime.
 
 **2. The embeddable "safe AI-codegen substrate" — the AI-era Lua play.** Horizontal: any app that wants "user prompts → app extends itself" needs this stack (generate → verify → run sandboxed, in-process). Honest counter: **V8 isolates are the entrenched incumbent** (Figma plugins, Cloudflare Workers) and are good enough for most automation-shaped extension. Shards wins this only where real-time/native/graphics matters or where iOS rules bite. Real market, slow infra-sales grind — it's the hedge, not the wedge.
 
 **3. Agent orchestration runtimes.** Wires are agent-shaped, but this space is a knife fight in Python/TS where ecosystem gravity is maximal and server-side compute is cheapest to buy. Don't lead with it; it falls out for free once 1 or 2 works.
+
+A note on ranking: structural fit is one axis; **builder fit is the other**, and it is not a footnote — a structurally correct market the team has no appetite to operate is the wrong market. 1a is where current building energy already is; 1b is preserved as an embed/partner option rather than a first-party obligation.
 
 ### The real competitor
 
@@ -214,7 +221,7 @@ The moat properties map directly onto a product funnel:
 | live-mesh hot-swap (3.5) | "change it while I'm playing it" — an iteration loop no engine offers |
 | fast interpreter, no JIT | runs on the phone in your hand, not a cloud session |
 
-The testable product sentence: *"say what you want, play it ten seconds later, change it while playing, share it, and anyone can remix it safely."* Metrics that decide it: prompt→playable latency, first-session creation success rate, remix rate, and D7 retention of *created artifacts* (do creators come back to the thing they made).
+The testable product sentence: *"say what you want, use it ten seconds later, change it while using it, share it, and anyone can remix it safely."* (For 1b, substitute "play".) Metrics that decide it: prompt→usable latency, first-session creation success rate, remix rate, and D7 retention of *created artifacts* (do creators come back to the thing they made).
 
 ### The uncomfortable symmetry
 
