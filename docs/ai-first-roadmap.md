@@ -181,7 +181,48 @@ A closed world is only a virtue with a pressure valve. ~800 shards is not an eco
 
 ---
 
-## 4. Repositioning (README / site)
+## 4. Use case & PMF
+
+A moat is a property of a product, not a language. **Languages don't get PMF — hosts do.** Every language that made it rode inside a product that made it unavoidable: JS had the browser, Lua had WoW and then Roblox (Luau), Swift had iOS, GDScript has Godot, Solidity had Ethereum; even Python's AI dominance arrived through numpy/torch as hosts. Nobody adopts a language. They adopt a thing they want, and the language comes bundled.
+
+So the PMF question decomposes into: *what host product makes Shards unavoidable* — and the moat properties identify the buyer with unusual precision.
+
+### The buyer
+
+Verify-before-run, sandbox-by-construction, fast-without-JIT, hot-swap, embedded inference — these describe one buyer: **a platform operator who is liable for running untrusted, machine-generated code on other people's devices, in real time.** Developers writing their own code don't need capability manifests; they trust themselves. The moat properties only become purchasing triggers when the code's author is an AI and the executor is an end user's phone.
+
+### Use cases, ranked by "where do alternatives structurally fail"
+
+**1. AI-generated interactive content on consumer devices.** Games, toys, interactive experiences — generated from a prompt, running on the player's device. This is where Shards was born, and the AI era doesn't change the destination; it changes who writes the code. One structural argument deserves to be explicit because it is the hardest part of the moat to replicate: **iOS bans JIT compilation.** You cannot ship V8-with-JIT in an App Store app; JavaScriptCore runs dynamic code interpreted/bytecode-only; wasm JIT is similarly constrained. Every "AI generates content, runs on iPhone" product hits this wall. A *fast interpreter* with the engine built in is not a nice-to-have there — it is the only App-Store-legal way to run dynamically generated logic fast on the largest consumer compute platform on earth. The benchmark lead is not a vanity metric; it is store compliance for the entire category. Nobody else has assembled fast-sans-JIT + sandbox + verify-before-run + gfx/physics/audio in one runtime.
+
+**2. The embeddable "safe AI-codegen substrate" — the AI-era Lua play.** Horizontal: any app that wants "user prompts → app extends itself" needs this stack (generate → verify → run sandboxed, in-process). Honest counter: **V8 isolates are the entrenched incumbent** (Figma plugins, Cloudflare Workers) and are good enough for most automation-shaped extension. Shards wins this only where real-time/native/graphics matters or where iOS rules bite. Real market, slow infra-sales grind — it's the hedge, not the wedge.
+
+**3. Agent orchestration runtimes.** Wires are agent-shaped, but this space is a knife fight in Python/TS where ecosystem gravity is maximal and server-side compute is cheapest to buy. Don't lead with it; it falls out for free once 1 or 2 works.
+
+### The real competitor
+
+It is not Python. It is **Luau**. Roblox already proved the category: sandboxed, fast-without-JIT, gradually typed, embedded in a UGC engine, with a creator economy. Shards' edge over Luau is whole-program compose-time verification (Luau's typing is gradual and advisory — generated code can still fail at runtime), the canonical AST / visual audit surface, and inference inside the runtime. Luau's edge is a host product with tens of millions of daily users. That is the distance between a moat and a market, in one example.
+
+### The PMF test
+
+The moat properties map directly onto a product funnel:
+
+| Property | Funnel effect |
+|---|---|
+| compose-time verification | generation repair-loop converges in ms → prompt-to-playable in seconds |
+| capability sandbox | remixing strangers' AI-generated content is safe → store compliance, user trust |
+| live-mesh hot-swap (3.5) | "change it while I'm playing it" — an iteration loop no engine offers |
+| fast interpreter, no JIT | runs on the phone in your hand, not a cloud session |
+
+The testable product sentence: *"say what you want, play it ten seconds later, change it while playing, share it, and anyone can remix it safely."* Metrics that decide it: prompt→playable latency, first-session creation success rate, remix rate, and D7 retention of *created artifacts* (do creators come back to the thing they made).
+
+### The uncomfortable symmetry
+
+If the host product doesn't find PMF, this roadmap makes Shards the best-prepared language in a market it never enters. The language strategy and the product strategy are not separable — which is the real reason 3.1/3.2/3.5 are P0/P1: `check`, the MCP surface, and live residency *are* the product's core loop, not developer tooling that sits beside it.
+
+---
+
+## 5. Repositioning (README / site)
 
 Rewrite the public pitch around **verification and trust**, not flow and intuition:
 
@@ -192,7 +233,7 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ---
 
-## 5. Sequencing summary
+## 6. Sequencing summary
 
 ```
 P0 (now, weeks):    3.1 shards check (JSON diagnostics)
@@ -203,7 +244,7 @@ P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 fre
                     3.6 capability manifests
 P2 (ongoing):       3.7 fusion → specialization → COW → (maybe) JIT
                     3.8 wasm-component extension story
-                    §4 public repositioning                        [after 3.1+3.2]
+                    §5 public repositioning                        [after 3.1+3.2]
 ```
 
 The pieces are roughly 70% built. What was missing is the assembly and the thesis — this document is the thesis; the P0 items are the assembly.
