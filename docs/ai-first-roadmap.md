@@ -79,22 +79,24 @@ Deliverables:
 
 Acceptance: an LLM given a broken script + the JSON diagnostics (and nothing else) fixes typical type errors in one round-trip at a measurably higher rate than with prose errors.
 
-### 3.2 MCP server — make Shards drivable by every agent
+### 3.2 Agent interface — CLI-first, not MCP-first
 
 **Effort: weeks. Priority: P0.**
 
-Expose the toolchain over Model Context Protocol so Claude Code, and every other MCP-speaking agent, can use Shards natively with zero prompt engineering.
+Agents already have a shell, and shell priors are the deepest priors any model has. A well-designed CLI is composable (`shards check --json | jq`), self-documenting (`--help`), human-testable, and works everywhere — CI, cron, any agent framework — with zero client integration and zero context-window tax. Composition is the decisive point: `shards enumerate | grep -i http` costs no tokens; the MCP equivalent routes every intermediate result through the model. This is why SKILL.md-over-CLI has won out over protocol wrappers in practice.
 
-Tools to expose:
+The agent surface is the `shards` binary:
 
-- `check(source)` → structured diagnostics (3.1)
-- `run(source, timeout, capabilities?)` → output + logs (sandboxed; see 3.6)
-- `docs(shard_name)` → full signature: input/output types, parameters, help, example
-- `enumerate(filter?)` → shard list with one-line summaries
-- `search(query)` → semantic/keyword search over shard docs (can start as substring; later embed via `AI.Embed` — dogfooding)
-- (later, with 3.5) `mesh_inspect` / `mesh_swap` for live-runtime work
+- `shards check <file> --json` → structured diagnostics (3.1)
+- `shards run <file> --timeout --caps <manifest>` → output + logs (sandboxed; see 3.6)
+- `shards docs <shard>` → full signature: input/output types, parameters, help, example (exists; ensure `--json`)
+- `shards enumerate [--filter]` → shard list with one-line summaries
+- `shards search <query>` → keyword search over shard docs (can start as substring; later embed via `AI.Embed` — dogfooding)
+- (later, with 3.5) `shards attach <mesh>` — the docker/kubectl pattern: long-lived daemon, thin CLI verbs against it (`inspect`, `swap`); sessions addressed by ID
 
-Implementation note: this can largely be a Shards program itself (`Http.Server` + JSON shards already exist) — which is the best possible demo of the thesis.
+Plus a **SKILL.md** in-repo: the instructions layer that tells any agent how to drive the CLI and where the context pack lives.
+
+MCP, if and when wanted (no-shell clients: web/mobile agents, locked-down enterprise, one-click consumer installs), is a *thin adapter over the same CLI/daemon surface* — a weekend of work, added later. No logic ever lives inside it.
 
 Also in this item:
 
@@ -113,7 +115,7 @@ Findings:
 
 Decisions:
 
-1. **Canonical AI-facing form = explicit word forms** (`Set`/`Ref`/`Update`/`Push`). All generated corpora (3.4), `shards-llm.txt`, MCP examples, and error-message suggestions use word forms exclusively.
+1. **Canonical AI-facing form = explicit word forms** (`Set`/`Ref`/`Update`/`Push`). All generated corpora (3.4), `shards-llm.txt`, SKILL.md examples, and error-message suggestions use word forms exclusively.
 2. Operators remain supported as human-eye-candy. `shards format` gains a `--canonical` mode (word forms) and a `--sugar` mode (operators) so the two renderings are mechanically interconvertible — syntax is a view over the AST, consistent with the visual-editor philosophy.
 3. **Settle the remaining debate empirically, not by taste.** We own a verifier, so this is measurable: ~200 representative tasks × {operator syntax, word-form syntax} × current frontier models, same guide-in-context, measure first-pass `shards check` success rate and error histograms. If operator confusion doesn't dominate the histogram, this section's caution is refuted by data — and we'll know either way.
 
@@ -137,7 +139,7 @@ We own a generator-verifier pair: introspection enumerates valid constructions; 
 
 Let an agent attach to a **running** mesh:
 
-- Inspect scheduled wires, their states, and live variable values (the reflection machinery exists; it needs a protocol surface — natural fit as MCP tools on 3.2).
+- Inspect scheduled wires, their states, and live variable values (the reflection machinery exists; it needs a protocol surface — the daemon + `shards attach` CLI verbs from 3.2).
 - Compose a replacement wire **against the live environment's actual types** — compose-time checking applied to hot code.
 - Hot-swap wires in a running mesh.
 
@@ -225,7 +227,7 @@ The testable product sentence: *"say what you want, use it ten seconds later, ch
 
 ### The uncomfortable symmetry
 
-If the host product doesn't find PMF, this roadmap makes Shards the best-prepared language in a market it never enters. The language strategy and the product strategy are not separable — which is the real reason 3.1/3.2/3.5 are P0/P1: `check`, the MCP surface, and live residency *are* the product's core loop, not developer tooling that sits beside it.
+If the host product doesn't find PMF, this roadmap makes Shards the best-prepared language in a market it never enters. The language strategy and the product strategy are not separable — which is the real reason 3.1/3.2/3.5 are P0/P1: `check`, the agent surface, and live residency *are* the product's core loop, not developer tooling that sits beside it.
 
 ---
 
@@ -244,7 +246,7 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ```
 P0 (now, weeks):    3.1 shards check (JSON diagnostics)
-                    3.2 MCP server + shards-llm.txt + docs consistency pass
+                    3.2 agent interface (CLI + SKILL.md + shards-llm.txt) + docs pass
                     3.3 canonical-form decision + generation benchmark
 P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze]
                     3.5 agent residency (live mesh attach/swap)   [flagship demo]
