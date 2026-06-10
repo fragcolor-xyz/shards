@@ -98,6 +98,18 @@ Plus a **SKILL.md** in-repo: the instructions layer that tells any agent how to 
 
 MCP, if and when wanted (no-shell clients: web/mobile agents, locked-down enterprise, one-click consumer installs), is a *thin adapter over the same CLI/daemon surface* — a weekend of work, added later. No logic ever lives inside it.
 
+#### vsh — the virtual shell for no-shell platforms
+
+CLI-first has a hole exactly where the flagship use case lives (§4, 1a): **iOS forbids `fork`/`exec` entirely** — no subprocesses, no shell, ever. Wasm likewise. An agent embedded in an iOS app cannot use bash. The answer is not a different interface; it is the *same* interface without an OS underneath: **emulate the interface, not the operating system.** Bash is the one surface every model knows perfectly, so give it a bash-shaped virtual shell ("vsh") inside the runtime:
+
+- A command line parsed in-process — pipes, `&&`/`||`, redirects, quoting, a busybox-grade core (`ls`, `cat`, `grep`, `head`, `tail`, `echo`) plus the `shards` verbs above — dispatching to a **command registry** over a virtual FS scoped to the app sandbox.
+- **Implementation seam already exists:** `shell-common`'s `ShellTransport` trait (`shards/modules/shell-common/`) abstracts sessions — `localshell` is the PTY implementation, `ssh` the remote one; vsh is the third, *in-process* implementation. The agent-facing shards (`Execute`, `SendInput`, `Read`, `WaitFor`) are identical across all three; the agent need not know which transport it is on.
+- **The registry is the capability manifest made tangible (3.6).** Real-shell sandboxing is subtractive and leaky (deny-lists, jails, injection surfaces); in vsh, an unregistered command *does not exist*, and there is no host OS behind it to inject into.
+- **Registered commands can be wires.** The agent extends its own shell by writing Shards code, verified by `check` (3.1), immediately callable as a command — a self-extending toolbox with compose-time verification on every extension.
+- **Honest-subset policy:** unsupported bash constructs fail loudly ("subshells not supported"), so the false-familiarity trap argued in 3.3 does not apply with the same force — visible errors are repaired in one loop iteration, unlike silent semantic drift. The supported subset is documented in SKILL.md; full bash grammar is explicitly a non-goal.
+
+Sequencing: P1, after the real CLI exists — same verbs, third transport.
+
 Also in this item:
 
 - **`shards-llm.txt` context pack**: a single canonical, versioned document — language guide + full shard reference — regenerated in CI from introspection ground truth (`docs/generate.shs` already builds most of this; redirect the output from Notion to the repo). It must be impossible for this file to drift from the binary.
@@ -251,6 +263,7 @@ P0 (now, weeks):    3.1 shards check (JSON diagnostics)
 P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze]
                     3.5 agent residency (live mesh attach/swap)   [flagship demo]
                     3.6 capability manifests
+                    3.2/vsh virtual shell (in-process ShellTransport, iOS/wasm)
 P2 (ongoing):       3.7 fusion → specialization → COW → (maybe) JIT
                     3.8 wasm-component extension story
                     §5 public repositioning                        [after 3.1+3.2]
