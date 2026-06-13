@@ -102,7 +102,10 @@ impl LegacyShard for AddFont {
       let bytes: &[u8] = pair[1].as_ref().try_into()?;
       fonts
         .font_data
-        .insert(name.to_owned(), egui::FontData::from_static(bytes));
+        .insert(
+          name.to_owned(),
+          std::sync::Arc::new(egui::FontData::from_static(bytes)),
+        );
     }
 
     egui_ctx.set_fonts(fonts);

@@ -648,7 +648,7 @@ impl Shard for StyleShard {
     })?;
 
     when_set(&self.window_rounding, |v| {
-      Ok(visuals.window_rounding = into_rounding(v)?)
+      Ok(visuals.window_corner_radius = into_rounding(v)?)
     })?;
 
     when_set(&self.window_shadow, |v| {
@@ -660,7 +660,7 @@ impl Shard for StyleShard {
     })?;
 
     when_set(&self.menu_rounding, |v| {
-      Ok(visuals.menu_rounding = into_rounding(v)?)
+      Ok(visuals.menu_corner_radius = into_rounding(v)?)
     })?;
 
     when_set(&self.panel_fill, |v| {

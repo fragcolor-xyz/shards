@@ -78,7 +78,7 @@ impl Shard for MarkdownViewerShard {
     if let Some(ui) = util::get_current_parent_opt(self.parents.get())? {
       let text: &str = input.try_into()?;
       MARKDOWN_CACHE.with(|cache| {
-        egui_commonmark::CommonMarkViewer::new(EguiId::new(self, 0))
+        egui_commonmark::CommonMarkViewer::new()
           .indentation_spaces(2)
           .syntax_theme_dark(THEME_DARK)
           .syntax_theme_light(THEME_LIGHT)

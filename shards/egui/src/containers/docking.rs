@@ -626,8 +626,8 @@ impl Shard for TabOpenShard {
 
     // Second pass: activate the found tab
     if let Some((surface_idx, node_index, tab_index)) = found_tab {
-      tabs.set_active_tab((surface_idx, node_index, tab_index));
-      tabs.set_focused_node_and_surface((surface_idx, node_index));
+      tabs.set_active_tab(egui_dock::TabPath::new(surface_idx, node_index, tab_index));
+      tabs.set_focused_node_and_surface(egui_dock::NodePath::new(surface_idx, node_index));
     }
 
     // Tab not found - this is not an error, just a no-op
@@ -733,7 +733,7 @@ impl Shard for TabCloseShard {
 
     // Second pass: remove the found tab
     if let Some((surface_idx, node_index, tab_index)) = found_tab {
-      tabs.remove_tab((surface_idx, node_index, tab_index));
+      tabs.remove_tab(egui_dock::TabPath::new(surface_idx, node_index, tab_index));
     }
 
     // Tab not found - this is not an error, just a no-op

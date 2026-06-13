@@ -117,7 +117,7 @@ impl UIRenderer for Var {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
               | ui.add(CustomDragValue::new(&mut values[1])).changed()
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_INT3 => {
@@ -127,7 +127,7 @@ impl UIRenderer for Var {
               | ui.add(CustomDragValue::new(&mut values[1])).changed()
               | ui.add(CustomDragValue::new(&mut values[2])).changed()
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_INT4 => {
@@ -138,7 +138,7 @@ impl UIRenderer for Var {
               | ui.add(CustomDragValue::new(&mut values[2])).changed()
               | ui.add(CustomDragValue::new(&mut values[3])).changed()
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_INT8 => {
@@ -160,7 +160,7 @@ impl UIRenderer for Var {
                 })
                 .inner
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_INT16 => {
@@ -198,7 +198,7 @@ impl UIRenderer for Var {
                 })
                 .inner
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_FLOAT => ui.add(CustomDragValue::new(
@@ -210,7 +210,7 @@ impl UIRenderer for Var {
             ui.add(CustomDragValue::new(&mut values[0])).changed()
               | ui.add(CustomDragValue::new(&mut values[1])).changed()
           });
-          ir.response.changed = ir.inner;
+          if ir.inner { ir.response.mark_changed(); }
           ir.response
         }
         SHTYPE_FLOAT3 => {
@@ -220,7 +220,7 @@ impl UIRenderer for Var {
               | ui.add(CustomDragValue::new(&mut values[1])).changed()
               | ui.add(CustomDragValue::new(&mut values[2])).changed()
           });
-          it.response.changed = it.inner;
+          if it.inner { it.response.mark_changed(); }
           it.response
         }
         SHTYPE_FLOAT4 => {
@@ -231,7 +231,7 @@ impl UIRenderer for Var {
               | ui.add(CustomDragValue::new(&mut values[2])).changed()
               | ui.add(CustomDragValue::new(&mut values[3])).changed()
           });
-          it.response.changed = it.inner;
+          if it.inner { it.response.mark_changed(); }
           it.response
         }
         SHTYPE_COLOR => {
@@ -278,7 +278,7 @@ impl UIRenderer for Var {
                 i += 1;
               }
             });
-            ir.header_response.changed = changed;
+            if changed { ir.header_response.mark_changed(); }
             ir.header_response
           } else {
             if read_only {
@@ -318,7 +318,7 @@ impl UIRenderer for Var {
                   .changed()
               }
             });
-            ir.header_response.changed = changed;
+            if changed { ir.header_response.mark_changed(); }
             ir.header_response
           } else {
             if read_only {

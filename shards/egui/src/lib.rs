@@ -182,6 +182,10 @@ impl<'a> egui::TextBuffer for VarTextBuffer<'a> {
     false
   }
 
+  fn type_id(&self) -> std::any::TypeId {
+    std::any::TypeId::of::<VarTextBuffer<'static>>()
+  }
+
   fn as_str(&self) -> &str {
     self.0.as_ref().try_into().unwrap_or_default()
   }
@@ -197,6 +201,10 @@ impl<'a> egui::TextBuffer for VarTextBuffer<'a> {
 impl<'a> egui::TextBuffer for MutVarTextBuffer<'a> {
   fn is_mutable(&self) -> bool {
     true
+  }
+
+  fn type_id(&self) -> std::any::TypeId {
+    std::any::TypeId::of::<MutVarTextBuffer<'static>>()
   }
 
   fn as_str(&self) -> &str {
@@ -353,7 +361,8 @@ impl From<Order> for egui::Order {
   fn from(value: Order) -> Self {
     match value {
       Order::Background => egui::Order::Background,
-      Order::PanelResizeLine => egui::Order::PanelResizeLine,
+      // egui >=0.32 removed the dedicated PanelResizeLine order.
+      Order::PanelResizeLine => egui::Order::Middle,
       Order::Middle => egui::Order::Middle,
       Order::Foreground => egui::Order::Foreground,
       Order::Tooltip => egui::Order::Tooltip,

@@ -176,7 +176,7 @@ impl LegacyShard for PlotPoints {
       let v: (f64, f64) = x.as_ref().try_into().unwrap();
       [v.0, v.1]
     });
-    let mut chart = egui_plot::Points::new(egui_plot::PlotPoints::from_iter(points));
+    let mut chart = egui_plot::Points::new("", egui_plot::PlotPoints::from_iter(points));
 
     let name = self.name.get();
     if !name.is_none() {

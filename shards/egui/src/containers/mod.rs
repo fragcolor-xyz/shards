@@ -41,7 +41,8 @@ impl From<Order> for egui::Order {
   fn from(order: Order) -> Self {
     match order {
       Order::Background => egui::Order::Background,
-      Order::PanelResizeLine => egui::Order::PanelResizeLine,
+      // egui >=0.32 removed the dedicated PanelResizeLine order.
+      Order::PanelResizeLine => egui::Order::Middle,
       Order::Middle => egui::Order::Middle,
       Order::Foreground => egui::Order::Foreground,
       Order::Tooltip => egui::Order::Tooltip,

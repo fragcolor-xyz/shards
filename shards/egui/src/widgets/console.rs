@@ -185,10 +185,11 @@ impl LegacyShard for Console {
       }
 
       let filters = self.filters.clone();
-      let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+      let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+        let string = buf.as_str();
         let mut layout_job = Console::highlight(ui.ctx(), &theme, string, filters);
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
       };
 
       let mut text: &str = input.try_into()?;
@@ -223,7 +224,7 @@ impl Console {
 
     ctx.memory_mut(|mem| {
       let highlight_cache = mem.caches.cache::<HighlightCache>();
-      highlight_cache.get((theme, code, filters))
+      highlight_cache.get((theme, code, filters)).clone()
     })
   }
 }

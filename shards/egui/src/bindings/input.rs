@@ -197,6 +197,8 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
           Some(Event::MouseWheel {
             unit: egui::MouseWheelUnit::Point,
             delta: egui::vec2(virtual_delta_x, virtual_delta_y),
+            // egui >=0.31 requires a scroll phase; SDL gives no phase info.
+            phase: egui::TouchPhase::Move,
             modifiers: Modifiers::default(),
           })
         }
@@ -278,6 +280,7 @@ pub fn translate_raw_input(input: &egui_Input) -> Result<egui::RawInput, Transla
       map.insert(ViewportId::default(), info);
       map
     },
+    ..Default::default()
   })
 }
 

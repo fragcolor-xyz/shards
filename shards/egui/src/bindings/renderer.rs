@@ -137,16 +137,13 @@ fn convert_texture_set(
   id: epaint::TextureId,
   delta: &epaint::ImageDelta,
 ) -> Result<egui_TextureSet, &'static str> {
+  // egui >=0.31 delivers all textures (including the font atlas) as a
+  // premultiplied RGBA8 `ColorImage`; the old single-channel font image is gone.
   let (format, ptr, size) = match &delta.image {
     epaint::ImageData::Color(color) => {
       let ptr = color.pixels.as_ptr();
       let size = color.size;
       (egui_TextureFormat_RGBA8, ptr as *const u8, size)
-    }
-    epaint::ImageData::Font(font) => {
-      let ptr = font.pixels.as_ptr();
-      let size = font.size;
-      (egui_TextureFormat_R32F, ptr as *const u8, size)
     }
   };
 
@@ -228,16 +225,21 @@ pub fn make_native_io_output(
   input: &egui::FullOutput,
 ) -> Result<NativeIOOutput, &'static str> {
   let platform_output = &input.platform_output;
-  let open_url = match &platform_output.open_url {
-    Some(url) => Some(CString::new(url.url.as_str()).unwrap()),
-    None => None,
-  };
-
-  let copied_text = if platform_output.copied_text.len() > 0 {
-    Some(CString::new(platform_output.copied_text.as_str()).unwrap())
-  } else {
-    None
-  };
+  // egui >=0.29 funnels open-url and clipboard requests through `commands`
+  // instead of dedicated `open_url`/`copied_text` fields.
+  let mut open_url = None;
+  let mut copied_text = None;
+  for cmd in &platform_output.commands {
+    match cmd {
+      egui::OutputCommand::OpenUrl(url) => {
+        open_url = Some(CString::new(url.url.as_str()).unwrap());
+      }
+      egui::OutputCommand::CopyText(text) => {
+        copied_text = Some(CString::new(text.as_str()).unwrap());
+      }
+      _ => {}
+    }
+  }
 
   let text_cursor_position = platform_output.ime.map(|ime| egui_Pos2 {
     x: ime.cursor_rect.min.x,

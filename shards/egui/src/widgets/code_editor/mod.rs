@@ -221,14 +221,15 @@ impl LegacyShard for CodeEditor {
       let id1 = EguiId::new(self, 0);
       let id2 = EguiId::new(self, 1);
 
-      let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+      let mut layouter = |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+        let string = buf.as_str();
         let mut layout_job = if language == "shards" {
           highlight_shards(&theme, string)
         } else {
           highlight_generic(&theme, string, language)
         };
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
       };
       let mut mutable;
       let mut immutable;

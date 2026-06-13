@@ -163,7 +163,7 @@ fn into_egui_image(image: &SHImage) -> Result<egui::ColorImage, &'static str> {
       .chunks_exact(4)
       .map(|p| egui::Color32::from_rgba_premultiplied(p[0], p[1], p[2], p[3]))
       .collect();
-    Ok(egui::ColorImage { size, pixels })
+    Ok(egui::ColorImage::new(size, pixels))
   } else {
     Ok(egui::ColorImage::from_rgba_unmultiplied(size, rgba))
   }
