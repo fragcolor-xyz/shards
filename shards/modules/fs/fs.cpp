@@ -427,7 +427,7 @@ struct Read {
         // First activation or reset: validate and open file
         _currentPath = pathStr;
         if (!fs::exists(p)) {
-          SHLOG_ERROR("File is missing: {}", p);
+          SHLOG_ERROR("File is missing: {}", p.string());
           throw FileNotFoundException("FS.Read, file does not exist.");
         }
 
@@ -477,7 +477,7 @@ struct Read {
     } else {
       // Normal mode: read entire file with size validation
       if (!fs::exists(p)) {
-        SHLOG_ERROR("File is missing: {}", p);
+        SHLOG_ERROR("File is missing: {}", p.string());
         throw FileNotFoundException("FS.Read, file does not exist.");
       }
 
@@ -680,7 +680,7 @@ struct Size {
     ErrorCode ec;
     auto size = fs::file_size(p, ec);
     if (ec.failed()) {
-      throw FileNotFoundException(fmt::format("FS.Size, file {} does not exist.", p));
+      throw FileNotFoundException(fmt::format("FS.Size, file {} does not exist.", p.string()));
     }
     return Var(static_cast<int64_t>(size));
   }
@@ -695,7 +695,7 @@ struct LastWriteTime {
     ErrorCode ec;
     auto lwt = fs::last_write_time(p, ec);
     if (ec.failed()) {
-      throw FileNotFoundException(fmt::format("FS.LastWriteTime, file {} does not exist.", p));
+      throw FileNotFoundException(fmt::format("FS.LastWriteTime, file {} does not exist.", p.string()));
     }
     return Var(static_cast<int64_t>(lwt));
   }
@@ -725,7 +725,7 @@ struct SetWriteTime {
     ErrorCode ec;
     fs::last_write_time(p, time.payload.intValue, ec);
     if (ec.failed()) {
-      throw FileNotFoundException(fmt::format("FS.SetWriteTime, file {} does not exist.", p));
+      throw FileNotFoundException(fmt::format("FS.SetWriteTime, file {} does not exist.", p.string()));
     }
     return input;
   }
@@ -759,7 +759,7 @@ struct CreateDirectories {
 
     if (!fs::exists(p)) {
       if (!fs::create_directories(p)) {
-        throw ActivationError(fmt::format("FS.CreateDirectories, failed to create directories for {}.", p));
+        throw ActivationError(fmt::format("FS.CreateDirectories, failed to create directories for {}.", p.string()));
       }
     }
     return input;
@@ -857,7 +857,7 @@ struct Rename {
 
     // check exists
     if (!fs::exists(p)) {
-      throw ActivationError(fmt::format("FS.Rename, file {} does not exist.", p));
+      throw ActivationError(fmt::format("FS.Rename, file {} does not exist.", p.string()));
     }
 
     auto newName = SHSTRING_PREFER_SHSTRVIEW(_newName.get());

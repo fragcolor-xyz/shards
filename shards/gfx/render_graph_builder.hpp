@@ -15,15 +15,10 @@
 #include <boost/tti/has_member_data.hpp>
 
 template <> struct fmt::formatter<gfx::detail::graph_build_data::FrameSizing> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(const gfx::detail::graph_build_data::FrameSizing &size, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(const gfx::detail::graph_build_data::FrameSizing &size, FormatContext &ctx) const -> decltype(ctx.out()) {
     using namespace linalg::ostream_overloads;
     std::stringstream ss;
     std::visit(

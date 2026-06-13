@@ -6,7 +6,7 @@
 
 namespace gfx {
 template <typename... TArgs> std::runtime_error formatException(const char *format, TArgs... args) {
-  return std::runtime_error(fmt::format(format, args...));
+  return std::runtime_error(fmt::format(fmt::runtime(format), args...));
 }
 } // namespace gfx
 

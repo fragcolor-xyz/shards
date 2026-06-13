@@ -5,6 +5,7 @@
 #include <string_view>
 #include <string>
 #include <functional>
+#include <spdlog/fmt/fmt.h>
 
 namespace shards::fast_string {
 struct FastString {
@@ -67,6 +68,15 @@ private:
 
 template <> struct std::hash<shards::fast_string::FastString> {
   size_t operator()(const shards::fast_string::FastString &str) const { return std::hash<uint64_t>()(str.id); }
+};
+
+// fmt formatter lives with the type so it is visible to every consumer (fmt 11
+// no longer formats arbitrary string_view-convertible types implicitly).
+template <> struct fmt::formatter<shards::fast_string::FastString> : fmt::formatter<std::string_view> {
+  template <typename FormatContext>
+  auto format(const shards::fast_string::FastString &str, FormatContext &ctx) const -> decltype(ctx.out()) {
+    return fmt::formatter<std::string_view>::format(str.str(), ctx);
+  }
 };
 
 #endif /* EC76A763_D9F1_4187_B602_A2E23F686D7F */

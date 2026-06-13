@@ -50,9 +50,9 @@ template <typename TShard> struct ToNumberTranslator {
       std::string prefix = fmt::format("{}((", getWGSLTypeName(unitFieldType));
       std::string suffix{};
       if (requireSourceSwizzle)
-        suffix = fmt::format((isLast ? ").{})" : ").{}), "), componentNames[i]);
+        suffix = fmt::format(fmt::runtime(isLast ? ").{})" : ").{}), "), componentNames[i]);
       else
-        suffix = fmt::format((isLast ? "))" : ")), "));
+        suffix = fmt::format(fmt::runtime(isLast ? "))" : ")), "));
 
       sourceComponentList->children.emplace_back(
           blocks::makeCompoundBlock(std::move(prefix), std::move(inner), std::move(suffix)));
@@ -80,7 +80,7 @@ template <typename TShard> struct ToNumberTranslator {
         if (!isLast)
           fmt += ", ";
 
-        compound->children.emplace_back(blocks::makeBlock<blocks::Direct>(fmt::format(fmt, 0.)));
+        compound->children.emplace_back(blocks::makeBlock<blocks::Direct>(fmt::format(fmt::runtime(fmt), 0.)));
       }
 
       compound->children.emplace_back(blocks::makeBlock<blocks::Direct>(")"));

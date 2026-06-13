@@ -7,6 +7,7 @@
 #ifndef RUST_BINDGEN
 #include <atomic>
 #include <compare>
+#include <spdlog/fmt/fmt.h>
 #endif
 
 namespace gfx {
@@ -87,6 +88,13 @@ public:
 
 template <> struct std::hash<gfx::UniqueId> {
   size_t operator()(gfx::UniqueId v) const { return size_t(v.value); }
+};
+
+template <> struct fmt::formatter<gfx::UniqueId> : fmt::formatter<gfx::UniqueIdValue> {
+  template <typename FormatContext>
+  auto format(const gfx::UniqueId &v, FormatContext &ctx) const -> decltype(ctx.out()) {
+    return fmt::formatter<gfx::UniqueIdValue>::format(v.value, ctx);
+  }
 };
 #endif
 

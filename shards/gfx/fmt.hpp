@@ -6,14 +6,9 @@
 #include <sstream>
 
 template <class T, int M> struct fmt::formatter<linalg::vec<T, M>> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
 
-  template <typename FormatContext> auto format(const linalg::vec<T, M> &vec, FormatContext &ctx) -> decltype(ctx.out()) {
+  template <typename FormatContext> auto format(const linalg::vec<T, M> &vec, FormatContext &ctx) const -> decltype(ctx.out()) {
     using namespace linalg::ostream_overloads;
     std::stringstream ss;
     ss << vec;

@@ -152,7 +152,7 @@ struct Run {
           }
         }
 
-        SHLOG_DEBUG("Mesh (detached) is done, terminating, without errors: {}", noErrors);
+        SHLOG_DEBUG("Mesh (detached) is done, terminating, without errors: {}", noErrors.load());
 
         // Terminate the mesh
         mesh->terminate();
