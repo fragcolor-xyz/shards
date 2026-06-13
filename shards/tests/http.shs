@@ -5,24 +5,66 @@
 
 @mesh(root)
 
-false >= timed-out
-Maybe({
-  none
-  Http.Get("https://httpstat.us/200?sleep=5000" Timeout: 1)
-  Log
-} {true > timed-out})
-timed-out | Assert.Is(true)
+// Local test server replacing the previously-used third-party endpoints
+// (httpstat.us / httpbin.org), which made this test flaky and CI-blocking
+// whenever those services hiccuped. Serves two endpoints:
+//   /slow - delays past a short client timeout (client-timeout coverage)
+//   /post - echoes the request body back as application/json (POST coverage)
+@wire(local-http-handler {
+  Maybe({
+    Http.Read = request
+    request | Take("target") | ExpectString
+    Match([
+      "/slow" {
+        Pause(2.0)
+        "slow" | Http.Response(Status: 200 ContentType: "text/plain")
+      }
+      "/post" {
+        request | Take("body") | ExpectString
+        Http.Response(Status: 200 ContentType: "application/json")
+      }
+      none {
+        "not found" | Http.Response(Status: 404 ContentType: "text/plain")
+      }
+    ] Passthrough: false)
+  } {
+    // Tolerate aborted connections (e.g. the client-timeout case below) so the
+    // looped handler keeps serving subsequent requests.
+    Pass
+  })
+} Looped: true)
 
+@wire(local-http-server {
+  Http.Server(local-http-handler Port: 18088)
+} Looped: true)
+
+// Phase 1 - client timeout coverage: a 1s timeout against the 2s /slow endpoint
+// must fail (any failure flips timed-out, so a connect error is acceptable too).
+@wire(timeout-test {
+  false >= timed-out
+  Maybe({
+    none
+    Http.Get("http://127.0.0.1:18088/slow" Timeout: 1)
+    Log
+  } {true > timed-out})
+  timed-out | Assert.Is(true)
+})
+@schedule(root local-http-server)
+@schedule(root timeout-test)
+@run(root FPS: 10 Iterations: 30) | Assert.Is(true)
+
+// Phase 2 - URI escaping, a real GET (+JSON parse) and POST echo against the
+// local server. No /slow here, so the shared handler is never blocked.
 @wire(test {
   "Hello world, this is an escaping test ////"
   String.EncodeURI | Log
   Assert.Is("Hello%20world%2C%20this%20is%20an%20escaping%20test%20%2F%2F%2F%2F" true)
   String.DecodeURI | Log
   Assert.Is("Hello world, this is an escaping test ////" true)
-  
+
   1 | ToString
   Set(params "postId")
-  
+
   params
   Http.Get("https://raw.githubusercontent.com/fragcolor-xyz/vscode-shards-syntax/main/package.json") = json
   FromJson
@@ -31,13 +73,13 @@ timed-out | Assert.Is(true)
   ExpectString
   Assert.Is("Fragcolor and contributors" true)
   Log
-  
+
   json
-  Http.Post("https://httpbin.org/post")
+  Http.Post("http://127.0.0.1:18088/post")
   Log
 
   json
-  Http.Post("https://httpbin.org/post" FullResponse: true)
+  Http.Post("http://127.0.0.1:18088/post" FullResponse: true)
   Log
   Take("headers")
   Take("content-type") | ExpectString
@@ -45,10 +87,12 @@ timed-out | Assert.Is(true)
   String.Starts("application/json") | Assert.Is(true)
 } Looped: true)
 
+@schedule(root local-http-server)
 @schedule(root test)
 @run(root FPS: 10 Iterations: 20) | Assert.Is(true)
 
 // test reusing sockets/streams
+@schedule(root local-http-server)
 @schedule(root test)
 @run(root FPS: 10 Iterations: 20) | Assert.Is(true)
 
@@ -57,19 +101,19 @@ timed-out | Assert.Is(true)
   Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Bytes: true Timeout: 60) = shards
   Log
   "shards.png" | FS.Write(shards Overwrite: true)
-  
+
   // Emscripten doesn't have streaming support yet
   @if(#(@platform | IsNot("emscripten")) {
     none
     Http.Get("https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png" Streaming: true Timeout: 60) = picture-stream
-    
+
     Sequence(chunks Type: @type([Type::Bytes]))
     Repeat({
       Http.Stream(picture-stream) = chunk | Log
       Count(chunk) | When(Is(0) Return)
       chunk >> chunks
     })
-    
+
     chunks | Bytes.Join = shards2
     shards2 | Assert.Is(shards)
   } none)
@@ -77,30 +121,3 @@ timed-out | Assert.Is(true)
 
 @schedule(root download)
 @run(root FPS: 10) | Assert.Is(true)
-
-// ; wire, to keep same state
-// @wire(send-chunk {Http.Chunk})
-
-// @wire(server-handler {
-//   Msg("handled")
-//   Http.Read | Take("target")
-//   When(Is("/") {
-//     Log
-//     "Message\n" | Log("Responding")
-//     Do(send-chunk) | Log("Responded")
-//     "Message\n" | Log("Responding")
-//     Do(send-chunk) | Log("Responded")
-//     "Message\n" | Log("Responding")
-//     Do(send-chunk) | Log("Responded")
-//     "" | Log("Responding")
-//     Do(send-chunk) | Log("Responded")
-//   })
-// } Looped: true)
-
-// @wire(test-server {
-//   Http.Server(Handler: server-handler)
-// } Looped: true)
-
-// @schedule(root test-server)
-// @run(root FPS: 10) | Assert.Is(true)
-
