@@ -177,6 +177,12 @@ jobs:
             echo "Running sample $i";
             ../../build/shards new run-sample.shs file:"$i" looped:false;
           done
+      - name: Pak (single-file packaging) smoke test
+        env:
+          RUST_BACKTRACE: full
+        run: |
+          chmod +x build/shards
+          bash shards/tests/pak.sh build/shards
   macOS-dll-shard:
     if: ${{ needs.macOS.outputs.run-subproject-tests == 'true' }}
     needs: macOS

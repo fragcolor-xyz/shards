@@ -12,6 +12,7 @@ pub mod directory;
 mod error;
 pub mod eval;
 mod formatter;
+pub mod pak;
 pub mod print;
 pub mod read;
 pub mod rule_visitor;
