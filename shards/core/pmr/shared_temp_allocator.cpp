@@ -1,5 +1,6 @@
 #include "shared_temp_allocator.hpp"
 #include <shards/log/log.hpp>
+#include <spdlog/fmt/std.h>
 #include <tracy/Wrapper.hpp>
 
 static shards::logging::Logger getLogger() {

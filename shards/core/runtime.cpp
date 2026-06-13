@@ -1432,7 +1432,7 @@ bool validateWireTraits(const SHWire *wire, const SHComposeResult &cr, SHInstanc
     if (!tm(cr.exposedInfo, trait)) {
       auto pct = reinterpret_cast<CompositionContext *>(data.privateContext);
       shassert(pct);
-      pct->errorStack.emplace_back(fmt::format("Wire {} does not implement {}", wire->name, trait, tm.error));
+      pct->errorStack.emplace_back(fmt::format("Wire {} does not implement {}", wire->name, (const SHTrait &)trait, tm.error));
       pct->errorStack.emplace_back(tm.error);
       return false;
     }
@@ -1660,7 +1660,7 @@ void error_handler(int err_sig) {
 
   if (crashed) {
 #ifndef __EMSCRIPTEN__
-    SHLOG_ERROR(boost::stacktrace::stacktrace());
+    SHLOG_ERROR("{}", boost::stacktrace::to_string(boost::stacktrace::stacktrace()));
 #endif
 
     auto handler = GetGlobals().CrashHandler;

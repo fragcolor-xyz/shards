@@ -80,4 +80,15 @@ inline constexpr size_t WGPU_COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 #include "rust/gfx/bindings.hpp"
 #endif
 
+#ifndef RUST_BINDGEN
+// fmt 11 no longer formats enums implicitly; preserve the integer rendering of
+// WGPUTextureFormat that fmt 7 produced (used in logs and WGSL type strings).
+#include <spdlog/fmt/fmt.h>
+template <> struct fmt::formatter<WGPUTextureFormat> : fmt::formatter<int> {
+  template <typename FormatContext> auto format(WGPUTextureFormat v, FormatContext &ctx) const -> decltype(ctx.out()) {
+    return fmt::formatter<int>::format((int)v, ctx);
+  }
+};
+#endif
+
 #endif // GFX_GFX_WGPU

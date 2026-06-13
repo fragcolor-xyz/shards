@@ -9,15 +9,10 @@
 #include <variant>
 
 template <> struct fmt::formatter<gfx::shader::NumType> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
 
   template <typename FormatContext>
-  auto format(const gfx::shader::NumType &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+  auto format(const gfx::shader::NumType &fieldType, FormatContext &ctx) const -> decltype(ctx.out()) {
     auto baseTypeName = magic_enum::enum_name(fieldType.baseType);
     if (fieldType.matrixDimension > 1) {
       return format_to(ctx.out(), "{{{}, {}x{}}}", baseTypeName, fieldType.numComponents, fieldType.matrixDimension);
@@ -28,14 +23,9 @@ template <> struct fmt::formatter<gfx::shader::NumType> {
 };
 
 template <> struct fmt::formatter<gfx::shader::Type> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
 
-  template <typename FormatContext> auto format(const gfx::shader::Type &fieldType, FormatContext &ctx) -> decltype(ctx.out()) {
+  template <typename FormatContext> auto format(const gfx::shader::Type &fieldType, FormatContext &ctx) const -> decltype(ctx.out()) {
     return std::visit(
         [&](auto &arg) {
           using T = std::decay_t<decltype(arg)>;
@@ -50,20 +40,16 @@ template <> struct fmt::formatter<gfx::shader::Type> {
 };
 
 template <> struct fmt::formatter<gfx::shader::LayoutPath> {
-  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) {
-    auto it = ctx.begin(), end = ctx.end();
-    if (it != end)
-      throw format_error("invalid format");
-    return it;
-  }
+  constexpr auto parse(format_parse_context &ctx) -> decltype(ctx.begin()) { return ctx.begin(); }
 
-  template <typename FormatContext> auto format(const gfx::shader::LayoutPath &lp, FormatContext &ctx) -> decltype(ctx.out()) {
+  template <typename FormatContext> auto format(const gfx::shader::LayoutPath &lp, FormatContext &ctx) const -> decltype(ctx.out()) {
     for (size_t i = 0; i < lp.path.size(); i++) {
       if (i > 0) {
         format_to(ctx.out(), ".");
       }
       format_to(ctx.out(), "{}", lp.path[i]);
     }
+    return ctx.out();
   }
 };
 

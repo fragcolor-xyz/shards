@@ -64,7 +64,7 @@ static OwnedVar getGltfBuiltinTargetPath(animation::BuiltinTarget target) {
     pathStr[1] = 't';
     break;
   default:
-    SHLOG_ERROR("Ignoring builtin target: {}", target);
+    SHLOG_ERROR("Ignoring builtin target: {}", (int)target);
     break;
   }
   pathStr[2] = 0;
@@ -374,7 +374,7 @@ struct GLTFShard {
       node->trs.translation = toVec<float3>(value);
       break;
     default:
-      SHLOG_WARNING("Ignoring builtin target: {}", target);
+      SHLOG_WARNING("Ignoring builtin target: {}", (int)target);
       break;
     }
     node->update();

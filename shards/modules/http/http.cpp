@@ -1229,7 +1229,7 @@ struct Read {
       _output[Var("method")] = Var("OPTIONS");
       break;
     default:
-      throw ActivationError(fmt::format("Unsupported HTTP method {}.", request.method()));
+      throw ActivationError(fmt::format("Unsupported HTTP method {}.", boost::beast::http::to_string(request.method())));
     }
 
     _headers.clear();

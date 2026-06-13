@@ -34,7 +34,7 @@ struct IGeneratorDynamicHandler {
 };
 
 template <typename... TArgs> static GeneratorError formatError(const char *format, TArgs... args) {
-  return GeneratorError(fmt::format(format, args...));
+  return GeneratorError(fmt::format(fmt::runtime(format), args...));
 }
 
 struct GeneratorDefinitions {
