@@ -1620,7 +1620,8 @@ pub mod native {
           access: access.try_into()?,
         },
         AddressSpace::Handle => naga::AddressSpace::Handle,
-        AddressSpace::PushConstant => naga::AddressSpace::PushConstant,
+        // wgpu/naga v29 renamed "push constants" to "immediates".
+        AddressSpace::PushConstant => naga::AddressSpace::Immediate,
       };
       Ok(result)
     }
@@ -1989,6 +1990,8 @@ pub mod native {
           } else {
             None
           },
+          // mesh-shader per-primitive bindings (naga v29); not exposed via this FFI.
+          per_primitive: false,
         },
       };
       Ok(result)
@@ -2028,6 +2031,8 @@ pub mod native {
         binding,
         ty,
         init,
+        // SPIR-V memory decorations (naga v29); none for FFI-created globals.
+        memory_decorations: naga::MemoryDecorations::default(),
       })
     }
   }
@@ -2923,6 +2928,10 @@ pub unsafe extern "C" fn nagaAddEntryPoint(
     stage: desc.stage.try_into().expect("Invalid stage"),
     workgroup_size: desc.workgroup_size,
     workgroup_size_overrides: None,
+    // mesh/task/ray-tracing entry-point info (naga v29); unused via this FFI.
+    mesh_info: None,
+    task_payload: None,
+    incoming_ray_payload: None,
   });
 }
 

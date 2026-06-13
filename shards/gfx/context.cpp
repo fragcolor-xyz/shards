@@ -639,10 +639,10 @@ void Context::requestDevice() {
   // Add native limits extension
   WGPUNativeLimits nativeLimits{
       .chain = {.sType = (WGPUSType)WGPUSType_NativeLimits},
-      .maxPushConstantSize = 0,
+      .maxImmediateSize = 0,
       .maxNonSamplerBindings = 1000000,
   };
-  requiredLimits.nextInChain = (WGPUChainedStructOut*)&nativeLimits.chain;
+  requiredLimits.nextInChain = (WGPUChainedStruct *)&nativeLimits.chain;
   deviceDesc.requiredLimits = &requiredLimits;
 
 #if WEBGPU_TRACE
@@ -715,9 +715,8 @@ void Context::requestAdapter() {
     instanceBackends = WGPUInstanceBackend_Primary;
     if (backend) {
       switch (*backend) {
-      case WGPUBackendType_D3D11:
-        instanceBackends = WGPUInstanceBackend_DX11;
-        break;
+      // NOTE: wgpu-native v29 dropped the DX11 instance backend; a D3D11
+      // request now falls through to the default (all primary backends).
       case WGPUBackendType_D3D12:
         instanceBackends = WGPUInstanceBackend_DX12;
         break;
