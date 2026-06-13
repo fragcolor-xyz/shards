@@ -190,6 +190,10 @@ jobs:
           echo "Running language formatter tests"
           cd shards/lang/src/tests
           $SH test
+      - name: Pak (single-file packaging) smoke test
+        env:
+          RUST_BACKTRACE: full
+        run: bash shards/tests/pak.sh build/shards
       # Minimize disk usage to prevent the next steps getting stuck due to no disk space
       - name: Minimize disk usage
         env:

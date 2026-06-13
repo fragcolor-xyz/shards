@@ -27,6 +27,13 @@ dashmap = "6.1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+[target.'cfg(windows)'.dependencies]
+# Used by `shards pak` to embed/read the payload as a PE resource.
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_System_LibraryLoader",
+] }
+
 
 [features]
 default = ["exported"]

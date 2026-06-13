@@ -406,3 +406,8 @@ jobs:
           cd build
           echo "Running subwires"
           ./shards new ../shards/tests/subwires.shs
+      - name: Pak (single-file packaging) smoke test
+        env:
+          RUST_BACKTRACE: full
+        shell: bash
+        run: bash shards/tests/pak.sh build/shards

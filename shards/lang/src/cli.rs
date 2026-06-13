@@ -27,6 +27,10 @@ extern "C" {
   fn shards_decompress_strings();
 }
 
+// `shards pak` (single-file packaging) lives in the `pak` module. The startup
+// self-check below asks it whether *this* executable carries an embedded script.
+use crate::pak;
+
 #[derive(Debug, clap::Args)]
 struct RunArgs {
   /// The script file to execute
@@ -96,6 +100,34 @@ enum Commands {
     /// Generate dependency file in Makefile format
     #[arg(long, short = 'd')]
     depfile: Option<String>,
+  },
+  /// Pack a Shards script into a standalone, single-file executable
+  ///
+  /// Compiles the script and appends it to a copy of this `shards` binary,
+  /// producing a self-contained executable that runs the script directly with
+  /// no interpreter, runtime files or toolchain required.
+  Pak {
+    /// The script source file to pack
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Output executable path (defaults to the script name without extension)
+    #[arg(long, short = 'o')]
+    output: Option<String>,
+    /// Additional include directories for imports
+    #[arg(long, short = 'I')]
+    include: Vec<String>,
+    /// Signing identity (macOS: codesign -s <id>, default ad-hoc; Windows: signtool /n <subject>)
+    #[arg(long)]
+    sign: Option<String>,
+    /// Do not sign the produced binary (macOS: leaves an invalid signature; testing only)
+    #[arg(long, action)]
+    no_sign: bool,
+    /// macOS: notarize the produced binary after signing (requires --notarize-profile)
+    #[arg(long, action)]
+    notarize: bool,
+    /// macOS notarization keychain profile (xcrun notarytool --keychain-profile)
+    #[arg(long)]
+    notarize_profile: Option<String>,
   },
   /// Generate JSON AST from a Shards source file
   AST {
@@ -182,6 +214,24 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
     shlog_debug!("Shards git version: {}", GIT_VERSION);
   }
 
+  // Self-extracting path: if this executable was produced by `shards pak`, it
+  // carries an embedded compiled script. Detect and run it directly, ignoring
+  // normal subcommand parsing. Extra argv is forwarded to the script as defines.
+  match pak::load_self_payload() {
+    Ok(Some(payload)) => {
+      let res = deserialize_sho(&payload).and_then(|ast| {
+        let script_args: Vec<String> = args.iter().skip(1).cloned().collect();
+        execute_seq(&script_args, ast, cancellation_token).map_err(|e| -> Error { e.into() })
+      });
+      return finish(res);
+    }
+    Ok(None) => {} // not a packed binary, continue with normal CLI handling
+    Err(e) => {
+      shlog_error!("Failed to load embedded script: {}", e);
+      return 1;
+    }
+  }
+
   let cli = Cli::try_parse_from(args.clone());
   let res = match cli {
     Ok(cli) => match &cli.command {
@@ -192,6 +242,25 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
         depfile,
         json,
       } => build(file, &output, include.to_vec(), depfile.as_deref(), *json),
+      Commands::Pak {
+        file,
+        output,
+        include,
+        sign,
+        no_sign,
+        notarize,
+        notarize_profile,
+      } => pak(
+        file,
+        output.as_deref(),
+        include.to_vec(),
+        pak::SignOpts {
+          no_sign: *no_sign,
+          identity: sign.clone(),
+          notarize: *notarize,
+          notarize_profile: notarize_profile.clone(),
+        },
+      ),
       Commands::AST {
         file,
         output,
@@ -250,6 +319,11 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
     },
   };
 
+  finish(res)
+}
+
+/// Map a command result onto a process exit code, logging any error.
+fn finish(res: Result<(), Error>) -> i32 {
   if let Err(e) = res {
     shlog_error!("Error: {}", e);
     1
@@ -535,24 +609,8 @@ fn load(
   shlog!("Parsing binary file: {}", file);
 
   let ast = {
-    // deserialize from flexbuffers, skipping the first 8 bytes
-    let mut file_content = std::fs::read(file).map_err(|_| "File not found")?;
-    let magic: i32 = i32::from_be_bytes([
-      file_content[0],
-      file_content[1],
-      file_content[2],
-      file_content[3],
-    ]);
-    assert_eq!(magic, fourCharacterCode(*b"SHRD"));
-    let version = u32::from_le_bytes([
-      file_content[4],
-      file_content[5],
-      file_content[6],
-      file_content[7],
-    ]);
-    assert_eq!(version, SHARDS_CURRENT_ABI); // todo backwards compatibility
-    file_content.drain(0..8);
-    flexbuffers::from_slice(file_content.as_slice()).unwrap()
+    let file_content = std::fs::read(file).map_err(|_| "File not found")?;
+    deserialize_sho(&file_content)?
   };
 
   Ok(execute_seq(&args, ast, cancellation_token)?)
@@ -625,6 +683,112 @@ fn execute_seq(
   }
 }
 
+/// Parse a Shards source file into its AST, returning (dependency paths, ast).
+fn read_program(file: &str, include: Vec<String>) -> Result<(Vec<String>, Program), Error> {
+  let file_path = Path::new(&file);
+  let file_path = dunce::canonicalize(file_path).map_err(|_| format!("Input file {} not found", file))?;
+  let mut file_content = std::fs::read_to_string(&file_path).map_err(|_| "File not found")?;
+  // add new line at the end of the file to be able to parse it correctly
+  file_content.push('\n');
+
+  // get absolute parent path of the file
+  let parent_path = file_path.parent().unwrap().to_str().unwrap();
+
+  let mut env = ReadEnv::new(file_path.to_str().unwrap(), parent_path.to_string(), include);
+  let ast = read_with_env(&file_content, &mut env).map_err(|e| {
+    shlog!("Error: {:?}", e);
+    "Failed to parse file"
+  })?;
+  let mut deps = get_dependencies(&env)
+    .iter()
+    .map(|x| {
+      dunce::canonicalize(x)
+        .map_err(|_| "Failed to canonicalize path")
+        .map(|x| x.to_string_lossy().to_string())
+    })
+    .collect::<Result<Vec<String>, _>>()?;
+  // Add the main file as well
+  let p = dunce::canonicalize(&file_path)
+    .map_err(|_| "Failed to canonicalize path")?
+    .to_string_lossy()
+    .to_string();
+  deps.push(p);
+  Ok((deps, ast))
+}
+
+/// Serialize an AST into the binary `.sho` representation:
+/// `"SHRD"` (big-endian FourCC) + ABI version (little-endian u32) + flexbuffers AST.
+fn serialize_sho(ast: &Program) -> Vec<u8> {
+  let encoded_bin = flexbuffers::to_vec(ast).unwrap();
+  let mut out = Vec::with_capacity(8 + encoded_bin.len());
+  out.extend_from_slice(fourCharacterCode(*b"SHRD").to_be_bytes().as_ref());
+  out.extend_from_slice(SHARDS_CURRENT_ABI.to_le_bytes().as_ref());
+  out.extend_from_slice(&encoded_bin);
+  out
+}
+
+/// Deserialize a binary `.sho` payload, validating the `SHRD`+ABI header.
+fn deserialize_sho(bytes: &[u8]) -> Result<Program, Error> {
+  if bytes.len() < 8 {
+    return Err("Invalid .sho payload: too small".into());
+  }
+  let magic = i32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+  if magic != fourCharacterCode(*b"SHRD") {
+    return Err("Invalid .sho payload: bad magic".into());
+  }
+  let version = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
+  if version != SHARDS_CURRENT_ABI {
+    return Err(format!("Incompatible .sho ABI version {} (expected {})", version, SHARDS_CURRENT_ABI).into());
+  }
+  flexbuffers::from_slice(&bytes[8..]).map_err(|e| format!("Failed to decode .sho: {}", e).into())
+}
+
+/// Detect and load a script packed into this executable by `shards pak`.
+/// Returns `Ok(None)` when this is a plain (un-packed) `shards` binary.
+/// Pack a script into a standalone executable: compile it, then embed it into a
+/// copy of this `shards` binary using the platform-native container mechanism
+/// (see the `pak` module). The result is a signed, runnable single file.
+fn pak(
+  file: &str,
+  output: Option<&str>,
+  include: Vec<String>,
+  sign: pak::SignOpts,
+) -> Result<(), Error> {
+  shlog!("Packing file: {}", file);
+
+  // Compile the script to its binary .sho representation (in memory).
+  let (_deps, ast) = read_program(file, include)?;
+  let payload = serialize_sho(&ast);
+
+  // Determine the output path: default to the script's stem (no extension),
+  // adding `.exe` on Windows.
+  let out_path = match output {
+    Some(o) => o.to_string(),
+    None => {
+      let stem = Path::new(file)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("app")
+        .to_string();
+      if cfg!(windows) {
+        format!("{}.exe", stem)
+      } else {
+        stem
+      }
+    }
+  };
+
+  pak::embed_payload(&payload, &out_path, &sign)?;
+
+  shlog!(
+    "Packed '{}' -> '{}' ({} bytes script embedded)",
+    file,
+    out_path,
+    payload.len()
+  );
+  Ok(())
+}
+
 fn build(
   file: &str,
   output: &str,
@@ -634,41 +798,7 @@ fn build(
 ) -> Result<(), Error> {
   shlog!("Parsing file: {}", file);
 
-  let (deps, ast) = {
-    let file_path = Path::new(&file);
-    let file_path = dunce::canonicalize(file_path).map_err(|_| format!("Input file {} not found", file))?;
-    let mut file_content = std::fs::read_to_string(file).map_err(|_| "File not found")?;
-    // add new line at the end of the file to be able to parse it correctly
-    file_content.push('\n');
-
-    // get absolute parent path of the file
-    let parent_path = file_path.parent().unwrap().to_str().unwrap();
-
-    let mut env = ReadEnv::new(
-      file_path.to_str().unwrap(),
-      parent_path.to_string(),
-      include,
-    );
-    let ast = read_with_env(&file_content, &mut env).map_err(|e| {
-      shlog!("Error: {:?}", e);
-      "Failed to parse file"
-    })?;
-    let mut deps = get_dependencies(&env)
-      .iter()
-      .map(|x| {
-        dunce::canonicalize(x)
-          .map_err(|_| "Failed to canonicalize path")
-          .map(|x| x.to_string_lossy().to_string())
-      })
-      .collect::<Result<Vec<String>, _>>()?;
-    // Add the main file as well
-    let p = dunce::canonicalize(file_path)
-      .map_err(|_| "Failed to canonicalize path")?
-      .to_string_lossy()
-      .to_string();
-    deps.push(p);
-    (deps, ast)
-  };
+  let (deps, ast) = read_program(file, include)?;
 
   // write sequence to file
   {
@@ -676,15 +806,7 @@ fn build(
     let mut writer = std::io::BufWriter::new(&mut file);
 
     if !as_json {
-      // Serialize using flexbuffers
-      let encoded_bin = flexbuffers::to_vec(&ast).unwrap();
-      writer
-        .write(fourCharacterCode(*b"SHRD").to_be_bytes().as_ref())
-        .unwrap();
-      writer
-        .write(SHARDS_CURRENT_ABI.to_le_bytes().as_ref())
-        .unwrap();
-      writer.write_all(encoded_bin.as_slice()).unwrap();
+      writer.write_all(&serialize_sho(&ast)).unwrap();
     } else {
       let encoded_json = serde_json::to_string_pretty(&ast).unwrap();
       writer.write_all(encoded_json.as_bytes()).unwrap();
