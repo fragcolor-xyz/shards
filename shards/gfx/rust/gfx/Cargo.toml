@@ -33,21 +33,17 @@ naga-native = { path = "../naga-native" }
 profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.17.4", optional = true }
 
-# wgpu v29's wgpu-hal pins windows = "0.62" for the D3D12 backend, and it hands
-# windows-rs types (D3D12_RESOURCE_DESC, ID3D12Heap, ...) to gpu-allocator.
-# gpu-allocator 0.28 accepts windows >=0.58,<=0.62, so the resolver can split it
-# onto a different windows version pulled by unrelated (often cfg-gated) deps
-# such as loom/generator, breaking the D3D12 build. Force windows 0.62 here so
-# gpu-allocator unifies with wgpu-hal in every workspace that depends on gfx.
-[target.'cfg(windows)'.dependencies]
-windows = "0.62"
-
 [patch.crates-io]
 # visionOS support is now upstream in wgpu v27 and metal 0.32
 naga = { path = "../wgpu/naga" }
 
 # objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
 objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
+
+# gpu-allocator fork pins windows-rs to 0.62 so its D3D12 types match wgpu-hal
+# v29 (which pins windows 0.62). Upstream's loose range let cargo split it onto
+# sysinfo's windows <0.62, breaking the D3D12_RESOURCE_DESC/ID3D12Heap type flow.
+gpu-allocator = { git = "https://github.com/shards-lang/gpu-allocator.git", rev = "55d1615cb77b532cef4033eb071ddf40aca6dcae" }
 
 # Until updates tracy-client (https://github.com/aclysma/profiling/pull/44)
 profiling = { path = "../profiling" }

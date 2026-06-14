@@ -358,7 +358,6 @@ dependencies = [
  "wgpu-core",
  "wgpu-native",
  "wgpu-types",
- "windows 0.62.2",
 ]
 
 [[package]]
@@ -370,8 +369,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "gpu-allocator"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51255ea7cfaadb6c5f1528d43e92a82acb2b96c43365989a28b2d44ee38f8795"
+source = "git+https://github.com/shards-lang/gpu-allocator.git?rev=55d1615cb77b532cef4033eb071ddf40aca6dcae#55d1615cb77b532cef4033eb071ddf40aca6dcae"
 dependencies = [
  "ash",
  "hashbrown 0.16.1",
