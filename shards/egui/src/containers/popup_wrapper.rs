@@ -187,7 +187,7 @@ impl Shard for PopupWrapper {
           let above_or_below: PopupLocation = self.above_or_below.get().try_into()?;
           above_or_below.into()
         };
-        if let Some(inner) = egui::popup::popup_above_or_below_widget(
+        if let Some(inner) = egui::popup_above_or_below_widget(
           ui,
           *popup_id,
           &response,

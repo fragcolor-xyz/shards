@@ -216,10 +216,10 @@ pub fn into_vec2(v: &Var) -> Result<egui::Vec2, &'static str> {
 pub fn into_margin(v: &Var) -> Result<egui::Margin, &'static str> {
   let v: (f32, f32, f32, f32) = v.try_into()?;
   Ok(egui::Margin {
-    left: v.0,
-    right: v.1,
-    top: v.2,
-    bottom: v.3,
+    left: v.0 as i8,
+    right: v.1 as i8,
+    top: v.2 as i8,
+    bottom: v.3 as i8,
   })
 }
 
@@ -228,13 +228,13 @@ pub fn into_color(v: &Var) -> Result<egui::Color32, &'static str> {
   Ok(egui::Color32::from_rgba_premultiplied(v.r, v.g, v.b, v.a))
 }
 
-pub fn into_rounding(v: &Var) -> Result<egui::Rounding, &'static str> {
+pub fn into_rounding(v: &Var) -> Result<egui::CornerRadius, &'static str> {
   let v: (f32, f32, f32, f32) = v.try_into()?;
-  Ok(egui::Rounding {
-    nw: v.0,
-    ne: v.1,
-    sw: v.2,
-    se: v.3,
+  Ok(egui::CornerRadius {
+    nw: v.0 as u8,
+    ne: v.1 as u8,
+    sw: v.2 as u8,
+    se: v.3 as u8,
   })
 }
 
@@ -248,9 +248,9 @@ pub fn into_shadow(v: &Var, ctx: &Context) -> Result<egui::epaint::Shadow, &'sta
     ctx,
   ))?;
   Ok(egui::epaint::Shadow {
-    spread,
-    blur,
-    offset: egui::Vec2::ZERO,
+    spread: spread as u8,
+    blur: blur as u8,
+    offset: [0, 0],
     color,
   })
 }
@@ -281,7 +281,7 @@ pub fn apply_widget_visuals(
     visuals.bg_stroke = into_stroke(v, ctx)?;
   }
   if let Some(v) = tbl.get_static("Rounding") {
-    visuals.rounding = into_rounding(get_or_var(v, ctx))?;
+    visuals.corner_radius = into_rounding(get_or_var(v, ctx))?;
   }
   if let Some(v) = tbl.get_static("FGStroke") {
     visuals.fg_stroke = into_stroke(v, ctx)?;

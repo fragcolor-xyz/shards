@@ -323,7 +323,7 @@ impl LegacyShard for ListBox {
                 }
               }
             } else {
-              let inner_margin = egui::Margin::same(3.0);
+              let inner_margin = egui::Margin::same(3);
               let background_id = ui.painter().add(egui::Shape::Noop);
               let outer_rect = ui.available_rect_before_wrap();
               let mut inner_rect = outer_rect;
@@ -350,15 +350,13 @@ impl LegacyShard for ListBox {
               let visuals = ui.style().interact_selectable(&response, is_selected);
               if is_selected || response.hovered() || response.has_focus() {
                 let rect = paint_rect.expand(visuals.expansion);
-                let shape = egui::Shape::Rect(egui::epaint::RectShape {
+                let shape = egui::Shape::Rect(egui::epaint::RectShape::new(
                   rect,
-                  rounding: visuals.rounding,
-                  fill: visuals.bg_fill,
-                  stroke: visuals.bg_stroke,
-                  fill_texture_id: egui::TextureId::Managed(0),
-                  uv: Rect::ZERO,
-                  blur_width: 0.0,
-                });
+                  visuals.corner_radius,
+                  visuals.bg_fill,
+                  visuals.bg_stroke,
+                  egui::StrokeKind::Inside,
+                ));
                 ui.painter().set(background_id, shape);
               }
 

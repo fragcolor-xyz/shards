@@ -40,6 +40,11 @@ naga = { path = "../wgpu/naga" }
 # objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
 objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
 
+# gpu-allocator fork pins windows-rs to 0.62 so its D3D12 types match wgpu-hal
+# v29 (which pins windows 0.62). Upstream's loose range let cargo split it onto
+# sysinfo's windows <0.62, breaking the D3D12_RESOURCE_DESC/ID3D12Heap type flow.
+gpu-allocator = { git = "https://github.com/shards-lang/gpu-allocator.git", rev = "55d1615cb77b532cef4033eb071ddf40aca6dcae" }
+
 # Until updates tracy-client (https://github.com/aclysma/profiling/pull/44)
 profiling = { path = "../profiling" }
 

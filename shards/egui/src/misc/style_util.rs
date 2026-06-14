@@ -43,19 +43,19 @@ pub fn get_margin(
   margin: (f32, f32, f32, f32),
 ) -> Result<egui::Margin, &'static str> {
   Ok(egui::Margin {
-    left: margin.0,
-    right: margin.1,
-    top: margin.2,
-    bottom: margin.3,
+    left: margin.0 as i8,
+    right: margin.1 as i8,
+    top: margin.2 as i8,
+    bottom: margin.3 as i8,
   })
 }
 
-pub fn get_rounding(rounding: (f32, f32, f32, f32)) -> Result<egui::Rounding, &'static str> {
-  Ok(egui::Rounding {
-    nw: rounding.0,
-    ne: rounding.1,
-    sw: rounding.2,
-    se: rounding.3,
+pub fn get_rounding(rounding: (f32, f32, f32, f32)) -> Result<egui::CornerRadius, &'static str> {
+  Ok(egui::CornerRadius {
+    nw: rounding.0 as u8,
+    ne: rounding.1 as u8,
+    sw: rounding.2 as u8,
+    se: rounding.3 as u8,
   })
 }
 
@@ -63,13 +63,14 @@ pub fn get_shadow(shadow: Table) -> Result<egui::epaint::Shadow, &'static str> {
   if let (Some(extrusion), Some(color)) =
     (shadow.get_static("extrusion"), shadow.get_static("color"))
   {
+    let extrusion: f32 = extrusion.try_into().map_err(|e| {
+      shlog!("{}: {}", "extrusion", e);
+      "Invalid attribute value received"
+    })?;
     Ok(egui::epaint::Shadow {
-      blur: 0.0,
+      blur: 0,
       offset: Default::default(),
-      spread: extrusion.try_into().map_err(|e| {
-        shlog!("{}: {}", "extrusion", e);
-        "Invalid attribute value received"
-      })?,
+      spread: extrusion as u8,
       color: get_color(color.try_into().map_err(|e| {
         shlog!("{}: {}", "color", e);
         "Invalid attribute value received"

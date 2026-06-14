@@ -282,15 +282,15 @@ impl LegacyShard for Combo {
       if empty_seq {
         if *index != 0 {
           *index = 0;
-          response.changed = true;
+          response.mark_changed();
         }
       } else if *index >= seq.len() {
         // in fact if len == 0, we are fine to have -1 as a way to signal "no selection"
         *index = seq.len() - 1;
-        response.changed = true;
+        response.mark_changed();
       }
 
-      if response.changed {
+      if response.changed() {
         if self.index.is_variable() {
           self.index.set_fast_unsafe(&(*index as i64).into());
         } else {

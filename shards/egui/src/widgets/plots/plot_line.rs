@@ -149,7 +149,7 @@ impl LegacyShard for PlotLine {
       let v: (f64, f64) = x.as_ref().try_into().unwrap();
       [v.0, v.1]
     });
-    let mut chart = egui_plot::Line::new(egui_plot::PlotPoints::from_iter(points));
+    let mut chart = egui_plot::Line::new("", egui_plot::PlotPoints::from_iter(points));
 
     let color = self.color.get();
     if !color.is_none() {

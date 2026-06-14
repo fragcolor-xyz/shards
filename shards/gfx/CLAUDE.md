@@ -22,16 +22,18 @@ shards/gfx/
 
 | Repository | Branch | Base Version |
 |------------|--------|--------------|
-| shards-lang/wgpu | `shards-27.x` | v27.0.4 |
-| shards-lang/wgpu-native | `shards-27.x` | v27.0.2.0 |
+| shards-lang/wgpu | `shards-29.x` | v29.0.1 |
+| shards-lang/wgpu-native | `shards-29.x` | v29.0.0.0 |
+
+(wgpu-native v29.0.0.0 pins wgpu-core 29.0.1, so the wgpu submodule is paired at v29.0.1.)
 
 ## Custom Patches (Must Preserve on Upgrades)
 
-### wgpu fork (`shards-27.x`)
-1. **Naga Handle exposure** - Makes `Handle::new`, `from_usize`, `from_usize_unchecked` public and exports `Index` type. Required by naga-native.
-2. **objc 0.2.7 compatibility** - Removed direct `sel_impl` imports (use `sel!` macro instead).
+### wgpu fork (`shards-29.x`)
+1. **Naga Handle exposure** - Makes `Handle::new`, `from_usize` public and exports `Index` type. Required by naga-native. (v29 removed `from_usize_unchecked` upstream; it was not used.)
+2. ~~**objc 0.2.7 compatibility**~~ - No longer needed in v29: wgpu-hal's Metal backend migrated to `objc2`, so the `sel_impl` import workaround was dropped.
 
-### wgpu-native fork (`shards-27.x`)
+### wgpu-native fork (`shards-29.x`)
 1. **Type exposure** - Makes struct fields `pub` for: `QueueId`, `WGPUDeviceImpl`, `WGPUInstanceImpl`, `WGPUPipelineLayoutImpl`, `QuerySetData`, `WGPUQuerySetImpl`, `WGPUQueueImpl`, `WGPURenderBundleImpl`, `WGPURenderBundleEncoderImpl`, `WGPUSurfaceImpl`, `TextureData`, `WGPUTextureImpl`, `WGPUTextureViewImpl`, `ErrorSink`, `ErrorSinkRaw`, `WGPUShaderModuleImpl`.
 2. **Cargo.toml** - Uses `crate-type = ["lib"]` (not cdylib/staticlib) and path dependencies to local wgpu.
 3. **webgpu-headers** - Submodule must match the wgpu-native version.
@@ -50,6 +52,17 @@ The crates.io `objc 0.2.7` has broken macro exports - `sel_impl!` isn't properly
 objc = { git = "https://github.com/shards-lang/rust-objc.git", branch = "shards-0.2.7" }
 naga = { path = "../wgpu/naga" }
 ```
+
+## WebGPU v27 → v29 changes (applied)
+
+C-API (C++) — only 3 sites, all in `context.cpp`:
+- `WGPUNativeLimits.maxPushConstantSize` → `maxImmediateSize` ("push constants" renamed to "immediates" throughout v29).
+- `WGPUChainedStructOut` type removed → use `WGPUChainedStruct *` for output chains.
+- `WGPUInstanceBackend_DX11` removed (DX11 instance backend dropped); a `WGPUBackendType_D3D11` request now falls through to the default backends.
+
+naga (Rust, `naga-native`): `AddressSpace::PushConstant` → `Immediate`; new required fields `Binding::Location.per_primitive`, `GlobalVariable.memory_decorations`, and `EntryPoint.{mesh_info,task_payload,incoming_ray_payload}`.
+
+egui font atlas (Rust + shader interaction): egui ≥0.31 delivers the font atlas as a premultiplied RGBA8 `ColorImage` (the old single-channel `ImageData::Font`/R32F path is gone). The `egui::TextureFormat::R32F` → `R8Unorm` branch in `renderer.cpp` and the `isFont` flag in `egui_render_pass.hpp` are now dead; fonts render through the normal premultiplied RGBA path.
 
 ## WebGPU v27 API Notes
 

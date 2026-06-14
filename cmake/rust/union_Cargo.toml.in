@@ -28,6 +28,10 @@ memmap2 = { git = "https://github.com/sinkingsugar/memmap2-rs.git", version = "=
 # Graphics patches
 objc = { git = "https://github.com/shards-lang/rust-objc.git", version = "=0.2.7", branch = "shards-0.2.7" }
 metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.0", branch = "shards-0.29.0" }
+# gpu-allocator fork pins windows-rs to 0.62 so its D3D12 types match wgpu-hal
+# v29; otherwise cargo splits it onto sysinfo's windows <0.62 and the D3D12
+# build fails (D3D12_RESOURCE_DESC / ID3D12Heap type mismatch).
+gpu-allocator = { git = "https://github.com/shards-lang/gpu-allocator.git", rev = "55d1615cb77b532cef4033eb071ddf40aca6dcae" }
 
 tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
 

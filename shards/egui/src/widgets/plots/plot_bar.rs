@@ -180,6 +180,7 @@ impl LegacyShard for PlotBar {
     };
 
     let mut chart = egui_plot::BarChart::new(
+      "",
       points
         .map(|(x, y)| {
           let mut bar = egui_plot::Bar::new(x, y);

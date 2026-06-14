@@ -92,12 +92,14 @@ impl Shard for CanvasShard {
 
     let mut ui = Ui::new(
       egui_ctx.clone(),
-      layer_id,
       layer_id.id,
-      egui::Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h)),
-      Rect::EVERYTHING,
-      UiStackInfo::default(),
+      egui::UiBuilder::new()
+        .layer_id(layer_id)
+        .max_rect(egui::Rect::from_min_size(Pos2::new(x, y), Vec2::new(w, h))),
     );
+    // egui >=0.31 moved Ui construction to UiBuilder; preserve the previous
+    // unclipped painter behaviour.
+    ui.set_clip_rect(Rect::EVERYTHING);
 
     util::activate_ui_contents(
       context,

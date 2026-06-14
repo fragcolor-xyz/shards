@@ -164,15 +164,13 @@ pub fn drop_target<R>(
 
       ui.painter().set(
         where_to_put_background,
-        epaint::RectShape {
+        epaint::RectShape::new(
           rect,
-          rounding: style.rounding,
+          style.corner_radius,
+          fill,
           stroke,
-          fill: fill.into(),
-          fill_texture_id: egui::TextureId::Managed(0),
-          uv: Rect::ZERO,
-          blur_width: 0.0,
-        },
+          egui::StrokeKind::Inside,
+        ),
       );
     }
   }

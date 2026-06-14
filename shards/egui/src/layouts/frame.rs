@@ -243,32 +243,37 @@ impl LegacyShard for Frame {
       let inner_margin = if inner_margin.is_none() {
         egui::Margin::default()
       } else {
-        let (left, right, top, bottom) = inner_margin.try_into()?;
+        let (left, right, top, bottom): (f32, f32, f32, f32) = inner_margin.try_into()?;
         egui::Margin {
-          left,
-          right,
-          top,
-          bottom,
+          left: left as i8,
+          right: right as i8,
+          top: top as i8,
+          bottom: bottom as i8,
         }
       };
       let outer_margin = self.outer_margin.get();
       let outer_margin = if outer_margin.is_none() {
         egui::Margin::default()
       } else {
-        let (left, right, top, bottom) = outer_margin.try_into()?;
+        let (left, right, top, bottom): (f32, f32, f32, f32) = outer_margin.try_into()?;
         egui::Margin {
-          left,
-          right,
-          top,
-          bottom,
+          left: left as i8,
+          right: right as i8,
+          top: top as i8,
+          bottom: bottom as i8,
         }
       };
       let rounding = self.rounding.get();
-      let rounding = if rounding.is_none() {
-        ui.style().visuals.widgets.noninteractive.rounding
+      let corner_radius = if rounding.is_none() {
+        ui.style().visuals.widgets.noninteractive.corner_radius
       } else {
-        let (nw, ne, sw, se) = rounding.try_into()?;
-        egui::epaint::Rounding { nw, ne, sw, se }
+        let (nw, ne, sw, se): (f32, f32, f32, f32) = rounding.try_into()?;
+        egui::epaint::CornerRadius {
+          nw: nw as u8,
+          ne: ne as u8,
+          sw: sw as u8,
+          se: se as u8,
+        }
       };
       let fill: &shards::SHVar = self.fill_color.get();
       let fill = if fill.is_none() {
@@ -297,7 +302,7 @@ impl LegacyShard for Frame {
       let frame = egui::Frame {
         inner_margin,
         outer_margin,
-        rounding,
+        corner_radius,
         fill,
         stroke,
         ..Default::default()
