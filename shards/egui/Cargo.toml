@@ -15,7 +15,7 @@ egui = { version = "0.34", features = ["persistence"] }
 egui_commonmark = { version = "0.23", features = ["better_syntax_highlighting"] }
 egui_dock = { version = "0.19", features = ["serde"] }
 egui_extras = { version = "0.34", features = ["serde"] }
-egui_memory_editor = { path = "../../../egui_memory_editor" }
+egui_memory_editor = { git = "https://github.com/shards-lang/egui_memory_editor.git", branch = "shards-0.34" }
 egui_plot = { version = "0.35" }
 syntect = { version = "5.2.0", default-features = false, features = [
     "default-fancy",
