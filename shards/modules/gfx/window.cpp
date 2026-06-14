@@ -291,6 +291,28 @@ struct MainWindow final {
 
     auto &window = _windowContext->window;
 
+    // Poll & distribute input events EVERY frame, even ones we can't render.
+    // wgpu v29 added SurfaceStatus::Occluded, which the surface returns until
+    // the window is actually composited on-screen. Previously the event pump
+    // lived inside the `if (shouldRun)` block below, so when begin() failed
+    // (occluded) the events were never pumped -> the window never became
+    // visible -> it stayed occluded forever (deadlock: no window, frozen time).
+    if (!headless && window) {
+      callOnMeshThread(shContext, [&]() {
+        window->update();
+        _windowContext->inputMaster.update(*window.get());
+      });
+
+      for (auto &event : _windowContext->inputMaster.getEvents()) {
+        if (std::holds_alternative<RequestCloseEvent>(event.event)) {
+          bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
+          if (handleClose) {
+            throw MainWindowQuitException();
+          }
+        }
+      }
+    }
+
     bool shouldRun = true;
     if (_renderer) {
       if (headless) {
@@ -301,23 +323,6 @@ struct MainWindow final {
     }
 
     if (shouldRun) {
-      if (!headless) {
-        // Poll & distribute input events
-        callOnMeshThread(shContext, [&]() {
-          window->update();
-          _windowContext->inputMaster.update(*window.get());
-        });
-
-        for (auto &event : _windowContext->inputMaster.getEvents()) {
-          if (std::holds_alternative<RequestCloseEvent>(event.event)) {
-            bool handleClose = _handleCloseEvent->isNone() || (bool)*_handleCloseEvent;
-            if (handleClose) {
-              throw MainWindowQuitException();
-            }
-          }
-        }
-      }
-
       if (_contents) {
         _inlineInputContext->time = _windowContext->time;
         _inlineInputContext->deltaTime = _windowContext->deltaTime;
