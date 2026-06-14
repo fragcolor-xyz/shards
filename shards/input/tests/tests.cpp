@@ -173,7 +173,12 @@ void threadedTestCase(size_t numProducerFrames, std::chrono::milliseconds sleepP
     }
   }
 
-  EventBuffer<> buffer;
+  // EventBuffer is a 1024-frame ring (each frame embeds an InputState ~= 1MB
+  // total), so heap-allocate it — a stack object this large overflows Windows'
+  // 1MB default stack (it fits on Linux/macOS's 8MB, which is why this only
+  // surfaced once test-input started running on Windows CI).
+  auto bufferStorage = std::make_unique<EventBuffer<>>();
+  auto &buffer = *bufferStorage;
   auto producer = std::async([&]() {
     for (size_t i = 0; i < numProducerFrames; i++) {
       auto &nextFrame = buffer.getNextFrame();
