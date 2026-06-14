@@ -19,5 +19,8 @@ target_sources(input PUBLIC $<TARGET_OBJECTS:input-obj>)
 target_link_libraries(input INTERFACE input-obj)
 
 add_executable(test-input tests/tests.cpp)
-target_link_libraries(test-input gfx input Catch2::Catch2WithMain linalg spdlog)
+# `input` pulls in gfx-core (window mapping), which references the wgpu native
+# backend — so we must also link gfx-rust to provide those symbols (same as
+# test-gfx). linalg/spdlog/SDL3 come in transitively via input.
+target_link_libraries(test-input input gfx-rust Catch2::Catch2WithMain linalg spdlog)
 target_compile_features(test-input PUBLIC cxx_std_20)
