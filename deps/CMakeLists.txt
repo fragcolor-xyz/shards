@@ -493,7 +493,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
-    GIT_TAG b9191
+    GIT_TAG b9628
   )
 
   # llama.cpp >= b9019 uses dynamic_cast<llama_model_base*> in src/llama.cpp and
@@ -514,7 +514,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME whisper.cpp
     GITHUB_REPOSITORY ggml-org/whisper.cpp
-    GIT_TAG v1.8.4
+    GIT_TAG v1.8.6
   )
 endif()
 
