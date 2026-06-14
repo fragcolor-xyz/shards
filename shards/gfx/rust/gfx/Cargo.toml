@@ -33,6 +33,15 @@ naga-native = { path = "../naga-native" }
 profiling = { version = "1", default-features = false }
 tracy-client = { version = "0.17.4", optional = true }
 
+# wgpu v29's wgpu-hal pins windows = "0.62" for the D3D12 backend, and it hands
+# windows-rs types (D3D12_RESOURCE_DESC, ID3D12Heap, ...) to gpu-allocator.
+# gpu-allocator 0.28 accepts windows >=0.58,<=0.62, so the resolver can split it
+# onto a different windows version pulled by unrelated (often cfg-gated) deps
+# such as loom/generator, breaking the D3D12 build. Force windows 0.62 here so
+# gpu-allocator unifies with wgpu-hal in every workspace that depends on gfx.
+[target.'cfg(windows)'.dependencies]
+windows = "0.62"
+
 [patch.crates-io]
 # visionOS support is now upstream in wgpu v27 and metal 0.32
 naga = { path = "../wgpu/naga" }
