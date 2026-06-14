@@ -11969,8 +11969,3 @@ source = "git+https://github.com/shards-lang/sysctl-rs.git?rev=859c91707dfaa11d8
 name = "tar"
 version = "0.4.38"
 source = "git+https://github.com/shards-lang/tar-rs?rev=6d26c0d1724326c8c1b06eaafc25a19253afbcdc#6d26c0d1724326c8c1b06eaafc25a19253afbcdc"
-
-[[patch.unused]]
-name = "tracy-client"
-version = "0.15.0"
-source = "git+https://github.com/nagisa/rust_tracy_client?tag=tracy-client-v0.15.0#d15b1ea01c6c9a496c2f169a212acd5b17fd0b1a"
