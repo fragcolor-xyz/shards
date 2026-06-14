@@ -33,8 +33,6 @@ metal = { git = "https://github.com/shards-lang/metal-rs.git", version = "=0.29.
 # build fails (D3D12_RESOURCE_DESC / ID3D12Heap type mismatch).
 gpu-allocator = { git = "https://github.com/shards-lang/gpu-allocator.git", rev = "55d1615cb77b532cef4033eb071ddf40aca6dcae" }
 
-tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }
-
 # Optimize all dependencies in debug builds for usable performance.
 # Using a single opt-level for all deps avoids symbol visibility mismatches
 # between crates compiled at different levels (which breaks GNU ld).
