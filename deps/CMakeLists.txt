@@ -59,7 +59,7 @@ if(PHYSICS_ENABLED)
   CPMAddPackage(
     NAME JoltPhysics
     GITHUB_REPOSITORY shards-lang/JoltPhysics
-    GIT_TAG 018df332c9dbc7e2fff9502799e77c2e2494809d
+    GIT_TAG 2f94d15c7709e1a111ac7d659b3c31f36c91167b
     SOURCE_SUBDIR Build
   )
 endif()
