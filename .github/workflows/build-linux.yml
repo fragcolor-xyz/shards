@@ -80,6 +80,7 @@ jobs:
 
           ninja shards
           ninja test-runtime
+          ninja test-input
 
       - name: Check Disk Space
         if: failure()
@@ -110,6 +111,8 @@ jobs:
           cd build
           chmod +x shards
           ./test-runtime
+          # Run input layer tests (DetachedInput, event buffer)
+          ./test-input
           # Run other tests
           ./shards new ../shards/tests/hello.shs
           ./shards new ../shards/tests/general.shs

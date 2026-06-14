@@ -74,5 +74,3 @@ memmap2 = { git = "https://github.com/sinkingsugar/memmap2-rs.git", version = "=
 
 # objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
 objc = { git = "https://github.com/shards-lang/rust-objc.git", version = "=0.2.7", branch = "shards-0.2.7" }
-
-tracy-client = { git = "https://github.com/nagisa/rust_tracy_client", tag = "tracy-client-v0.15.0" }

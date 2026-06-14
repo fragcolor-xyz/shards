@@ -19,32 +19,44 @@ TEST_CASE("DetachedInput state") {
   DetachedInput detached;
 
   SECTION("Key events") {
-    state.heldKeys.insert(SDLK_w);
-    detached.update(state);
+    // Key-down events arrive as native SDL key events and are decoded into a
+    // KeyEvent (down events are not synthesized from held-key diffs).
+    detached.updateNative([](auto apply) {
+      SDL_Event sdlEvt{};
+      sdlEvt.type = SDL_EVENT_KEY_DOWN;
+      sdlEvt.key.type = SDL_EVENT_KEY_DOWN;
+      sdlEvt.key.key = SDLK_W;
+      sdlEvt.key.repeat = false;
+      apply(sdlEvt);
+    });
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<KeyEvent>(&detached.virtualInputEvents[0]);
-      CHECK(evt);
-      CHECK(evt->key == SDLK_w);
+      REQUIRE(evt);
+      CHECK(evt->key == SDLK_W);
       CHECK(evt->pressed == true);
     }
 
+    // No change in held keys -> no events.
     detached.update(state);
     CHECK(detached.virtualInputEvents.size() == 0);
 
-    state.heldKeys.clear();
-    detached.update(state);
+    // Key-up is synthesized by diffing the held-key state: mark W as held, then
+    // update with it released.
+    detached.state.heldKeys.insert(SDLK_W);
+    InputState released;
+    detached.update(released);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *keyEvt = std::get_if<KeyEvent>(&detached.virtualInputEvents[0]);
-      CHECK(keyEvt);
-      CHECK(keyEvt->key == SDLK_w);
+      REQUIRE(keyEvt);
+      CHECK(keyEvt->key == SDLK_W);
       CHECK(keyEvt->pressed == false);
     }
   }
 
   SECTION("Mouse buttons") {
-    state.mouseButtonState = SDL_BUTTON(SDL_BUTTON_LEFT);
+    state.mouseButtonState = SDL_BUTTON_MASK(SDL_BUTTON_LEFT);
     detached.update(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
@@ -70,11 +82,15 @@ TEST_CASE("DetachedInput state") {
 
   SECTION("Scroll") {
     state.reset();
-    SDL_Event sdlEvt{};
-    sdlEvt.wheel.preciseY = 1.0f;
-    sdlEvt.wheel.type = SDL_EVENT_MOUSE_WHEEL;
-    detached.apply(sdlEvt);
-    detached.update(state);
+
+    // Native (SDL) events are fed through the public updateNative() entry point,
+    // which decodes them and synthesizes the corresponding virtual events.
+    detached.updateNative([](auto apply) {
+      SDL_Event sdlEvt{};
+      sdlEvt.wheel.type = SDL_EVENT_MOUSE_WHEEL;
+      sdlEvt.wheel.y = 1.0f;
+      apply(sdlEvt);
+    });
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<ScrollEvent>(&detached.virtualInputEvents[0]);
@@ -87,12 +103,15 @@ TEST_CASE("DetachedInput state") {
     detached.update(state);
     CHECK(detached.virtualInputEvents.size() == 0);
 
-    detached.beginUpdate();
-    sdlEvt.wheel.preciseY = 0.2f;
-    detached.apply(sdlEvt);
-    sdlEvt.wheel.preciseY = -0.7f;
-    detached.apply(sdlEvt);
-    detached.endUpdate(state);
+    // Multiple wheel events within a single update accumulate into one ScrollEvent.
+    detached.updateNative([](auto apply) {
+      SDL_Event sdlEvt{};
+      sdlEvt.wheel.type = SDL_EVENT_MOUSE_WHEEL;
+      sdlEvt.wheel.y = 0.2f;
+      apply(sdlEvt);
+      sdlEvt.wheel.y = -0.7f;
+      apply(sdlEvt);
+    });
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<ScrollEvent>(&detached.virtualInputEvents[0]);
@@ -139,7 +158,7 @@ Event produceDummyEvent(size_t index) {
   case 1:
     return PointerMoveEvent{.pos = float2{1 + float(index % 10), 2 + float(index % 2)}, .delta = float2{3, 4}};
   case 2:
-    return KeyEvent{.key = SDL_Keycode(SDLK_a + (index % 20)), .pressed = true};
+    return KeyEvent{.key = SDL_Keycode(SDLK_A + (index % 20)), .pressed = true};
   }
   throw std::logic_error("Invalid index");
 }
@@ -154,7 +173,12 @@ void threadedTestCase(size_t numProducerFrames, std::chrono::milliseconds sleepP
     }
   }
 
-  EventBuffer<> buffer;
+  // EventBuffer is a 1024-frame ring (each frame embeds an InputState ~= 1MB
+  // total), so heap-allocate it — a stack object this large overflows Windows'
+  // 1MB default stack (it fits on Linux/macOS's 8MB, which is why this only
+  // surfaced once test-input started running on Windows CI).
+  auto bufferStorage = std::make_unique<EventBuffer<>>();
+  auto &buffer = *bufferStorage;
   auto producer = std::async([&]() {
     for (size_t i = 0; i < numProducerFrames; i++) {
       auto &nextFrame = buffer.getNextFrame();
@@ -216,7 +240,18 @@ int main(int argc, char *argv[]) {
   auto &configData = session.configData();
   (void)configData;
 
+#if SHARDS_GFX_SDL
+  // DetachedInput::updateNative() polls SDL keyboard/mod state; initialize the
+  // events subsystem so that is well-defined (and empty) in headless CI. Events
+  // does not require a display, unlike video.
+  SDL_InitSubSystem(SDL_INIT_EVENTS);
+#endif
+
   int result = session.run();
+
+#if SHARDS_GFX_SDL
+  SDL_QuitSubSystem(SDL_INIT_EVENTS);
+#endif
 
   return result;
 }

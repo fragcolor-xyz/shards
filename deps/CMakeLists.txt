@@ -59,7 +59,7 @@ if(PHYSICS_ENABLED)
   CPMAddPackage(
     NAME JoltPhysics
     GITHUB_REPOSITORY shards-lang/JoltPhysics
-    GIT_TAG 018df332c9dbc7e2fff9502799e77c2e2494809d
+    GIT_TAG 2f94d15c7709e1a111ac7d659b3c31f36c91167b
     SOURCE_SUBDIR Build
   )
 endif()
@@ -202,7 +202,7 @@ if(NOT SHARDS_NO_SDL)
     CPMAddPackage(
       NAME SDL3
       GITHUB_REPOSITORY shards-lang/SDL-org
-      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      GIT_TAG 6a44ecc618118b2da5414024abf00b6b1f6392b7
       DOWNLOAD_ONLY YES
     )
     # Create interface library for headers
@@ -226,7 +226,7 @@ if(NOT SHARDS_NO_SDL)
     CPMAddPackage(
       NAME SDL3
       GITHUB_REPOSITORY shards-lang/SDL-org
-      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      GIT_TAG 6a44ecc618118b2da5414024abf00b6b1f6392b7
     )
     # Cache SDL3_SOURCE_DIR for use by Rust build scripts
     set(SDL3_SOURCE_DIR ${SDL3_SOURCE_DIR} CACHE INTERNAL "SDL3 source directory")
@@ -493,7 +493,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME llama.cpp
     GITHUB_REPOSITORY ggml-org/llama.cpp
-    GIT_TAG b9191
+    GIT_TAG b9628
   )
 
   # llama.cpp >= b9019 uses dynamic_cast<llama_model_base*> in src/llama.cpp and
@@ -514,7 +514,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
   CPMAddPackage(
     NAME whisper.cpp
     GITHUB_REPOSITORY ggml-org/whisper.cpp
-    GIT_TAG v1.8.4
+    GIT_TAG v1.8.6
   )
 endif()
 

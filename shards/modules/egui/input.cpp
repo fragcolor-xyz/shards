@@ -176,13 +176,13 @@ bool EguiInputTranslator::translateEvent(const EguiInputTranslatorArgs &args, co
             }
 
             if (arg.pressed) {
-              if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_c) {
+              if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_C) {
                 newEvent(InputEventType::Copy);
-              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_v) {
+              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_V) {
                 auto &evt = newEvent(InputEventType::Paste);
                 auto clipboardPtr = shards::input::getClipboard();
                 evt.paste.str = strings.emplace_back(clipboardPtr).c_str();
-              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_x) {
+              } else if ((arg.modifiers & KMOD_PRIMARY) && arg.key == SDLK_X) {
                 newEvent(InputEventType::Cut);
               }
             }

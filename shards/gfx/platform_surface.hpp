@@ -60,12 +60,12 @@ struct WGPUPlatformSurfaceDescriptor : public WGPUSurfaceDescriptor {
       platformDesc.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
       platformDesc.wayland.surface = nativeSurfaceHandle;
       auto waylandWindow =
-          SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+          SDL_GetPointerProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
       platformDesc.wayland.display = waylandWindow;
     } else {
       platformDesc.chain.sType = WGPUSType_SurfaceSourceXlibWindow;
       platformDesc.x11.window = uint64_t(nativeSurfaceHandle);
-      auto x11Window = SDL_GetProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+      auto x11Window = SDL_GetPointerProperty(SDL_GetWindowProperties(window->window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
       platformDesc.x11.display = x11Window;
     }
 #elif SH_ANDROID
