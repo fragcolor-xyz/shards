@@ -171,6 +171,8 @@ jobs:
           if [ "${{ steps.setup.outputs.binary-type }}" == "Exe" ]; then
             echo "Building runtime tests"
             ninja test-runtime
+            echo "Building input tests"
+            ninja test-input
             echo "Building graphics tests"
             ninja test-gfx
           fi
@@ -195,6 +197,8 @@ jobs:
           cd build
           # Run test-runtime
           ./test-runtime
+          # Run input layer tests (DetachedInput, event buffer)
+          ./test-input
           # Run other tests
           ./shards new ../shards/tests/hello.shs
       - name: Checkout glTF-Sample-Assets

@@ -131,7 +131,7 @@ private:
               newState.cursorPosition = arg.pos;
           } else if constexpr (std::is_same_v<T, PointerButtonEvent>) {
             if (!consumed && hasFocus && arg.pressed && !newState.isMouseButtonHeld(arg.index)) {
-              newState.mouseButtonState |= SDL_BUTTON(arg.index);
+              newState.mouseButtonState |= SDL_BUTTON_MASK(arg.index);
               virtualInputEvents.push_back(PointerButtonEvent{
                   .pos = newState.cursorPosition,
                   .index = arg.index,
@@ -140,7 +140,7 @@ private:
               });
             }
             if (!arg.pressed && newState.isMouseButtonHeld(arg.index)) {
-              newState.mouseButtonState &= ~uint32_t(SDL_BUTTON(arg.index));
+              newState.mouseButtonState &= ~uint32_t(SDL_BUTTON_MASK(arg.index));
               virtualInputEvents.push_back(PointerButtonEvent{
                   .pos = newState.cursorPosition,
                   .index = arg.index,
@@ -254,14 +254,14 @@ private:
     uint32_t newState = inputState.mouseButtonState;
     if (oldState != newState) {
       for (int i = 1; i <= NumMouseButtons; i++) {
-        if ((newState & SDL_BUTTON(i)) != 0 && (oldState & SDL_BUTTON(i)) == 0) {
+        if ((newState & SDL_BUTTON_MASK(i)) != 0 && (oldState & SDL_BUTTON_MASK(i)) == 0) {
           virtualInputEvents.push_back(PointerButtonEvent{
               .pos = inputState.cursorPosition,
               .index = i,
               .pressed = true,
               .modifiers = inputState.modifiers,
           });
-        } else if ((newState & SDL_BUTTON(i)) == 0 && (oldState & SDL_BUTTON(i)) != 0) {
+        } else if ((newState & SDL_BUTTON_MASK(i)) == 0 && (oldState & SDL_BUTTON_MASK(i)) != 0) {
           virtualInputEvents.push_back(PointerButtonEvent{
               .pos = inputState.cursorPosition,
               .index = i,

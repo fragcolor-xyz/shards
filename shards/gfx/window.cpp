@@ -48,8 +48,8 @@ void Window::init(const WindowCreationOptions &options) {
   SetProcessDPIAware();
 #endif
 
-  auto initErr = SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
-  if (initErr != 0) {
+  // SDL3 returns bool (true on success) instead of int (0 on success).
+  if (!SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
     throw formatException("SDL_Init failed: {}", SDL_GetError());
   }
 

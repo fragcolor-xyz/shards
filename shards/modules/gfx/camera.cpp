@@ -88,22 +88,22 @@ inline void updateInputState(InputState &inputState, IInputContext &inputContext
 
             bool passthrough = false;
             switch (event.key) {
-            case SDLK_w:
+            case SDLK_W:
               inputState.keyboardZAxis.pos = event.pressed;
               break;
-            case SDLK_s:
+            case SDLK_S:
               inputState.keyboardZAxis.neg = event.pressed;
               break;
-            case SDLK_a:
+            case SDLK_A:
               inputState.keyboardXAxis.neg = event.pressed;
               break;
-            case SDLK_d:
+            case SDLK_D:
               inputState.keyboardXAxis.pos = event.pressed;
               break;
-            case SDLK_e:
+            case SDLK_E:
               inputState.keyboardYAxis.pos = event.pressed;
               break;
-            case SDLK_q:
+            case SDLK_Q:
               inputState.keyboardYAxis.neg = event.pressed;
               break;
             default:
