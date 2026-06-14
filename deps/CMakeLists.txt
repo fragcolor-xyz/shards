@@ -202,7 +202,7 @@ if(NOT SHARDS_NO_SDL)
     CPMAddPackage(
       NAME SDL3
       GITHUB_REPOSITORY shards-lang/SDL-org
-      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      GIT_TAG 2f8198b353dca82387f4edcf5651fa31be0bf977
       DOWNLOAD_ONLY YES
     )
     # Create interface library for headers
@@ -226,7 +226,7 @@ if(NOT SHARDS_NO_SDL)
     CPMAddPackage(
       NAME SDL3
       GITHUB_REPOSITORY shards-lang/SDL-org
-      GIT_TAG c63871cb00267e4de749a705bef4a7060a8be512
+      GIT_TAG 2f8198b353dca82387f4edcf5651fa31be0bf977
     )
     # Cache SDL3_SOURCE_DIR for use by Rust build scripts
     set(SDL3_SOURCE_DIR ${SDL3_SOURCE_DIR} CACHE INTERNAL "SDL3 source directory")

@@ -19,13 +19,13 @@ TEST_CASE("DetachedInput state") {
   DetachedInput detached;
 
   SECTION("Key events") {
-    state.heldKeys.insert(SDLK_w);
+    state.heldKeys.insert(SDLK_W);
     detached.update(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *evt = std::get_if<KeyEvent>(&detached.virtualInputEvents[0]);
       CHECK(evt);
-      CHECK(evt->key == SDLK_w);
+      CHECK(evt->key == SDLK_W);
       CHECK(evt->pressed == true);
     }
 
@@ -38,13 +38,13 @@ TEST_CASE("DetachedInput state") {
       CHECK(detached.virtualInputEvents.size() == 1);
       auto *keyEvt = std::get_if<KeyEvent>(&detached.virtualInputEvents[0]);
       CHECK(keyEvt);
-      CHECK(keyEvt->key == SDLK_w);
+      CHECK(keyEvt->key == SDLK_W);
       CHECK(keyEvt->pressed == false);
     }
   }
 
   SECTION("Mouse buttons") {
-    state.mouseButtonState = SDL_BUTTON(SDL_BUTTON_LEFT);
+    state.mouseButtonState = SDL_BUTTON_MASK(SDL_BUTTON_LEFT);
     detached.update(state);
     {
       CHECK(detached.virtualInputEvents.size() == 1);
@@ -71,7 +71,7 @@ TEST_CASE("DetachedInput state") {
   SECTION("Scroll") {
     state.reset();
     SDL_Event sdlEvt{};
-    sdlEvt.wheel.preciseY = 1.0f;
+    sdlEvt.wheel.y = 1.0f;
     sdlEvt.wheel.type = SDL_EVENT_MOUSE_WHEEL;
     detached.apply(sdlEvt);
     detached.update(state);
@@ -88,9 +88,9 @@ TEST_CASE("DetachedInput state") {
     CHECK(detached.virtualInputEvents.size() == 0);
 
     detached.beginUpdate();
-    sdlEvt.wheel.preciseY = 0.2f;
+    sdlEvt.wheel.y = 0.2f;
     detached.apply(sdlEvt);
-    sdlEvt.wheel.preciseY = -0.7f;
+    sdlEvt.wheel.y = -0.7f;
     detached.apply(sdlEvt);
     detached.endUpdate(state);
     {
@@ -139,7 +139,7 @@ Event produceDummyEvent(size_t index) {
   case 1:
     return PointerMoveEvent{.pos = float2{1 + float(index % 10), 2 + float(index % 2)}, .delta = float2{3, 4}};
   case 2:
-    return KeyEvent{.key = SDL_Keycode(SDLK_a + (index % 20)), .pressed = true};
+    return KeyEvent{.key = SDL_Keycode(SDLK_A + (index % 20)), .pressed = true};
   }
   throw std::logic_error("Invalid index");
 }

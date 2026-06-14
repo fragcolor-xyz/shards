@@ -99,7 +99,7 @@ struct InputState {
 
   bool isMouseButtonHeld(int buttonIndex) const {
     if constexpr (Pointer::HasPersistentPointer) {
-      return (SDL_BUTTON(buttonIndex) & mouseButtonState) != 0;
+      return (SDL_BUTTON_MASK(buttonIndex) & mouseButtonState) != 0;
     } else {
       if (buttonIndex == SDL_BUTTON_LEFT) {
         return pointers.any();
@@ -122,7 +122,9 @@ struct InputState {
     SDL_Keymod modState = SDL_GetModState();
     heldKeys.clear();
     for (int i = 0; i < numKeys; i++) {
-      SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i, modState);
+      // SDL3: GetKeyFromScancode gained a `key_event` arg; pass true so the
+      // keycodes match those delivered in key events (held-key tracking parity).
+      SDL_Keycode code = SDL_GetKeyFromScancode((SDL_Scancode)i, modState, true);
       if (keyStates[i] == 1) {
         heldKeys.insert(code);
       }

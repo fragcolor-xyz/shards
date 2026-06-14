@@ -32,7 +32,7 @@ struct CursorMap {
 
   CursorMap() {
     magic_enum::enum_for_each<SDL_SystemCursor>([&](auto x) {
-      if (x == SDL_NUM_SYSTEM_CURSORS)
+      if (x == SDL_SYSTEM_CURSOR_COUNT)
         return;
       cursorMap.insert_or_assign(x, SDLCursor(x));
     });
