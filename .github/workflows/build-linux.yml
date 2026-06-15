@@ -172,6 +172,14 @@ jobs:
           ./shards new ../shards/tests/spreadsheet.shs
           ./shards new ../shards/tests/ai-mistral.shs
           ./shards new ../shards/tests/ai-gguf.shs
+      - name: Test shards check (diagnostics)
+        env:
+          RUST_BACKTRACE: full
+        shell: bash
+        run: |
+          # Eval harness for `shards check`: asserts structured-diagnostic quality
+          # (phases, type-directed candidates, did-you-mean) and a repairability score.
+          SHARDS="$PWD/build/shards" bash shards/tests/check/run.sh
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
