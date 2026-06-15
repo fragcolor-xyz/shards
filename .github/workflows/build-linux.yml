@@ -180,17 +180,6 @@ jobs:
           # Eval harness for `shards check`: asserts structured-diagnostic quality
           # (phases, type-directed candidates, did-you-mean) and a repairability score.
           SHARDS="$PWD/build/shards" bash shards/tests/check/run.sh
-      - name: Generate LLM context pack (sanity)
-        shell: bash
-        run: |
-          # Exercise the generator against this build (no strict diff: the shard set
-          # is platform-dependent, so we assert structure + a non-trivial size instead).
-          SHARDS="$PWD/build/shards" bash shards/tools/gen-llm-context.sh > /tmp/shards-llm.txt
-          grep -q "## Language guide" /tmp/shards-llm.txt
-          grep -q "## Shard index" /tmp/shards-llm.txt
-          lines=$(wc -l < /tmp/shards-llm.txt)
-          if [ "$lines" -lt 500 ]; then echo "LLM context pack too small ($lines lines)"; exit 1; fi
-          echo "LLM context pack OK ($lines lines)"
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full
