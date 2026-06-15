@@ -1,0 +1,2 @@
+// valid script — must compose cleanly (exit 0, ok:true)
+"Hello" | Log

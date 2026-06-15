@@ -703,6 +703,37 @@ struct SHRunWireOutput {
   SH_ENUM_DECL SHRunWireOutputState state;
 } SH_STRUCT16;
 
+// Kind of a structured compose-time diagnostic.
+// Stable, machine-readable classification for agent repair loops (`shards check --json`).
+enum SH_ENUM_CLASS SHDiagnosticKind : uint8_t {
+  SHDiag_Generic,           // a compose error without specialized structure
+  SHDiag_InputTypeMismatch, // previous output type does not match this shard's input types
+  SHDiag_ComposeError,      // error returned by a shard's own compose() callback
+  SHDiag_UnknownShard,      // referenced shard does not exist (parse/construct phase)
+};
+
+// A single type rendered for diagnostics: a canonical string plus the top-level
+// basic type id (SHType cast to int32, -1 when unknown) for cheap structured matching.
+struct SHTypeDesc {
+  SHStringWithLen name; // canonical type string (owned by SHComposeResult)
+  int32_t basicType;    // SHType enum value, -1 if unknown
+};
+
+// One structured compose diagnostic. All strings/arrays are owned by the
+// SHComposeResult that carries it and are released by freeComposeResult.
+struct SHDiagnostic {
+  SH_ENUM_DECL SHDiagnosticKind kind;
+  uint32_t line;
+  uint32_t column;
+  SHStringWithLen file;        // resolved source file name (owned, may be empty)
+  SHStringWithLen shardName;   // offending shard name (owned, may be empty)
+  SHStringWithLen message;     // human-readable message (owned)
+  struct SHTypeDesc actual;    // actual.name empty when not applicable
+  struct SHTypeDesc *expected; // owned array of acceptable types (may be null)
+  uint64_t numExpected;        // length of expected
+  int32_t paramIndex;          // parameter index when applicable, -1 otherwise
+};
+
 struct SHComposeResult {
   struct SHTypeInfo outputType;
 
@@ -718,6 +749,11 @@ struct SHComposeResult {
   // used when the last shard of the flow is
   // Restart/Stop/Return etc
   bool flowStopper;
+
+  // Structured, machine-readable diagnostics (owned; freed by freeComposeResult).
+  // Populated on failure; empty/null on success.
+  struct SHDiagnostic *diagnostics;
+  uint64_t numDiagnostics;
 };
 
 struct SHInstanceData {
@@ -958,6 +994,12 @@ typedef struct SHError(__cdecl *SHValidateSetParam)(struct Shard *shard, int ind
 
 typedef struct SHComposeResult(__cdecl *SHComposeShards)(Shards shards, struct SHInstanceData data);
 typedef void(__cdecl *SHFreeComposeResult)(struct SHComposeResult *result);
+
+// Compose-only entry used by `shards check`: composes a wire against a mesh's
+// environment exactly like scheduling would, but never schedules/warms/runs and
+// never throws. Returns a SHComposeResult carrying structured diagnostics on
+// failure. Caller owns the result and must release it via freeComposeResult.
+typedef struct SHComposeResult(__cdecl *SHComposeForCheck)(SHMeshRef mesh, SHWireRef wire);
 
 typedef void(__cdecl *SHPushError)(struct SHContext *context, struct SHStringWithLen error);
 
@@ -1240,6 +1282,7 @@ typedef struct _SHCore {
   SHIsWireRunning isWireRunning;
   SHStopWire stopWire; // must destroyVar once done
   SHComposeWire composeWire;
+  SHComposeForCheck composeForCheck;
   SHRunWire runWire;
   SHGetWireInfo getWireInfo;
 

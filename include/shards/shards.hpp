@@ -92,6 +92,15 @@ public:
   ContextType type;
   bool fatal;
 
+  // Optional structured diagnostic payload, consumed by getComposeError to build
+  // machine-readable SHDiagnostic entries for `shards check --json`. Defaults make
+  // every Error a plain generic diagnostic unless enriched at the throw site.
+  SHDiagnosticKind diagKind = SHDiagnosticKind::SHDiag_Generic;
+  std::string actualType;                                     // canonical string, empty if N/A
+  int32_t actualBasicType = -1;                               // SHType value, -1 if N/A
+  std::vector<std::pair<std::string, int32_t>> expectedTypes; // {canonical, basicType}
+  int32_t paramIndex = -1;                                    // parameter index, -1 if N/A
+
   explicit Error(Shard *shard, std::string_view msg, bool fatal = true)
       : message(msg.data() ? msg : "Unknown error"), shard(shard), type(CTX_Shard), fatal(fatal) {}
   explicit Error(const SHWire *wire, std::string_view msg, bool fatal = true)

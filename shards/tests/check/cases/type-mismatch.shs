@@ -1,0 +1,5 @@
+// input-type mismatch: a String flows into Math.Add, which wants a number.
+// Expected: compose-phase diagnostic, kind "input-type-mismatch",
+// with structured actual/expected and non-empty type-directed candidates
+// (a String->number bridge such as ParseInt/ParseFloat/ToFloat).
+"42" | Math.Add(1)

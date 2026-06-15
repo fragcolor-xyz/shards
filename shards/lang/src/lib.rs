@@ -6,6 +6,7 @@ extern crate clap;
 
 pub mod ast;
 pub mod ast_visitor;
+pub mod check;
 pub mod cli;
 pub mod custom_state;
 pub mod directory;
