@@ -479,6 +479,114 @@ fn parse_unknown_shard(message: &str) -> Option<String> {
   }
 }
 
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn st(name: &str, inputs: &[i32], outputs: &[i32]) -> ShardTypes {
+    ShardTypes {
+      name: name.to_string(),
+      inputs: inputs.to_vec(),
+      outputs: outputs.to_vec(),
+    }
+  }
+
+  #[test]
+  fn levenshtein_basics() {
+    assert_eq!(levenshtein("Log", "Log"), 0);
+    assert_eq!(levenshtein("Logg", "Log"), 1);
+    assert_eq!(levenshtein("", "abc"), 3);
+    assert_eq!(levenshtein("abc", ""), 3);
+    assert_eq!(levenshtein("kitten", "sitting"), 3);
+    // case-insensitive
+    assert_eq!(levenshtein("LOG", "log"), 0);
+  }
+
+  #[test]
+  fn did_you_mean_finds_close_typo() {
+    let all = vec![
+      "Log".to_string(),
+      "Math.Add".to_string(),
+      "ParseInt".to_string(),
+    ];
+    let s = did_you_mean("Logg", &all, 5);
+    assert!(s.contains(&"Log".to_string()), "got {:?}", s);
+  }
+
+  #[test]
+  fn did_you_mean_empty_for_far_off() {
+    let all = vec!["Log".to_string(), "Math.Add".to_string()];
+    assert!(did_you_mean("CompletelyUnrelatedName", &all, 5).is_empty());
+  }
+
+  #[test]
+  fn is_scalar_classifies() {
+    assert!(is_scalar(52)); // String
+    assert!(is_scalar(4)); // Int
+    assert!(!is_scalar(SHTYPE_ANY));
+    assert!(!is_scalar(SHTYPE_NONE));
+    assert!(!is_scalar(SHTYPE_SEQ));
+    assert!(!is_scalar(SHTYPE_TABLE));
+  }
+
+  #[test]
+  fn parse_unknown_shard_extracts_name() {
+    assert_eq!(
+      parse_unknown_shard("Shard Logg does not exist"),
+      Some("Logg".to_string())
+    );
+    assert_eq!(
+      parse_unknown_shard("Shard fbl/set-tracked does not exist"),
+      Some("fbl/set-tracked".to_string())
+    );
+    assert_eq!(parse_unknown_shard("some other error"), None);
+    // The unknown-function error has a different shape and must not match.
+    assert_eq!(
+      parse_unknown_shard("unknown built-in function or definition: fbl/x"),
+      None
+    );
+  }
+
+  #[test]
+  fn candidates_prefer_converters_and_drop_container_noise() {
+    // actual = String(52); expected = Int(4) and a Seq([Any], 56).
+    let index = vec![
+      st("ParseInt", &[52], &[4]),          // String -> Int : exact-input (tier 0)
+      st("ToInt", &[SHTYPE_ANY], &[4]),     // Any -> Int : tier 1
+      st("CSV.Read", &[52], &[SHTYPE_SEQ]), // String -> Seq : dropped (scalar actual)
+      st("Count", &[SHTYPE_ANY], &[4]),     // Any -> Int : tier 1
+      st("Math.Add", &[4], &[4]),           // offending : excluded
+    ];
+    let c = find_candidates(&index, 52, &[4, SHTYPE_SEQ], Some("Math.Add"), 10);
+    assert!(c.contains(&"ParseInt".to_string()), "got {:?}", c);
+    assert!(
+      !c.contains(&"CSV.Read".to_string()),
+      "seq-output must be dropped for a scalar mismatch: {:?}",
+      c
+    );
+    assert!(!c.contains(&"Math.Add".to_string()), "offending must be excluded");
+    // exact-input converter ranks before Any-input ones.
+    let pi = c.iter().position(|x| x == "ParseInt").unwrap();
+    if let Some(ti) = c.iter().position(|x| x == "ToInt") {
+      assert!(pi < ti, "exact-input should rank before Any-input: {:?}", c);
+    }
+  }
+
+  #[test]
+  fn candidates_empty_on_degenerate_input() {
+    let index = vec![st("ParseInt", &[52], &[4])];
+    assert!(find_candidates(&index, 52, &[], None, 10).is_empty()); // no expected
+    assert!(find_candidates(&index, SHTYPE_NONE, &[4], None, 10).is_empty()); // actual None
+    assert!(find_candidates(&index, 52, &[SHTYPE_ANY], None, 10).is_empty()); // only wildcard expected
+  }
+
+  #[test]
+  fn candidates_respect_max() {
+    let index: Vec<ShardTypes> = (0..20).map(|i| st(&format!("S{:02}", i), &[52], &[4])).collect();
+    assert_eq!(find_candidates(&index, 52, &[4], None, 5).len(), 5);
+  }
+}
+
 /// Emit the report (JSON or human) and compute the exit code.
 fn finish_report(file: String, diagnostics: Vec<JsonDiagnostic>, json: bool) -> i32 {
   let ok = !diagnostics.iter().any(|d| d.severity == "error");
