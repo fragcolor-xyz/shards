@@ -139,9 +139,12 @@ shards check myscript.shs --json
 shards run myscript.shs
 ```
 
-`check` resolves `@include`s relative to the file (`-I <dir>` adds roots). A fragment
-that depends on definitions injected by an outer file should be checked via that
-entry-point file, not in isolation.
+`check` resolves `@include`s relative to the file (`-I <dir>` adds roots) and accepts
+the same trailing `key:value` defines as `run` (e.g. `shards check app.shs env:prod`),
+injected before compose. So a script that references command-line defines — or whose
+composition branches on one — checks in the configuration it will actually run in. A
+fragment that depends on definitions injected by an *outer file* (not the command line)
+should still be checked via that entry-point file, not in isolation.
 
 ## Quick reference
 
@@ -150,7 +153,7 @@ entry-point file, not in isolation.
 | `shards enumerate [--filter S] [--json]` | one-line index of all shards |
 | `shards search <query> [--json]` | keyword search over name + summary |
 | `shards docs <name> [--type shard\|enum] [--json]` | full signature (drill-down) |
-| `shards check <file> [--json]` | type-check (parse + compose), never runs |
+| `shards check <file> [--json] [key:value ...]` | type-check (parse + compose), never runs; takes `run`'s defines |
 | `shards run <file>` | execute |
 | `shards format <file> [-i]` | format source |
 | `shards ast <file>` | dump the JSON AST |

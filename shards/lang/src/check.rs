@@ -331,9 +331,15 @@ fn print_human(report: &CheckReport) {
 
 /// Entry point for the `check` subcommand. Returns the process exit code:
 ///   0 = ok, 1 = problems found, 2 = could not run the check (e.g. file missing).
+///
+/// `defines` mirrors `run`'s command-line `key:value` defines: they are injected
+/// before construct/compose so a script that references command-line defines (or
+/// whose composition branches on them) is checked in the same configuration it
+/// would run in.
 pub fn check_command(
   file: &str,
   include: Vec<String>,
+  defines: HashMap<String, String>,
   json: bool,
   cancellation_token: Arc<AtomicBool>,
 ) -> i32 {
@@ -356,15 +362,32 @@ pub fn check_command(
   file_content.push('\n');
 
   let parent_path = file_path.parent().and_then(|p| p.to_str()).unwrap_or(".").to_string();
-  if let Ok(c_parent) = std::ffi::CString::new(parent_path.clone()) {
-    unsafe { (*Core).setRootPath.unwrap_unchecked()(c_parent.as_ptr()) };
-  }
 
+  // Canonicalize the `-I` include dirs BEFORE setRootPath: `run` resolves them
+  // against the original working directory, but setRootPath calls `fs::current_path`
+  // and changes the CWD to the script's parent. Canonicalizing a relative `-I` (e.g.
+  // `-I.`) after that would resolve it against the script's dir instead, so a relative
+  // include dir would silently point at the wrong place. Do it first to match `run`.
+  //
+  // A `-I` that does not resolve is a hard error (exit 2), exactly as `run` fails on
+  // it — NOT a silent skip. Silently dropping a bad include dir is the worst outcome
+  // for a diagnostic tool: a mistyped/missing `-I` then looks like "this include dir
+  // wasn't honored", and the real failure surfaces later as a confusing
+  // "include not found". Fail loudly on stderr so the bad invocation is obvious while
+  // stdout stays clean for `--json`.
   let mut include_paths = Vec::new();
   for path in &include {
-    if let Ok(p) = dunce::canonicalize(std::path::PathBuf::from(path)) {
-      include_paths.push(p.to_string_lossy().to_string());
+    match dunce::canonicalize(std::path::PathBuf::from(path)) {
+      Ok(p) => include_paths.push(p.to_string_lossy().to_string()),
+      Err(e) => {
+        eprintln!("shards check: include dir '{}' not found: {}", path, e);
+        return 2;
+      }
     }
+  }
+
+  if let Ok(c_parent) = std::ffi::CString::new(parent_path.clone()) {
+    unsafe { (*Core).setRootPath.unwrap_unchecked()(c_parent.as_ptr()) };
   }
 
   let display_file = file_path.to_string_lossy().to_string();
@@ -400,7 +423,7 @@ pub fn check_command(
   };
 
   // Phase 2: construct (build the wire graph). Unknown shards surface here.
-  let wire = match eval(&ast, "root", HashMap::new(), cancellation_token) {
+  let wire = match eval(&ast, "root", defines, cancellation_token) {
     Ok(w) => w,
     Err(e) => {
       let file = source_file_name(e.loc.file).unwrap_or_else(|| display_file.clone());

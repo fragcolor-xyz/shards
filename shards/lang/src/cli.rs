@@ -89,6 +89,11 @@ enum Commands {
     /// Additional include directories for imports
     #[arg(long, short = 'I')]
     include: Vec<String>,
+    /// Defines to inject before composing (format: key:value), exactly as `run`.
+    /// Required when the script references command-line defines, or to check a
+    /// specific configuration when composition branches on a define.
+    #[arg(num_args = 0..)]
+    args: Vec<String>,
   },
   /// Evaluate Shards code from stdin
   Eval {
@@ -317,10 +322,17 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
         file,
         json,
         include,
+        args,
       } => {
         // `check` controls its own exit code (and keeps stdout clean for `--json`),
         // so it bypasses the generic error-logging `finish` path.
-        return crate::check::check_command(file, include.to_vec(), *json, cancellation_token);
+        return crate::check::check_command(
+          file,
+          include.to_vec(),
+          parse_defines(args),
+          *json,
+          cancellation_token,
+        );
       }
       Commands::Eval {
         decompress_strings,
@@ -896,26 +908,31 @@ fn load(
   Ok(execute_seq(&args, ast, cancellation_token)?)
 }
 
+/// Parse `key:value` CLI arguments into the defines map shared by `run`, `load`,
+/// `eval` and `check`. The value may itself contain `:` (everything after the first
+/// colon is kept), supports `\:` escaping, and is unquoted if wrapped in double quotes.
+fn parse_defines(args: &[String]) -> HashMap<String, String> {
+  let mut defines = HashMap::new();
+  for arg in args {
+    shlog_debug!("arg: {}", arg);
+    // find the first colon and split it; the value is everything after (may contain ':')
+    let mut split = arg.split(':');
+    let key = split.next().unwrap();
+    let value = split.collect::<Vec<&str>>().join(":");
+    // unescape '\:' then drop surrounding quotes if present
+    let value = value.replace("\\:", ":");
+    let value = value.trim_matches('"');
+    defines.insert(key.to_owned(), value.to_owned());
+  }
+  defines
+}
+
 fn execute_seq(
   args: &Vec<String>,
   ast: Program,
   cancellation_token: Arc<AtomicBool>,
 ) -> Result<(), &'static str> {
-  let mut defines = HashMap::new();
-
-  for arg in args {
-    shlog_debug!("arg: {}", arg);
-    // find the first column and split it, the rest is the value
-    let mut split = arg.split(':');
-    let key = split.next().unwrap();
-    // value should be all the rest, could contain ':' even
-    let value = split.collect::<Vec<&str>>().join(":");
-    // finally unescape the value if needed
-    let value = value.replace("\\:", ":");
-    // and remove quotes if quoted
-    let value = value.trim_matches('"');
-    defines.insert(key.to_owned(), value.to_owned());
-  }
+  let defines = parse_defines(args);
 
   let wire = {
     eval(&ast, "root", defines, cancellation_token.clone()).map_err(|e| {

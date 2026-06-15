@@ -1,0 +1,2 @@
+@include("lib.shs")
+none | Log("main")

@@ -1,0 +1,5 @@
+// references a command-line define (@greeting); only composes when that define is
+// supplied. Verifies `shards check` injects defines like `run` does:
+//   shards check define.shs                  -> construct error (undefined)
+//   shards check define.shs greeting:hello   -> composes clean (exit 0)
+@greeting | Log

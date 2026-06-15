@@ -99,6 +99,45 @@ else
 fi
 echo
 
+# ---- define: command-line defines reach compose (parity with `run`) --------
+DEF_FILE="$CASES/define.shs"
+# Without the define, @greeting is undefined -> construct error (exit 1).
+OUT="$("$BIN" check --json "$DEF_FILE" 2>/dev/null)"; CODE=$?
+echo "case: define (no define) (exit $CODE)"
+assert "missing define -> exit 1" "$([[ $CODE -eq 1 ]]; echo $?)"
+# Supplying it (exactly as `run` would) makes the script compose cleanly.
+OUT="$("$BIN" check --json "$DEF_FILE" greeting:hello 2>/dev/null)"; CODE=$?
+echo "case: define (greeting:hello) (exit $CODE)"
+assert "supplied define -> exit 0" "$([[ $CODE -eq 0 ]]; echo $?)"
+assert "ok == true with define" "$(jq_true "$OUT" '.ok == true'; echo $?)"
+echo
+
+# ---- include-resolution: relative -I resolves like `run` -------------------
+# Regression guard: a script in cases/inc/sub/ includes "lib.shs", which lives in
+# cases/inc/ (one level up) and is only reachable via -I. We invoke from cases/
+# with a RELATIVE -Iinc. `check` used to canonicalize -I *after* setRootPath had
+# already changed the cwd to the script's dir, so the relative -I pointed at the
+# wrong place and the include silently failed. It must resolve against the
+# invocation cwd, exactly as `run` does.
+INC_OUT="$(cd "$CASES" && "$BIN" check --json -Iinc inc/sub/main.shs 2>/dev/null)"; INC_CODE=$?
+echo "case: include-relative-I (exit $INC_CODE)"
+assert "relative -I resolves include -> exit 0" "$([[ $INC_CODE -eq 0 ]]; echo $?)"
+assert "ok == true with relative -I" "$(jq_true "$INC_OUT" '.ok == true'; echo $?)"
+# Without -I the include is genuinely unresolvable -> a parse-phase diagnostic.
+INC_OUT2="$(cd "$CASES" && "$BIN" check --json inc/sub/main.shs 2>/dev/null)"; INC_CODE2=$?
+echo "case: include-no-I (exit $INC_CODE2)"
+assert "missing -I -> exit 1" "$([[ $INC_CODE2 -eq 1 ]]; echo $?)"
+assert "has parse diagnostic for unresolved include" \
+  "$(jq_true "$INC_OUT2" '[.diagnostics[] | select(.phase=="parse")] | length > 0'; echo $?)"
+# A bad -I must fail LOUDLY (exit 2), not be silently dropped — otherwise a mistyped
+# include dir looks like "this -I wasn't honored" and surfaces as a confusing
+# "include not found" later. stdout stays clean (error goes to stderr) for --json.
+INC_OUT3="$(cd "$CASES" && "$BIN" check --json -Idoes-not-exist inc/sub/main.shs 2>/dev/null)"; INC_CODE3=$?
+echo "case: include-bad-I (exit $INC_CODE3)"
+assert "non-existent -I dir -> exit 2" "$([[ $INC_CODE3 -eq 2 ]]; echo $?)"
+assert "bad -I keeps stdout clean (empty)" "$([[ -z "$INC_OUT3" ]]; echo $?)"
+echo
+
 # ---- syntax-error: parse-phase ---------------------------------------------
 run_case syntax-error
 assert "exit code 1" "$([[ $CODE -eq 1 ]]; echo $?)"
