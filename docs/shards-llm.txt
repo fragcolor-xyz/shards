@@ -36,7 +36,7 @@ x | Add(1) > x   ✅ Takes flow from x, adds 1, and channels it back into x
 
 ## Basic Syntax
 
-- **Comments**: Begin with semicolon `//`
+- **Comments**: Begin with `//` (C-style); `/* ... */` for block comments
 - **Operations**: Chain with pipe `|`
 - **No semicolons** at line ends
 - **No braces** for basic code blocks

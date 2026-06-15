@@ -363,11 +363,24 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
         Ok(())
       }
     },
-    // Try to support a simple "shards script.shs" command line in case none of the above matched
-    Err(orig_err) => match SimpleCLI::try_parse_from(args) {
-      Ok(cli) => execute(&cli.run_args, cancellation_token),
-      Err(_e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
-    },
+    // Fall back to the bare "shards <file> [args...]" form only when the first
+    // argument actually looks like something to run (a path, a .shs, or a flag).
+    // Otherwise surface clap's error — which says "unrecognized subcommand" and
+    // suggests a close one — instead of the misleading "Input file <verb> not found"
+    // you'd get from trying to run e.g. `shards doc` as a script.
+    Err(orig_err) => {
+      let first = args.get(1).map(|s| s.as_str()).unwrap_or("");
+      let looks_like_run =
+        first.starts_with('-') || first.ends_with(".shs") || Path::new(first).is_file();
+      if looks_like_run {
+        match SimpleCLI::try_parse_from(args) {
+          Ok(cli) => execute(&cli.run_args, cancellation_token),
+          Err(_e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
+        }
+      } else {
+        Err(Box::new(orig_err) as Box<dyn std::error::Error>)
+      }
+    }
   };
 
   finish(res)
