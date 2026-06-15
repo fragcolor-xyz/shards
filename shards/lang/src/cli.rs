@@ -4,7 +4,7 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, CommandFactory, Parser};
 use clap_complete::{generate, Shell};
-use shards::core::Core;
+use shards::core::{getShards, Core};
 use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
@@ -177,6 +177,30 @@ enum Commands {
     /// Type of documentation to search: "shard" or "enum"
     #[arg(long = "type", short = 't', default_value = "shard", action)]
     type_: String,
+    /// Emit the full signature as machine-readable JSON (for agents)
+    #[arg(long, short = 'j', action)]
+    json: bool,
+  },
+  /// List shards as a compact one-line index (name, in→out, summary)
+  ///
+  /// The always-loaded discovery layer for agents; drill into any entry with
+  /// `shards docs <name> --json`.
+  Enumerate {
+    /// Only list shards whose name contains this substring (case-insensitive)
+    #[arg(long, short = 'f')]
+    filter: Option<String>,
+    /// Emit as JSON
+    #[arg(long, short = 'j', action)]
+    json: bool,
+  },
+  /// Keyword search over the shard index (matches name and summary)
+  Search {
+    /// The query (case-insensitive substring)
+    #[arg()]
+    query: String,
+    /// Emit as JSON
+    #[arg(long, short = 'j', action)]
+    json: bool,
   },
   /// Generate shell completion scripts
   Completions {
@@ -331,17 +355,32 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
         inline,
       } => format(file, output, *inline),
       Commands::Test {} => formatter::run_tests(),
-      Commands::Docs { name, type_ } => help(name, type_),
+      Commands::Docs { name, type_, json } => help(name, type_, *json),
+      Commands::Enumerate { filter, json } => enumerate(filter.as_deref(), *json),
+      Commands::Search { query, json } => search(query, *json),
       Commands::Completions { shell } => {
         generate_completions(*shell);
         Ok(())
       }
     },
-    // Try to support a simple "shards script.shs" command line in case none of the above matched
-    Err(orig_err) => match SimpleCLI::try_parse_from(args) {
-      Ok(cli) => execute(&cli.run_args, cancellation_token),
-      Err(_e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
-    },
+    // Fall back to the bare "shards <file> [args...]" form only when the first
+    // argument actually looks like something to run (a path, a .shs, or a flag).
+    // Otherwise surface clap's error — which says "unrecognized subcommand" and
+    // suggests a close one — instead of the misleading "Input file <verb> not found"
+    // you'd get from trying to run e.g. `shards doc` as a script.
+    Err(orig_err) => {
+      let first = args.get(1).map(|s| s.as_str()).unwrap_or("");
+      let looks_like_run =
+        first.starts_with('-') || first.ends_with(".shs") || Path::new(first).is_file();
+      if looks_like_run {
+        match SimpleCLI::try_parse_from(args) {
+          Ok(cli) => execute(&cli.run_args, cancellation_token),
+          Err(_e) => Err(Box::new(orig_err) as Box<dyn std::error::Error>),
+        }
+      } else {
+        Err(Box::new(orig_err) as Box<dyn std::error::Error>)
+      }
+    }
   };
 
   finish(res)
@@ -572,9 +611,225 @@ pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<()
   }
 }
 
-fn help(name: &str, type_: &str) -> Result<(), Error> {
+fn help(name: &str, type_: &str, json: bool) -> Result<(), Error> {
+  if json {
+    return help_json(name, type_);
+  }
   let mut stdout = std::io::stdout();
   help_to_writer(&mut stdout, name, type_)
+}
+
+/// Render a type (recursively) as structured JSON. `type_to_string` only covers the
+/// top-level basic type, so containers (`Seq`/`Table`/`ContextVar`) and enums recurse
+/// to preserve element/key/variant detail an agent needs to write correct code.
+fn type_to_json(t: &SHTypeInfo) -> serde_json::Value {
+  use serde_json::json;
+  let base = type_to_string(t.basicType.into());
+  match t.basicType {
+    SHTYPE_SEQ => {
+      let seq = unsafe { t.details.seqTypes };
+      let elements: Vec<_> = (0..seq.len)
+        .map(|i| type_to_json(unsafe { &*seq.elements.offset(i as isize) }))
+        .collect();
+      json!({ "type": base, "basic_type": t.basicType as i32, "elements": elements })
+    }
+    SHTYPE_TABLE => {
+      let table = unsafe { t.details.table };
+      let values: Vec<_> = (0..table.types.len)
+        .map(|i| type_to_json(unsafe { &*table.types.elements.offset(i as isize) }))
+        .collect();
+      let keys: Vec<String> = (0..table.keys.len)
+        .map(|i| format!("{}", unsafe { &*table.keys.elements.offset(i as isize) }))
+        .collect();
+      json!({ "type": base, "basic_type": t.basicType as i32, "values": values, "keys": keys })
+    }
+    SHTYPE_CONTEXT_VAR => {
+      let cv = unsafe { t.details.contextVarTypes };
+      let of: Vec<_> = (0..cv.len)
+        .map(|i| type_to_json(unsafe { &*cv.elements.offset(i as isize) }))
+        .collect();
+      json!({ "type": base, "basic_type": t.basicType as i32, "of": of })
+    }
+    SHTYPE_ENUM => {
+      let vendor = unsafe { t.details.enumeration.vendorId };
+      let typ = unsafe { t.details.enumeration.typeId };
+      let name = get_enum_info(EnumInfoId::VendorTypePair(vendor, typ))
+        .map(|info| unsafe { CStr::from_ptr(info.name).to_str().unwrap().to_string() });
+      json!({ "type": base, "basic_type": t.basicType as i32, "enum": name })
+    }
+    _ => json!({ "type": base, "basic_type": t.basicType as i32 }),
+  }
+}
+
+/// Machine-readable counterpart to `help_to_writer` — the drill-down tool an agent
+/// uses after locating a shard via `enumerate`/`search`. Served live from the binary,
+/// so it can never drift from the runtime.
+fn help_json(name: &str, type_: &str) -> Result<(), Error> {
+  use serde_json::json;
+  unsafe {
+    shards_decompress_strings();
+  }
+
+  let doc = match type_ {
+    "shard" => {
+      let shard =
+        AutoShardRef::create(name, None).ok_or_else(|| format!("Shard '{}' not found", name))?;
+      let s = &shard.0;
+
+      let input_types: Vec<_> = s.input_types().iter().map(type_to_json).collect();
+      let output_types: Vec<_> = s.output_types().iter().map(type_to_json).collect();
+
+      let mut parameters = Vec::new();
+      for (i, p) in s.parameters().iter().enumerate() {
+        let pname = unsafe { CStr::from_ptr(p.name).to_str().unwrap_or("") };
+        let phelp = get_optional_string(p.help);
+        let ptypes: Vec<_> = (0..p.valueTypes.len)
+          .map(|j| type_to_json(unsafe { &*p.valueTypes.elements.offset(j as isize) }))
+          .collect();
+        let default = format!("{}", s.get_parameter(i as i32));
+        parameters.push(json!({
+          "name": pname,
+          "help": phelp,
+          "types": ptypes,
+          "default": default,
+        }));
+      }
+
+      json!({
+        "name": name,
+        "kind": "shard",
+        "help": s.help().unwrap_or(""),
+        "input": { "help": s.input_help().unwrap_or(""), "types": input_types },
+        "output": { "help": s.output_help().unwrap_or(""), "types": output_types },
+        "parameters": parameters,
+      })
+    }
+    "enum" => {
+      let info =
+        get_enum_info(EnumInfoId::String(name)).ok_or_else(|| format!("Enum '{}' not found", name))?;
+      assert!(info.values.len == info.labels.len);
+      let mut values = Vec::new();
+      for i in 0..info.values.len {
+        let label = unsafe {
+          let p = *info.labels.elements.offset(i as isize);
+          if p.is_null() {
+            ""
+          } else {
+            CStr::from_ptr(p).to_str().unwrap_or("")
+          }
+        };
+        let value = unsafe { *info.values.elements.offset(i as isize) } as i64;
+        let description =
+          get_optional_string(unsafe { *info.descriptions.elements.offset(i as isize) });
+        values.push(json!({ "label": label, "value": value, "description": description }));
+      }
+      json!({
+        "name": name,
+        "kind": "enum",
+        "help": get_optional_string(info.help),
+        "values": values,
+      })
+    }
+    _ => return Err("Invalid help type. Supported types are 'shard' and 'enum'".into()),
+  };
+
+  println!("{}", serde_json::to_string_pretty(&doc)?);
+  Ok(())
+}
+
+/// One line of the Tier-1 shard index.
+struct ShardSummary {
+  name: String,
+  input: String,
+  output: String,
+  summary: String,
+}
+
+/// Compact type signature for the index (basic type names only; full detail lives in
+/// `docs --json`). Long unions are abbreviated so the index stays one line per shard.
+fn compact_types(types: &[SHTypeInfo]) -> String {
+  if types.is_empty() {
+    return "Any".to_string();
+  }
+  let mut names: Vec<&str> = types.iter().map(|t| type_to_string(t.basicType.into())).collect();
+  names.dedup();
+  if names.len() > 3 {
+    format!("{}/{}/…", names[0], names[1])
+  } else {
+    names.join("/")
+  }
+}
+
+/// Build the Tier-1 index: every registered shard as name / in→out / one-line summary.
+/// Sorted by name. Creates each shard once to read its types and help (same cost as
+/// the docs/check paths; sub-second).
+fn build_shard_index() -> Vec<ShardSummary> {
+  unsafe {
+    shards_decompress_strings();
+  }
+  let mut out = Vec::new();
+  for cname in getShards() {
+    let name = cname.to_string_lossy().to_string();
+    if let Some(shard) = AutoShardRef::create(&name, None) {
+      let s = &shard.0;
+      let summary = s
+        .help()
+        .unwrap_or("")
+        .lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_string();
+      out.push(ShardSummary {
+        input: compact_types(s.input_types()),
+        output: compact_types(s.output_types()),
+        summary,
+        name,
+      });
+    }
+  }
+  out.sort_by(|a, b| a.name.cmp(&b.name));
+  out
+}
+
+fn print_index(items: &[ShardSummary], json: bool) -> Result<(), Error> {
+  use serde_json::json;
+  if json {
+    let arr: Vec<_> = items
+      .iter()
+      .map(|i| {
+        json!({ "name": i.name, "input": i.input, "output": i.output, "summary": i.summary })
+      })
+      .collect();
+    println!("{}", serde_json::to_string_pretty(&arr)?);
+  } else {
+    for i in items {
+      if i.summary.is_empty() {
+        println!("{:<32} {} → {}", i.name, i.input, i.output);
+      } else {
+        println!("{:<32} {} → {}  {}", i.name, i.input, i.output, i.summary);
+      }
+    }
+  }
+  Ok(())
+}
+
+fn enumerate(filter: Option<&str>, json: bool) -> Result<(), Error> {
+  let mut items = build_shard_index();
+  if let Some(f) = filter {
+    let f = f.to_lowercase();
+    items.retain(|i| i.name.to_lowercase().contains(&f));
+  }
+  print_index(&items, json)
+}
+
+fn search(query: &str, json: bool) -> Result<(), Error> {
+  let q = query.to_lowercase();
+  let items: Vec<ShardSummary> = build_shard_index()
+    .into_iter()
+    .filter(|i| i.name.to_lowercase().contains(&q) || i.summary.to_lowercase().contains(&q))
+    .collect();
+  print_index(&items, json)
 }
 
 fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error> {

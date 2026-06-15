@@ -32,13 +32,13 @@ Shards already has all five properties as engineering facts. None of them is cur
 |---|---|---|
 | Three-phase model: parse → compose → activate | `shards/lang/src/eval.rs`, `shards/core/runtime.cpp` (`validateConnection`) | Whole-program type validation **before any side effect** — a free, milliseconds-cheap verification oracle for agent repair loops |
 | Full API introspection | `Shards.Enumerate`, `Shards.Help`, `Shards.EnumTypes` (`shards/modules/core/core.cpp`), `PARAM_IMPL` reflection (`shards/core/params.hpp`) | The entire stdlib signature surface is machine-readable ground truth |
-| Closed-world stdlib (~800+ shards) + complete language spec in ~3.3k lines | `lib/shards-guide.md`, `lib/shards-reference.md` | The **whole language + stdlib fits in a model context window**; hallucinated APIs are detectable and preventable |
+| Closed-world stdlib (~1k shards) + complete language guide | `skills/shards/` (SKILL.md + GUIDE.md + examples); shard catalog is **live** via `shards enumerate` / `shards docs --json` | The **whole language fits in a model context window**, the catalog is queried live (zero drift), hallucinated APIs are detectable and preventable. Replaces the former static `lib/shards-{guide,reference}.md`. |
 | Formal PEG grammar | `shards/lang/src/shards.pest` | Mechanical path to constrained decoding (GBNF) and tooling |
 | AST as canonical artifact, text as a view | `shards ast` / `shards build -j` (JSON AST), `shards format`, 1:1 visual mapping | Surface syntax is a *rendering choice*; we can optimize it for models without redesigning the language |
 | Wire/mesh concurrency | `shards/core/runtime.hpp` (SHMesh), `coro.hpp` fibers | Long-lived stateful coroutines with isolated state and channels = an agent-shaped runtime |
 | Embedded inference | `AI.*` (candle/mistral.rs), `LLM.*` (llama.cpp), `Whisper.*` | Models run *inside* the runtime; no external service required |
 | Agent tooling modules | `localshell`, `ssh`, `shell-common`, `http` | Agents hosted in Shards can already act on the world |
-| Docs generation pipeline | `docs/generate.shs` | Already produces an "AI-friendly format"; needs to ship to the repo, not Notion |
+| Docs generation pipeline | `docs/generate.shs` | Legacy per-shard markdown + Notion. Superseded for AI use by the `skills/shards/` skill + live `shards docs --json`; the static reference was retired rather than regenerated. |
 
 ---
 
@@ -135,12 +135,33 @@ Sequencing: P1, after the real CLI exists — same verbs, third transport.
 
 Also in this item:
 
-- **`shards-llm.txt` context pack**: a single canonical, versioned document — language guide + full shard reference — regenerated in CI from introspection ground truth (`docs/generate.shs` already builds most of this; redirect the output from Notion to the repo). It must be impossible for this file to drift from the binary.
+- **The context pack is a *skill*, not a static file.** Rather than a generated `shards-llm.txt` (which duplicates content and risks drift), the canonical artifact is `skills/shards/` — `SKILL.md` (mental model + cheat-sheet + the CLI loop), `GUIDE.md` (full language guide), and `examples/`. The **shard catalog is never serialized**: it is queried live via `shards enumerate` / `shards docs --json`, so it cannot drift from the binary. The former static `lib/shards-{guide,reference}.md` were retired.
 - Ruthless consistency pass over all public docs: purge remaining old-syntax artifacts and Lisp-era leftovers (e.g. stale "comments begin with semicolon" phrasing). For a model, the docs *are* the language.
+
+#### Status — shipped (initial)
+
+The agent surface and the skill exist:
+
+- CLI verbs: `shards docs --json` (drill-down: full signature, recursive types, param defaults), `shards enumerate [--filter] [--json]` (Tier-1 one-line index), `shards search` (keyword over name + summary). Progressive disclosure: a compact always-loaded index, expand on demand, ground truth served live from the binary.
+- `skills/shards/` — the consolidated, portable skill (`SKILL.md` + `GUIDE.md` + runnable, `check`-passing `examples/`). Replaces the static guide/reference/pack.
+- A mistyped subcommand now suggests the right one (`shards doc` → "did you mean 'docs'"); the `// (C-style)` comment guidance is corrected.
+
+Not yet: keyword search via embeddings (`AI.Embed`); the broader docs-*site* `lisp/` URL cleanup; retiring the legacy `docs/generate.shs` Notion pipeline; `vsh` (P1).
 
 ### 3.3 Surface syntax: keep the language, bless the word forms, measure the rest
 
 **Effort: days for the decision + formatter work; the benchmark is a weekend of compute. Priority: P0 — because of sequencing (see 3.4).**
+
+> **Where we landed (revision).** The *decision* (decision 1 below) is settled and already
+> applied — the skill, GUIDE.md, and error suggestions all lead with word forms. The
+> `shards format --canonical`/`--sugar` modes (decision 2) are **deferred as YAGNI**: their
+> only real consumer is corpus normalization for 3.4, which is months out and gated behind
+> this section freezing — build the converter when 3.4 needs it. The benchmark (decision 3)
+> validates the decision before it's frozen into the corpus; it gates 3.4, costs frontier-model
+> budget, and isn't urgent. **So nothing in 3.3 is the immediate next build.** The highest-leverage
+> next move is to *dogfood the discover→read→verify loop* (`enumerate`/`search` → `docs --json`
+> → `check`) on a real task and let the friction reveal the next priority — the PMF test (§4),
+> done cheaply.
 
 Findings:
 
@@ -281,7 +302,7 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ```
 P0 (now, weeks):    3.1 shards check (JSON diagnostics)            ✅ shipped (initial)
-                    3.2 agent interface (CLI + SKILL.md + shards-llm.txt) + docs pass
+                    3.2 agent interface (CLI verbs + skills/shards/ skill) ✅ shipped (initial)
                     3.3 canonical-form decision + generation benchmark
 P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze]
                     3.5 agent residency (live mesh attach/swap)   [flagship demo]

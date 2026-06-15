@@ -1,0 +1,12 @@
+// A looped wire counting on a mesh — the Shards runtime pattern.
+// Once(...) runs a single time (allocations happen there); the rest runs every frame.
+@wire(counter-loop {
+  Once({ 0 | Set(n) })
+  n | Add(1) | Update(n)
+  n | Log("n")
+  When({n | IsMoreEqual(3)} { Stop })
+} Looped: true)
+
+@mesh(root)
+@schedule(root counter-loop)
+@run(root FPS: 10)

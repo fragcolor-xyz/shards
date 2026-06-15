@@ -1,0 +1,7 @@
+// Sum a sequence with a mutable accumulator (word forms: Set / Update).
+[1 2 3 4 5] | Set(numbers)
+0 | Set(total)
+numbers | ForEach({
+  Add(total) | Update(total)
+})
+total | Log("total")   // 15

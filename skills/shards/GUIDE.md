@@ -8,17 +8,34 @@ Shards is a data flow programming language where data flows through operations u
 
 ```shards
 // Traditional imperative thinking (WRONG):
-x = 5          ❌ Not a container being filled
+x = 5          ❌ `=` is NOT assignment in Shards (see below)
 x += 1         ❌ Not incrementing a stored value
 
 // Shards data flow thinking (CORRECT):
-5 >= x         ✅ Creates a variable named 'x' and channels 5 into it
-x | Add(1) > x   ✅ Takes flow from x, adds 1, and channels it back into x
+5 | Set(x)         ✅ Creates a variable named 'x' and channels 5 into it
+x | Add(1) | Update(x)   ✅ Takes flow from x, adds 1, channels it back into x
 ```
+
+> **Canonical forms — read this first.** Every assignment has two equivalent
+> spellings: an explicit **word form** (`Set`/`Ref`/`Update`/`Push`) and an
+> **operator** sugar (`>=`/`=`/`>`/`>>`). They compile to the exact same thing.
+> **When you write Shards, use the word forms** — the operators collide with priors
+> from other languages (`=` here is *not* assignment; it is `Ref`, an immutable
+> binding). You will still *see* operators in human-written code, so know the mapping:
+>
+> | Word form        | Operator | Meaning                                   |
+> |------------------|----------|-------------------------------------------|
+> | `Set(x)`         | `>= x`   | create/assign a **mutable** variable      |
+> | `Ref(x)`         | `= x`    | bind an **immutable** variable            |
+> | `Update(x)`      | `> x`    | update an existing mutable variable       |
+> | `Push(seq)`      | `>> seq` | append to a sequence                      |
+>
+> Examples in this guide sometimes use operators for brevity; prefer the word forms
+> in generated code.
 
 ## Basic Syntax
 
-- **Comments**: Begin with semicolon `//`
+- **Comments**: Begin with `//` (C-style); `/* ... */` for block comments
 - **Operations**: Chain with pipe `|`
 - **No semicolons** at line ends
 - **No braces** for basic code blocks
@@ -29,24 +46,24 @@ x | Add(1) > x   ✅ Takes flow from x, adds 1, and channels it back into x
 ### Variable Assignment
 
 ```shards
-// Immutable assignment (=)
-5 = x                       // Immutable integer
-"Hello" = greeting          // Immutable string
-@f3(1.0 2.0 3.0) = position  // Immutable vector
+// Immutable binding — Ref (operator: =)
+5 | Ref(x)                          // immutable integer
+"Hello" | Ref(greeting)             // immutable string
+@f3(1.0 2.0 3.0) | Ref(position)    // immutable vector
 
-// Mutable assignment (>=)
-10 >= counter               // Mutable integer
-[1 2 3] >= numbers          // Mutable sequence
-{name: "Alice" age: 30} >= person  // Mutable table
+// Mutable variable — Set (operator: >=)
+10 | Set(counter)                   // mutable integer
+[1 2 3] | Set(numbers)              // mutable sequence
+{name: "Alice" age: 30} | Set(person)  // mutable table
 ```
 
 ### Updating Variables
 
 ```shards
-// Update mutable variables (>)
-counter | Add(5) > counter     // Add 5 to counter
-4 >> numbers                 // Append to sequence (shorthand)
-"Bob" | Update(person "name")  // Update table field
+// Update an existing mutable variable — Update (operator: >)
+counter | Add(5) | Update(counter)  // add 5 to counter
+4 | Push(numbers)                   // append to sequence (operator: >>)
+"Bob" | Update(person "name")       // update a table field
 ```
 
 ## Data Types
