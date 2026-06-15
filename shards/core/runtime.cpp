@@ -902,7 +902,19 @@ void validateConnection(InternalCompositionContext &ctx) {
       }
     }
 #endif
-    throw shards::Error(ctx.bottom, msg);
+    // Attach structured diagnostic data so `shards check --json` can drive an
+    // agent repair loop (and the type-directed candidates engine) without
+    // re-parsing the human message.
+    shards::Error err(ctx.bottom, msg);
+    err.diagKind = SHDiagnosticKind::SHDiag_InputTypeMismatch;
+    err.actualType = fmt::format("{}", ctx.previousOutputType);
+    err.actualBasicType = int32_t(ctx.previousOutputType.basicType);
+    err.expectedTypes.reserve(inputInfos.len);
+    for (uint32_t i = 0; inputInfos.len > i; i++) {
+      auto &inputInfo = inputInfos.elements[i];
+      err.expectedTypes.emplace_back(fmt::format("{}", inputInfo), int32_t(inputInfo.basicType));
+    }
+    throw err;
   }
 
   // infer and specialize types if we need to
@@ -924,7 +936,9 @@ void validateConnection(InternalCompositionContext &ctx) {
     auto composeResult = ctx.bottom->composeV2(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       const char *errMsg = composeResult.error.message.string ? composeResult.error.message.string : "Unknown composition error";
-      throw shards::Error(ctx.bottom, errMsg);
+      shards::Error err(ctx.bottom, errMsg);
+      err.diagKind = SHDiagnosticKind::SHDiag_ComposeError;
+      throw err;
     }
     ctx.previousOutputType = composeResult.result;
   } else if (ctx.bottom->compose) {
@@ -951,7 +965,9 @@ void validateConnection(InternalCompositionContext &ctx) {
     auto composeResult = ctx.bottom->compose(ctx.bottom, &data);
     if (composeResult.error.code != SH_ERROR_NONE) {
       const char *errMsg = composeResult.error.message.string ? composeResult.error.message.string : "Unknown composition error";
-      throw shards::Error(data.shard, errMsg);
+      shards::Error err(data.shard, errMsg);
+      err.diagKind = SHDiagnosticKind::SHDiag_ComposeError;
+      throw err;
     }
     ctx.previousOutputType = composeResult.result;
   } else {
@@ -1213,14 +1229,85 @@ inline SHStringWithLen toOwnedString(std::string_view s) {
   return r;
 }
 
+// Allocate an owned SHStringWithLen, or {nullptr,0} for empty input (so freeComposeResult
+// can skip it and JSON consumers can treat it as absent).
+static SHStringWithLen ownedOrEmpty(std::string_view s) {
+  if (s.empty())
+    return SHStringWithLen{nullptr, 0};
+  return toOwnedString(s);
+}
+
+static SHTypeDesc makeTypeDesc(std::string_view name, int32_t basicType) {
+  SHTypeDesc d{};
+  d.name = ownedOrEmpty(name);
+  d.basicType = basicType;
+  return d;
+}
+
+// Convert the (structured) compose error stack into an owned SHDiagnostic[] carried by
+// the SHComposeResult. Only owned strings + ints cross the ABI; freeComposeResult releases them.
+static void buildDiagnostics(SHComposeResult &result, const std::vector<shards::Error> &errorStack) {
+  if (errorStack.empty())
+    return;
+
+  auto *diags = new SHDiagnostic[errorStack.size()];
+  std::memset(diags, 0, sizeof(SHDiagnostic) * errorStack.size());
+
+  size_t n = 0;
+  for (auto &err : errorStack) {
+    SHDiagnostic &d = diags[n];
+    d.kind = err.diagKind;
+    d.paramIndex = err.paramIndex;
+    d.message = ownedOrEmpty(err.message);
+
+    // Source location + offending shard name.
+    if (err.type == shards::Error::CTX_Shard && err.shard) {
+      d.line = err.shard->line;
+      d.column = err.shard->column;
+      auto fileName = InternalCore::getSourceFileName(err.shard->file);
+      if (fileName.string && fileName.len > 0)
+        d.file = toOwnedString(std::string_view(fileName.string, fileName.len));
+      if (auto sn = err.shard->name(err.shard))
+        d.shardName = ownedOrEmpty(std::string_view(sn));
+    } else if (err.type == shards::Error::CTX_Wire && err.wire) {
+      if (!err.wire->shards.empty()) {
+        if (auto *blk = err.wire->shards.front()) {
+          d.line = blk->line;
+          d.column = blk->column;
+          auto fileName = InternalCore::getSourceFileName(blk->file);
+          if (fileName.string && fileName.len > 0)
+            d.file = toOwnedString(std::string_view(fileName.string, fileName.len));
+        }
+      }
+    }
+
+    // Structured type information (input-type-mismatch diagnostics).
+    d.actual = makeTypeDesc(err.actualType, err.actualBasicType);
+    if (!err.expectedTypes.empty()) {
+      d.numExpected = err.expectedTypes.size();
+      d.expected = new SHTypeDesc[d.numExpected];
+      std::memset(d.expected, 0, sizeof(SHTypeDesc) * d.numExpected);
+      for (size_t i = 0; i < err.expectedTypes.size(); i++)
+        d.expected[i] = makeTypeDesc(err.expectedTypes[i].first, err.expectedTypes[i].second);
+    }
+
+    n++;
+  }
+
+  result.diagnostics = diags;
+  result.numDiagnostics = n;
+}
+
 SHComposeResult getComposeError(shards::CompositionContext &privateContext) {
   std::string emsg = "Composition failed";
   std::string errorStackTrace = formatErrorStack(privateContext.errorStack, {});
-  return SHComposeResult{
+  SHComposeResult result{
       .failed = true,
       .error = toOwnedString(emsg),
       .errorStackTrace = toOwnedString(errorStackTrace),
   };
+  buildDiagnostics(result, privateContext.errorStack);
+  return result;
 }
 
 SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept {
@@ -1560,6 +1647,29 @@ void freeComposeResult(SHComposeResult &result) {
   }
   if (result.errorStackTrace.string) {
     delete[] result.errorStackTrace.string;
+  }
+  if (result.diagnostics) {
+    for (uint64_t i = 0; i < result.numDiagnostics; i++) {
+      auto &d = result.diagnostics[i];
+      if (d.file.string)
+        delete[] d.file.string;
+      if (d.shardName.string)
+        delete[] d.shardName.string;
+      if (d.message.string)
+        delete[] d.message.string;
+      if (d.actual.name.string)
+        delete[] d.actual.name.string;
+      if (d.expected) {
+        for (uint64_t j = 0; j < d.numExpected; j++) {
+          if (d.expected[j].name.string)
+            delete[] d.expected[j].name.string;
+        }
+        delete[] d.expected;
+      }
+    }
+    delete[] result.diagnostics;
+    result.diagnostics = nullptr;
+    result.numDiagnostics = 0;
   }
 }
 void InternalCore::freeComposeResult(struct SHComposeResult *result) { shards::freeComposeResult(*result); }
@@ -2936,6 +3046,24 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
   result->composeWire = [](SHWireRef wire, SHInstanceData data) noexcept {
     auto sc = SHWire::sharedFromRef(wire);
     return shards::composeWireNoExcept(sc.get(), data);
+  };
+
+  result->composeForCheck = [](SHMeshRef mesh, SHWireRef wire) noexcept -> SHComposeResult {
+    try {
+      auto smesh = reinterpret_cast<std::shared_ptr<SHMesh> *>(mesh);
+      auto sc = SHWire::sharedFromRef(wire);
+      return (*smesh)->composeForCheck(sc);
+    } catch (const std::exception &e) {
+      SHComposeResult r{};
+      r.failed = true;
+      r.error = shards::toOwnedString(e.what());
+      return r;
+    } catch (...) {
+      SHComposeResult r{};
+      r.failed = true;
+      r.error = shards::toOwnedString("foreign exception during composeForCheck");
+      return r;
+    }
   };
 
   result->freeComposeResult = [](SHComposeResult *result) noexcept { shards::freeComposeResult(*result); };

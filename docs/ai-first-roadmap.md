@@ -60,7 +60,7 @@ Items ordered by leverage-per-effort. Items 1–2 are prerequisites for everythi
 
 ### 3.1 `shards check` — the compiler as the agent's tool
 
-**Effort: weeks. Priority: P0.**
+**Effort: weeks. Priority: P0. Status: ✅ shipped (initial) — see "Status" below.**
 
 A compose-only mode with **structured, machine-readable error output**. Today's errors are human prose; an agent repair loop needs data.
 
@@ -78,6 +78,29 @@ Deliverables:
 - Wall-clock budget: `check` on a typical script should stay in low milliseconds. **Compose speed is now an inner-loop metric**, same status as activation speed.
 
 Acceptance: an LLM given a broken script + the JSON diagnostics (and nothing else) fixes typical type errors in one round-trip at a measurably higher rate than with prose errors.
+
+#### Status — shipped (initial)
+
+`shards check [--json]` is implemented end-to-end and verified.
+
+Delivered:
+
+- `shards check <file> [--json]` — parse + compose only, never schedules/warms/runs. Exit codes: `0` ok, `1` problems found, `2` could not run (e.g. missing file).
+- JSON schema per diagnostic: `phase` (`parse` | `construct` | `compose`), `severity`, `kind` (`syntax` | `unknown-shard` | `input-type-mismatch` | `compose-error` | `generic`), `message`, `file`, `line`, `column`, `shard`, structured `actual`/`expected` (each `{name, basic_type}`), `param_index`, `did_you_mean`, `candidates`. (Note the `phase` set gained `construct` — the wire-graph build step between parse and compose, where unknown shards surface.)
+- **`candidates`** — type-directed bridge suggestions, computed by reverse-indexing the registry's input/output types. Scalar-aware, tiered ranking surfaces real converters (e.g. `ParseInt`/`ParseFloat` for `String → Int`) ahead of container/wildcard noise.
+- **`did_you_mean`** — edit distance over the live shard registry for unknown shard names.
+- **Eval harness** (`shards/tests/check/`): a broken-script corpus + `run.sh` that asserts diagnostic quality and reports a *repairability* score — the measuring stick 3.3/3.4 depend on.
+
+Architecture (hybrid): a minimal C++ core change emits structured diagnostics — `SHDiagnostic[]` on `SHComposeResult`, carrying `SHTypeInfo`-derived type descriptors + source location + shard context — plus a non-throwing `composeForCheck` mesh entry that composes with semantics identical to a real schedule. All logic (JSON shaping, did-you-mean, candidates engine) lives in the Rust CLI (`shards/lang/src/check.rs`). Only owned strings + ints cross the ABI; no string re-parsing.
+
+Landed alongside: parse-phase diagnostics now carry precise `line`/`column` (extracted from the pest error, previously `0:0`), and namespaced identifiers render source-faithfully with `/` (e.g. `fbl/set-tracked`) in all messages and the formatter round-trip — previously the display convention `::`.
+
+Not yet (tracked follow-ups):
+
+- **Warnings** (type-widening `If`/`Maybe` → `Any`) — compose currently only throws on hard errors; emitting non-fatal diagnostics with severity levels is a separate change.
+- **Parameter context** — `param_index` is reserved in the schema but not yet populated; the common case is a *flow* input/output mismatch, which carries no parameter.
+- **Candidate refinement** — matching is coarse top-level `basic_type`; seq/table inner-type matching would sharpen it.
+- **Isolated-fragment checking** — a library file that relies on externally-injected definitions (an `@include`d prelude) reports those as unknown when checked standalone. This is the live-environment angle of 3.5; for now, check entry-point files (or pass the prelude via `-I`).
 
 ### 3.2 Agent interface — CLI-first, not MCP-first
 
@@ -257,7 +280,7 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 ## 6. Sequencing summary
 
 ```
-P0 (now, weeks):    3.1 shards check (JSON diagnostics)
+P0 (now, weeks):    3.1 shards check (JSON diagnostics)            ✅ shipped (initial)
                     3.2 agent interface (CLI + SKILL.md + shards-llm.txt) + docs pass
                     3.3 canonical-form decision + generation benchmark
 P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze]

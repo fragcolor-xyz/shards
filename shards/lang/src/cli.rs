@@ -74,6 +74,22 @@ enum Commands {
   New(RunArgs),
   /// Run a Shards script
   Run(RunArgs),
+  /// Type-check a Shards script: parse + compose only, never runs it.
+  ///
+  /// Emits structured, machine-readable diagnostics (with `--json`) suitable for
+  /// CI and agent repair loops. Exit code: 0 = ok, 1 = problems found, 2 = the
+  /// check could not run (e.g. missing file).
+  Check {
+    /// The script source file to check
+    #[arg(value_hint = clap::ValueHint::FilePath)]
+    file: String,
+    /// Emit machine-readable JSON diagnostics
+    #[arg(long, short = 'j', action)]
+    json: bool,
+    /// Additional include directories for imports
+    #[arg(long, short = 'I')]
+    include: Vec<String>,
+  },
   /// Evaluate Shards code from stdin
   Eval {
     /// Decompress help strings before evaluation
@@ -273,6 +289,15 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
       } => load(file, args, *decompress_strings, cancellation_token),
       Commands::New(args) => execute(args, cancellation_token),
       Commands::Run(args) => execute(args, cancellation_token),
+      Commands::Check {
+        file,
+        json,
+        include,
+      } => {
+        // `check` controls its own exit code (and keeps stdout clean for `--json`),
+        // so it bypasses the generic error-logging `finish` path.
+        return crate::check::check_command(file, include.to_vec(), *json, cancellation_token);
+      }
       Commands::Eval {
         decompress_strings,
         args,

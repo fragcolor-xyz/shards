@@ -31,7 +31,7 @@ pub mod shard_type;
 pub use common::*;
 
 // Re-export from submodules
-pub use mesh::{Mesh, MeshVar};
+pub use mesh::{CheckResult, ComposeDiagnostic, DiagType, Mesh, MeshVar};
 pub use wire::{
   Wire, WireRef, WireState, EnumInfoId, ObjectInfoId,
   get_enum_info, get_object_info, find_object_type_id, find_object_type_vendor_type_pair,

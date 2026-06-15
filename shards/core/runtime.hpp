@@ -244,6 +244,7 @@ namespace shards {
 [[nodiscard]] SHComposeResult composeWire(const std::vector<ShardPtr> &wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const Shards wire, SHInstanceData data);
 [[nodiscard]] SHComposeResult composeWire(const SHWire *wire, SHInstanceData data);
+[[nodiscard]] SHComposeResult composeWireNoExcept(const SHWire *wire, SHInstanceData &data) noexcept;
 
 void freeComposeResult(SHComposeResult &result);
 
@@ -560,6 +561,25 @@ struct SHMesh : public std::enable_shared_from_this<SHMesh> {
     DEFER(shards::freeComposeResult(result));
 
     SHLOG_TRACE("Wire {} composed", wire->name);
+  }
+
+  // Compose-only variant for `shards check`: mirrors compose() setup so semantics
+  // match a real schedule, but uses the non-throwing path and RETURNS the
+  // SHComposeResult (carrying structured diagnostics on failure). Never warms up
+  // or runs. The caller owns the result and must release it via freeComposeResult.
+  SHComposeResult composeForCheck(const std::shared_ptr<SHWire> &wire, SHVar input = shards::Var::Empty) {
+    ZoneScoped;
+
+    wire->mesh = shared_from_this();
+    wire->isRoot = true;
+    DEFER(wire->isRoot = false);
+
+    SHInstanceData data = instanceData;
+    data.wire = wire.get();
+    data.inputType = shards::deriveTypeInfo(input, data);
+    DEFER({ shards::freeDerivedInfo(data.inputType); });
+
+    return shards::composeWireNoExcept(wire.get(), data);
   }
 
   struct EmptyObserver {

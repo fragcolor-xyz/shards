@@ -1,0 +1,3 @@
+// syntax error: unterminated shard call (missing closing paren).
+// Expected: parse-phase diagnostic, kind "syntax".
+"Hello" | Log(

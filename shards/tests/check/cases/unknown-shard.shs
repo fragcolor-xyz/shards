@@ -1,0 +1,4 @@
+// unknown shard: "Logg" is a typo for "Log".
+// Expected: construct-phase diagnostic, kind "unknown-shard",
+// with a non-empty did_you_mean that includes "Log".
+"Hello" | Logg

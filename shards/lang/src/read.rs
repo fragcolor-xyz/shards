@@ -1374,11 +1374,18 @@ pub fn read_with_env(code: &str, env: &mut ReadEnv) -> Result<Program, ShardsErr
 
   let successful_parse: pest::iterators::Pairs<'_, Rule> = {
     ShardsParser::parse(Rule::Program, code).map_err(|e| {
+      // pest carries the precise failure location; surface it as structured
+      // line/column so tooling (e.g. `shards check --json`) can localize the error
+      // instead of fishing it out of the message text.
+      let (line, column) = match e.line_col {
+        pest::error::LineColLocation::Pos((l, c)) => (l as u32, c as u32),
+        pest::error::LineColLocation::Span((l, c), _) => (l as u32, c as u32),
+      };
       (
         format!("Failed to parse file {:?}: {}", env.script_directory, e),
         LineInfo {
-          line: 0,
-          column: 0,
+          line,
+          column,
           file: env.resolve_file_id(),
         },
       )

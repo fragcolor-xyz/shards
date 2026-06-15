@@ -91,9 +91,13 @@ impl fmt::Display for Identifier {
     if self.namespaces.is_empty() {
       write!(f, "{}", self.name)
     } else {
+      // Render exactly as Shards source: namespaces and name are all joined with
+      // '/' (e.g. `fbl/set-tracked`). This is what users write and grep for, and it
+      // keeps the formatter's source round-trip valid. (Note: `::` is the *enum*
+      // separator in source — a different construct, not an Identifier.)
       write!(
         f,
-        "{}::{}",
+        "{}/{}",
         self
           .namespaces
           .iter()
