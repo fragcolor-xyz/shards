@@ -152,6 +152,17 @@ Not yet: keyword search via embeddings (`AI.Embed`); the broader docs-*site* `li
 
 **Effort: days for the decision + formatter work; the benchmark is a weekend of compute. Priority: P0 — because of sequencing (see 3.4).**
 
+> **Where we landed (revision).** The *decision* (decision 1 below) is settled and already
+> applied — the skill, GUIDE.md, and error suggestions all lead with word forms. The
+> `shards format --canonical`/`--sugar` modes (decision 2) are **deferred as YAGNI**: their
+> only real consumer is corpus normalization for 3.4, which is months out and gated behind
+> this section freezing — build the converter when 3.4 needs it. The benchmark (decision 3)
+> validates the decision before it's frozen into the corpus; it gates 3.4, costs frontier-model
+> budget, and isn't urgent. **So nothing in 3.3 is the immediate next build.** The highest-leverage
+> next move is to *dogfood the discover→read→verify loop* (`enumerate`/`search` → `docs --json`
+> → `check`) on a real task and let the friction reveal the next priority — the PMF test (§4),
+> done cheaply.
+
 Findings:
 
 - The paradigm (pipes, `@wire`, sub-blocks, `Name: value` params) has *neutral-to-good* LLM priors (shell pipes, Elixir `|>`, decorators, kwargs). **Keep it. Do not Pythonize** — a Python/JS skin imports Python/JS *semantic* priors (classes, exceptions, comprehensions, imports) that don't exist here; false familiarity is worse than no familiarity.
