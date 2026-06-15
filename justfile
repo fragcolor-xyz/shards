@@ -34,6 +34,11 @@ build: configure
 build-rel: configure-rel
   cmake --build build/Release --target shards
 
+# regenerate the canonical LLM context pack (docs/shards-llm.txt) from the binary
+gen-llm-context:
+  bash shards/tools/gen-llm-context.sh > docs/shards-llm.txt
+  @echo "wrote docs/shards-llm.txt"
+
 # build shards with filtered output (shows only errors and critical warnings)
 build-quiet: configure
   #!/bin/bash
