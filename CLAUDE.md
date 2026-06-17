@@ -274,7 +274,7 @@ Shards supports WebAssembly builds via Emscripten. The wasm build uses **emdawnw
 
 The codebase includes an experimental JSPI (JavaScript Promise Integration) based fiber implementation as an alternative to Asyncify. JSPI is a WebAssembly standard that allows Wasm to suspend and resume execution without the binary instrumentation overhead of Asyncify.
 
-**Status: NOT WORKING** - JSPI conflicts with pthreads during static initialization. See https://github.com/emscripten-core/emscripten/issues/19287
+**Status: NOT WORKING** — architectural mismatch (re-assessed 2026-06-17, emsdk 4.0.20, Chrome 145). The real blocker is NOT a fixable Emscripten/version bug: JSPI is the wrong primitive for Shards' coroutines. See "The Problem" below. Tracking issues: emscripten#19287, #24302 (the latter, the ctors SuspendError, is now resolved/applied here).
 
 **Files:**
 - `shards/core/shards_fiber.js` - JS fiber manager with manual stack save/restore
@@ -283,21 +283,20 @@ The codebase includes an experimental JSPI (JavaScript Promise Integration) base
 
 **Just Commands (experimental):**
 - `just configure-wasm-jspi` - Configure cmake for JSPI wasm build
-- `just build-wasm-jspi` - Build with JSPI (will compile but fail at runtime)
-- `just test-wasm-jspi` - Run tests with JSPI build
+- `just build-wasm-jspi` - Build with JSPI (links now; deadlocks at runtime — see below)
+- `just test-wasm-jspi` - Run tests with JSPI build (uses newest puppeteer Chrome, needs 137+)
 
-**The Problem:**
-JSPI and pthreads have compatibility issues. During C++ static initialization, pthread mutex operations trigger JSPI suspension, but this happens before any `WebAssembly.promising` context exists, causing:
-```
-Error: trying to suspend without WebAssembly.promising
-```
+**The Problem (four sequential walls, found 2026-06-17):**
+Driving the build forward revealed each layer in turn:
+1. **Link**: Rust staticlibs (tokenizers, candle_nn) emit the wasm-EH symbol `__cpp_exception`, which won't resolve against legacy-EH C++ (`-sDISABLE_EXCEPTION_CATCHING=0`). Cause: `configure-wasm-jspi` was missing `-DRUST_BUILD_TYPE=ExtraSmall` (which `configure-wasm` has) → Rust defaulted to panic=unwind. FIXED (ExtraSmall ⇒ `-Cpanic=immediate-abort`, no unwinding).
+2. **Static init**: `SuspendError: trying to suspend without WebAssembly.promising` at `__wasm_call_ctors`. FIXED by adding `__wasm_call_ctors` to `-sJSPI_EXPORTS` (emscripten#24302). NOTE: `JSPI_EXPORTS` matches RAW wasm export names (no leading `_`), so the old `_main/_shardsTick/_shardsLoadScript` spelling never matched — tick/load were silently never promising. FIXED to raw names.
+3. **`shardsInit`**: same SuspendError — a fiber suspends deep in synchronous init. Worked around by making `shardsInit` promising + `await`ing it in the JS harness.
+4. **THE WALL — `pthread mutex deadlock detected`** (`own != __pthread_self()->tid`): JSPI suspension yields to the JS event loop *while wasm holds a non-recursive pthread mutex*; re-entrancy on the same (main) thread re-locks it ⇒ deadlock.
 
-**Why We Can't Disable Pthreads:**
-The codebase depends on `boost::thread` which requires pthreads. Disabling pthreads causes compilation failures.
+**Why it's architectural, not a version bug:**
+Asyncify instruments every wasm fn, so a fiber suspends from ANYWHERE and `Fiber::resume()` is a SYNCHRONOUS in-wasm stack swap (`emscripten_fiber_swap`) — no event-loop yield. Shards' scheduler depends on this: `tick()` (runtime.hpp) does `coroutineResume(wire->coro)` then reads wire state on the next line. JSPI `resume()` = `shardsFiberResume` = resolve a JS Promise = a MICROTASK; the fiber doesn't advance until the synchronous call returns to the event loop, and the suspend-to-event-loop-while-holding-a-lock causes the deadlock. JSPI is asymmetric suspend-to-JS; Shards needs symmetric synchronous coroutines. Making JSPI work ⇒ rewrite the scheduler to be JS-async (event-loop round-trip per suspend = throughput regression), audit every lock held across a suspension boundary, promise+await every entry point. Not worth it.
 
-**When This Might Work:**
-- When Emscripten fixes JSPI+pthreads compatibility
-- Requires Chrome 137+ or Firefox 139+ for JSPI support
+**The real future path:** WasmFX / core stack-switching (typed continuations) — the true analog of Asyncify fibers without instrumentation overhead. Phase 3, NOT shipping in browsers as of 2026. JSPI (Phase 4, Chrome 137+/FF 139+) is not it.
 
 **Key Insight (Shadow Stack Problem):**
 JSPI only handles the native Wasm stack. The linear memory stack (where C++ variables live) must be manually saved/restored. The implementation in `shards_fiber.js` handles this by copying the stack region to a buffer on suspend and restoring it on resume.

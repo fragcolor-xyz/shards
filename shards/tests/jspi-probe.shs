@@ -1,0 +1,5 @@
+; Minimal JSPI startup probe.
+; No Pause / no suspension: if static init (ctors) is healthy under JSPI this
+; runs to completion in a single synchronous tick and prints the marker.
+"=== JSPI STARTUP OK ===" | Log
+1 | Add(2) | Log("compute")

@@ -235,13 +235,15 @@ configure-wasm-jspi:
   export HOST_CC=$(which cc)
   export HOST_AR=$(which ar)
 
-  # NOTE: JSPI + pthreads have compatibility issues during static initialization.
-  # This build may fail at runtime with "trying to suspend without WebAssembly.promising"
-  # Keeping for experimental/future use when Emscripten fixes JSPI+pthreads.
-  # See: https://github.com/emscripten-core/emscripten/issues/19287
+  # RUST_BUILD_TYPE=ExtraSmall (matching configure-wasm) builds Rust with
+  # -Cpanic=immediate-abort, so Rust emits no unwinding code. Without it, the
+  # rel-with-deb-info profile defaults to panic=unwind and Rust staticlibs
+  # reference the wasm-EH symbol __cpp_exception, which fails to link against the
+  # legacy-EH C++ (-sDISABLE_EXCEPTION_CATCHING=0). See cmake/Rust.cmake.
   cmake -Bbuild/WasmJspi -GNinja \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DSKIP_HEAVY_INLINE=1 \
+    -DRUST_BUILD_TYPE=ExtraSmall \
     -DUSE_LTO=0 \
     -DRUST_USE_LTO=0 \
     -DEMSCRIPTEN_PTHREADS=ON \

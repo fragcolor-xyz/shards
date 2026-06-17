@@ -160,8 +160,8 @@
       };
       // if (urlQuery["trace"] !== "1") {
 
-      // Initialize shards
-      mod._shardsInit();
+      // Initialize shards (promising under JSPI -> must await)
+      await mod._shardsInit();
 
       // Set the canvas to use for input and graphics
       mod["canvas"] = canvas;
@@ -311,7 +311,7 @@
         const basePath = lastSlash >= 0 ? `/tfs/${action.data.substring(0, lastSlash + 1)}` : '/tfs/';
         const basePathPtr = mod.stringToNewUTF8(basePath);
         try {
-          mod._shardsLoadScript(returnValuePtr, codePtr, basePathPtr, execWorkingDirPtr);
+          await mod._shardsLoadScript(returnValuePtr, codePtr, basePathPtr, execWorkingDirPtr);
           const inst = mod.HEAP32[returnValuePtr >> 2];
 
           if (!inst) {
@@ -324,7 +324,7 @@
           try {
             var result = 1;
             while (result > 0) {
-              mod._shardsTick(inst, returnValuePtr);
+              await mod._shardsTick(inst, returnValuePtr);
               result = mod.HEAP32[returnValuePtr >> 2];
               const err = mod._shardsGetError(inst);
               if (err) {
