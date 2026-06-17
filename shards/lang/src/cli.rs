@@ -848,7 +848,7 @@ fn enumerate(filter: Option<&str>, json: bool) -> Result<(), Error> {
 
 fn search(query: &str, json: bool) -> Result<(), Error> {
   use serde_json::json;
-  let cq = std::ffi::CString::new(query).unwrap_or_default();
+  let cq = std::ffi::CString::new(query)?;
   let mut count: u64 = 0;
   let ptr = unsafe { shards_discovery_search(cq.as_ptr(), 0, &mut count) };
   let scored = collect_index(ptr, count);

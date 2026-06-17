@@ -2284,7 +2284,8 @@ namespace discovery {
 // and the command line agree on shape and ranking.
 
 // Compact type signature: deduplicated basic type names, abbreviated when long so a
-// row stays one line. Matches `compact_types` in cli.rs.
+// row stays one line. This is the canonical implementation; the CLI consumes it via
+// shards_discovery_index / shards_discovery_search rather than duplicating it.
 static std::string compactTypes(const SHTypesInfo &types) {
   if (types.len == 0)
     return "Any";
@@ -2456,11 +2457,11 @@ struct ShardsSearch {
 
   SHOptionalString help() {
     return SHCCSTR("Fuzzy-searches shards by name and summary for the query string given as input. Returns a sequence of "
-                   "tables {name, summary, score} ranked best-first (score in ~0..1): name substring matches rank highest, "
-                   "with edit-distance typo tolerance on the name and a weaker summary-substring signal.");
+                   "tables {name, input, output, summary, score} ranked best-first (score in ~0..1): name substring matches "
+                   "rank highest, with edit-distance typo tolerance on the name and a weaker summary-substring signal.");
   }
 
-  PARAM_VAR(_limit, "Limit", "Maximum number of results to return (0 = all matches).", {CoreInfo::IntType});
+  PARAM_VAR(_limit, "Limit", "Maximum number of results to return (0 = all matches).", {CoreInfo::NoneType, CoreInfo::IntType});
   PARAM_IMPL(PARAM_IMPL_FOR(_limit));
 
   SeqVar _output{};
@@ -2483,6 +2484,8 @@ struct ShardsSearch {
     for (auto &sr : discovery::search(SHSTRVIEW(input), limit)) {
       TableVar t{};
       t["name"] = Var(sr.row.name);
+      t["input"] = Var(sr.row.input);
+      t["output"] = Var(sr.row.output);
       t["summary"] = Var(sr.row.summary);
       t["score"] = Var(sr.score);
       _output.emplace_back(std::move(t));

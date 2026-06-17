@@ -15,10 +15,13 @@
   {Take("summary") | ExpectString}
 
   // --- Shards.Search: an exact name ranks first with score 1.0 ---
+  // Search rows carry the same shape as the index plus a score (name/input/output/summary/score).
   "ToJson" | Shards.Search = hits
   hits | Count | IsMore(0) | Assert.Is(true)
-  hits | Take(0) | ExpectTable | Take("name")  | ExpectString | Assert.Is("ToJson")
-  hits | Take(0) | ExpectTable | Take("score") | ExpectFloat  | Assert.Is(1.0)
+  hits | Take(0) | ExpectTable | Take("name")   | ExpectString | Assert.Is("ToJson")
+  hits | Take(0) | ExpectTable | Take("input")  | ExpectString
+  hits | Take(0) | ExpectTable | Take("output") | ExpectString
+  hits | Take(0) | ExpectTable | Take("score")  | ExpectFloat  | Assert.Is(1.0)
 
   // --- Limit is respected ---
   "string" | Shards.Search(Limit: 3) | Count | IsLessEqual(3) | Assert.Is(true)
