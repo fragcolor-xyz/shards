@@ -1,0 +1,39 @@
+// Discovery shards: Shards.Index (tier-1 list) and Shards.Search (fuzzy ranked).
+// These back agent/edge-talk discovery from .shs; the CLI `enumerate`/`search`
+// share the same core implementation.
+
+@mesh(root)
+
+@wire(test {
+  // --- Shards.Index: non-empty; every row carries the four keys ---
+  Shards.Index = idx
+  idx | Count | IsMore(0) | Assert.Is(true)
+  idx | Take(0) | ExpectTable
+  {Take("name")    | ExpectString}
+  {Take("input")   | ExpectString}
+  {Take("output")  | ExpectString}
+  {Take("summary") | ExpectString}
+
+  // --- Shards.Search: an exact name ranks first with score 1.0 ---
+  "ToJson" | Shards.Search = hits
+  hits | Count | IsMore(0) | Assert.Is(true)
+  hits | Take(0) | ExpectTable | Take("name")  | ExpectString | Assert.Is("ToJson")
+  hits | Take(0) | ExpectTable | Take("score") | ExpectFloat  | Assert.Is(1.0)
+
+  // --- Limit is respected ---
+  "string" | Shards.Search(Limit: 3) | Count | IsLessEqual(3) | Assert.Is(true)
+
+  // --- Edit-distance typo tolerance: "tojsom" still surfaces ToJson ---
+  "tojsom" | Shards.Search(Limit: 5) = typo-hits
+  typo-hits | Count | IsMore(0) | Assert.Is(true)
+  typo-hits | Take(0) | ExpectTable | Take("name") | ExpectString | Assert.Is("ToJson")
+
+  // --- The edge-talk path: results serialize to JSON ---
+  "json" | Shards.Search(Limit: 3) | ToJson | ExpectString
+  Shards.Index | Limit(2) | ToJson | ExpectString
+
+  "discovery OK" | Log
+})
+
+@schedule(root test)
+@run(root)

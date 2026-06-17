@@ -4,7 +4,7 @@ use crate::{eval, formatter, Program};
 use crate::{eval::eval, eval::new_cancellation_token, read::read};
 use clap::{arg, CommandFactory, Parser};
 use clap_complete::{generate, Shell};
-use shards::core::{getShards, Core};
+use shards::core::Core;
 use shards::types::{get_enum_info, type_to_string, AutoShardRef, EnumInfoId, Mesh};
 use shards::util::from_raw_parts_allow_null;
 use shards::{
@@ -21,10 +21,29 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{atomic, Arc};
 
+// One discovery row, owned by the core; freed via shards_discovery_free.
+#[repr(C)]
+struct ShShardIndexEntry {
+  name: *const c_char,
+  input: *const c_char,
+  output: *const c_char,
+  summary: *const c_char,
+  score: f64,
+}
+
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
   fn shards_install_signal_handlers();
   fn shards_decompress_strings();
+  // Discovery index + ranked search, served live from the core registry so the CLI
+  // (`enumerate`/`search`) and the Shards.Index / Shards.Search shards share one impl.
+  fn shards_discovery_index(out_count: *mut u64) -> *mut ShShardIndexEntry;
+  fn shards_discovery_search(
+    query: *const c_char,
+    limit: i64,
+    out_count: *mut u64,
+  ) -> *mut ShShardIndexEntry;
+  fn shards_discovery_free(entries: *mut ShShardIndexEntry, count: u64);
 }
 
 // `shards pak` (single-file packaging) lives in the `pak` module. The startup
@@ -757,50 +776,37 @@ struct ShardSummary {
   summary: String,
 }
 
-/// Compact type signature for the index (basic type names only; full detail lives in
-/// `docs --json`). Long unions are abbreviated so the index stays one line per shard.
-fn compact_types(types: &[SHTypeInfo]) -> String {
-  if types.is_empty() {
-    return "Any".to_string();
-  }
-  let mut names: Vec<&str> = types.iter().map(|t| type_to_string(t.basicType.into())).collect();
-  names.dedup();
-  if names.len() > 3 {
-    format!("{}/{}/…", names[0], names[1])
-  } else {
-    names.join("/")
-  }
-}
-
-/// Build the Tier-1 index: every registered shard as name / in→out / one-line summary.
-/// Sorted by name. Creates each shard once to read its types and help (same cost as
-/// the docs/check paths; sub-second).
-fn build_shard_index() -> Vec<ShardSummary> {
-  unsafe {
-    shards_decompress_strings();
-  }
+/// Read the heap-owned entries returned by a `shards_discovery_*` C entry into owned
+/// Rust values (paired with relevance score), then release the C allocation. The index
+/// build + ranking live in the core (discovery::buildIndex / discovery::search), so the
+/// CLI can never drift from the Shards.Index / Shards.Search shards.
+fn collect_index(ptr: *mut ShShardIndexEntry, count: u64) -> Vec<(ShardSummary, f64)> {
   let mut out = Vec::new();
-  for cname in getShards() {
-    let name = cname.to_string_lossy().to_string();
-    if let Some(shard) = AutoShardRef::create(&name, None) {
-      let s = &shard.0;
-      let summary = s
-        .help()
-        .unwrap_or("")
-        .lines()
-        .next()
-        .unwrap_or("")
-        .trim()
-        .to_string();
-      out.push(ShardSummary {
-        input: compact_types(s.input_types()),
-        output: compact_types(s.output_types()),
-        summary,
-        name,
-      });
-    }
+  if ptr.is_null() {
+    return out;
   }
-  out.sort_by(|a, b| a.name.cmp(&b.name));
+  let cstr = |p: *const c_char| -> String {
+    if p.is_null() {
+      String::new()
+    } else {
+      unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
+    }
+  };
+  unsafe {
+    for i in 0..count {
+      let e = &*ptr.add(i as usize);
+      out.push((
+        ShardSummary {
+          name: cstr(e.name),
+          input: cstr(e.input),
+          output: cstr(e.output),
+          summary: cstr(e.summary),
+        },
+        e.score,
+      ));
+    }
+    shards_discovery_free(ptr, count);
+  }
   out
 }
 
@@ -827,7 +833,12 @@ fn print_index(items: &[ShardSummary], json: bool) -> Result<(), Error> {
 }
 
 fn enumerate(filter: Option<&str>, json: bool) -> Result<(), Error> {
-  let mut items = build_shard_index();
+  let mut count: u64 = 0;
+  let ptr = unsafe { shards_discovery_index(&mut count) };
+  let mut items: Vec<ShardSummary> = collect_index(ptr, count)
+    .into_iter()
+    .map(|(s, _)| s)
+    .collect();
   if let Some(f) = filter {
     let f = f.to_lowercase();
     items.retain(|i| i.name.to_lowercase().contains(&f));
@@ -836,12 +847,32 @@ fn enumerate(filter: Option<&str>, json: bool) -> Result<(), Error> {
 }
 
 fn search(query: &str, json: bool) -> Result<(), Error> {
-  let q = query.to_lowercase();
-  let items: Vec<ShardSummary> = build_shard_index()
-    .into_iter()
-    .filter(|i| i.name.to_lowercase().contains(&q) || i.summary.to_lowercase().contains(&q))
-    .collect();
-  print_index(&items, json)
+  use serde_json::json;
+  let cq = std::ffi::CString::new(query).unwrap_or_default();
+  let mut count: u64 = 0;
+  let ptr = unsafe { shards_discovery_search(cq.as_ptr(), 0, &mut count) };
+  let scored = collect_index(ptr, count);
+  if json {
+    let arr: Vec<_> = scored
+      .iter()
+      .map(|(i, score)| {
+        json!({ "name": i.name, "input": i.input, "output": i.output, "summary": i.summary, "score": score })
+      })
+      .collect();
+    println!("{}", serde_json::to_string_pretty(&arr)?);
+  } else {
+    for (i, score) in &scored {
+      if i.summary.is_empty() {
+        println!("{:<32} {} → {}  [{:.2}]", i.name, i.input, i.output, score);
+      } else {
+        println!(
+          "{:<32} {} → {}  [{:.2}]  {}",
+          i.name, i.input, i.output, score, i.summary
+        );
+      }
+    }
+  }
+  Ok(())
 }
 
 fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error> {

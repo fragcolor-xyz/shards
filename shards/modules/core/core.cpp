@@ -12,6 +12,10 @@
 #include <boost/algorithm/string.hpp>
 #include <chrono>
 #include <shards/core/params.hpp>
+#include <shards/ops.hpp>
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
 
 #if SH_ANDROID
 extern "C" {
@@ -2274,6 +2278,285 @@ struct GetObjectTypeHelp {
   }
 };
 
+namespace discovery {
+// Shared discovery helpers behind Shards.Index / Shards.Search. These mirror the
+// CLI's tier-1 index (`enumerate`/`search` in shards/lang/src/cli.rs) so the shards
+// and the command line agree on shape and ranking.
+
+// Compact type signature: deduplicated basic type names, abbreviated when long so a
+// row stays one line. Matches `compact_types` in cli.rs.
+static std::string compactTypes(const SHTypesInfo &types) {
+  if (types.len == 0)
+    return "Any";
+  std::vector<std::string> names;
+  for (uint32_t i = 0; i < types.len; i++) {
+    std::string n = type2Name(types.elements[i].basicType);
+    if (names.empty() || names.back() != n) // consecutive dedup, like Rust Vec::dedup
+      names.push_back(std::move(n));
+  }
+  if (names.size() > 3)
+    return names[0] + "/" + names[1] + "/…";
+  std::string out;
+  for (size_t i = 0; i < names.size(); i++) {
+    if (i)
+      out.push_back('/');
+    out += names[i];
+  }
+  return out;
+}
+
+// First line of a (possibly compressed) help string, trimmed. Used as the summary.
+static std::string firstHelpLine(const SHOptionalString &help) {
+  std::string_view sv = help.string ? std::string_view(help.string) : std::string_view(getString(help.crc));
+  if (size_t nl = sv.find('\n'); nl != std::string_view::npos)
+    sv = sv.substr(0, nl);
+  size_t b = sv.find_first_not_of(" \t\r");
+  if (b == std::string_view::npos)
+    return "";
+  size_t e = sv.find_last_not_of(" \t\r");
+  return std::string(sv.substr(b, e - b + 1));
+}
+
+struct IndexRow {
+  std::string name;
+  std::string input;
+  std::string output;
+  std::string summary;
+};
+
+// Build the tier-1 index once: every registered shard as name / in→out / one-line
+// summary, sorted by name. Creating each shard to read its types/help is the same
+// cost the CLI and check paths pay; it's sub-second over the whole registry.
+static std::vector<IndexRow> buildIndex() {
+#ifdef SH_COMPRESSED_STRINGS
+  static bool decompressed = false;
+  if (!decompressed) {
+    decompressStrings();
+    decompressed = true;
+  }
+#endif
+  std::vector<IndexRow> rows;
+  for (auto &[name, _] : GetGlobals().ShardsRegister) {
+    auto shard = createShard(name);
+    if (!shard)
+      continue;
+    DEFER(shard->destroy(shard));
+    IndexRow row;
+    row.name = std::string(name);
+    row.input = compactTypes(shard->inputTypes(shard));
+    row.output = compactTypes(shard->outputTypes(shard));
+    row.summary = firstHelpLine(shard->help(shard));
+    rows.push_back(std::move(row));
+  }
+  std::sort(rows.begin(), rows.end(), [](const IndexRow &a, const IndexRow &b) { return a.name < b.name; });
+  return rows;
+}
+
+static size_t levenshtein(std::string_view a, std::string_view b) {
+  const size_t n = b.size();
+  std::vector<size_t> prev(n + 1), cur(n + 1);
+  for (size_t j = 0; j <= n; j++)
+    prev[j] = j;
+  for (size_t i = 1; i <= a.size(); i++) {
+    cur[0] = i;
+    for (size_t j = 1; j <= n; j++) {
+      size_t cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+      cur[j] = std::min({prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost});
+    }
+    std::swap(prev, cur);
+  }
+  return prev[n];
+}
+
+// Fuzzy relevance of an already-lowercased query against one row, normalized to ~[0,1].
+// A name substring dominates (ranked by tightness + position); an edit-distance fallback
+// on the name tolerates typos; a summary substring is a weaker signal. 0 == drop.
+static double matchScore(std::string_view query, const IndexRow &row) {
+  if (query.empty())
+    return 0.0;
+  std::string name = boost::algorithm::to_lower_copy(row.name);
+  std::string summary = boost::algorithm::to_lower_copy(row.summary);
+
+  double best = 0.0;
+  if (name == query) {
+    best = 1.0;
+  } else if (size_t p = name.find(query); p != std::string::npos) {
+    double lenRatio = double(query.size()) / double(name.size());
+    double posPenalty = double(p) / double(name.size());
+    best = 0.6 + 0.3 * lenRatio - 0.1 * posPenalty;
+  } else {
+    size_t d = levenshtein(query, name);
+    size_t tol = std::max<size_t>(1, name.size() / 3);
+    if (d <= tol)
+      best = std::max(0.0, 0.5 - 0.1 * double(d));
+  }
+  if (!summary.empty() && summary.find(query) != std::string::npos)
+    best = std::max(best, 0.35);
+  return best;
+}
+
+struct ScoredRow {
+  IndexRow row;
+  double score;
+};
+
+// Single source of truth for ranked search: scores the whole index against the
+// (raw, case-insensitive) query, drops non-matches, sorts best-first with a
+// deterministic name tie-break, and truncates to limit (0 = all). Shared by the
+// Shards.Search shard and the CLI (`shards search`) via shards_discovery_search.
+static std::vector<ScoredRow> search(std::string_view rawQuery, int64_t limit) {
+  std::string query = boost::algorithm::to_lower_copy(std::string(rawQuery));
+  std::vector<ScoredRow> scored;
+  for (auto &row : buildIndex()) {
+    double s = matchScore(query, row);
+    if (s > 0.0)
+      scored.push_back({std::move(row), s});
+  }
+  std::sort(scored.begin(), scored.end(), [](const ScoredRow &a, const ScoredRow &b) {
+    if (a.score != b.score)
+      return a.score > b.score;     // higher score first
+    return a.row.name < b.row.name; // deterministic tie-break by name
+  });
+  if (limit > 0 && (size_t)limit < scored.size())
+    scored.resize((size_t)limit);
+  return scored;
+}
+} // namespace discovery
+
+struct ShardsIndex {
+  static SHTypesInfo inputTypes() { return CoreInfo::NoneType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfAnyTableType; }
+
+  SHOptionalString help() {
+    return SHCCSTR("Returns the compact discovery index of every shard as a sequence of tables "
+                   "{name, input, output, summary}, where summary is the first line of the shard's help, sorted by name.");
+  }
+
+  SeqVar _output{};
+
+  void cleanup(SHContext *context) { _output = {}; }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+    for (auto &row : discovery::buildIndex()) {
+      TableVar t{};
+      t["name"] = Var(row.name);
+      t["input"] = Var(row.input);
+      t["output"] = Var(row.output);
+      t["summary"] = Var(row.summary);
+      _output.emplace_back(std::move(t));
+    }
+    return _output;
+  }
+};
+
+struct ShardsSearch {
+  static SHTypesInfo inputTypes() { return CoreInfo::StringType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::SeqOfAnyTableType; }
+
+  SHOptionalString help() {
+    return SHCCSTR("Fuzzy-searches shards by name and summary for the query string given as input. Returns a sequence of "
+                   "tables {name, summary, score} ranked best-first (score in ~0..1): name substring matches rank highest, "
+                   "with edit-distance typo tolerance on the name and a weaker summary-substring signal.");
+  }
+
+  PARAM_VAR(_limit, "Limit", "Maximum number of results to return (0 = all matches).", {CoreInfo::IntType});
+  PARAM_IMPL(PARAM_IMPL_FOR(_limit));
+
+  SeqVar _output{};
+
+  PARAM_REQUIRED_VARIABLES();
+  SHTypeInfo composeV2(SHInstanceData &data) {
+    PARAM_COMPOSE_REQUIRED_VARIABLES(data);
+    return outputTypes().elements[0];
+  }
+
+  void warmup(SHContext *context) { PARAM_WARMUP(context); }
+  void cleanup(SHContext *context) {
+    PARAM_CLEANUP(context);
+    _output = {};
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    _output.clear();
+    int64_t limit = (_limit.valueType == SHType::Int) ? _limit.payload.intValue : 0;
+    for (auto &sr : discovery::search(SHSTRVIEW(input), limit)) {
+      TableVar t{};
+      t["name"] = Var(sr.row.name);
+      t["summary"] = Var(sr.row.summary);
+      t["score"] = Var(sr.score);
+      _output.emplace_back(std::move(t));
+    }
+    return _output;
+  }
+};
+
+// Internal C entry points for the CLI (`shards enumerate`/`search`) so the command
+// line and the Shards.Index / Shards.Search shards share one index + ranking impl
+// (discovery::buildIndex / discovery::search). NOT part of the public _SHCore ABI;
+// the lang crate links these directly (same pattern as shards_decompress_strings).
+// Returned strings/arrays are heap-owned — release with shards_discovery_free.
+extern "C" {
+struct SHShardIndexEntry {
+  const char *name;
+  const char *input;
+  const char *output;
+  const char *summary;
+  double score; // relevance for search results; 0 for the plain index
+};
+
+static const char *shDiscoveryOwn(const std::string &s) {
+  char *p = (char *)malloc(s.size() + 1);
+  memcpy(p, s.data(), s.size());
+  p[s.size()] = '\0';
+  return p;
+}
+
+SHShardIndexEntry *shards_discovery_index(uint64_t *outCount) {
+  auto rows = discovery::buildIndex();
+  *outCount = rows.size();
+  if (rows.empty())
+    return nullptr;
+  auto *out = (SHShardIndexEntry *)malloc(sizeof(SHShardIndexEntry) * rows.size());
+  for (size_t i = 0; i < rows.size(); i++) {
+    out[i].name = shDiscoveryOwn(rows[i].name);
+    out[i].input = shDiscoveryOwn(rows[i].input);
+    out[i].output = shDiscoveryOwn(rows[i].output);
+    out[i].summary = shDiscoveryOwn(rows[i].summary);
+    out[i].score = 0.0;
+  }
+  return out;
+}
+
+SHShardIndexEntry *shards_discovery_search(const char *query, int64_t limit, uint64_t *outCount) {
+  auto scored = discovery::search(query ? std::string_view(query) : std::string_view(), limit);
+  *outCount = scored.size();
+  if (scored.empty())
+    return nullptr;
+  auto *out = (SHShardIndexEntry *)malloc(sizeof(SHShardIndexEntry) * scored.size());
+  for (size_t i = 0; i < scored.size(); i++) {
+    out[i].name = shDiscoveryOwn(scored[i].row.name);
+    out[i].input = shDiscoveryOwn(scored[i].row.input);
+    out[i].output = shDiscoveryOwn(scored[i].row.output);
+    out[i].summary = shDiscoveryOwn(scored[i].row.summary);
+    out[i].score = scored[i].score;
+  }
+  return out;
+}
+
+void shards_discovery_free(SHShardIndexEntry *entries, uint64_t count) {
+  if (!entries)
+    return;
+  for (uint64_t i = 0; i < count; i++) {
+    free((void *)entries[i].name);
+    free((void *)entries[i].input);
+    free((void *)entries[i].output);
+    free((void *)entries[i].summary);
+  }
+  free(entries);
+}
+}
+
 struct Iterate {
   PARAM_PARAMVAR(_from, "From", "The starting key to begin searching from (including this key).", {CoreInfo::AnyType});
   PARAM_PARAMVAR(_to, "To",
@@ -3847,6 +4130,8 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("UnsafeActivate!", UnsafeActivate);
   REGISTER_SHARD("Shards.Enumerate", GetShards);
   REGISTER_SHARD("Shards.Help", GetShardHelp);
+  REGISTER_SHARD("Shards.Index", ShardsIndex);
+  REGISTER_SHARD("Shards.Search", ShardsSearch);
   REGISTER_SHARD("LastError", LastError);
   REGISTER_SHARD("Shuffle", Shuffle);
   REGISTER_SHARD("Shards.EnumTypes", GetEnumTypes);
