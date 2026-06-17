@@ -246,11 +246,20 @@ if(EMSCRIPTEN)
       "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/shards_fiber.js"
     )
 
-    # Configure JSPI imports (suspending functions) and exports (promising functions)
+    # Configure JSPI imports (suspending functions) and exports (promising functions).
+    # NOTE: JSPI_EXPORTS / JSPI_IMPORTS match RAW wasm export names (no leading "_";
+    # the default list is ['main','__main_argc_argv']). The previous '_main'/'_shardsTick'/
+    # '_shardsLoadScript' spelling never matched, so shardsTick/shardsLoadScript were
+    # silently NOT made promising.
+    # __wasm_call_ctors must be promising: C++ static initializers (locale setup,
+    # chrono::steady_clock::now(), pthread mutex init) can trigger a suspending
+    # import before main's promising frame exists. Without this, startup dies with
+    # "SuspendError: trying to suspend without WebAssembly.promising".
+    # See: https://github.com/emscripten-core/emscripten/issues/24302
     target_link_options(shards-core PUBLIC
       "-sJSPI=1"
       "-sJSPI_IMPORTS=['shardsFiberSuspend']"
-      "-sJSPI_EXPORTS=['_main','_shardsTick','_shardsLoadScript']"
+      "-sJSPI_EXPORTS=['__wasm_call_ctors','main','shardsLoadScript','shardsTick']"
     )
 
     # Export runtime methods needed for fiber management
