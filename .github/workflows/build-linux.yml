@@ -155,6 +155,14 @@ jobs:
           ./shards new ../shards/tests/db-paths.shs
           ./shards new ../shards/tests/suspend-resume.shs
           ./shards new ../shards/tests/help.shs
+          ./shards new ../shards/tests/discovery.shs
+          # Exercise the discovery CLI path so the shards_discovery_* C ABI
+          # (consumed by `enumerate`/`search`) is covered, not just the shards.
+          ./shards enumerate > /dev/null
+          ./shards enumerate --filter json --json > /dev/null
+          ./shards search ToJson > /dev/null
+          ./shards search tojsom --json > /dev/null
+          ./shards search zzznomatchqqq --json > /dev/null
           ./shards new ../shards/tests/whendone.shs
           ./shards new ../shards/tests/return.shs
           ./shards new ../shards/tests/table-seq-push.shs
