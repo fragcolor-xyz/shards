@@ -2369,31 +2369,68 @@ static size_t levenshtein(std::string_view a, std::string_view b) {
   return prev[n];
 }
 
+// Fuzzy relevance of a single (already-lowercased) term against one row, normalized to
+// ~[0,1]. A name substring dominates (ranked by tightness + position); an edit-distance
+// fallback on the name tolerates typos; a summary substring is a weaker signal. 0 == miss.
+static double termScore(std::string_view term, const std::string &name, const std::string &summary) {
+  if (term.empty())
+    return 0.0;
+  double best = 0.0;
+  if (name == term) {
+    best = 1.0;
+  } else if (size_t p = name.find(term); p != std::string::npos) {
+    double lenRatio = double(term.size()) / double(name.size());
+    double posPenalty = double(p) / double(name.size());
+    best = 0.6 + 0.3 * lenRatio - 0.1 * posPenalty;
+  } else {
+    size_t d = levenshtein(term, name);
+    size_t tol = std::max<size_t>(1, name.size() / 3);
+    if (d <= tol)
+      best = std::max(0.0, 0.5 - 0.1 * double(d));
+  }
+  if (!summary.empty() && summary.find(term) != std::string::npos)
+    best = std::max(best, 0.35);
+  return best;
+}
+
 // Fuzzy relevance of an already-lowercased query against one row, normalized to ~[0,1].
-// A name substring dominates (ranked by tightness + position); an edit-distance fallback
-// on the name tolerates typos; a summary substring is a weaker signal. 0 == drop.
+// The query is split on whitespace: a single keyword scores exactly as termScore (exact
+// name = 1.0, substring, typo tolerance). A multi-word query averages its per-term scores,
+// so e.g. "swiftui stack" still surfaces stack-related shards even though no name/summary
+// contains that phrase verbatim — rows matching more (and better) terms rank higher. The
+// whole-phrase score is also taken, so an exact phrase hit in a name/summary still wins.
+// 0 == drop.
 static double matchScore(std::string_view query, const IndexRow &row) {
   if (query.empty())
     return 0.0;
   std::string name = boost::algorithm::to_lower_copy(row.name);
   std::string summary = boost::algorithm::to_lower_copy(row.summary);
 
-  double best = 0.0;
-  if (name == query) {
-    best = 1.0;
-  } else if (size_t p = name.find(query); p != std::string::npos) {
-    double lenRatio = double(query.size()) / double(name.size());
-    double posPenalty = double(p) / double(name.size());
-    best = 0.6 + 0.3 * lenRatio - 0.1 * posPenalty;
-  } else {
-    size_t d = levenshtein(query, name);
-    size_t tol = std::max<size_t>(1, name.size() / 3);
-    if (d <= tol)
-      best = std::max(0.0, 0.5 - 0.1 * double(d));
+  auto isSpace = [](char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; };
+  std::vector<std::string_view> terms;
+  for (size_t i = 0; i < query.size();) {
+    while (i < query.size() && isSpace(query[i]))
+      i++;
+    size_t start = i;
+    while (i < query.size() && !isSpace(query[i]))
+      i++;
+    if (i > start)
+      terms.push_back(query.substr(start, i - start));
   }
-  if (!summary.empty() && summary.find(query) != std::string::npos)
-    best = std::max(best, 0.35);
-  return best;
+  if (terms.empty())
+    return 0.0;
+  if (terms.size() == 1)
+    return termScore(terms[0], name, summary); // single keyword: behavior unchanged
+
+  double sum = 0.0;
+  bool any = false;
+  for (auto &t : terms) {
+    double s = termScore(t, name, summary);
+    sum += s;
+    any = any || s > 0.0;
+  }
+  double multi = any ? sum / double(terms.size()) : 0.0;
+  return std::max(multi, termScore(query, name, summary));
 }
 
 struct ScoredRow {
@@ -2458,7 +2495,9 @@ struct ShardsSearch {
   SHOptionalString help() {
     return SHCCSTR("Fuzzy-searches shards by name and summary for the query string given as input. Returns a sequence of "
                    "tables {name, input, output, summary, score} ranked best-first (score in ~0..1): name substring matches "
-                   "rank highest, with edit-distance typo tolerance on the name and a weaker summary-substring signal.");
+                   "rank highest, with edit-distance typo tolerance on the name and a weaker summary-substring signal. "
+                   "Multi-word queries are matched term by term, so a phrase like \"swiftui stack\" still surfaces "
+                   "stack-related shards.");
   }
 
   PARAM_VAR(_limit, "Limit", "Maximum number of results to return (0 = all matches).", {CoreInfo::NoneType, CoreInfo::IntType});

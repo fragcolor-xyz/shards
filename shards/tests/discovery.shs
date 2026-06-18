@@ -31,6 +31,10 @@
   typo-hits | Count | IsMore(0) | Assert.Is(true)
   typo-hits | Take(0) | ExpectTable | Take("name") | ExpectString | Assert.Is("ToJson")
 
+  // --- Multi-word queries tokenize: a phrase that matches no single name/summary
+  //     verbatim still returns results because each term is scored on its own ---
+  "tojson fromjson" | Shards.Search(Limit: 5) | Count | IsMore(0) | Assert.Is(true)
+
   // --- The edge-talk path: results serialize to JSON ---
   "json" | Shards.Search(Limit: 3) | ToJson | ExpectString
   Shards.Index | Limit(2) | ToJson | ExpectString

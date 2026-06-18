@@ -24,6 +24,11 @@ on:
           - riscv64-linux-musl
           - riscv32-linux-musl
 
+concurrency:
+  # A new push to a PR cancels that PR's in-progress run; pushes to devel run to completion.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-cross:
     strategy:
