@@ -239,6 +239,7 @@ if [ "$WITH_CPU" = true ]; then
         "shards/tests/table-recurse.shs||"
         "shards/tests/whendone.shs||"
         "shards/tests/help.shs||"
+        "shards/tests/discovery.shs||"
         "shards/tests/suspend-resume.shs||"
         "shards/tests/complex-deserialize.shs||"
         # Network and I/O tests
