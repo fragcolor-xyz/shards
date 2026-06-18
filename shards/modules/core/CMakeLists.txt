@@ -111,9 +111,16 @@ if(APPLE)
   target_include_directories(shards-core-swift-impl PRIVATE ${SHARDS_DIR}/include)
   set_target_properties(shards-core-swift-impl PROPERTIES Swift_MODULE_NAME shards_core_swift)
 
+  # ObjC @try/@catch shim that shards.swift binds via @_silgen_name (SHRunCatchingNSException).
+  # Built as its own C/ObjC static lib so every generator (Ninja, Xcode framework, iOS)
+  # compiles it with clang, and surfaced through the same interface that carries the Swift
+  # impl so it lands on the final link right after it (resolving shards.o's reference).
+  add_library(shards-core-objc-shim STATIC ${SHARDS_DIR}/include/shards/SHObjCException.m)
+  target_include_directories(shards-core-objc-shim PRIVATE ${SHARDS_DIR}/include)
+
   # Intermediate target some workaround for the xcode generator propagating some non-existent swift modules in combination with target duplication not working
   add_library(shards-core-swift INTERFACE)
-  target_link_libraries(shards-core-swift INTERFACE $<TARGET_FILE:shards-core-swift-impl>)
+  target_link_libraries(shards-core-swift INTERFACE $<TARGET_FILE:shards-core-swift-impl> shards-core-objc-shim)
   add_dependencies(shards-core-swift shards-core-swift-impl)
 
   target_link_libraries(shards-module-core shards-core-swift)
