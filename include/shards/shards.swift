@@ -2171,6 +2171,19 @@ class WireController {
         return info.failed
     }
 
+    /// Number of top-level shards in the wire's root flow. A script that only
+    /// *defines* wires (e.g. `@wire(main { … })`) without invoking them produces a
+    /// root with 0 shards — composing that (especially with an external bound)
+    /// yields a shard-less compose error, so callers should detect and reject it.
+    var shardCount: Int {
+        Int(G.Core.pointee.getWireInfo(nativeRef).shards.len)
+    }
+
+    /// True when the wire's root flow has no shards (see `shardCount`).
+    var isEmpty: Bool {
+        shardCount == 0
+    }
+
     var failureMessage: String? {
         let info = G.Core.pointee.getWireInfo(nativeRef)
         if info.failed {
