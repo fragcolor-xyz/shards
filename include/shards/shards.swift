@@ -77,6 +77,42 @@ private let kAudioSampleRateDivisor: UInt32 = 25
 import Foundation
 import shards
 
+// MARK: - Objective-C exception boundary
+//
+// Swift cannot catch Objective-C exceptions; the shards runtime only bridges C++
+// ones. An NSException raised inside a Swift shard's lifecycle (e.g. NSColor
+// component access on a non-RGB color, or UIKit/AppKit misuse) would unwind
+// through Swift frames and hard-crash the process. `SHRunCatchingNSException`
+// (defined in SHObjCException.m, bound by symbol so no bridging header is needed)
+// runs a thunk inside an ObjC @try/@catch; the helper below adapts it to a Swift
+// closure and surfaces the exception description, so the shard bridge can abort
+// the wire with a real error instead of crashing.
+@_silgen_name("SHRunCatchingNSException")
+private func _shRunCatchingNSException(
+    _ thunk: @convention(c) (UnsafeMutableRawPointer?) -> Void,
+    _ ctx: UnsafeMutableRawPointer?
+) -> UnsafePointer<CChar>?
+
+/// Runs `body` inside an Objective-C @try/@catch. Returns `nil` on success, or the
+/// caught exception's description. `body` runs synchronously before returning.
+@usableFromInline
+func runCatchingObjCException(_ body: () -> Void) -> String? {
+    withoutActuallyEscaping(body) { escapingBody in
+        var box: () -> Void = escapingBody
+        return withUnsafeMutablePointer(to: &box) { boxPtr in
+            let raw = UnsafeMutableRawPointer(boxPtr)
+            guard let cString = _shRunCatchingNSException({ ctx in
+                ctx!.assumingMemoryBound(to: (() -> Void).self).pointee()
+            }, raw) else {
+                return nil
+            }
+            let message = String(cString: cString)
+            free(UnsafeMutableRawPointer(mutating: cString))
+            return message
+        }
+    }
+}
+
 public struct Globals {
     public var Core: UnsafeMutablePointer<SHCore>
 
@@ -1894,8 +1930,20 @@ extension IShard {}
     let typedInstance = unsafeBitCast(instance, to: T.self)
 
     var value = SHShardComposeResult()
-    let result = typedInstance.compose(data: data!.pointee)
-    switch result {
+    var result: Result<SHTypeInfo, ShardError>? = nil
+    let objcError = runCatchingObjCException {
+        result = typedInstance.compose(data: data!.pointee)
+    }
+    if let objcError = objcError {
+        var error = SHError()
+        error.code = 1
+        typedInstance.errorCache = ("Objective-C exception in shard: " + objcError).utf8CString
+        error.message.string = typedInstance.errorCache.withUnsafeBufferPointer { $0.baseAddress }
+        error.message.len = UInt64(typedInstance.errorCache.count - 1)
+        value.error = error
+        return value
+    }
+    switch result! {
     case let .success(typ):
         value.result = typ
         return value
@@ -1918,8 +1966,18 @@ extension IShard {}
     let typedInstance = unsafeBitCast(instance, to: T.self)
 
     var error = SHError()
-    let result = typedInstance.warmup(context: Context(context: ctx))
-    switch result {
+    var result: Result<Void, ShardError>? = nil
+    let objcError = runCatchingObjCException {
+        result = typedInstance.warmup(context: Context(context: ctx))
+    }
+    if let objcError = objcError {
+        error.code = 1
+        typedInstance.errorCache = ("Objective-C exception in shard: " + objcError).utf8CString
+        error.message.string = typedInstance.errorCache.withUnsafeBufferPointer { $0.baseAddress }
+        error.message.len = UInt64(typedInstance.errorCache.count - 1)
+        return error
+    }
+    switch result! {
     case .success():
         return error
     case let .failure(err):
@@ -1939,8 +1997,18 @@ extension IShard {}
     let typedInstance = unsafeBitCast(instance, to: T.self)
 
     var error = SHError()
-    let result = typedInstance.cleanup(context: Context(context: ctx))
-    switch result {
+    var result: Result<Void, ShardError>? = nil
+    let objcError = runCatchingObjCException {
+        result = typedInstance.cleanup(context: Context(context: ctx))
+    }
+    if let objcError = objcError {
+        error.code = 1
+        typedInstance.errorCache = ("Objective-C exception in shard: " + objcError).utf8CString
+        error.message.string = typedInstance.errorCache.withUnsafeBufferPointer { $0.baseAddress }
+        error.message.len = UInt64(typedInstance.errorCache.count - 1)
+        return error
+    }
+    switch result! {
     case .success():
         return error
     case let .failure(err):
@@ -1963,17 +2031,33 @@ extension IShard {}
     // Cache output pointer location - avoids repeated property access
     let outputPtr = withUnsafeMutablePointer(to: &typedInstance.output) { $0 }
 
-    // Process activation
-    let result = typedInstance.activate(context: Context(context: ctx), input: input!.pointee)
+    // Process activation inside an Objective-C @try/@catch so a stray NSException
+    // (e.g. a color shard touching a non-RGB NSColor) aborts the wire with a real
+    // error instead of crashing the app — Swift can't catch ObjC exceptions.
+    var result: Result<SHVar, ShardError>? = nil
+    let objcError = runCatchingObjCException {
+        result = typedInstance.activate(context: Context(context: ctx), input: input!.pointee)
+    }
+
+    if let objcError = objcError {
+        let message = "Objective-C exception in shard: \(objcError)"
+        message.withCString { cString in
+            var shString = SHStringWithLen()
+            shString.string = cString
+            shString.len = UInt64(message.utf8.count)
+            G.Core.pointee.abortWire(ctx, shString)
+        }
+        return UnsafePointer(outputPtr)
+    }
 
     // Handle result - success path is hot, keep it simple
-    if case let .success(res) = result {
+    if case let .success(res)? = result {
         typedInstance.output = res
         return UnsafePointer(outputPtr)
     }
 
     // Error path unchanged - not performance critical
-    if case let .failure(error) = result {
+    if case let .failure(error)? = result {
         error.message.withCString { cString in
             var shString = SHStringWithLen()
             shString.string = cString
@@ -2213,6 +2297,19 @@ class MeshController {
         let result = G.Core.pointee.compose(nativeRef, wire.nativeRef, &error.v)
         if result {
             schedule(wire: wire, compose: false)
+            return .success(())
+        }
+        return .failure(ShardError(message: error.v.string))
+    }
+
+    /// Compose a wire WITHOUT scheduling or running it — returns the real
+    /// composition error (variable/input/output type-flow mismatches, etc.) or
+    /// success. This is the full type-check that scheduling performs; unlike
+    /// `Shards.Distill` it is not just parse + parameter validation. Use it to
+    /// validate a script with no side effects.
+    func compose(wire: WireController) -> Result<Void, ShardError> {
+        let error = OwnedVar()
+        if G.Core.pointee.compose(nativeRef, wire.nativeRef, &error.v) {
             return .success(())
         }
         return .failure(ShardError(message: error.v.string))
@@ -2822,11 +2919,17 @@ enum Shards {
             var g: CGFloat = 0
             var b: CGFloat = 0
             var a: CGFloat = 0
-            color.getRed(&r, green: &g, blue: &b, alpha: &a)
-            payload.colorValue.r = UInt8(r * 255)
-            payload.colorValue.g = UInt8(g * 255)
-            payload.colorValue.b = UInt8(b * 255)
-            payload.colorValue.a = UInt8(a * 255)
+            // getRed returns false for color spaces it can't represent as RGBA
+            // (e.g. pattern colors), leaving r/g/b/a untouched — fall back to
+            // opaque white rather than storing garbage. Clamp because wide-gamut
+            // (P3) components can fall outside 0...1 and would trap UInt8.
+            if !color.getRed(&r, green: &g, blue: &b, alpha: &a) {
+                r = 1; g = 1; b = 1; a = 1
+            }
+            payload.colorValue.r = UInt8(max(0, min(255, (r * 255).rounded())))
+            payload.colorValue.g = UInt8(max(0, min(255, (g * 255).rounded())))
+            payload.colorValue.b = UInt8(max(0, min(255, (b * 255).rounded())))
+            payload.colorValue.a = UInt8(max(0, min(255, (a * 255).rounded())))
         }
 
         var nativeColor: UIColor {
@@ -2940,9 +3043,25 @@ enum Shards {
         init(color: NSColor) {
             self.init()
             valueType = VarType.Color.asSHType()
-            payload.colorValue.r = UInt8(color.redComponent * 255)
-            payload.colorValue.g = UInt8(color.greenComponent * 255)
-            payload.colorValue.b = UInt8(color.blueComponent * 255)
+            // NSColor.redComponent/green/blue/alpha raise an Objective-C
+            // NSException when the color is not already in an RGB color space
+            // (grayscale like .white/.black/.gray, system/catalog/semantic, or
+            // pattern colors). Swift cannot catch ObjC exceptions — only the
+            // runtime's C++ bridge does — so reading them directly crashes the
+            // app. Convert to sRGB first, clamp (wide-gamut/P3 components can
+            // exceed 1.0 and would trap UInt8), and fall back to opaque white if
+            // conversion is impossible (e.g. pattern colors).
+            if let c = color.usingColorSpace(.sRGB) ?? color.usingColorSpace(.deviceRGB) {
+                payload.colorValue.r = UInt8(max(0, min(255, (c.redComponent * 255).rounded())))
+                payload.colorValue.g = UInt8(max(0, min(255, (c.greenComponent * 255).rounded())))
+                payload.colorValue.b = UInt8(max(0, min(255, (c.blueComponent * 255).rounded())))
+                payload.colorValue.a = UInt8(max(0, min(255, (c.alphaComponent * 255).rounded())))
+            } else {
+                payload.colorValue.r = 255
+                payload.colorValue.g = 255
+                payload.colorValue.b = 255
+                payload.colorValue.a = 255
+            }
         }
 
         var nativeColor: NSColor {
