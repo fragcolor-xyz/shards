@@ -1234,8 +1234,17 @@ struct Read {
 
     _headers.clear();
     for (auto &header : request) {
-      auto k = header.name_string();
+      auto kn = header.name_string();
       auto v = header.value();
+      // HTTP field names are case-insensitive (RFC 9110 §5.1), and HTTP/2+
+      // mandates them lowercase on the wire. Normalize to lowercase so script
+      // consumers can look keys up deterministically (e.g. headers.host),
+      // matching the lowercasing already done on the fetch/response path.
+      // (boost::algorithm is only included on the emscripten path, so do it by
+      // hand here with std::tolower from <cctype>.)
+      std::string k(kn.data(), kn.size());
+      for (auto &c : k)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
       _headers.insert(shards::Var(k.data(), k.size()), shards::Var(v.data(), v.size()));
     }
     _output[Var("headers")] = Var(_headers);
