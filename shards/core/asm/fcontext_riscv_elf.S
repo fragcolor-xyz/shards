@@ -114,7 +114,9 @@ sh_make_fcontext:
 
     /* Compute address of finish routine and store as RA */
     /* When context-function returns, it will jump to finish */
-    la t0, .L_sh_finish
+    /* lla (not la): always PC-relative, never a GOT reference — avoids emitting a
+       .got.plt that ESP32's static link script discards (final link failure). */
+    lla t0, .L_sh_finish
     REG_S t0, CTX_RA(a0)
 
     /* Return pointer to context-data */

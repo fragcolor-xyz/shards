@@ -13,7 +13,26 @@
 #include <cstdio>
 #include <shards/log/log.hpp>
 #include <spdlog/sinks/dist_sink.h>
+#if SH_ESP32
+// No TBB on device; the runtime is cooperatively single-threaded, so a plain
+// deque with the same minimal interface (emplace / try_pop) suffices.
+#include <deque>
+namespace shards::esp32_detail {
+template <typename T> struct SimpleQueue {
+  std::deque<T> _q;
+  void emplace(T &&v) { _q.emplace_back(std::move(v)); }
+  bool try_pop(T &out) {
+    if (_q.empty())
+      return false;
+    out = std::move(_q.front());
+    _q.pop_front();
+    return true;
+  }
+};
+} // namespace shards::esp32_detail
+#else
 #include <oneapi/tbb/concurrent_queue.h>
+#endif
 
 namespace shards {
 
@@ -199,7 +218,11 @@ struct LogCaptureContext {
   static inline const SHOptionalString VariableDescription = SHCCSTR("The log capture context.");
   static inline SHExposedTypeInfo VariableInfo = shards::ExposedInfo::ProtectedVariable(VariableName, VariableDescription, Type);
 
+#if SH_ESP32
+  shards::esp32_detail::SimpleQueue<spdlog::memory_buf_t> _messages;
+#else
   oneapi::tbb::concurrent_queue<spdlog::memory_buf_t> _messages;
+#endif
   std::vector<spdlog::memory_buf_t> _stringBuffer;
 
   void flush() {

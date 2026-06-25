@@ -161,7 +161,11 @@ struct EpochLocal {
     long offset = local - utc;
 #else
     localtime_r(&tt, &local_tm);
+#if SH_ESP32
+    long offset = 0; // esp newlib struct tm lacks tm_gmtoff; treat local as UTC
+#else
     long offset = local_tm.tm_gmtoff;
+#endif
 #endif
 
     return Var(int64_t(tt + offset));
@@ -196,7 +200,11 @@ struct EpochLocalMs {
     long offset = local - utc;
 #else
     localtime_r(&tt, &local_tm);
+#if SH_ESP32
+    long offset = 0; // esp newlib struct tm lacks tm_gmtoff; treat local as UTC
+#else
     long offset = local_tm.tm_gmtoff;
+#endif
 #endif
 
     auto ms = duration_cast<milliseconds>(now.time_since_epoch());

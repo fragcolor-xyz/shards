@@ -1,0 +1,17 @@
+# Phase-1 bring-up: keep C++ exceptions + RTTI (Shards throws; removal is a later
+# size optimization, not a prerequisite).
+CONFIG_COMPILER_CXX_EXCEPTIONS=y
+CONFIG_COMPILER_CXX_RTTI=y
+
+# Size-oriented build; PSRAM-bearing P4 has headroom but keep it lean for now.
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+# Smaller printf/scanf family (saves ~40-50 KB of newlib in flash).
+CONFIG_NEWLIB_NANO_FORMAT=y
+
+# Shards wires need a roomy main task stack while we validate.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# The runtime image is ~1.13 MB; default 1 MB factory partition is too small.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y

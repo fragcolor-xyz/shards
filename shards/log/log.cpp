@@ -254,7 +254,12 @@ struct Sinks {
   }
 
   void initLogFileSink(std::string_view fileName) {
+#if SH_ESP32
+    // No boost::filesystem on device; VFS paths (e.g. /spiffs/log.txt) are already absolute.
+    std::string logFilePath = std::string(fileName);
+#else
     std::string logFilePath = boost::filesystem::absolute(boost::filesystem::path(std::string(fileName))).string();
+#endif
 
 #if defined(SHARDS_LOG_ROTATING_MAX_FILE_SIZE) && defined(SHARDS_LOG_ROTATING_MAX_FILES)
     logFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath.c_str(), SHARDS_LOG_ROTATING_MAX_FILE_SIZE,

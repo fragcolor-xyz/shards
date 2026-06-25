@@ -2,6 +2,37 @@ option(SHARDS_WITH_EVERYTHING "Enables all modules, disabling this will only bui
 option(SHARDS_NO_RUST_UNION "Disables rust union build" OFF)
 option(SHARDS_WITH_DEFAULT "Default SHARDS_WITH_<name> state of modules" OFF)
 
+# ESP32/FreeRTOS: Force minimal module set
+# When building for ESP32, we disable everything by default and only enable core modules
+if(SH_ESP32 OR IDF_TARGET)
+  message(STATUS "ESP32 target detected - using minimal module set")
+  set(SHARDS_WITH_EVERYTHING OFF CACHE BOOL "" FORCE)
+  set(SHARDS_NO_RUST_UNION ON CACHE BOOL "" FORCE)
+
+  # Enable only essential modules for ESP32
+  set(SHARDS_WITH_CORE ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_RUN ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_STRUCT ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_DEBUG ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_ASSERT ON CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_ANIM ON CACHE BOOL "" FORCE)
+
+  # Disable heavy modules
+  set(SHARDS_WITH_HTTP OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_NETWORK OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_GFX OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_EGUI OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_AUDIO OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_LLM OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_CANDLE OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_PY OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_DEBUGGER OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_SSH OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_LOCALSHELL OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_DESKTOP OFF CACHE BOOL "" FORCE)
+  set(SHARDS_WITH_PHYSICS OFF CACHE BOOL "" FORCE)
+endif()
+
 # NOTES ABOUT MODULE UNIONS
 # Modules are built as OBJECT libraries, and then linked together at the end into a single static lib
 # The same happens for the rust modules

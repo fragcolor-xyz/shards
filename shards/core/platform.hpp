@@ -22,6 +22,9 @@
 
 #elif defined(__linux__) && !defined(__EMSCRIPTEN__)
 #define SH_LINUX 1
+#elif defined(ESP_PLATFORM)
+#define SH_ESP32 1
+#define SH_FREERTOS 1
 #else
 #define SH_UNKNOWN 1
 #endif
@@ -52,6 +55,14 @@
 
 #ifndef SH_EMSCRIPTEN
 #define SH_EMSCRIPTEN 0
+#endif
+
+#ifndef SH_ESP32
+#define SH_ESP32 0
+#endif
+
+#ifndef SH_FREERTOS
+#define SH_FREERTOS 0
 #endif
 
 // Portable string duplication using C++ new/delete

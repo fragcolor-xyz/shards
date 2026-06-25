@@ -48,7 +48,12 @@ inline std::string formatShardSourceLocation(Shard *blk);
 // Needed specially for win32/32bit
 #include <boost/align/aligned_allocator.hpp>
 
+#if SH_ESP32
+// TBB has no ESP32 port; the runtime is cooperatively single-threaded there.
+#include <unordered_map>
+#else
 #include "oneapi/tbb/concurrent_unordered_map.h"
+#endif
 
 #include "coro.hpp"
 
@@ -1092,7 +1097,11 @@ public:
   std::string RootPath;
   std::string ExePath;
 
+#if SH_ESP32
+  std::unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+#else
   oneapi::tbb::concurrent_unordered_map<uint32_t, SHOptionalString> *CompressedStrings{nullptr};
+#endif
 
   SHTableInterface TableInterface{
       .tableGetIterator =

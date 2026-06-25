@@ -1,0 +1,50 @@
+menu "Shards Configuration"
+
+    config SHARDS_STACK_SIZE
+        int "Wire task stack size (bytes)"
+        default 8192
+        range 4096 32768
+        help
+            Stack size for each wire's FreeRTOS task.
+            Each wire runs in its own task, so this affects memory usage.
+            Increase if you see stack overflow errors.
+            Decrease to save memory if your wires are simple.
+
+    config SHARDS_MAX_WIRES
+        int "Maximum concurrent wires"
+        default 8
+        range 1 32
+        help
+            Maximum number of wires that can be scheduled simultaneously.
+            Each wire uses SHARDS_STACK_SIZE bytes of stack memory.
+
+    config SHARDS_USE_PSRAM
+        bool "Use PSRAM for wire data"
+        default y
+        depends on ESP32_SPIRAM_SUPPORT
+        help
+            If enabled and PSRAM is available, wire data (variables,
+            strings, sequences) will be allocated from PSRAM to save
+            internal SRAM for stack and critical data.
+
+    config SHARDS_LOG_LEVEL
+        int "Shards log level"
+        default 3
+        range 0 5
+        help
+            Log level for Shards runtime:
+            0 = None
+            1 = Error
+            2 = Warning
+            3 = Info
+            4 = Debug
+            5 = Verbose
+
+    config SHARDS_WIRE_PATH
+        string "Default wire storage path"
+        default "/spiffs"
+        help
+            VFS path where serialized wire files are stored.
+            This can be a SPIFFS, LittleFS, or SD card mount point.
+
+endmenu
