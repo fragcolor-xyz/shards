@@ -36,132 +36,158 @@ use shards::types::STRING_TYPES;
 
 use shards_shell_common as sc;
 
-use ssh2::Session;
-use std::io::prelude::*;
-use std::net::{TcpStream, ToSocketAddrs};
-use std::path::Path;
+use russh::client::{self, Handle, Handler};
+use russh::keys::{load_secret_key, PrivateKeyWithHashAlg};
+use russh::{ChannelMsg, Disconnect};
+use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
-// Helper: check if an IO error indicates connection loss.
-fn is_connection_error(err: &std::io::Error) -> bool {
-  use std::io::ErrorKind;
-  matches!(
-    err.kind(),
-    ErrorKind::ConnectionReset
-      | ErrorKind::ConnectionAborted
-      | ErrorKind::BrokenPipe
-      | ErrorKind::UnexpectedEof
-  )
-}
+use tokio::sync::mpsc;
 
 // ============================================================================
-// SSH transport
+// SSH transport (russh — pure Rust, no OpenSSL/libssh2)
+//
+// russh is async; shell-common's `ShellTransport` is synchronous and driven
+// from a std reader thread + `run_blocking` shard threads. We bridge the two:
+// a single async task owns the russh `Handle` + `Channel` and is the only thing
+// that touches them. The sync side talks to it through an unbounded mpsc for
+// writes/resize/close (`send` is callable from any thread with no `block_on`)
+// and a shared byte queue that `read_into` drains. Only the initial connect
+// uses `block_on`, which is legal here because Connect runs on a `run_blocking`
+// thread, never on the wire coroutine.
 // ============================================================================
 
-struct SshTransport {
-  session: Arc<Mutex<Session>>,
-  channel: Arc<Mutex<ssh2::Channel>>,
+lazy_static! {
+  static ref SSH_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+    .worker_threads(2)
+    .enable_all()
+    .build()
+    .expect("Failed to build SSH tokio runtime");
 }
 
-impl sc::ShellTransport for SshTransport {
-  fn read_into(&self, buf: &mut [u8]) -> sc::ReadOutcome {
-    // Ensure non-blocking mode, then RELEASE the session lock before touching
-    // the channel. `write_all` holds the channel lock while acquiring the
-    // session lock, so the reader must never hold session while waiting on
-    // channel — otherwise the two could deadlock.
-    if let Ok(sess) = self.session.lock() {
-      sess.set_blocking(false);
+/// Accept-all host-key handler. Matches the previous ssh2 behavior, which did
+/// no `known_hosts` verification.
+struct Client;
+
+impl Handler for Client {
+  type Error = russh::Error;
+
+  async fn check_server_key(
+    &mut self,
+    _server_public_key: &russh::keys::PublicKey,
+  ) -> Result<bool, Self::Error> {
+    Ok(true)
+  }
+}
+
+/// Commands sent from the synchronous transport to the async channel task.
+enum Outbound {
+  Data(Vec<u8>),
+  Resize { cols: u16, rows: u16 },
+  Close,
+}
+
+struct RusshTransport {
+  write_tx: mpsc::UnboundedSender<Outbound>,
+  inbound: Arc<Mutex<VecDeque<u8>>>,
+  ended: Arc<AtomicBool>,
+}
+
+/// The single async owner of the russh channel + session handle. Forwards
+/// inbound channel data into `inbound` and applies outbound commands. Exits
+/// (setting `ended`) when the peer closes the channel or a `Close` is issued.
+async fn run_channel(
+  handle: Handle<Client>,
+  mut channel: russh::Channel<client::Msg>,
+  mut rx: mpsc::UnboundedReceiver<Outbound>,
+  inbound: Arc<Mutex<VecDeque<u8>>>,
+  ended: Arc<AtomicBool>,
+) {
+  loop {
+    tokio::select! {
+      msg = channel.wait() => {
+        match msg {
+          // With a PTY the server merges stdout/stderr onto the tty, so treat
+          // extended (stderr) data the same as normal data.
+          Some(ChannelMsg::Data { ref data })
+          | Some(ChannelMsg::ExtendedData { ref data, .. }) => {
+            if let Ok(mut q) = inbound.lock() {
+              q.extend(data.iter().copied());
+            }
+          }
+          Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break,
+          _ => {}
+        }
+      }
+      cmd = rx.recv() => {
+        match cmd {
+          Some(Outbound::Data(bytes)) => {
+            if channel.data(&bytes[..]).await.is_err() {
+              break;
+            }
+          }
+          Some(Outbound::Resize { cols, rows }) => {
+            let _ = channel.window_change(cols as u32, rows as u32, 0, 0).await;
+          }
+          // Explicit close, or all senders dropped (transport gone).
+          Some(Outbound::Close) | None => {
+            let _ = channel.eof().await;
+            let _ = channel.close().await;
+            let _ = handle
+              .disconnect(Disconnect::ByApplication, "Session closed", "")
+              .await;
+            break;
+          }
+        }
+      }
     }
+  }
+  ended.store(true, Ordering::Release);
+}
 
-    let read_result = match self.channel.lock() {
-      Ok(mut ch) => ch.read(buf),
+impl sc::ShellTransport for RusshTransport {
+  fn read_into(&self, buf: &mut [u8]) -> sc::ReadOutcome {
+    let mut q = match self.inbound.lock() {
+      Ok(q) => q,
       Err(_) => return sc::ReadOutcome::Ended,
     };
 
-    match read_result {
-      Ok(n) if n > 0 => sc::ReadOutcome::Data(n),
-      Ok(_) => sc::ReadOutcome::Ended,
-      Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => sc::ReadOutcome::Retry,
-      Err(e) if is_connection_error(&e) => sc::ReadOutcome::Ended,
-      Err(e) => {
-        shlog_trace!("SSH reader thread: read error (non-fatal): {}", e);
-        sc::ReadOutcome::Retry
+    if q.is_empty() {
+      // No buffered data: distinguish "closed" from "nothing yet".
+      if self.ended.load(Ordering::Acquire) {
+        return sc::ReadOutcome::Ended;
       }
+      return sc::ReadOutcome::Retry;
     }
+
+    let n = q.len().min(buf.len());
+    for (slot, byte) in buf.iter_mut().zip(q.drain(..n)) {
+      *slot = byte;
+    }
+    sc::ReadOutcome::Data(n)
   }
 
   fn write_all(&self, data: &[u8]) -> Result<(), sc::TransportError> {
-    let mut channel = self
-      .channel
-      .lock()
-      .map_err(|_| sc::TransportError::Other("Channel lock poisoned"))?;
-
-    // Hold the session lock across the write + flush. Setting blocking mode and
-    // releasing the session lock *before* writing leaves a window where the
-    // reader thread (which flips the session to non-blocking before every read)
-    // can make our write run non-blocking and fail with a spurious WouldBlock.
-    // Holding session here is deadlock-safe: write_all is the only path that
-    // ever holds both locks, and read_into never holds the session lock while
-    // waiting on the channel, so no lock cycle can form. A poisoned session
-    // lock is recovered (set_blocking can't panic) to keep writes best-effort.
-    let sess = self.session.lock().unwrap_or_else(|e| e.into_inner());
-    sess.set_blocking(true);
-
-    let write_result = channel.write_all(data);
-    if write_result.is_ok() {
-      let _ = channel.flush();
-    }
-
-    // Restore non-blocking before releasing the session lock.
-    sess.set_blocking(false);
-    drop(sess);
-
-    if let Err(e) = write_result {
-      if is_connection_error(&e) {
-        return Err(sc::TransportError::ConnectionLost);
-      }
-      return Err(sc::TransportError::Other("Failed to write to SSH channel"));
-    }
-
-    Ok(())
+    // Non-blocking hand-off to the async channel task; a send error means the
+    // task has exited, i.e. the connection is gone.
+    self
+      .write_tx
+      .send(Outbound::Data(data.to_vec()))
+      .map_err(|_| sc::TransportError::ConnectionLost)
   }
 
   fn resize(&self, rows: u16, cols: u16) -> Result<(), &'static str> {
-    // Set blocking for the resize request.
-    if let Ok(sess) = self.session.lock() {
-      sess.set_blocking(true);
-    }
-
-    {
-      let mut channel = self.channel.lock().map_err(|_| "Channel lock poisoned")?;
-      channel
-        .request_pty_size(cols as u32, rows as u32, None, None)
-        .map_err(|_| "Failed to resize PTY")?;
-    }
-
-    // Restore non-blocking.
-    if let Ok(sess) = self.session.lock() {
-      sess.set_blocking(false);
-    }
-
-    Ok(())
+    self
+      .write_tx
+      .send(Outbound::Resize { cols, rows })
+      .map_err(|_| "SSH channel closed")
   }
 
   fn close(&self) {
-    // Close channel gracefully.
-    if let Ok(mut channel) = self.channel.lock() {
-      let _ = channel.send_eof();
-      let _ = channel.wait_eof();
-      let _ = channel.close();
-      let _ = channel.wait_close();
-    }
-
-    // Disconnect session.
-    if let Ok(session) = self.session.lock() {
-      let _ = session.disconnect(None, "Session closed", None);
-    }
+    // Best-effort: ask the async task to eof/close/disconnect. If it already
+    // exited the send simply fails and there is nothing left to close.
+    let _ = self.write_tx.send(Outbound::Close);
   }
 }
 
@@ -313,69 +339,108 @@ impl BlockingShard for ConnectShard {
       v.max(1).min(u16::MAX as i64) as u16
     };
 
-    // Connect to SSH server
-    let addr = format!("{}:{}", host, port);
-
-    let socket_addrs: Vec<_> = addr
-      .to_socket_addrs()
-      .map_err(|_| "Failed to resolve hostname")?
-      .collect();
-
-    let socket_addr = socket_addrs
-      .first()
-      .ok_or("No address found for hostname")?;
-
-    let tcp = TcpStream::connect_timeout(socket_addr, Duration::from_secs(timeout_secs as u64))
-      .map_err(|_| "Connection failed")?;
-
-    tcp
-      .set_read_timeout(Some(Duration::from_secs(timeout_secs as u64)))
-      .map_err(|_| "Failed to set timeout")?;
-
-    let mut sess = Session::new().map_err(|_| "Failed to create SSH session")?;
-    sess.set_tcp_stream(tcp);
-    sess.handshake().map_err(|_| "SSH handshake failed")?;
-
-    // Authenticate
-    if !key_path_var.is_none() {
-      let key_path: &str = key_path_var.as_ref().try_into()?;
-      let key_path_expanded = shellexpand::tilde(key_path).to_string();
-      sess
-        .userauth_pubkey_file(user, None, Path::new(&key_path_expanded), None)
-        .map_err(|_| "Public key authentication failed")?;
-    } else if !password_var.is_none() {
-      let password: &str = password_var.as_ref().try_into()?;
-      sess
-        .userauth_password(user, password)
-        .map_err(|_| "Password authentication failed")?;
+    // Extract auth material before entering async. Public key takes precedence
+    // over password, matching the previous behavior.
+    let key_path_opt: Option<String> = if key_path_var.is_none() {
+      None
     } else {
+      let kp: &str = key_path_var.as_ref().try_into()?;
+      Some(shellexpand::tilde(kp).to_string())
+    };
+    let password_opt: Option<&str> = if password_var.is_none() {
+      None
+    } else {
+      Some(password_var.as_ref().try_into()?)
+    };
+    if key_path_opt.is_none() && password_opt.is_none() {
       return Err("Either KeyPath or Password must be provided");
     }
 
-    if !sess.authenticated() {
-      return Err("Authentication failed");
-    }
+    // Shared transport state, created before connecting so the async channel
+    // task and the sync transport can share it.
+    let inbound = Arc::new(Mutex::new(VecDeque::<u8>::new()));
+    let ended = Arc::new(AtomicBool::new(false));
+    let (write_tx, write_rx) = mpsc::unbounded_channel::<Outbound>();
 
-    // Open channel and request PTY with size
-    let mut channel = sess
-      .channel_session()
-      .map_err(|_| "Failed to open channel")?;
-    channel
-      .request_pty(
-        "xterm-256color",
-        None,
-        Some((cols as u32, rows as u32, 0, 0)),
-      )
-      .map_err(|_| "Failed to request PTY")?;
-    channel.shell().map_err(|_| "Failed to start shell")?;
+    // Connect + authenticate + open the shell channel on the SSH runtime. This
+    // runs on a `run_blocking` thread, so `block_on` is safe (not the wire
+    // coroutine).
+    let (handle, channel) = SSH_RUNTIME.block_on(async {
+      let config = Arc::new(client::Config {
+        // Persistent interactive session: no inactivity disconnect.
+        inactivity_timeout: None,
+        ..Default::default()
+      });
 
-    // Set non-blocking mode for reads
-    sess.set_blocking(false);
+      let connect_fut = client::connect(config, (host, port as u16), Client);
+      let mut handle =
+        match tokio::time::timeout(Duration::from_secs(timeout_secs as u64), connect_fut).await {
+          Ok(Ok(h)) => h,
+          Ok(Err(_)) => return Err("Connection failed"),
+          Err(_) => return Err("Connection timed out"),
+        };
 
-    // Build the transport and shared session state.
-    let transport: Arc<dyn sc::ShellTransport> = Arc::new(SshTransport {
-      session: Arc::new(Mutex::new(sess)),
-      channel: Arc::new(Mutex::new(channel)),
+      let authenticated = if let Some(ref key_path) = key_path_opt {
+        let key_pair = load_secret_key(key_path, None).map_err(|_| "Failed to load private key")?;
+        let hash_alg = handle
+          .best_supported_rsa_hash()
+          .await
+          .map_err(|_| "SSH negotiation failed")?
+          .flatten();
+        handle
+          .authenticate_publickey(
+            user,
+            PrivateKeyWithHashAlg::new(Arc::new(key_pair), hash_alg),
+          )
+          .await
+          .map_err(|_| "Public key authentication failed")?
+          .success()
+      } else {
+        // Safe: checked above that at least one of key/password is present.
+        let password = password_opt.unwrap();
+        handle
+          .authenticate_password(user, password)
+          .await
+          .map_err(|_| "Password authentication failed")?
+          .success()
+      };
+
+      if !authenticated {
+        return Err("Authentication failed");
+      }
+
+      // Open a session channel, request a PTY, and start the login shell.
+      // request_pty takes (want_reply, term, col_width, row_height, pix_w, pix_h, modes).
+      let channel = handle
+        .channel_open_session()
+        .await
+        .map_err(|_| "Failed to open channel")?;
+      channel
+        .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
+        .await
+        .map_err(|_| "Failed to request PTY")?;
+      channel
+        .request_shell(false)
+        .await
+        .map_err(|_| "Failed to start shell")?;
+
+      Ok::<_, &'static str>((handle, channel))
+    })?;
+
+    // Hand the channel + session to the single async owner task.
+    SSH_RUNTIME.spawn(run_channel(
+      handle,
+      channel,
+      write_rx,
+      Arc::clone(&inbound),
+      Arc::clone(&ended),
+    ));
+
+    // Build the transport over the shared state.
+    let transport: Arc<dyn sc::ShellTransport> = Arc::new(RusshTransport {
+      write_tx,
+      inbound,
+      ended,
     });
 
     let output_buffer = Arc::new(Mutex::new(Vec::new()));
