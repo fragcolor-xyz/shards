@@ -694,8 +694,8 @@ Http.Post(url Headers: headers Streaming: true FullResponse: true)
 {Take("status") = status}
 Http.Stream(stream) | BytesToString
 
-// Server
-Http.Server(Port: 8080 SSL: false Handler: handler-wire)
+// Server (plaintext only — terminate TLS at a reverse proxy)
+Http.Server(Port: 8080 Handler: handler-wire)
 Http.Response(200 Headers: {"Content-Type": "text/plain"})
 Http.Chunk(Headers: {"Content-Type": "text/event-stream"})
 ```

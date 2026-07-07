@@ -378,6 +378,24 @@ pub fn clean_output_with_marker(output: &str, marker: Option<&str>) -> String {
   result.trim().to_string()
 }
 
+/// Strip the leading echoed command line. In an interactive PTY the shell echoes
+/// back whatever we type, so after the buffer is cleared and a command is sent,
+/// the first line of captured output is the echo of `cmd`. Remove it so results
+/// contain only real command output. Only strips when the first line actually
+/// matches (echo-off servers, or commands wrapped across the terminal width, are
+/// left untouched — no worse than before).
+pub fn strip_leading_command_echo(output: &str, cmd: &str) -> String {
+  let cmd_trimmed = cmd.trim();
+  if cmd_trimmed.is_empty() {
+    return output.to_string();
+  }
+  let mut lines = output.lines();
+  match lines.next() {
+    Some(first) if first.trim() == cmd_trimmed => lines.collect::<Vec<_>>().join("\n"),
+    _ => output.to_string(),
+  }
+}
+
 /// Truncate an output buffer to keep the tail, prepending a truncation notice.
 pub fn truncate_to_tail(buffer: &mut Vec<u8>, max_bytes: usize) -> bool {
   if buffer.len() <= max_bytes {
@@ -862,7 +880,7 @@ pub fn execute(
     let exit_code = capture_exit_code(s, marker);
 
     let final_output = if should_clean {
-      clean_output_with_marker(&output_str, marker)
+      strip_leading_command_echo(&clean_output_with_marker(&output_str, marker), cmd)
     } else {
       output_str
     };
@@ -894,7 +912,7 @@ pub fn execute(
     }
 
     let partial_output = if should_clean {
-      clean_output_with_marker(&output_str, marker)
+      strip_leading_command_echo(&clean_output_with_marker(&output_str, marker), cmd)
     } else {
       output_str
     };
