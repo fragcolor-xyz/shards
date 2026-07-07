@@ -79,6 +79,24 @@ foreach(MODULE_FOLDER ${SHARDS_MODULE_FOLDERS})
   endif()
 endforeach()
 
+# External module directories, integrated like in-tree modules so their shards
+# are statically linked into the runtime (union + registry). Each directory
+# needs a CMakeLists.txt calling add_shards_module() (see examples/external-module).
+# This must run before the union below so the generated registry picks them up.
+set(SHARDS_EXTERNAL_MODULE_DIRS "" CACHE STRING "List of paths to external module directories to statically link into shards")
+
+foreach(EXTERNAL_MODULE_DIR ${SHARDS_EXTERNAL_MODULE_DIRS})
+  get_filename_component(EXTERNAL_MODULE_DIR_ABS "${EXTERNAL_MODULE_DIR}" ABSOLUTE BASE_DIR "${SHARDS_DIR}")
+
+  if(NOT EXISTS ${EXTERNAL_MODULE_DIR_ABS}/CMakeLists.txt)
+    message(FATAL_ERROR "External module directory has no CMakeLists.txt: ${EXTERNAL_MODULE_DIR_ABS}")
+  endif()
+
+  get_filename_component(EXTERNAL_MODULE_NAME ${EXTERNAL_MODULE_DIR_ABS} NAME)
+  message(STATUS "Adding external module directory: ${EXTERNAL_MODULE_DIR_ABS}")
+  add_subdirectory(${EXTERNAL_MODULE_DIR_ABS} modules/external/${EXTERNAL_MODULE_NAME})
+endforeach()
+
 # Union library that ties the modules together
 add_subdirectory(${SHARDS_DIR}/shards/union src/union)
 

@@ -36,6 +36,9 @@ members = [
     "shards/gfx/rust/build",
     "shards/gfx/rust/profiling/profiling-procmacros",
 
+    # Examples
+    "examples/external-module/rust",
+
 ]
 
 # Exclude crates with their own [workspace] sections and test crates

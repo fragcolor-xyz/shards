@@ -1,0 +1,14 @@
+// Exercises the example external module (both the Rust and the C++ shard).
+// Build shards with -DSHARDS_EXTERNAL_MODULE_DIRS=<this directory>, then:
+//   shards run examples/external-module/test.shs
+
+@mesh(root)
+
+@wire(test {
+  "hello" | Example.Reverse | Log("reversed") | Assert.Is("olleh" true)
+  5 | Example.Square | Log("squared") | Assert.Is(25 true)
+  Msg("external module example OK")
+})
+
+@schedule(root test)
+@run(root)

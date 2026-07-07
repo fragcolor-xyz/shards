@@ -9217,6 +9217,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shards-example"
+version = "0.1.0"
+dependencies = [
+ "compile-time-crc32",
+ "ctor",
+ "lazy_static",
+ "shards",
+]
+
+[[package]]
 name = "shards-fileops"
 version = "0.1.0"
 dependencies = [

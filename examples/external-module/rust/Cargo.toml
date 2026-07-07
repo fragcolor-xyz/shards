@@ -1,0 +1,30 @@
+[package]
+name = "shards-example"
+description = "Example external Shards module"
+license = "BSD-3-Clause"
+version = "0.1.0"
+authors = ["Fragcolor <ops@fragcolor.com>"]
+edition = "2021"
+
+[lib]
+# Consumed as rlib by the generated rust union when statically linked.
+# Don't add "cdylib" here: every dependent build (including the union) would
+# then also link the dynamic artifact. For the standalone dynamic plugin use:
+#   cargo rustc --release --features dylib --crate-type cdylib
+crate-type = ["rlib"]
+
+[features]
+default = []
+# Build as a standalone dynamic plugin: resolves the shards core vtable via
+# dlopen (shardsInterface) and self-registers at load time.
+#
+# NEVER enable this when building into the static union: cargo feature
+# unification would turn on `shards/dllshard` for every module in the
+# workspace, switching Core resolution to dlopen for the whole static build.
+dylib = ["shards/dllshard", "dep:ctor"]
+
+[dependencies]
+shards = { path = "../../../shards/rust" }
+lazy_static = "1.5"
+compile-time-crc32 = "0.1"
+ctor = { version = "0.2", optional = true }
