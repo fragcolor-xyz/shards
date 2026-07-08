@@ -14,6 +14,12 @@
 #endif
 
 #define SQLITE_VEC_VERSION "v0.1shards"
+// Numeric components must track the vendored sqlite-vec submodule version
+// (currently v0.1.9). Since v0.1.9 the amalgamation seeds these into the vec0
+// _info shadow table, so they must be defined here in the static header.
+#define SQLITE_VEC_VERSION_MAJOR 0
+#define SQLITE_VEC_VERSION_MINOR 1
+#define SQLITE_VEC_VERSION_PATCH 9
 #define SQLITE_VEC_DATE ""
 #define SQLITE_VEC_SOURCE ""
 
