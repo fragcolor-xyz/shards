@@ -188,6 +188,15 @@ jobs:
           # Eval harness for `shards check`: asserts structured-diagnostic quality
           # (phases, type-directed candidates, did-you-mean) and a repairability score.
           SHARDS="$PWD/build/shards" bash shards/tests/check/run.sh
+      - name: Test ShardsBench (dev suite)
+        env:
+          RUST_BACKTRACE: full
+        shell: bash
+        run: |
+          # Harness unit tests, then grade the reference answers so the checked-in
+          # task fixtures and graders cannot rot silently.
+          python3 -m unittest discover -s benchmarks/shardsbench -t benchmarks/shardsbench
+          python3 benchmarks/shardsbench/run.py validate --shards build/shards
       - name: Test doc samples (non-UI)
         env:
           RUST_BACKTRACE: full

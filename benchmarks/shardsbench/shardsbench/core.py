@@ -7,6 +7,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -19,6 +20,14 @@ from typing import Any, Callable, Iterable
 
 SCHEMA_VERSION = 1
 MAX_CAPTURE_CHARS = 20_000
+SUBPROCESS_TIMEOUT_SECONDS = 30
+SENTINEL_FILE = "__shardsbench_sentinel__"
+SENTINEL_DEFINE_PREFIX = "shardsbench-sentinel-"
+# Top-level statements a candidate may contain. Everything else (shard
+# applications, constants, `@schedule`, `@run`, `@include`, ...) executes inside
+# the grading wire before its assertions, so it could stop the wire or fake a
+# clean exit; only inert definitions are allowed.
+ALLOWED_TOPLEVEL_FUNCS = frozenset({"wire", "define", "template"})
 FENCE_RE = re.compile(
     r"```(?P<label>[^\n`]*)\n(?P<body>.*?)```", re.DOTALL | re.IGNORECASE
 )
@@ -193,48 +202,60 @@ def _bounded(text: str) -> tuple[str, bool]:
     return text[:MAX_CAPTURE_CHARS], True
 
 
+def _bounded_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Bound captured stdout/stderr for storage in the report."""
+    stdout, stdout_truncated = _bounded(result["stdout"])
+    stderr, stderr_truncated = _bounded(result["stderr"])
+    return {
+        **result,
+        "stdout": stdout,
+        "stderr": stderr,
+        "stdout_truncated": stdout_truncated,
+        "stderr_truncated": stderr_truncated,
+    }
+
+
 def _run(
     command: list[str], cwd: Path, timeout_seconds: float
 ) -> dict[str, Any]:
+    """Run a command, capturing full (unbounded) output.
+
+    Model-generated programs can print arbitrary bytes, so decoding must never
+    raise; callers pass results through `_bounded_result` before storing them.
+    """
     started = time.monotonic()
     try:
         completed = subprocess.run(
             command,
             cwd=cwd,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=timeout_seconds,
             check=False,
         )
-        stdout, stdout_truncated = _bounded(completed.stdout)
-        stderr, stderr_truncated = _bounded(completed.stderr)
         return {
             "exit_code": completed.returncode,
             "timed_out": False,
             "duration_seconds": round(time.monotonic() - started, 6),
-            "stdout": stdout,
-            "stderr": stderr,
-            "stdout_truncated": stdout_truncated,
-            "stderr_truncated": stderr_truncated,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
         }
     except subprocess.TimeoutExpired as error:
         stdout = error.stdout or ""
         stderr = error.stderr or ""
         if isinstance(stdout, bytes):
-            stdout = stdout.decode(errors="replace")
+            stdout = stdout.decode("utf-8", errors="replace")
         if isinstance(stderr, bytes):
-            stderr = stderr.decode(errors="replace")
-        stdout, stdout_truncated = _bounded(stdout)
-        stderr, stderr_truncated = _bounded(stderr)
+            stderr = stderr.decode("utf-8", errors="replace")
         return {
             "exit_code": None,
             "timed_out": True,
             "duration_seconds": round(time.monotonic() - started, 6),
             "stdout": stdout,
             "stderr": stderr,
-            "stdout_truncated": stdout_truncated,
-            "stderr_truncated": stderr_truncated,
         }
 
 
@@ -247,11 +268,63 @@ def _diagnostics(check_result: dict[str, Any]) -> list[dict[str, Any]]:
     return diagnostics if isinstance(diagnostics, list) else []
 
 
-def _copy_task_assets(task: Task, tests_path: Path, workspace: Path) -> None:
-    shutil.copy2(tests_path, workspace / "tests.shs")
+def _sentinel_lines(sentinel_define: str) -> str:
+    # The sentinel is the grader's last statement. A candidate that halts the
+    # grading wire early (`Stop` at top level or inside `Do(solution)`) exits
+    # cleanly without running the assertions; the sentinel file proves the
+    # grader actually reached its end. The token arrives as a command-line
+    # define so it never exists in any file the candidate can read at runtime,
+    # and both the token AND the define's name are random per run: define
+    # references resolve syntactically at eval time, so a frozen candidate
+    # cannot reference (or shadow) a name that did not exist when it was
+    # generated.
+    return (
+        f'@define({sentinel_define} "unset" IgnoreRedefined: true)\n'
+        f'"{SENTINEL_FILE}" | FS.Write(Contents: @{sentinel_define} Overwrite: true)'
+    )
+
+
+def _copy_task_assets(
+    task: Task, tests_path: Path, workspace: Path, sentinel_define: str
+) -> None:
+    tests_source = tests_path.read_text(encoding="utf-8").rstrip()
+    tests_source += f"\n\n{_sentinel_lines(sentinel_define)}\n"
+    (workspace / "tests.shs").write_text(tests_source, encoding="utf-8")
     assets = task.directory / "assets"
     if assets.is_dir():
         shutil.copytree(assets, workspace / "assets")
+
+
+def _sentinel_reached(workspace: Path, sentinel_token: str) -> bool:
+    sentinel = workspace / SENTINEL_FILE
+    try:
+        return sentinel.read_text(encoding="utf-8") == sentinel_token
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+def _toplevel_violations(ast: Any) -> list[dict[str, Any]]:
+    """Return candidate top-level statements that are not inert definitions."""
+    sequence = ast.get("sequence") if isinstance(ast, dict) else None
+    if not isinstance(sequence, list):
+        return [{"kind": "malformed", "name": None, "line": None}]
+    violations: list[dict[str, Any]] = []
+    for pipeline in sequence:
+        blocks = pipeline if isinstance(pipeline, list) else [pipeline]
+        for block in blocks:
+            if isinstance(block, dict):
+                function = block.get("func")
+                name = function.get("name") if isinstance(function, dict) else None
+                if name in ALLOWED_TOPLEVEL_FUNCS:
+                    continue
+                kind = next(
+                    (key for key in block if key != "line_info"), "unknown"
+                )
+                line = block.get("line_info", {}).get("line")
+                violations.append({"kind": kind, "name": name, "line": line})
+            else:
+                violations.append({"kind": "unknown", "name": None, "line": None})
+    return violations
 
 
 def _solution_function_names(ast: Any) -> list[str]:
@@ -300,41 +373,35 @@ def _solution_function_names(ast: Any) -> list[str]:
     return visit(ast) or []
 
 
-def _check_requirements(
-    task: Task, workspace: Path, shards: Path
-) -> tuple[bool, dict[str, Any]]:
-    if not task.required_shards:
-        return True, {"required_shards": [], "missing_shards": []}
-
+def _candidate_ast(
+    workspace: Path, shards: Path, timeout_seconds: float
+) -> tuple[Any | None, dict[str, Any]]:
+    """Generate the candidate's JSON AST; return (ast or None, command record)."""
     ast_path = workspace / "candidate.ast.json"
-    command = _run(
-        [str(shards), "ast", "candidate.shs", "-o", str(ast_path)],
-        workspace,
-        task.timeout_seconds,
+    command = _bounded_result(
+        _run(
+            [str(shards), "ast", "candidate.shs", "-o", str(ast_path)],
+            workspace,
+            timeout_seconds,
+        )
     )
     if command["timed_out"] or command["exit_code"] != 0 or not ast_path.is_file():
-        return False, {
-            "required_shards": list(task.required_shards),
-            "missing_shards": list(task.required_shards),
-            "ast_command": command,
-        }
+        return None, command
     try:
-        ast = json.loads(ast_path.read_text(encoding="utf-8"))
+        return json.loads(ast_path.read_text(encoding="utf-8")), command
     except (OSError, json.JSONDecodeError) as error:
-        return False, {
-            "required_shards": list(task.required_shards),
-            "missing_shards": list(task.required_shards),
-            "error": str(error),
-            "ast_command": command,
-        }
-    found = _solution_function_names(ast)
-    found_set = set(found)
+        return None, {**command, "error": str(error)}
+
+
+def _check_requirements(task: Task, ast: Any) -> tuple[bool, dict[str, Any]]:
+    if not task.required_shards:
+        return True, {"required_shards": [], "missing_shards": []}
+    found_set = set(_solution_function_names(ast))
     missing = [name for name in task.required_shards if name not in found_set]
     return not missing, {
         "required_shards": list(task.required_shards),
         "found_shards": sorted(found_set),
         "missing_shards": missing,
-        "ast_command": command,
     }
 
 
@@ -349,6 +416,7 @@ def score_task(task: Task, candidate: Path | None, shards: Path) -> dict[str, An
         "parse_at_1": False,
         "construct_at_1": False,
         "compose_at_1": False,
+        "contract_at_1": False,
         "requirements_at_1": False,
         "pass_at_1": False,
     }
@@ -369,6 +437,8 @@ def score_task(task: Task, candidate: Path | None, shards: Path) -> dict[str, An
     base["candidate_at_1"] = True
     base["extraction_mode"] = extraction_mode
 
+    sentinel_define = f"{SENTINEL_DEFINE_PREFIX}{secrets.token_hex(8)}"
+    sentinel_token = secrets.token_hex(16)
     with tempfile.TemporaryDirectory(prefix="shardsbench-") as temp:
         workspaces: list[tuple[Path, Path]] = []
         checks: list[dict[str, Any]] = []
@@ -376,7 +446,7 @@ def score_task(task: Task, candidate: Path | None, shards: Path) -> dict[str, An
         for index, tests_path in enumerate(task.tests_paths):
             workspace = Path(temp) / f"case-{index:03d}-{tests_path.stem}"
             workspace.mkdir()
-            _copy_task_assets(task, tests_path, workspace)
+            _copy_task_assets(task, tests_path, workspace, sentinel_define)
             (workspace / "candidate.shs").write_text(source, encoding="utf-8")
             workspaces.append((tests_path, workspace))
 
@@ -392,7 +462,11 @@ def score_task(task: Task, candidate: Path | None, shards: Path) -> dict[str, An
                 if isinstance(diagnostic, dict)
             )
             checks.append(
-                {"case": tests_path.name, **check, "diagnostics": diagnostics}
+                {
+                    "case": tests_path.name,
+                    **_bounded_result(check),
+                    "diagnostics": diagnostics,
+                }
             )
 
         base["parse_at_1"] = not any(check["timed_out"] for check in checks) and (
@@ -409,31 +483,59 @@ def score_task(task: Task, candidate: Path | None, shards: Path) -> dict[str, An
         if not base["compose_at_1"]:
             return {**base, "status": "check_failed"}
 
-        requirements_ok, requirements = _check_requirements(
-            task, workspaces[0][1], shards
+        ast, ast_command = _candidate_ast(
+            workspaces[0][1], shards, task.timeout_seconds
         )
+        base["ast_command"] = ast_command
+        if ast is None:
+            if ast_command["timed_out"]:
+                return {**base, "status": "ast_timeout"}
+            return {**base, "status": "ast_infrastructure_error"}
+
+        violations = _toplevel_violations(ast)
+        base["contract_at_1"] = not violations
+        if violations:
+            return {
+                **base,
+                "status": "contract_violation",
+                "contract_violations": violations,
+            }
+
+        requirements_ok, requirements = _check_requirements(task, ast)
         base["requirements_at_1"] = requirements_ok
         base["requirements"] = requirements
         if not requirements_ok:
-            if requirements.get("ast_command", {}).get("timed_out"):
-                return {**base, "status": "requirements_timeout"}
-            if requirements.get("missing_shards"):
-                return {**base, "status": "requirements_failed"}
-            return {**base, "status": "requirements_infrastructure_error"}
+            return {**base, "status": "requirements_failed"}
 
         runs: list[dict[str, Any]] = []
         for tests_path, workspace in workspaces:
             run = _run(
-                [str(shards), "run", "tests.shs"],
+                [
+                    str(shards),
+                    "run",
+                    "tests.shs",
+                    f"{sentinel_define}:{sentinel_token}",
+                ],
                 workspace,
                 task.timeout_seconds,
             )
-            runs.append({"case": tests_path.name, **run})
+            sentinel_ok = _sentinel_reached(workspace, sentinel_token)
+            runs.append(
+                {
+                    "case": tests_path.name,
+                    **_bounded_result(run),
+                    "sentinel_ok": sentinel_ok,
+                }
+            )
         base["runs"] = runs
         if any(run["timed_out"] for run in runs):
             return {**base, "status": "run_timeout"}
         if any(run["exit_code"] != 0 for run in runs):
             return {**base, "status": "tests_failed"}
+        if not all(run["sentinel_ok"] for run in runs):
+            # Exit was clean but the grader's final statement never executed:
+            # something ended the grading wire before the assertions completed.
+            return {**base, "status": "grader_short_circuit"}
         base["pass_at_1"] = True
         return {**base, "status": "passed"}
 
@@ -455,6 +557,7 @@ def _aggregate_rates(results: list[dict[str, Any]]) -> dict[str, Any]:
         "parse_at_1": _rate(results, "parse_at_1"),
         "construct_at_1": _rate(results, "construct_at_1"),
         "compose_at_1": _rate(results, "compose_at_1"),
+        "contract_at_1": _rate(results, "contract_at_1"),
         "requirements_at_1": _rate(results, "requirements_at_1"),
         "pass_at_1": _rate(results, "pass_at_1"),
         "status_counts": dict(sorted(status_counts.items())),
@@ -495,25 +598,35 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _git_commit(repo_root: Path) -> str | None:
-    completed = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=repo_root,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None
     return completed.stdout.strip() if completed.returncode == 0 else None
 
 
 def _catalog_fingerprint(shards: Path, repo_root: Path) -> dict[str, Any] | None:
-    completed = subprocess.run(
-        [str(shards), "enumerate", "--json"],
-        cwd=repo_root,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [str(shards), "enumerate", "--json"],
+            cwd=repo_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None
     if completed.returncode != 0:
         return None
     try:

@@ -40,6 +40,8 @@ def _render_task_prompt(task: Task) -> str:
         parts.extend(["\nStarter program:\n", f"```shards\n{task.starter}\n```"])
     parts.append(
         "\nReturn only a complete Shards source file defining `@wire(solution { ... })`."
+        " Top-level statements other than `@wire`, `@define`, and `@template`"
+        " definitions are rejected by the grader."
     )
     return "\n".join(parts).strip()
 
@@ -64,10 +66,11 @@ def _print_summary(report: dict[str, Any]) -> None:
         "parse_at_1",
         "construct_at_1",
         "compose_at_1",
+        "contract_at_1",
         "requirements_at_1",
         "pass_at_1",
     ):
-        print(f"  {key:16} {summary[key]:.3f}")
+        print(f"  {key:18} {summary[key]:.3f}")
     failures = [result for result in report["tasks"] if not result["pass_at_1"]]
     for result in failures:
         print(f"  FAIL {result['id']}: {result['status']}")

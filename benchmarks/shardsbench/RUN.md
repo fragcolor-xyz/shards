@@ -177,9 +177,12 @@ python3 benchmarks/shardsbench/run.py score \
   --output /tmp/shardsbench-run/extended-results.json
 ```
 
-Scoring performs candidate extraction, `shards check --json`, AST requirements, and
-runtime assertions. It records the benchmark commit, Shards binary metadata, live shard
-catalog count/hash, platform, diagnostics, durations, and per-task outcomes.
+Scoring performs candidate extraction, `shards check --json`, the top-level candidate
+contract (definitions only — see the README's integrity section), AST requirements,
+runtime assertions, and a grader-completion sentinel that detects candidates ending
+the grading wire before its assertions run. It records the benchmark commit, Shards
+binary metadata, live shard catalog count/hash, platform, diagnostics, durations, and
+per-task outcomes.
 
 Do not send scoring diagnostics back to the model unless the declared track is an
 interactive repair benchmark. One-shot code generation ends at the first response.

@@ -31,6 +31,11 @@ The grader copies the candidate into an isolated temporary working directory,
 includes it from `tests.shs`, calls `Do(solution)`, and checks the result with Shards
 assertions. Candidates may be raw Shards or a Markdown fenced `shards`/`shs` block.
 
+Because the candidate is included into the grading wire, its top-level statements
+would execute before the assertions. The scorer therefore rejects any candidate whose
+top level contains anything other than `@wire`, `@define`, and `@template` definitions
+(status `contract_violation`).
+
 ## Quick start
 
 From the repository root, benchmark maintainers can inspect/export tasks and verify
@@ -87,8 +92,9 @@ The JSON report includes strict `pass_at_1` plus diagnostic rates:
 - `parse_at_1`: no parse diagnostic was emitted;
 - `construct_at_1`: parsing and construction succeeded;
 - `compose_at_1`: `shards check --json` accepted the complete grader;
+- `contract_at_1`: the candidate's top level contains only allowed definitions;
 - `requirements_at_1`: task-required shards occur inside the `solution` wire's AST;
-- `pass_at_1`: all runtime assertions passed.
+- `pass_at_1`: all runtime assertions passed and the grader ran to completion.
 
 Per-task records retain structured diagnostics, exit codes, durations, and bounded
 stdout/stderr. The summary also breaks scores down by track and difficulty and counts
@@ -119,10 +125,27 @@ requirements complement runtime assertions; they are not a substitute for them.
 
 ## Security and benchmark integrity
 
-The runner uses a fresh temporary directory and an external timeout, but **it is not a
-security sandbox**. `shards run` currently has no capability manifest, and generated
-code can invoke effectful shards. Only grade trusted model output locally. Official or
-third-party submissions should be evaluated inside a locked-down container or VM.
+Two gates keep a candidate from short-circuiting its grader:
+
+1. **Top-level contract.** The candidate's JSON AST may contain only `@wire`,
+   `@define`, and `@template` definitions at the top level. Anything else — a stray
+   `Stop`, an `@include`, a `@schedule`/`@run`, any effectful statement — would run
+   inside the grading wire before the assertions and is rejected outright.
+2. **Grader-completion sentinel.** The scorer appends a final statement to each
+   grader that writes a secret token to a sentinel file. The token is passed as a
+   command-line define whose *name* is also randomized per run, so a frozen candidate
+   can neither read the token from any file nor reference or shadow the define. A
+   clean exit without a valid sentinel (for example a `Stop` issued inside
+   `Do(solution)` that ends the grading wire) is reported as `grader_short_circuit`,
+   not a pass.
+
+These gates defeat accidental early exits and simple cheating. They are **not a
+security sandbox**: `shards run` has no capability manifest, and a deliberately
+malicious candidate still executes with the grader's full OS privileges (it could,
+for instance, inspect its own process arguments through OS facilities). Only grade
+trusted model output locally. Official or third-party submissions should be evaluated
+inside a locked-down container or VM, and top-scoring candidates should be read by a
+human before publication.
 
 The checked-in `dev` graders are public smoke tests. A leaderboard-quality suite should
 keep its grading pack private, publish only prompts and public examples, pin the Shards
