@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "core/sum-int-sequence",
+  "title": "Sum an integer sequence",
+  "track": "generation",
+  "difficulty": "medium",
+  "tags": ["core", "sequence", "foreach", "state"],
+  "timeout_seconds": 5,
+  "tests": ["tests.shs", "tests-empty.shs"]
+}

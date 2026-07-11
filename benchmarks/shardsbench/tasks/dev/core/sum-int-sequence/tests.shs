@@ -1,0 +1,6 @@
+@include("candidate.shs" Once: true)
+
+[1] | Do(solution) | Assert.Is(1)
+[1 2 3 4 5] | Do(solution) | Assert.Is(15)
+[-5 2 3] | Do(solution) | Assert.Is(0)
+[100 -20 7] | Do(solution) | Assert.Is(87)

@@ -1,0 +1,7 @@
+@include("candidate.shs" Once: true)
+
+-100 | Do(solution) | Assert.Is("negative")
+-1 | Do(solution) | Assert.Is("negative")
+0 | Do(solution) | Assert.Is("zero")
+1 | Do(solution) | Assert.Is("positive")
+99 | Do(solution) | Assert.Is("positive")

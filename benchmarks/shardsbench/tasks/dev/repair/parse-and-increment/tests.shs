@@ -1,0 +1,6 @@
+@include("candidate.shs" Once: true)
+
+"0" | Do(solution) | Assert.Is(1)
+"41" | Do(solution) | Assert.Is(42)
+"-8" | Do(solution) | Assert.Is(-7)
+"999" | Do(solution) | Assert.Is(1000)

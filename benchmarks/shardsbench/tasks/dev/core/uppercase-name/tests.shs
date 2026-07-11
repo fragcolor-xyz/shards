@@ -1,0 +1,6 @@
+@include("candidate.shs" Once: true)
+
+{name: "alice"} | Do(solution) | Assert.Is("ALICE")
+{name: "Shards" age: 12} | Do(solution) | Assert.Is("SHARDS")
+{active: true name: "mixed Case"} | Do(solution) | Assert.Is("MIXED CASE")
+{name: ""} | Do(solution) | Assert.Is("")
