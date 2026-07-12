@@ -13,14 +13,19 @@ crate-type = ["rlib", "staticlib"]
 lazy_static = "1.5.0"
 shards = { path = "../../rust" }
 compile-time-crc32 = "0.1.2"
-tokenizers = { version = "0.21.0", default-features = false, features = [
+tokenizers = { version = "0.21.4", default-features = false, features = [
   "onig",
 ] }
 
-mistralrs = { version = "0.8.1", default-features = false, optional = true }
-candle-core = "0.10.2"
-candle-nn = "0.10.2"
-candle-transformers = "0.10.2"
+# mistral.rs has no crates.io release past 0.8.1 (which pins candle ^0.10.2);
+# candle 0.11 is only reachable via the v0.9.0 git tag. That tag pins candle to
+# a specific git rev (NOT crates.io 0.11.0), so we MUST match the exact same rev
+# below or Cargo resolves two incompatible candle copies (breaking Tensor interop
+# and the metal/cuda feature unification with mistralrs).
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs.git", tag = "v0.9.0", default-features = false, optional = true }
+candle-core = { git = "https://github.com/huggingface/candle.git", rev = "27f20fea993c81ea6d32ce44018f42b68466525e" }
+candle-nn = { git = "https://github.com/huggingface/candle.git", rev = "27f20fea993c81ea6d32ce44018f42b68466525e" }
+candle-transformers = { git = "https://github.com/huggingface/candle.git", rev = "27f20fea993c81ea6d32ce44018f42b68466525e" }
 
 rand = { version = "0.9", default-features = false, features = ["std_rng"] }
 anyhow = "1.0.80"
