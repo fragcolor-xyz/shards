@@ -17,6 +17,11 @@ if(NOT RUST_CARGO_TARGET)
   elseif(APPLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
       list(APPEND RUST_FLAGS -Ctarget-feature=+fp16,+fhm)
+      # candle >=0.11's aarch64 fp16 NEON kernel uses the unstable `float16x8_t`
+      # (stdarch_neon_f16) intrinsic type unconditionally under `+fp16`, which we
+      # enable above. candle doesn't declare the feature itself, so inject it as a
+      # crate attribute (our pinned nightly has the feature). See shards/modules/candle.
+      list(APPEND RUST_FLAGS "-Zcrate-attr=feature(stdarch_neon_f16)")
     endif()
 
     if(VISIONOS)
@@ -424,6 +429,8 @@ function(add_rust_library)
 
   if(ANDROID)
     list(APPEND RUST_FLAGS -Ctarget-feature=+fp16)
+    # See Apple arm64 note above: candle >=0.11's fp16 NEON path needs stdarch_neon_f16.
+    list(APPEND RUST_FLAGS "-Zcrate-attr=feature(stdarch_neon_f16)")
   endif()
 
   if(EMSCRIPTEN_ROOT_PATH)
