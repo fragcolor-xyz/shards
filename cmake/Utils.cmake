@@ -11,6 +11,10 @@ if(NOT CMAKE_PROPERTIES_TO_DUPLICATE)
     "INTERFACE_HEADER_SETS" "HEADER_SETS"
     "INTERFACE_CXX_MODULE_HEADER_UNIT_SETS" "CXX_MODULE_HEADER_UNIT_SETS"
     "INTERFACE_CXX_MODULE_SETS" "CXX_MODULE_SETS"
+    # CMake 4.4+ added SOURCE_SETS/INTERFACE_SOURCE_SETS as read-only target
+    # properties; like the other *_SETS above they can't be copied via
+    # set_target_properties, so exclude them from duplication.
+    "INTERFACE_SOURCE_SETS" "SOURCE_SETS"
     "BINARY_DIR" "IMPORTED" "SOURCE_DIR"
     "MANUALLY_ADDED_DEPENDENCIES"
     "SYMBOLIC"
