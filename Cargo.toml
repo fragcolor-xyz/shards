@@ -77,3 +77,18 @@ memmap2 = { git = "https://github.com/sinkingsugar/memmap2-rs.git", version = "=
 
 # objc 0.2.7 fork needed for sel_impl macro export (crates.io version has broken macro exports)
 objc = { git = "https://github.com/shards-lang/rust-objc.git", version = "=0.2.7", branch = "shards-0.2.7" }
+
+# candle fork (shards-lang/candle, branch shards-0.11 off rev 27f20fea — the exact
+# rev mistralrs v0.9.0 pins — plus our patches: muscriptor, CPU/x86 kernel work,
+# nightly-gated stdarch_neon_f16). Redirects the huggingface candle git source that
+# BOTH shards-ml and mistralrs pin, so a single patched candle is used everywhere
+# (no split -> Tensor interop + metal feature unification preserved).
+# NOTE: this [patch] must be mirrored in cmake/rust/union_Cargo.toml.in — the union
+# workspace has its own hardcoded [patch] block that does not inherit from here.
+[patch."https://github.com/huggingface/candle.git"]
+candle-core = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }
+candle-nn = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }
+candle-transformers = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }
+candle-metal-kernels = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }
+candle-kernels = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }
+candle-ug = { git = "https://github.com/shards-lang/candle.git", branch = "shards-0.11" }

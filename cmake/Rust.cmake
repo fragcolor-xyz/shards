@@ -16,12 +16,13 @@ if(NOT RUST_CARGO_TARGET)
     set(RUST_CARGO_TARGET wasm32-unknown-emscripten)
   elseif(APPLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+      # +fp16 enables the aarch64 fp16 NEON kernel tiers (candle, mistralrs-core).
+      # The unstable stdarch_neon_f16 feature they need must NOT be injected
+      # globally here: our candle fork (shards-lang/candle shards-0.11)
+      # self-declares it on nightly, so a global -Zcrate-attr would
+      # double-declare (E0636). mistralrs-core, which does not declare it, gets
+      # it via scoped profile-rustflags in cmake/rust/union_Cargo.toml.in.
       list(APPEND RUST_FLAGS -Ctarget-feature=+fp16,+fhm)
-      # candle >=0.11's aarch64 fp16 NEON kernel uses the unstable `float16x8_t`
-      # (stdarch_neon_f16) intrinsic type unconditionally under `+fp16`, which we
-      # enable above. candle doesn't declare the feature itself, so inject it as a
-      # crate attribute (our pinned nightly has the feature). See shards/modules/candle.
-      list(APPEND RUST_FLAGS "-Zcrate-attr=feature(stdarch_neon_f16)")
     endif()
 
     if(VISIONOS)
@@ -428,9 +429,9 @@ function(add_rust_library)
   endif()
 
   if(ANDROID)
+    # See the Apple arm64 note above: stdarch_neon_f16 comes from the candle
+    # fork's own declaration + mistralrs-core profile-rustflags, so +fp16 alone.
     list(APPEND RUST_FLAGS -Ctarget-feature=+fp16)
-    # See Apple arm64 note above: candle >=0.11's fp16 NEON path needs stdarch_neon_f16.
-    list(APPEND RUST_FLAGS "-Zcrate-attr=feature(stdarch_neon_f16)")
   endif()
 
   if(EMSCRIPTEN_ROOT_PATH)
