@@ -10,6 +10,7 @@ use candle_core::{DType, Device, Tensor as CandleTensor};
 #[cfg(feature = "llm")]
 pub mod llm;
 pub mod model;
+pub mod muscriptor;
 #[cfg(feature = "llm")]
 pub mod quantized_bert;
 mod tensor;
@@ -148,9 +149,15 @@ pub extern "C" fn shardsRegister_ml_rust(core: *mut shards::shardsc::SHCore) {
   register_shard::<tensor::TensorToFloat3sShard>();
   register_shard::<tensor::TensorToFloat4sShard>();
 
+  register_shard::<muscriptor::LoadShard>();
+  register_shard::<muscriptor::TranscribeShard>();
+  register_shard::<muscriptor::StreamShard>();
+  register_shard::<muscriptor::ToMidiShard>();
+
   register_object_type::<Tensor>(FRAG_CC, fourCharacterCode(*b"cTEN"));
   register_object_type::<tokenizer::Tokenizer>(FRAG_CC, fourCharacterCode(*b"TOKn"));
   register_object_type::<model::Model>(FRAG_CC, fourCharacterCode(*b"cMOD"));
+  register_object_type::<muscriptor::MuScriptorModel>(FRAG_CC, fourCharacterCode(*b"muSC"));
 
   // LLM shards (mistral.rs) — requires tokio + mistralrs, not available on wasm/visionOS
   #[cfg(feature = "llm")]
