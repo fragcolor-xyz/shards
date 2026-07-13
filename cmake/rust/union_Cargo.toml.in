@@ -90,12 +90,13 @@ debug-assertions = false
 # stdarch_neon_f16 feature. It cannot be injected globally via RUSTFLAGS: our
 # candle fork self-declares the feature (cfg_attr on candle_nightly), and a
 # global -Zcrate-attr would double-declare there (E0636). Scope it to
-# mistralrs-core with per-package rustflags instead (harmless on non-aarch64:
-# the feature exists on our nightly and unused-feature lints are capped for deps).
+# mistralrs-core with per-package rustflags instead. The cfg_attr gate is
+# required: these rustflags also reach the build script (host-compiled), and
+# stdarch_neon_f16 is an unknown lib feature on non-aarch64 hosts (E0635).
 [profile.dev.package.mistralrs-core]
-rustflags = ["-Zcrate-attr=feature(stdarch_neon_f16)"]
+rustflags = ['-Zcrate-attr=cfg_attr(target_arch = "aarch64", feature(stdarch_neon_f16))']
 [profile.rel-with-deb-info.package.mistralrs-core]
-rustflags = ["-Zcrate-attr=feature(stdarch_neon_f16)"]
+rustflags = ['-Zcrate-attr=cfg_attr(target_arch = "aarch64", feature(stdarch_neon_f16))']
 
 # mistralrs-core and candle are very large crates with heavy generic monomorphization.
 # With codegen-units=1 (release default) they require >7GB RAM per compilation unit,
@@ -104,7 +105,7 @@ rustflags = ["-Zcrate-attr=feature(stdarch_neon_f16)"]
 # use dramatically at the cost of cross-unit inlining (acceptable for ML library code).
 [profile.release.package.mistralrs-core]
 codegen-units = 16
-rustflags = ["-Zcrate-attr=feature(stdarch_neon_f16)"]
+rustflags = ['-Zcrate-attr=cfg_attr(target_arch = "aarch64", feature(stdarch_neon_f16))']
 [profile.release.package.mistralrs-quant]
 codegen-units = 16
 [profile.release.package.mistralrs-vision]
