@@ -18,13 +18,20 @@ build-docker-image:
 check-ci:
   claude -p "Claude, please check the CI for current branch PR, github actions. Somehow grep if there is any error and report pls"
 
+# External Shards modules (e.g. edge-talk's Engram), statically linked into the
+# CLI. Set system-wide so every checkout/session builds the same binary, e.g. in
+# ~/.zshenv: export SHARDS_EXTERNAL_MODULE_DIRS="$HOME/devel/edge-talk/EdgeTalk/Frameworks/ShardsModules"
+# Passed on EVERY configure (empty when unset) so parallel sessions can't
+# silently drop or resurrect it via a stale CMake cache.
+external_module_dirs := env_var_or_default("SHARDS_EXTERNAL_MODULE_DIRS", "")
+
 # configure cmake in build/Debug
 configure:
-  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug > /dev/null
+  cmake -GNinja -B build/Debug -DCMAKE_BUILD_TYPE=Debug -DSHARDS_EXTERNAL_MODULE_DIRS="{{external_module_dirs}}" > /dev/null
 
 # configure cmake in build/Release
 configure-rel:
-  cmake -GNinja -B build/Release -DCMAKE_BUILD_TYPE=Release > /dev/null
+  cmake -GNinja -B build/Release -DCMAKE_BUILD_TYPE=Release -DSHARDS_EXTERNAL_MODULE_DIRS="{{external_module_dirs}}" > /dev/null
 
 # build shards (configures first if needed)
 build: configure
@@ -82,7 +89,7 @@ check-union-visionos: (check-union "Release" "--target aarch64-apple-visionos -Z
 
 # configure cmake with code coverage enabled
 configure-cov:
-  cmake -GNinja -B build/Coverage -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 > /dev/null
+  cmake -GNinja -B build/Coverage -DCMAKE_BUILD_TYPE=Debug -DCODE_COVERAGE=1 -DSHARDS_EXTERNAL_MODULE_DIRS="{{external_module_dirs}}" > /dev/null
 
 # build shards with code coverage (configures first if needed)
 build-cov: configure-cov
