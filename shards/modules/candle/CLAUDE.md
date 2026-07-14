@@ -38,6 +38,7 @@ Features flow from CMakeLists.txt → Cargo via `add_rust_library(... FEATURES .
 | `lib.rs` | Module registration, global Metal/CUDA device selection, Tensor type |
 | `llm.rs` | AI shards: Model, Chat, AddText, AddImage, AddAudio, Generate, Reset |
 | `model.rs` | BERT model loading (ML.Model) and forward pass (ML.Forward) |
+| `muscriptor.rs` | MuScriptor.Load / MuScriptor.Transcribe / MuScriptor.ToMidi (audio → MIDI) |
 | `tensor.rs` | 16 tensor operation shards (Mul, Add, Reshape, etc.) |
 | `tokenizer.rs` | ML.Tokenizer, ML.Tokens, ML.Detokenize |
 | `umap.rs` | Tensor.UMAP dimensionality reduction |
@@ -194,6 +195,24 @@ The C++ module at `shards/modules/llm/` has been re-enabled, gated on `LLM_ENABL
 
 The Rust `AI.*` shards (mistral.rs) and C++ `LLM.*` shards (llama.cpp) coexist as a three-tier architecture: AI.* for broad model support, LLM.* for Vulkan GPU acceleration, ML.* for tensor ops.
 
+## MuScriptor Shards (muscriptor.rs)
+
+Audio-to-MIDI music transcription via `candle_transformers::models::muscriptor` (lives in the shards-lang/candle fork, branch `shards-0.11`). Pure candle — no mistralrs/tokio, so these shards are NOT gated on the `llm` feature and exist on every target. Heavy work (load, generate) runs through `run_blocking` (`BlockingShard`), and `MuScriptor.Transcribe` supports mid-generation cancellation via an `AtomicBool` checked in the per-step callback.
+
+```shards
+"path/to/model.safetensors" | MuScriptor.Load = model  ; config.json read from alongside, or inferred from weights
+samples | MuScriptor.Transcribe(Model: model Instruments: "acoustic_piano,drums") = notes
+notes | MuScriptor.ToMidi = midi  ; format-0 SMF bytes
+"out.mid" | FS.Write(midi Overwrite: true)
+```
+
+- **`MuScriptor.Load`** — safetensors path → model object (fourCC `muSC`). `GPU` param (default true); f16 on Metal, f32 elsewhere. Weights: `hf.co/MuScriptor/muscriptor-{small,medium,large}` (gated: auto, CC BY-NC 4.0).
+- **`MuScriptor.Transcribe`** — mono `[Float]` samples → seq of note tables `{pitch: Int, onset: Float, offset: Float, program: Int, drum: Bool, instrument: String}`. Params: `SampleRate` (resamples to 16 kHz via the reference-matching windowed-sinc kernel bank), `Instruments` (string or string-seq conditioning), `BatchSize` (0 = auto: 4 GPU / 1 CPU), `MaxTokens`, `Temperature`/`TopP`/`TopK`/`Seed` (0 temperature = greedy, the reference default). Batch/offline: wants the whole recording, applies the reference's full note cleanup (incl. global same-pitch overlap trimming).
+- **`MuScriptor.Stream`** — stateful streaming variant (Markdown.Parse-style: state lives in the shard instance, advanced per activation). Feed `[Float]` samples incrementally from a live/looped wire; buffers at the native rate, transcribes each full 5s segment as it becomes available (all buffered segments batched per activation), and keeps the `TokenDecoder` across activations so the model's tie-prologue carries notes across segment boundaries. Outputs the notes *completed* during that activation (empty while buffering). `Drain: true` (bool-var) flushes the zero-padded partial segment, closes open notes and resets for a new stream; `Reset: true` discards state. Same sampling params as Transcribe; no `BatchSize` (a batch = whatever segments are buffered). Per-note min-duration cleanup only — global overlap trimming needs the whole stream, use Transcribe for offline parity.
+- **`MuScriptor.ToMidi`** — note tables → Standard MIDI File (format 0) bytes, byte-for-byte matching the reference `note_event2midi`. Model-free.
+
+The model object wraps `Mutex<Model>` because generation mutates KV-cache state; concurrent transcribes on one model serialize. The sinc resampler and MIDI serializer are ports of `candle-examples/examples/muscriptor/{audio,midi}.rs` (the example crate isn't linkable).
+
 ## Test Files
 
 | Test | Model | What it tests | CI? |
@@ -205,3 +224,4 @@ The Rust `AI.*` shards (mistral.rs) and C++ `LLM.*` shards (llama.cpp) coexist a
 | `ai-embed.shs` | embeddinggemma-300m | Text embeddings (768-dim) | No (needs HF_TOKEN) |
 | `ml.shs` / `ml-test.shs` | BERT (safetensors) | Tensor ops, embeddings | Yes |
 | `whisper.shs` | (placeholder) | Audio transcription | No (needs audio model) |
+| `muscriptor.shs` | muscriptor-small (safetensors, gated) | ToMidi golden bytes (always); audio→MIDI transcription when weights present | Golden only |

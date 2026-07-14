@@ -46,6 +46,7 @@ cmake-variants.json
 shards/langffi/Cargo.lock
 .aider*
 shards/tests/data/bert-config.json
+shards/tests/data/muscriptor-small/
 *.safetensors
 *.onnx
 gte-tiny-config.json

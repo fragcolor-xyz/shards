@@ -1,0 +1,75 @@
+; Test: MuScriptor audio-to-MIDI transcription (candle, shards-lang/candle fork)
+;
+; MuScriptor.ToMidi is model-free and always tested (byte-exact golden MIDI).
+; The transcription pass needs the model weights; download them once with:
+;   hf download MuScriptor/muscriptor-small --local-dir shards/tests/data/muscriptor-small
+; (gated: auto — accept the terms on the hub first). Skipped when absent.
+
+@mesh(main)
+
+@define(model-path "./data/muscriptor-small/model.safetensors")
+
+@wire(muscriptor-test {
+  ; --- MuScriptor.ToMidi golden test ---
+  ; One piano note: program change @0.5s, note-on, note-off @1.5s, end of track.
+  [{pitch: 60 onset: 0.5 offset: 1.5 program: 0 drum: false instrument: "acoustic_piano"}]
+  MuScriptor.ToMidi
+  ToHex
+  ; MThd(format 0, 1 track, 480 tpb) + MTrk: Δ480 prog-change ch0,
+  ; Δ0 note-on 0x3c vel100, Δ960 note-off, Δ0 end-of-track.
+  Assert.Is("0x4d546864000000060000000101e04d54726b000000118360c00000903c648740803c0000ff2f00")
+  Log("ToMidi golden ok")
+
+  @model-path | If(FS.IsFile {
+    MuScriptor.Load = model
+    Log("model loaded")
+
+    ; First 10 seconds of Ode to Joy, mono 16 kHz.
+    "./data/Ode_to_Joy.ogg" | Audio.ReadFileBytes(SampleRate: 16000 Channels: 1)
+    BytesToAudio(SampleRate: 16000 Channels: 1) | AudioToFloats
+    Limit(160000) = samples
+
+    samples | MuScriptor.Transcribe(Model: model Instruments: "acoustic_piano") = notes
+    Count(notes) | Log("notes")
+    Count(notes) | IsMore(0) | Assert.Is(true)
+
+    notes | MuScriptor.ToMidi = midi
+    Count(midi) | Log("midi bytes")
+    ; Standard MIDI File header
+    midi | Slice(To: 4) | ToHex | Assert.Is("0x4d546864")
+
+    ; --- MuScriptor.Stream: same audio fed incrementally to one shard instance ---
+    ; Repeat re-activates the same instance: activation 0 gets 6.25s (one full
+    ; segment transcribed, 1.25s stays buffered), activation 1 adds 3.125s and
+    ; drains: 4.375s remain buffered, so drain must zero-pad the partial
+    ; segment before finishing the decoder.
+    samples | Slice(To: 100000) = part1
+    samples | Slice(From: 100000 To: 150000) = part2
+    false >= drain-flag
+    0 >= step
+    Sequence(stream-notes Type: @type([Type::Any]))
+    Repeat({
+      step | IsMore(0) > drain-flag
+      step | If(Is(0) {Get(part1)} {Get(part2)})
+      MuScriptor.Stream(Model: model Drain: drain-flag)
+      ForEach({Push(stream-notes)})
+      Math.Inc(step)
+    } Times: 2)
+    Count(stream-notes) | Log("stream notes")
+    Count(stream-notes) | IsMore(0) | Assert.Is(true)
+
+    ; --- resampler: 32 kHz input goes through the windowed-sinc resample ---
+    "./data/Ode_to_Joy.ogg" | Audio.ReadFileBytes(SampleRate: 32000 Channels: 1)
+    BytesToAudio(SampleRate: 32000 Channels: 1) | AudioToFloats
+    Limit(160000) ; first 5 s at 32 kHz
+    MuScriptor.Transcribe(Model: model SampleRate: 32000) = notes-32k
+    Count(notes-32k) | Log("32k resampled notes")
+    Count(notes-32k) | IsMore(0) | Assert.Is(true)
+    "transcription ok"
+  } {
+    Msg("muscriptor.shs: transcription skipped — weights not found (see header)")
+  })
+})
+
+@schedule(main muscriptor-test)
+@run(main) | Assert.Is(true)

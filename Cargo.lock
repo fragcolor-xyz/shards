@@ -1015,7 +1015,7 @@ dependencies = [
 [[package]]
 name = "candle-core"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "accelerate-src",
  "byteorder",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "candle-kernels"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "cudaforge",
 ]
@@ -1055,7 +1055,7 @@ dependencies = [
 [[package]]
 name = "candle-metal-kernels"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "block2 0.6.2",
  "half",
@@ -1070,7 +1070,7 @@ dependencies = [
 [[package]]
 name = "candle-nn"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "accelerate-src",
  "candle-core",
@@ -1088,7 +1088,7 @@ dependencies = [
 [[package]]
 name = "candle-transformers"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "accelerate-src",
  "byteorder",
@@ -1107,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "candle-ug"
 version = "0.11.0"
-source = "git+https://github.com/huggingface/candle.git?rev=27f20fea993c81ea6d32ce44018f42b68466525e#27f20fea993c81ea6d32ce44018f42b68466525e"
+source = "git+https://github.com/shards-lang/candle.git?branch=shards-0.11#55014f7b1ef378315eaa80288fb7bcb8fcaccfc2"
 dependencies = [
  "ug",
  "ug-cuda",
