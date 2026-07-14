@@ -1,0 +1,232 @@
+@define(time-tick {
+  game-over
+  When(Predicate: Is(false) Action: {
+    time-remaining | Math.Subtract(1) > time-remaining
+    When(Predicate: IsLessEqual(0) Action: {
+      Step(end-round)
+    })
+  })
+})
+
+@define(game-over-ui {
+  UI.CentralPanel(
+    Contents: {
+      UI.Area(
+        Position: @f2(0.0 0.0)
+        Anchor: Anchor::Center
+        Contents: {
+          "GAME OVER" | UI.Label
+
+          UI.Horizontal(
+            Contents: {
+            "Final Score: " | UI.Label
+            total-score | ToString | UI.Label
+            "/" | UI.Label
+            @total-rounds | ToString | UI.Label
+          })
+
+          UI.Button(
+            Label: "Play Again"
+            Action: {
+              @reset-game-variables
+            }
+          )
+        }
+      )
+    }
+  )
+})
+
+@define(reset-game-variables {
+    @reset-round-variables
+    0 > total-score
+    1 > current-round
+    false > game-over
+    true > new-round
+  })
+
+@wire(end-round {
+  Once({
+    0 >= new-round-number ;; (1)
+  })
+
+  current-round | Math.Add(1) > new-round-number ;; (2)
+
+  new-round-number
+  If(Predicate: IsMore(@total-rounds) Then: { ;; (3)
+    true > game-over ;; (4)
+  } Else: {
+    new-round-number > current-round ;; (5)
+    true > new-round ;; (6)
+  })
+} Looped: true)
+
+@define(reset-round-variables {
+  false > new-round
+  @max-timer > time-remaining
+}) 
+
+@define( initialize-round {
+  RandomInt(Max: total-images) > left-image-index
+  RandomInt(Max: total-images) > right-image-index
+
+  left-image-index
+  If(Predicate: {  ;; (1)
+    Is(right-image-index) ;; (2)
+  } Then: {
+    true > same-image
+  } Else: {
+    false > same-image
+  })
+
+  @reset-round-variables
+})
+
+@define(total-rounds 10)
+@define(max-timer 5)
+
+@define(load-resources {
+  LoadImage("data/cats/cat01.png") | Push(Name: images) ;; (1)(2)
+  LoadImage("data/cats/cat02.png") | Push(Name: images)
+  LoadImage("data/cats/cat03.png") | Push(Name: images)
+})
+
+@define( initialize-variables {
+  ;; Variables to reset each round
+  true >= new-round
+  @max-timer >= time-remaining
+
+  ;; Variables to reset each game 
+  0 >= total-score
+  1 >= current-round
+  false >= game-over
+
+  
+  ;; Other Shared Variables
+  0 >= left-image-index
+  0 >= right-image-index
+  Count(images) >= total-images
+  true >= same-image
+})
+
+@define( main-game-ui {
+  UI.BottomPanel(
+    Contents: { "Are they the same image? Press the UP arrow if YES, and the DOWN arrow if NO." | UI.Label
+  })
+
+  UI.TopPanel(
+    Contents: {
+    UI.Horizontal(
+    Contents: {
+      "Score: " | UI.Label
+      total-score | ToString | UI.Label
+      UI.Separator
+      "Round: " | UI.Label
+      current-round | ToString | UI.Label
+      UI.Separator
+      "Time Left: " | UI.Label
+      time-remaining | ToString | UI.Label
+      })
+  })
+
+  game-over
+  If(Predicate: Is(false) Then: {
+      UI.CentralPanel(
+        Contents: {
+        UI.Horizontal(
+          Contents: {
+            UI.Area(
+              Position: @f2(-250.0 0.0)
+              Anchor: Anchor::Center
+              Contents: {
+              images | Take(left-image-index) | UI.Image
+              })
+
+              UI.Area(
+              Position: @f2(250.0 0.0)
+              Anchor: Anchor::Center
+              Contents: {
+              images | Take(right-image-index) | UI.Image
+            })
+        })
+      })
+  } Else: {
+    @game-over-ui
+  })
+})
+
+@wire( ui-loop {
+  GFX.MainWindow(
+    Title: "Yes-No Game"
+    Width: 1280 Height: 768
+    Contents: {
+      Once({
+        GFX.DrawQueue >= ui-draw-queue
+        GFX.UIPass(ui-draw-queue) >> render-steps
+      })
+
+      ui-draw-queue | GFX.ClearQueue
+
+      Inputs.KeyDown( 
+        Key: "up"
+        Action: {
+          same-image
+          When(Predicate: {
+            Is(true)
+            And
+            game-over | Is(false)
+          } Action: {
+            total-score | Math.Add(1) > total-score
+            Step(end-round)
+          })
+        }
+      )
+
+      Inputs.KeyDown(
+        Key: "down"
+        Action: {
+          same-image
+          When(Predicate: {
+            Is(false)
+            And
+            game-over | Is(false)
+            } Action: {
+            total-score | Math.Add(1) > total-score
+            Step(end-round)
+          })
+        }
+      )
+        
+      UI(Contents: {
+        @main-game-ui
+      }) | UI.Render(ui-draw-queue)
+      GFX.Render(Steps: render-steps)
+    })
+} Looped: true)
+
+@wire(logic-loop {
+  Once({
+    @time-tick
+  } Every: 1.0)
+
+  game-over
+  When(Predicate: {
+    Is(false) ;; (4)
+    And
+    new-round | Is(true) ;; (1)
+  } Action: {
+      @initialize-round ;; (3)
+  })
+} Looped: true)
+
+@wire( game-loop {
+  Once({ 
+    @load-resources 
+    @initialize-variables
+  })
+  Branch(Wires: [ui-loop logic-loop])
+} Looped: true)
+
+@mesh(main)
+@schedule(main game-loop)
+@run(main FPS: 60)
