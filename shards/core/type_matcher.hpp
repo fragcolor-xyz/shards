@@ -6,6 +6,7 @@
 #include <shards/defer.hpp>
 #include <boost/container/small_vector.hpp>
 #include <string>
+#include <set>
 #include <spdlog/spdlog.h>
 #include "ops_internal.hpp"
 

@@ -12,8 +12,10 @@
 #include "utils.hpp"
 #include "runtime.hpp"
 
+#if !SH_FREERTOS
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread.hpp>
+#endif
 
 #include <tracy/Wrapper.hpp>
 
@@ -22,7 +24,7 @@
 #endif
 
 // Can not create this many workers, create on demand instead
-#if SH_EMSCRIPTEN
+#if SH_EMSCRIPTEN || SH_FREERTOS
 #define SH_ENABLE_TIDE_POOL 0
 #else
 #define SH_ENABLE_TIDE_POOL 1
@@ -32,7 +34,7 @@
 #include "taskflow.hpp"
 #endif
 
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+#if (defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)) || SH_FREERTOS
 #define HAS_ASYNC_SUPPORT 0
 #else
 #define HAS_ASYNC_SUPPORT 1

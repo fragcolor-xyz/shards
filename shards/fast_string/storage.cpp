@@ -9,7 +9,11 @@
 #include <boost/container/scoped_allocator.hpp>
 #include <tracy/Wrapper.hpp>
 
+// TBB has no ESP32/bare-metal port; the build can opt out via -DFAST_STRING_NO_TBB
+// to fall back to the boost.container implementation below.
+#if !defined(FAST_STRING_NO_TBB)
 #define FAST_STRING_USE_TBB 1
+#endif
 
 #ifdef FAST_STRING_USE_TBB
 #include <oneapi/tbb/concurrent_unordered_map.h>
@@ -70,7 +74,13 @@ std::string_view load(uint64_t id) {
 // Original complex implementation
 
 static constexpr size_t Megabyte = 1 << 20;
+#ifdef FAST_STRING_NO_TBB
+// Embedded (this non-TBB path is ESP32-only): a monotonic pool that grabs 8 MB on
+// first use would OOM the device. Start tiny; it grows geometrically as needed.
+static constexpr size_t InitialPoolSize = 64 * 1024;
+#else
 static constexpr size_t InitialPoolSize = Megabyte * 8;
+#endif
 
 using Alloc = boost::container::pmr::monotonic_buffer_resource;
 struct CountingAllocator : public boost::container::pmr::memory_resource {

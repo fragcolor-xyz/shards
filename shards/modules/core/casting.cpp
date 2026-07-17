@@ -1332,7 +1332,7 @@ struct AudioToBytes {
       const float *samples = audio.samples;
       for (uint32_t i = 0; i < audio.nsamples * audio.channels; i++) {
         int32_t sample = static_cast<int32_t>(samples[i] * 8388607.0f); // 2^23-1
-        sample = std::min(std::max(sample, -8388608), 8388607);
+        sample = std::min<int32_t>(std::max<int32_t>(sample, -8388608), 8388607);
 
         // Store as 3 bytes in little-endian
         _output[i * 3] = sample & 0xFF;

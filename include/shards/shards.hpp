@@ -964,6 +964,15 @@ struct Var : public SHVar {
     payload.intValue = src;
   }
 
+#if __SIZEOF_LONG__ == 4
+  // ILP32 (e.g. rv32 / esp32p4): `long` is a distinct 32-bit type — and newlib
+  // aliases int32_t/SHEnum to `long` — so it matches neither Var(int) nor
+  // Var(int64_t) unambiguously. Provide explicit overloads. (On LP64 `long` IS
+  // int64_t, so this would redefine Var(int64_t); hence the guard.)
+  explicit Var(long src) : Var((int64_t)src) {}
+  explicit Var(unsigned long src) : Var((int64_t)(unsigned long long)src) {}
+#endif
+
   explicit Var(const std::string &src) : Var(std::string_view(src)) {}
   explicit Var(const char *src, size_t len) : SHVar() {
     valueType = SHType::String;

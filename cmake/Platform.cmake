@@ -114,6 +114,14 @@ if(NOT EMSCRIPTEN AND(WIN32 OR MACOSX OR DESKTOP_LINUX))
   set(DESKTOP TRUE)
 endif()
 
+# ESP32/ESP-IDF detection (FreeRTOS-based)
+if(IDF_TARGET)
+  set(SH_ESP32 TRUE)
+  set(SH_FREERTOS TRUE)
+  set(HAVE_THREADS ON)  # FreeRTOS provides threading primitives
+  message(STATUS "ESP32 target detected: ${IDF_TARGET}")
+endif()
+
 # Zig cross-compilation detection
 if(ZIG_TARGET)
   set(ZIG_CROSSCOMPILE TRUE)

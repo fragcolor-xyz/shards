@@ -489,6 +489,10 @@ bool operator==(const SHTypeInfo &a, const SHTypeInfo &b) {
 
 ALWAYS_INLINE inline bool _almostEqual(const float a, const float b, const double e) { return __builtin_fabsf(a - b) <= e; }
 ALWAYS_INLINE inline bool _almostEqual(const double a, const double b, const double e) { return __builtin_fabs(a - b) <= e; }
+// Explicit narrow-integer overloads: on rv32 (esp toolchain) int8/int16 args are
+// equal-rank conversions to both int32_t and int64_t, making the call ambiguous.
+ALWAYS_INLINE inline bool _almostEqual(const int8_t a, const int8_t b, const double e) { return __builtin_abs(a - b) <= e; }
+ALWAYS_INLINE inline bool _almostEqual(const int16_t a, const int16_t b, const double e) { return __builtin_abs(a - b) <= e; }
 ALWAYS_INLINE inline bool _almostEqual(const int32_t a, const int32_t b, const double e) { return __builtin_abs(a - b) <= e; }
 ALWAYS_INLINE inline bool _almostEqual(const int64_t a, const int64_t b, const double e) { return __builtin_llabs(a - b) <= e; }
 

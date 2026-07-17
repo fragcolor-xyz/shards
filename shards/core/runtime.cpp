@@ -19,8 +19,10 @@
 #include "pmr/vector.hpp"
 #include "inline.hpp"
 #include "async.hpp"
+#if !SH_ESP32
 #include <boost/filesystem.hpp>
 #include <boost/stacktrace.hpp>
+#endif
 #include <csignal>
 #include <cstdarg>
 #include <mutex>
@@ -60,7 +62,9 @@
 #include <timeapi.h>
 #endif
 
+#if !SH_ESP32
 namespace fs = boost::filesystem;
+#endif
 
 using namespace shards;
 
@@ -145,7 +149,11 @@ SHOptionalString getCompiledCompressedString(uint32_t id) {
 
 #include <shards/core/shccstrings.hpp>
 
+#if SH_ESP32
+static std::unordered_map<uint32_t, std::string> strings_storage;
+#else
 static oneapi::tbb::concurrent_unordered_map<uint32_t, std::string> strings_storage;
+#endif
 
 void decompressStrings() {
   if (!shards::GetGlobals().CompressedStrings) {
@@ -194,6 +202,7 @@ extern "C" void __sanitizer_set_report_path(const char *path);
 #endif
 
 void loadExternalShards(std::string from) {
+#if !SH_ESP32
   static std::unordered_set<std::string> loaded;
   static std::mutex loadedMutex;
 
@@ -237,6 +246,7 @@ void loadExternalShards(std::string from) {
       }
     }
   }
+#endif
 }
 
 #ifdef TRACY_ENABLE
@@ -1769,7 +1779,7 @@ void error_handler(int err_sig) {
   }
 
   if (crashed) {
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !SH_ESP32
     SHLOG_ERROR("{}", boost::stacktrace::to_string(boost::stacktrace::stacktrace()));
 #endif
 
@@ -2094,11 +2104,13 @@ endOfWire:
 void parseArguments(int argc, const char **argv) {
   shards::fast_string::init();
 
+#if !SH_ESP32
   namespace fs = boost::filesystem;
 
   auto &globals = GetGlobals();
   auto absExePath = fs::weakly_canonical(argv[0]);
   globals.ExePath = absExePath.string();
+#endif
 }
 
 Globals &GetGlobals() {
@@ -2744,6 +2756,7 @@ void shInit() {
   // Initialize log outputs only
   shInitLog();
 
+#if !SH_ESP32
   if (GetGlobals().RootPath.size() > 0) {
     // set root path as current directory
     fs::current_path(GetGlobals().RootPath.c_str());
@@ -2752,6 +2765,7 @@ void shInit() {
     auto cp = fs::current_path();
     GetGlobals().RootPath = cp.string();
   }
+#endif
 
 #ifdef SH_USE_UBSAN_REPORT
   auto absPath = fs::absolute(GetGlobals().RootPath);
@@ -3300,7 +3314,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     }
 #endif
     shards::loadExternalShards(p1);
+#if !SH_ESP32
     fs::current_path(p1);
+#endif
     SHLOG_DEBUG("Root path set to: {}", p1);
   };
 
@@ -3436,7 +3452,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 #if SHARDS_DEBUGGER
     dbg::unload();
 #endif
+#if SH_ENABLE_TIDE_POOL
     getTidePool().terminate();
+#endif
     SHLOG_INFO("! shards beforeUnload called !");
   };
 
