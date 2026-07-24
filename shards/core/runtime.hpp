@@ -260,12 +260,6 @@ void installSignalHandlers();
 
 bool isDebuggerPresent();
 
-#ifndef SH_STRIP_HELP_STRINGS
-#ifdef SH_COMPRESSED_STRINGS
-void decompressStrings();
-#endif
-#endif
-
 struct DefaultHelpText {
   static inline const SHOptionalString InputHelpIgnoredOrPass =
       SHCCSTR("Any input type is accepted. The input value will either pass through unchanged or be ignored.");

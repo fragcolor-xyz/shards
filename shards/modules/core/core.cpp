@@ -1165,9 +1165,8 @@ struct Map {
   void activate(SHContext *context, const SHVar &input) { throw ActivationError("Invalid activation function"); }
 
 private:
-  static inline Parameters _params{{"Apply",
-                                    SHCCSTR("The function to apply to each element of the sequence or value of the table."),
-                                    {CoreInfo::Shards}}};
+  static inline Parameters _params{
+      {"Apply", SHCCSTR("The function to apply to each element of the sequence or value of the table."), {CoreInfo::Shards}}};
 
   SHVar _output{};
   ShardsVar _shards{};
@@ -1184,9 +1183,7 @@ private:
 
 // Entries: Converts a table to a sequence of [key, value] pairs
 struct Entries {
-  static SHOptionalString help() {
-    return SHCCSTR("Converts a table to a sequence of [key, value] pairs.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Converts a table to a sequence of [key, value] pairs."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The table to convert."); }
   static SHOptionalString outputHelp() { return SHCCSTR("A sequence of [key, value] pairs."); }
@@ -1218,9 +1215,7 @@ private:
 
 // Keys: Extracts all keys from a table as a sequence
 struct Keys {
-  static SHOptionalString help() {
-    return SHCCSTR("Extracts all keys from a table as a sequence.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Extracts all keys from a table as a sequence."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The table to extract keys from."); }
   static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing all the keys from the table."); }
@@ -1248,9 +1243,7 @@ private:
 
 // Values: Extracts all values from a table as a sequence
 struct Values {
-  static SHOptionalString help() {
-    return SHCCSTR("Extracts all values from a table as a sequence.");
-  }
+  static SHOptionalString help() { return SHCCSTR("Extracts all values from a table as a sequence."); }
 
   static SHOptionalString inputHelp() { return SHCCSTR("The table to extract values from."); }
   static SHOptionalString outputHelp() { return SHCCSTR("A sequence containing all the values from the table."); }
@@ -2129,14 +2122,6 @@ struct GetShardHelp {
   }
 
   SHVar activate(SHContext *context, const SHVar &input) {
-#ifdef SH_COMPRESSED_STRINGS
-    static bool decompressed = false;
-    if (!decompressed) {
-      decompressStrings();
-      decompressed = true;
-    }
-#endif
-
     auto blkname = SHSTRVIEW(input);
     auto shard = createShard(blkname);
     if (!shard) {
@@ -2329,13 +2314,6 @@ struct IndexRow {
 // summary, sorted by name. Creating each shard to read its types/help is the same
 // cost the CLI and check paths pay; it's sub-second over the whole registry.
 static std::vector<IndexRow> buildIndex() {
-#ifdef SH_COMPRESSED_STRINGS
-  static bool decompressed = false;
-  if (!decompressed) {
-    decompressStrings();
-    decompressed = true;
-  }
-#endif
   std::vector<IndexRow> rows;
   for (auto &[name, _] : GetGlobals().ShardsRegister) {
     auto shard = createShard(name);
@@ -2536,7 +2514,7 @@ struct ShardsSearch {
 // Internal C entry points for the CLI (`shards enumerate`/`search`) so the command
 // line and the Shards.Index / Shards.Search shards share one index + ranking impl
 // (discovery::buildIndex / discovery::search). NOT part of the public _SHCore ABI;
-// the lang crate links these directly (same pattern as shards_decompress_strings).
+// the lang crate links these directly.
 // Returned strings/arrays are heap-owned — release with shards_discovery_free.
 extern "C" {
 struct SHShardIndexEntry {
@@ -2739,9 +2717,7 @@ struct First {
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A table or sequence to get the first element from."); }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("For sequences: the first value. For tables: a [key, value] pair.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("For sequences: the first value. For tables: a [key, value] pair."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::SeqOrTable; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -2793,9 +2769,7 @@ struct Last {
   }
 
   static SHOptionalString inputHelp() { return SHCCSTR("A table or sequence to get the last element from."); }
-  static SHOptionalString outputHelp() {
-    return SHCCSTR("For sequences: the last value. For tables: a [key, value] pair.");
-  }
+  static SHOptionalString outputHelp() { return SHCCSTR("For sequences: the last value. For tables: a [key, value] pair."); }
 
   static SHTypesInfo inputTypes() { return CoreInfo::SeqOrTable; }
   static SHTypesInfo outputTypes() { return CoreInfo::AnyType; }
@@ -3243,28 +3217,6 @@ SHVar blockingSleepActivation(const SHVar &input) {
   }
   return input;
 }
-
-#ifdef SH_COMPRESSED_STRINGS
-SHVar export_strings(const SHVar &input) { return Var::Empty; }
-#else
-SHVar export_strings(const SHVar &input) {
-  static OwnedVar output;
-  if (output->isNone()) {
-    assert(shards::GetGlobals().CompressedStrings);
-    SeqVar strs;
-    for (auto &[crc, str] : *shards::GetGlobals().CompressedStrings) {
-      if (crc != 0) {
-        SeqVar record;
-        record.emplace_back(Var(crc));
-        record.emplace_back(Var(str.string, 0));
-        strs.emplace_back(std::move(record));
-      }
-    }
-    output = OwnedVar(std::move(strs));
-  }
-  return output;
-}
-#endif
 
 struct LastError {
   static SHOptionalString help() { return SHCCSTR("This shard outputs the last error message that occurred as a string."); }
@@ -4180,9 +4132,6 @@ SHARDS_REGISTER_FN(core) {
   REGISTER_SHARD("Shards.ObjectTypes", GetObjectTypes);
   REGISTER_SHARD("Shards.EnumTypeHelp", GetEnumTypeHelp);
   REGISTER_SHARD("Shards.ObjectTypeHelp", GetObjectTypeHelp);
-
-  using ExportStringsShard = LambdaShard<export_strings, CoreInfo::NoneType, CoreInfo::AnySeqType>;
-  REGISTER_SHARD("_ExportStrings", ExportStringsShard);
 
   REGISTER_SHARD("Iterate", Iterate);
   REGISTER_SHARD("First", First);

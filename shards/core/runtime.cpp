@@ -52,10 +52,6 @@
 #include <dlfcn.h>
 #endif
 
-#ifdef SH_COMPRESSED_STRINGS
-#include <shards/wire_dsl.hpp>
-#endif
-
 #if SH_WINDOWS
 #include <timeapi.h>
 #endif
@@ -129,56 +125,6 @@ auto &getCompiledCompressedStrings() {
 }
 
 #ifndef SH_STRIP_HELP_STRINGS
-#ifdef SH_COMPRESSED_STRINGS
-SHOptionalString getCompiledCompressedString(uint32_t id) {
-  auto &_comp = getCompiledCompressedStrings(); // make sure it's initialized
-
-  auto it = _comp.find(id);
-  if (it != _comp.end()) {
-    auto val = it->second;
-    val.crc = id; // make sure we return with crc to allow later lookups!
-    return val;
-  } else {
-    return SHOptionalString{nullptr, id}; // make sure we return with crc to allow later lookups!
-  }
-}
-
-#include <shards/core/shccstrings.hpp>
-
-static oneapi::tbb::concurrent_unordered_map<uint32_t, std::string> strings_storage;
-
-void decompressStrings() {
-  if (!shards::GetGlobals().CompressedStrings) {
-    throw shards::SHException("String storage was null");
-  }
-
-  // run the script to populate compressed strings
-  auto bytes = Var(__shards_compressed_strings);
-  auto wire = ::shards::Wire("decompress strings").let(bytes).shard("Brotli.Decompress").shard("FromBytes");
-  auto mesh = SHMesh::make();
-  mesh->schedule(wire);
-  mesh->tick();
-  if (!wire->finishedOutput.has_value() || wire->finishedOutput->valueType != SHType::Seq) {
-    throw shards::SHException("Failed to decompress strings!");
-  }
-
-  for (uint32_t i = 0; i < wire->finishedOutput->payload.seqValue.len; i++) {
-    auto pair = wire->finishedOutput->payload.seqValue.elements[i];
-    if (pair.valueType != SHType::Seq || pair.payload.seqValue.len != 2) {
-      throw shards::SHException("Failed to decompress strings!");
-    }
-    auto crc = pair.payload.seqValue.elements[0];
-    auto str = pair.payload.seqValue.elements[1];
-    if (crc.valueType != SHType::Int || str.valueType != SHType::String) {
-      throw shards::SHException("Failed to decompress strings!");
-    }
-    auto emplaced = strings_storage.emplace(uint32_t(crc.payload.intValue), str.payload.stringValue);
-    auto &s = emplaced.first->second;
-    SHOptionalString ls{s.c_str(), uint32_t(crc.payload.intValue)};
-    (*shards::GetGlobals().CompressedStrings).emplace(uint32_t(crc.payload.intValue), ls);
-  }
-}
-#else
 SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
   auto &_comp = getCompiledCompressedStrings(); // make sure it's initialized
 
@@ -186,7 +132,6 @@ SHOptionalString setCompiledCompressedString(uint32_t id, const char *str) {
   _comp.emplace(id, ls);
   return ls;
 }
-#endif
 #endif // !SH_STRIP_HELP_STRINGS
 
 #ifdef SH_USE_UBSAN
@@ -2793,14 +2738,10 @@ void shInit() {
   sh_emscripten_init();
   // fill up some interface so we don't need to know mem offsets JS side
   SHCore *iface = shardsInterface(SHARDS_CURRENT_ABI);
-  sh_setup_core_interface(
-    reinterpret_cast<uintptr_t>(iface->log),
-    reinterpret_cast<uintptr_t>(iface->createMesh),
-    reinterpret_cast<uintptr_t>(iface->destroyMesh),
-    reinterpret_cast<uintptr_t>(iface->schedule),
-    reinterpret_cast<uintptr_t>(iface->unschedule),
-    reinterpret_cast<uintptr_t>(iface->tick),
-    reinterpret_cast<uintptr_t>(iface->sleep));
+  sh_setup_core_interface(reinterpret_cast<uintptr_t>(iface->log), reinterpret_cast<uintptr_t>(iface->createMesh),
+                          reinterpret_cast<uintptr_t>(iface->destroyMesh), reinterpret_cast<uintptr_t>(iface->schedule),
+                          reinterpret_cast<uintptr_t>(iface->unschedule), reinterpret_cast<uintptr_t>(iface->tick),
+                          reinterpret_cast<uintptr_t>(iface->sleep));
   emscripten_get_now(); // force emscripten to link this call
 #endif
 }
@@ -3331,11 +3272,9 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
     return SHOptionalString{str, crc};
   };
 
-  result->decompressStrings = []() {
-#ifdef SH_COMPRESSED_STRINGS
-    shards::decompressStrings();
-#endif
-  };
+  // No-op kept for ABI compatibility: help strings are no longer compressed
+  // out of the binary, SHCCSTR registers them at static-init time.
+  result->decompressStrings = []() {};
 
   result->isEqualVar = [](const SHVar *v1, const SHVar *v2) -> SHBool { return *v1 == *v2; };
 
@@ -3460,14 +3399,13 @@ SHCore *__cdecl shardsInterface(uint32_t abi_version) {
 
   setupCoreLoggingAPI(result);
 
-#ifdef SH_COMPRESSED_STRINGS
-  result->getCompressedString = [](uint32_t crc_id) {
-    auto str = getCompiledCompressedString(crc_id);
-    return str.string;
+  result->getCompressedString = [](uint32_t crc_id) -> const char * {
+    // Lookup strings registered via SHCCSTR; null when unknown (or when built
+    // with SH_STRIP_HELP_STRINGS, in which case nothing is ever registered).
+    auto &strings = getCompiledCompressedStrings();
+    auto it = strings.find(crc_id);
+    return it != strings.end() ? it->second.string : nullptr;
   };
-#else
-  result->getCompressedString = [](uint32_t crc_id) -> const char * { return nullptr; };
-#endif
 
   result->setWireDebugId = [](SHWireRef wire, uint64_t id) {
     auto &sc = SHWire::sharedFromRef(wire);
@@ -3522,12 +3460,6 @@ SHVar hash_bytes_xx64_legacy(const void *data, size_t len, uint64_t seed) {
   res.valueType = SHType::Int;
   res.payload.intValue = hash;
   return res;
-}
-
-void shards_decompress_strings() {
-#ifdef SH_COMPRESSED_STRINGS
-  shards::decompressStrings();
-#endif
 }
 
 void shards_log(int level, SHStringWithLen msg, const char *file, const char *function, int line) {

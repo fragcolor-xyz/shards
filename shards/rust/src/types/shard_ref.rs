@@ -6,7 +6,8 @@
 use super::*;
 use crate::core::Core;
 use crate::shardsc::{
-  ShardPtr, SHType_Bytes, SHType_ContextVar, SHType_Path, SHType_Seq, SHType_String,
+  SHOptionalString, ShardPtr, SHType_Bytes, SHType_ContextVar, SHType_Path, SHType_Seq,
+  SHType_String,
 };
 use crate::SHStringWithLen;
 use std::ffi::CStr;
@@ -68,69 +69,39 @@ impl ShardRef {
     }
   }
 
+  /// Resolve an SHOptionalString: prefer the inline string pointer, fall back
+  /// to the crc-keyed registry (null e.g. in SH_STRIP_HELP_STRINGS builds).
+  unsafe fn resolve_optional_string(help: SHOptionalString) -> Option<&'static str> {
+    if !help.string.is_null() {
+      return CStr::from_ptr(help.string as *const c_char).to_str().ok();
+    }
+    if help.crc != 0 {
+      let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
+      if !c_str.is_null() {
+        return CStr::from_ptr(c_str).to_str().ok();
+      }
+    }
+    None
+  }
+
   pub fn input_help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).inputHelp.unwrap_unchecked()(self.0);
-      if help.crc != 0 {
-        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
-        if c_str.is_null() {
-          None
-        } else {
-          Some(CStr::from_ptr(c_str).to_str().unwrap())
-        }
-      } else if help.string.is_null() {
-        None
-      } else {
-        Some(
-          CStr::from_ptr(help.string as *const c_char)
-            .to_str()
-            .unwrap(),
-        )
-      }
+      Self::resolve_optional_string(help)
     }
   }
 
   pub fn output_help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).outputHelp.unwrap_unchecked()(self.0);
-      if help.crc != 0 {
-        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
-        if c_str.is_null() {
-          None
-        } else {
-          Some(CStr::from_ptr(c_str).to_str().unwrap())
-        }
-      } else if help.string.is_null() {
-        None
-      } else {
-        Some(
-          CStr::from_ptr(help.string as *const c_char)
-            .to_str()
-            .unwrap(),
-        )
-      }
+      Self::resolve_optional_string(help)
     }
   }
 
   pub fn help(&self) -> Option<&str> {
     unsafe {
       let help = (*self.0).help.unwrap_unchecked()(self.0);
-      if help.crc != 0 {
-        let c_str = (*Core).getCompressedString.unwrap_unchecked()(help.crc);
-        if c_str.is_null() {
-          None
-        } else {
-          Some(CStr::from_ptr(c_str).to_str().unwrap())
-        }
-      } else if help.string.is_null() {
-        None
-      } else {
-        Some(
-          CStr::from_ptr(help.string as *const c_char)
-            .to_str()
-            .unwrap(),
-        )
-      }
+      Self::resolve_optional_string(help)
     }
   }
 

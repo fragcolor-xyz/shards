@@ -34,7 +34,6 @@ struct ShShardIndexEntry {
 extern "C" {
   fn shardsInterface(version: u32) -> *mut SHCore;
   fn shards_install_signal_handlers();
-  fn shards_decompress_strings();
   // Discovery index + ranked search, served live from the core registry so the CLI
   // (`enumerate`/`search`) and the Shards.Index / Shards.Search shards share one impl.
   fn shards_discovery_index(out_count: *mut u64) -> *mut ShShardIndexEntry;
@@ -55,10 +54,6 @@ struct RunArgs {
   /// The script file to execute
   #[arg(value_hint = clap::ValueHint::FilePath)]
   file: String,
-
-  /// Decompress help strings before running the script
-  #[arg(long, short = 'd', default_value = "false", action)]
-  decompress_strings: bool,
 
   /// Skip changing the current working directory to the script's directory
   #[arg(long, short = 'c', action)]
@@ -116,9 +111,6 @@ enum Commands {
   },
   /// Evaluate Shards code from stdin
   Eval {
-    /// Decompress help strings before evaluation
-    #[arg(long, short = 'd', default_value = "false", action)]
-    decompress_strings: bool,
     /// Arguments to pass to the script (format: key:value)
     #[arg(num_args = 0..)]
     args: Vec<String>,
@@ -186,9 +178,6 @@ enum Commands {
     /// The compiled binary file (.sho) to execute
     #[arg(value_hint = clap::ValueHint::FilePath)]
     file: String,
-    /// Decompress help strings before execution
-    #[arg(long, short = 'd', default_value = "false", action)]
-    decompress_strings: bool,
     /// Arguments to pass to the script (format: key:value)
     #[arg(num_args = 0..)]
     args: Vec<String>,
@@ -330,11 +319,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
         output,
         include,
       } => build(file, &output, include.to_vec(), None, true),
-      Commands::Load {
-        file,
-        decompress_strings,
-        args,
-      } => load(file, args, *decompress_strings, cancellation_token),
+      Commands::Load { file, args } => load(file, args, cancellation_token),
       Commands::New(args) => execute(args, cancellation_token),
       Commands::Run(args) => execute(args, cancellation_token),
       Commands::Check {
@@ -353,15 +338,7 @@ pub fn process_args(argc: i32, argv: *const *const c_char, _no_cancellation: boo
           cancellation_token,
         );
       }
-      Commands::Eval {
-        decompress_strings,
-        args,
-      } => {
-        if *decompress_strings {
-          unsafe {
-            shards_decompress_strings();
-          }
-        }
+      Commands::Eval { args } => {
         match std::io::read_to_string(std::io::stdin()) {
           Ok(input) => {
             match read(&input, "<stdin>", ".".to_string(), vec![]) {
@@ -498,21 +475,21 @@ pub fn print_type<W: Write>(w: &mut W, t: &SHTypeInfo) -> std::io::Result<()> {
 pub fn get_optional_string(os: SHOptionalString) -> &'static str {
   let c_str = if !os.string.is_null() {
     os.string
-  } else {
-    if os.crc != 0 {
-      unsafe { (*Core).getCompressedString.unwrap_unchecked()(os.crc) }
-    } else {
-      panic!("SHOptionalString is empty");
+  } else if os.crc != 0 {
+    // String pointer may be null (e.g. SH_STRIP_HELP_STRINGS builds); try the
+    // crc-keyed registry and degrade to empty instead of crashing.
+    let resolved = unsafe { (*Core).getCompressedString.unwrap_unchecked()(os.crc) };
+    if resolved.is_null() {
+      return "";
     }
+    resolved
+  } else {
+    return "";
   };
-  unsafe { CStr::from_ptr(c_str).to_str().unwrap() }
+  unsafe { CStr::from_ptr(c_str).to_str().unwrap_or("") }
 }
 
 pub fn help_to_writer<W: Write>(w: &mut W, name: &str, type_: &str) -> Result<(), Error> {
-  unsafe {
-    shards_decompress_strings();
-  }
-
   match type_ {
     "shard" => {
       let shard = AutoShardRef::create(name, None);
@@ -697,9 +674,6 @@ fn type_to_json(t: &SHTypeInfo) -> serde_json::Value {
 /// so it can never drift from the runtime.
 fn help_json(name: &str, type_: &str) -> Result<(), Error> {
   use serde_json::json;
-  unsafe {
-    shards_decompress_strings();
-  }
 
   let doc = match type_ {
     "shard" => {
@@ -916,18 +890,7 @@ fn format(file: &str, output: &Option<String>, inline: bool) -> Result<(), Error
   Ok(())
 }
 
-fn load(
-  file: &str,
-  args: &Vec<String>,
-  decompress_strings: bool,
-  cancellation_token: Arc<AtomicBool>,
-) -> Result<(), Error> {
-  if decompress_strings {
-    unsafe {
-      shards_decompress_strings();
-    }
-  }
-
+fn load(file: &str, args: &Vec<String>, cancellation_token: Arc<AtomicBool>) -> Result<(), Error> {
   shlog!("Loading file");
   shlog!("Parsing binary file: {}", file);
 
@@ -1158,17 +1121,10 @@ fn build(
 fn execute(eargs: &RunArgs, cancellation_token: Arc<AtomicBool>) -> Result<(), Error> {
   let RunArgs {
     file,
-    decompress_strings,
     skip_cwd,
     include: in_include_paths,
     args,
   } = eargs;
-
-  if *decompress_strings {
-    unsafe {
-      shards_decompress_strings();
-    }
-  }
 
   shlog_debug!("Evaluating file: {}", file);
 
