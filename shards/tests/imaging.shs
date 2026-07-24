@@ -36,6 +36,13 @@ WriteJPG(@tmp-path("testResized2.jpg"))
   LoadImage | ImageToBytes | ExpectBytes
 }
 
+baseImg
+CropImage(X: 10 Y: 20 Width: 100 Height: 50) = cropped
+{ImageSize | Log("cropped size") | Assert.Is(@i2(100 50))}
+WritePNG(@tmp-path("testCropped.png"))
+@i2(10 20) | GetImagePixel(baseImg AsInteger: true) = original-pixel
+@i2(0 0) | GetImagePixel(cropped AsInteger: true) | Is(original-pixel) | Assert.Is(true)
+
 "../../assets/Freesample.svg"
 FS.Read(Bytes: true)
 SVG.ToImage

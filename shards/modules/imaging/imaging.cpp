@@ -491,6 +491,117 @@ private:
   ParamVar _height{Var(32)};
 };
 
+struct Crop {
+  static SHOptionalString help() {
+    return SHCCSTR("This shard crops an image to the rectangular region specified by the X, Y, Width and Height parameters. "
+                   "X and Y specify the top-left corner of the region to keep, in pixels.");
+  }
+  static SHOptionalString inputHelp() { return SHCCSTR("The image to crop."); }
+  static SHOptionalString outputHelp() { return SHCCSTR("The cropped image."); }
+
+  static SHTypesInfo inputTypes() { return CoreInfo::ImageType; }
+  static SHTypesInfo outputTypes() { return CoreInfo::ImageType; }
+
+  static inline Parameters _params{
+      {"X", SHCCSTR("The horizontal offset in pixels of the top-left corner of the region to keep."), CoreInfo::IntOrIntVar},
+      {"Y", SHCCSTR("The vertical offset in pixels of the top-left corner of the region to keep."), CoreInfo::IntOrIntVar},
+      {"Width", SHCCSTR("The width in pixels of the region to keep."), CoreInfo::IntOrIntVar},
+      {"Height", SHCCSTR("The height in pixels of the region to keep."), CoreInfo::IntOrIntVar}};
+
+  static SHParametersInfo parameters() { return _params; }
+
+  OwnedVar _output{};
+
+  SHVar getParam(int index) {
+    switch (index) {
+    case 0:
+      return _x;
+    case 1:
+      return _y;
+    case 2:
+      return _width;
+    default:
+      return _height;
+    }
+  }
+
+  void setParam(int index, const SHVar &value) {
+    switch (index) {
+    case 0:
+      _x = value;
+      break;
+    case 1:
+      _y = value;
+      break;
+    case 2:
+      _width = value;
+      break;
+    default:
+      _height = value;
+      break;
+    }
+  }
+
+  void warmup(SHContext *context) {
+    _x.warmup(context);
+    _y.warmup(context);
+    _width.warmup(context);
+    _height.warmup(context);
+  }
+
+  void cleanup(SHContext *context) {
+    _x.cleanup();
+    _y.cleanup();
+    _width.cleanup();
+    _height.cleanup();
+  }
+
+  SHVar activate(SHContext *context, const SHVar &input) {
+    int w = int(input.payload.imageValue->width);
+    int h = int(input.payload.imageValue->height);
+    int c = int(input.payload.imageValue->channels);
+
+    int x = int(_x.get().payload.intValue);
+    int y = int(_y.get().payload.intValue);
+    int width = int(_width.get().payload.intValue);
+    int height = int(_height.get().payload.intValue);
+
+    if (x < 0 || y < 0)
+      throw ActivationError("Crop offsets must not be negative!");
+    if (width <= 0 || height <= 0)
+      throw ActivationError("Crop dimensions must be positive!");
+    if (x + width > w || y + height > h)
+      throw ActivationError(
+          fmt::format("Crop region ({}, {}, {}, {}) is out of the image bounds ({}x{})!", x, y, width, height, w, h));
+
+    auto pixsize = imageGetPixelSize(input.payload.imageValue);
+    auto inRowStride = imageGetRowStride(input.payload.imageValue);
+    const auto outRowBytes = size_t(width) * c * pixsize;
+
+    _output = makeImage(outRowBytes * height);
+    auto &outImage = *_output->payload.imageValue;
+    outImage.channels = uint16_t(c);
+    outImage.width = uint16_t(width);
+    outImage.height = uint16_t(height);
+    outImage.flags = input.payload.imageValue->flags;
+    uint8_t *outData = outImage.data;
+
+    for (int row = 0; row < height; row++) {
+      const auto from = input.payload.imageValue->data + inRowStride * (y + row) + size_t(x) * c * pixsize;
+      memcpy(outData + outRowBytes * row, from, outRowBytes);
+    }
+
+    _output.version = input.version + 1;
+    return _output;
+  }
+
+private:
+  ParamVar _x{Var(0)};
+  ParamVar _y{Var(0)};
+  ParamVar _width{Var(32)};
+  ParamVar _height{Var(32)};
+};
+
 struct ImageGetPixel {
   static SHOptionalString help() {
     return SHCCSTR(
@@ -1026,6 +1137,7 @@ SHARDS_REGISTER_FN(imaging) {
   REGISTER_SHARD("DemultiplyAlpha", DemultiplyAlpha);
   REGISTER_SHARD("FillAlpha", FillAlpha);
   REGISTER_SHARD("ResizeImage", Resize);
+  REGISTER_SHARD("CropImage", Crop);
   REGISTER_SHARD("LoadImage", LoadImage);
   REGISTER_SHARD("WritePNG", WritePNG);
   REGISTER_SHARD("WriteJPG", WriteJPG);
