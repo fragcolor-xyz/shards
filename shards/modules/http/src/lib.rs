@@ -369,8 +369,12 @@ impl RequestBase {
     let mut global_client = VarRef::referenceGlobal(context, &cache_key);
 
     if global_client.as_mut().is_none() {
-      // Create new client with proxy config
+      // Create new client with proxy config.
+      // Keep pooled idle connections below common server/LB keep-alive timeouts
+      // (nginx 75s, ALB 60s): reusing a connection the peer already dropped
+      // surfaces as intermittent errors ("bad record MAC" on Secure Transport).
       let mut builder = reqwest::Client::builder()
+        .pool_idle_timeout(std::time::Duration::from_secs(50))
         .danger_accept_invalid_certs(self.invalid_certs);
 
       if let Some(ref proxy_url) = proxy_url {

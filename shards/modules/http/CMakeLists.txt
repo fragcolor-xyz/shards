@@ -27,9 +27,13 @@ if(HTTP_SUPPORTED)
 
     # The rust shards use reqwest, which can not run on emscripten
     if(NOT EMSCRIPTEN)
+      # rustls (ring provider) + rustls-platform-verifier: cert verification stays
+      # platform-native (Security.framework/schannel/native certs) while the TLS
+      # record layer avoids deprecated Secure Transport, which produced spurious
+      # intermittent "bad record MAC" errors on macOS 26.x.
       add_rust_library(NAME shards-http
         PROJECT_PATH ${CMAKE_CURRENT_LIST_DIR}
-        FEATURES native-tls socks)
+        FEATURES rustls-ring socks)
       set(RUST_TARGETS_ARG RUST_TARGETS shards-http-rust)
       list(APPEND REGISTER_SHARDS_ARG rust)
     endif()
