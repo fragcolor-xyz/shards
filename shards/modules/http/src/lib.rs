@@ -890,7 +890,15 @@ macro_rules! post_like {
                 request = request.header("content-type", "application/json");
               }
 
-              request = request.body(input_string);
+              // IMPORTANT: copy the body. `&Var -> &str` launders the payload
+              // pointer to `&'static str`, so `.body(input_string)` would build
+              // a zero-copy Bytes::from_static borrowing wire-owned memory.
+              // Hyper's pooled connection task can outlive the request future
+              // (cancel/timeout/stalled socket during a network swap) and flush
+              // buffered body bytes AFTER the wire recycled that memory —
+              // rustls then encrypts from freed memory (SIGSEGV in
+              // encrypt_outgoing/memmove on a tokio worker).
+              request = request.body(input_string.to_owned());
             } else {
               // .body ( bytes )
               let input_bytes: Result<&[u8], &'static str> = input.try_into();
@@ -900,7 +908,8 @@ macro_rules! post_like {
                   request = request.header("content-type", "application/octet-stream");
                 }
 
-                request = request.body(input_bytes);
+                // Copy for the same reason as the string body above.
+                request = request.body(input_bytes.to_vec());
               } else {
                 return Err("Invalid input type");
               }
