@@ -656,6 +656,7 @@ impl Shard for GridFillShard {
 const MAX_DJI_WAYPOINTS: usize = 200;
 
 /// Waypoint data extracted from input table
+#[derive(Clone)]
 struct Waypoint {
   lon: f64,
   lat: f64,
@@ -664,6 +665,7 @@ struct Waypoint {
   speed: f64,
   gimbal_pitch: f64,
   heading: f64,
+  take_photo: bool,
 }
 
 #[derive(shards::shard)]
@@ -699,6 +701,18 @@ struct ToDjiKmzShard {
   #[shard_param("TurnDampingDist", "Turn damping distance in meters for smooth curves (default 2.0, 0 may cause load errors)", FLOAT_OR_VAR_TYPES)]
   turn_damping_dist: ParamVar,
 
+  #[shard_param("PhotoSpacing", "Insert a takePhoto waypoint every N meters along the path (0 = no photo actions, default 0). Consumer DJI Fly has no interval-trigger action, so photos are explicit densified waypoints.", FLOAT_OR_VAR_TYPES)]
+  photo_spacing: ParamVar,
+
+  #[shard_param("TakeOffSecurityHeight", "Safety climb height in meters before flying to first waypoint (default 20)", FLOAT_OR_VAR_TYPES)]
+  takeoff_security_height: ParamVar,
+
+  #[shard_param("PayloadEnumValue", "DJI payload enum value (default 68, community value for consumer drones)", FLOAT_OR_VAR_TYPES)]
+  payload_enum: ParamVar,
+
+  #[shard_param("MaxWaypoints", "Max waypoints per KMZ file; larger missions are split into name_1ofN.kmz files (default 150, hard cap 200)", FLOAT_OR_VAR_TYPES)]
+  max_waypoints: ParamVar,
+
   output: ClonedVar,
 }
 
@@ -714,6 +728,10 @@ impl Default for ToDjiKmzShard {
       drone_enum: ParamVar::new(68.0.into()),
       drone_sub_enum: ParamVar::new(0.0.into()),
       turn_damping_dist: ParamVar::new(2.0.into()),
+      photo_spacing: ParamVar::new(0.0.into()),
+      takeoff_security_height: ParamVar::new(20.0.into()),
+      payload_enum: ParamVar::new(68.0.into()),
+      max_waypoints: ParamVar::new(150.0.into()),
       output: ClonedVar::default(),
     }
   }
@@ -727,14 +745,69 @@ impl ToDjiKmzShard {
       .unwrap_or(0)
   }
 
+  fn generate_mission_config(
+    &self,
+    finish_action: &str,
+    speed: f64,
+    drone_enum: i64,
+    drone_sub_enum: i64,
+    payload_enum: i64,
+    takeoff_security_height: f64,
+  ) -> String {
+    format!(
+      r#"    <wpml:missionConfig>
+      <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>
+      <wpml:finishAction>{}</wpml:finishAction>
+      <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
+      <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
+      <wpml:takeOffSecurityHeight>{:.1}</wpml:takeOffSecurityHeight>
+      <wpml:globalTransitionalSpeed>{:.1}</wpml:globalTransitionalSpeed>
+      <wpml:droneInfo>
+        <wpml:droneEnumValue>{}</wpml:droneEnumValue>
+        <wpml:droneSubEnumValue>{}</wpml:droneSubEnumValue>
+      </wpml:droneInfo>
+      <wpml:payloadInfo>
+        <wpml:payloadEnumValue>{}</wpml:payloadEnumValue>
+        <wpml:payloadSubEnumValue>0</wpml:payloadSubEnumValue>
+        <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
+      </wpml:payloadInfo>
+    </wpml:missionConfig>"#,
+      finish_action, takeoff_security_height, speed, drone_enum, drone_sub_enum, payload_enum
+    )
+  }
+
   fn generate_template_kml(
     &self,
+    waypoints: &[Waypoint],
     finish_action: &str,
     speed: f64,
     timestamp: u64,
     drone_enum: i64,
     drone_sub_enum: i64,
+    payload_enum: i64,
+    takeoff_security_height: f64,
   ) -> String {
+    let mut placemarks = String::new();
+    for (i, wp) in waypoints.iter().enumerate() {
+      placemarks.push_str(&format!(
+        r#"      <Placemark>
+        <Point>
+          <coordinates>{:.15},{:.15}</coordinates>
+        </Point>
+        <wpml:index>{}</wpml:index>
+        <wpml:height>{}</wpml:height>
+        <wpml:useGlobalHeight>0</wpml:useGlobalHeight>
+        <wpml:gimbalPitchAngle>{}</wpml:gimbalPitchAngle>
+      </Placemark>
+"#,
+        wp.lon,
+        wp.lat,
+        i,
+        wp.altitude,
+        wp.gimbal_pitch.round() as i64
+      ));
+    }
+
     format!(
       r#"<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
@@ -742,22 +815,75 @@ impl ToDjiKmzShard {
     <wpml:author>Shards</wpml:author>
     <wpml:createTime>{}</wpml:createTime>
     <wpml:updateTime>{}</wpml:updateTime>
-    <wpml:missionConfig>
-      <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>
-      <wpml:finishAction>{}</wpml:finishAction>
-      <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
-      <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
-      <wpml:globalTransitionalSpeed>{:.1}</wpml:globalTransitionalSpeed>
-      <wpml:droneInfo>
-        <wpml:droneEnumValue>{}</wpml:droneEnumValue>
-        <wpml:droneSubEnumValue>{}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
-    </wpml:missionConfig>
+{}
+    <Folder>
+      <wpml:templateType>waypoint</wpml:templateType>
+      <wpml:templateId>0</wpml:templateId>
+      <wpml:waylineCoordinateSysParam>
+        <wpml:coordinateMode>WGS84</wpml:coordinateMode>
+        <wpml:heightMode>relativeToStartPoint</wpml:heightMode>
+      </wpml:waylineCoordinateSysParam>
+      <wpml:autoFlightSpeed>{:.1}</wpml:autoFlightSpeed>
+{}    </Folder>
   </Document>
 </kml>
 "#,
-      timestamp, timestamp, finish_action, speed, drone_enum, drone_sub_enum
+      timestamp,
+      timestamp,
+      self.generate_mission_config(
+        finish_action,
+        speed,
+        drone_enum,
+        drone_sub_enum,
+        payload_enum,
+        takeoff_security_height
+      ),
+      speed,
+      placemarks
     )
+  }
+
+  /// Expand the path so a takePhoto waypoint appears every `spacing` meters of
+  /// arc length. Consumer DJI Fly's WPML dialect has no interval-trigger
+  /// action (multipleTiming/multipleDistance are enterprise-only), so photo
+  /// positions must be explicit waypoints with a takePhoto action. The path is
+  /// walked as one continuous polyline so spacing carries across control
+  /// points instead of restarting at each one.
+  fn densify_photo_waypoints(waypoints: &[Waypoint], spacing: f64) -> Vec<Waypoint> {
+    if waypoints.len() < 2 {
+      return waypoints.to_vec();
+    }
+    let meters_per_deg_lon = METERS_PER_DEG_LAT * waypoints[0].lat.to_radians().cos();
+    let to_meters = |wp: &Waypoint| (wp.lon * meters_per_deg_lon, wp.lat * METERS_PER_DEG_LAT);
+
+    let mut out = Vec::with_capacity(waypoints.len() * 2);
+    let mut walked = 0.0;
+    let mut next_photo_at = spacing;
+    for i in 0..waypoints.len() {
+      out.push(waypoints[i].clone());
+      if i + 1 == waypoints.len() {
+        break;
+      }
+      let (ax, ay) = to_meters(&waypoints[i]);
+      let (bx, by) = to_meters(&waypoints[i + 1]);
+      let seg_len = ((bx - ax).powi(2) + (by - ay).powi(2)).sqrt();
+      if seg_len > 0.0 {
+        while next_photo_at > walked && next_photo_at <= walked + seg_len {
+          let t = (next_photo_at - walked) / seg_len;
+          let a = &waypoints[i];
+          let b = &waypoints[i + 1];
+          let mut wp = a.clone();
+          wp.lon = a.lon + (b.lon - a.lon) * t;
+          wp.lat = a.lat + (b.lat - a.lat) * t;
+          wp.altitude = a.altitude + (b.altitude - a.altitude) * t;
+          wp.take_photo = true;
+          out.push(wp);
+          next_photo_at += spacing;
+        }
+      }
+      walked += seg_len;
+    }
+    out
   }
 
   fn generate_waylines_wpml(
@@ -767,6 +893,8 @@ impl ToDjiKmzShard {
     speed: f64,
     drone_enum: i64,
     drone_sub_enum: i64,
+    payload_enum: i64,
+    takeoff_security_height: f64,
     _turn_damping_dist: f64,
   ) -> String {
     let mut placemarks = String::new();
@@ -801,14 +929,34 @@ impl ToDjiKmzShard {
             </wpml:actionActuatorFuncParam>
           </wpml:action>
         </wpml:actionGroup>"#,
-          wp.index * 2 + 1,  // actionGroupId: 1, 3, 5, ...
-          wp.index,          // startIndex
-          wp.index + 1,      // endIndex (next waypoint)
+          i * 2 + 1, // actionGroupId: 1, 3, 5, ...
+          i,         // startIndex
+          i + 1,     // endIndex (next waypoint)
           wp.gimbal_pitch.round() as i64
         )
       } else {
         String::new()
       };
+
+      // takePhoto fired at this waypoint (photo waypoints from densification)
+      let take_photo_action = if wp.take_photo {
+        format!(
+          r#"
+          <wpml:action>
+            <wpml:actionId>1</wpml:actionId>
+            <wpml:actionActuatorFunc>takePhoto</wpml:actionActuatorFunc>
+            <wpml:actionActuatorFuncParam>
+              <wpml:fileSuffix>wp{}</wpml:fileSuffix>
+              <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
+            </wpml:actionActuatorFuncParam>
+          </wpml:action>"#,
+          i
+        )
+      } else {
+        String::new()
+      };
+      // gimbal must settle before the shutter fires -> sequence when shooting
+      let reach_group_mode = if wp.take_photo { "sequence" } else { "parallel" };
 
       placemarks.push_str(&format!(
         r#"      <Placemark>
@@ -834,7 +982,7 @@ impl ToDjiKmzShard {
           <wpml:actionGroupId>{}</wpml:actionGroupId>
           <wpml:actionGroupStartIndex>{}</wpml:actionGroupStartIndex>
           <wpml:actionGroupEndIndex>{}</wpml:actionGroupEndIndex>
-          <wpml:actionGroupMode>parallel</wpml:actionGroupMode>
+          <wpml:actionGroupMode>{}</wpml:actionGroupMode>
           <wpml:actionTrigger>
             <wpml:actionTriggerType>reachPoint</wpml:actionTriggerType>
           </wpml:actionTrigger>
@@ -854,21 +1002,23 @@ impl ToDjiKmzShard {
               <wpml:gimbalRotateTime>0</wpml:gimbalRotateTime>
               <wpml:payloadPositionIndex>0</wpml:payloadPositionIndex>
             </wpml:actionActuatorFuncParam>
-          </wpml:action>
+          </wpml:action>{}
         </wpml:actionGroup>{}
       </Placemark>
 "#,
         wp.lon,
         wp.lat,
-        wp.index,
+        i,
         wp.altitude,
         wp.speed,
         wp.heading.round() as i64,
         turn_mode,
-        wp.index * 2,  // actionGroupId: 0, 2, 4, ...
-        wp.index,
-        wp.index,
+        i * 2, // actionGroupId: 0, 2, 4, ...
+        i,
+        i,
+        reach_group_mode,
         wp.gimbal_pitch.round() as i64,
+        take_photo_action,
         second_action_group
       ));
     }
@@ -877,17 +1027,7 @@ impl ToDjiKmzShard {
       r#"<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:wpml="http://www.dji.com/wpmz/1.0.2">
   <Document>
-    <wpml:missionConfig>
-      <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>
-      <wpml:finishAction>{}</wpml:finishAction>
-      <wpml:exitOnRCLost>executeLostAction</wpml:exitOnRCLost>
-      <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>
-      <wpml:globalTransitionalSpeed>{:.1}</wpml:globalTransitionalSpeed>
-      <wpml:droneInfo>
-        <wpml:droneEnumValue>{}</wpml:droneEnumValue>
-        <wpml:droneSubEnumValue>{}</wpml:droneSubEnumValue>
-      </wpml:droneInfo>
-    </wpml:missionConfig>
+{}
     <Folder>
       <wpml:templateId>0</wpml:templateId>
       <wpml:executeHeightMode>relativeToStartPoint</wpml:executeHeightMode>
@@ -899,7 +1039,16 @@ impl ToDjiKmzShard {
   </Document>
 </kml>
 "#,
-      finish_action, speed, drone_enum, drone_sub_enum, speed, placemarks
+      self.generate_mission_config(
+        finish_action,
+        speed,
+        drone_enum,
+        drone_sub_enum,
+        payload_enum,
+        takeoff_security_height
+      ),
+      speed,
+      placemarks
     )
   }
 }
@@ -951,15 +1100,29 @@ impl Shard for ToDjiKmzShard {
     let drone_sub_enum: i64 = self.drone_sub_enum.get().try_into().unwrap_or(0.0) as i64;
     let turn_damping_dist: f64 = self.turn_damping_dist.get().try_into().unwrap_or(2.0);
 
-    // Parse input waypoints - check limits before allocating/parsing
+    let photo_spacing: f64 = self.photo_spacing.get().try_into().unwrap_or(0.0);
+    if photo_spacing < 0.0 || (photo_spacing > 0.0 && photo_spacing < 1.0) {
+      return Err("PhotoSpacing must be 0 (off) or at least 1 meter");
+    }
+    let takeoff_security_height: f64 = self.takeoff_security_height.get().try_into().unwrap_or(20.0);
+    if takeoff_security_height < 1.2 || takeoff_security_height > 1500.0 {
+      return Err("TakeOffSecurityHeight must be between 1.2 and 1500 meters");
+    }
+    let payload_enum: i64 = self.payload_enum.get().try_into().unwrap_or(68.0) as i64;
+    let max_waypoints: usize = {
+      let v: f64 = self.max_waypoints.get().try_into().unwrap_or(150.0);
+      let v = v as usize;
+      if v < 2 || v > MAX_DJI_WAYPOINTS {
+        return Err("MaxWaypoints must be between 2 and 200 (DJI Fly hard cap)");
+      }
+      v
+    };
+
+    // Parse input waypoints
     let seq: Seq = input.try_into().map_err(|_| "Expected sequence of waypoints")?;
 
     if seq.is_empty() {
       return Err("No waypoints provided");
-    }
-
-    if seq.len() > MAX_DJI_WAYPOINTS {
-      return Err("Too many waypoints (max 200 for DJI Fly)");
     }
 
     let mut waypoints = Vec::with_capacity(seq.len());
@@ -1017,34 +1180,77 @@ impl Shard for ToDjiKmzShard {
         speed,
         gimbal_pitch,
         heading,
+        take_photo: false,
       });
     }
 
-    // Generate KML/WPML content
+    // Expand photo positions into explicit takePhoto waypoints (consumer DJI
+    // Fly has no interval-trigger action)
+    let waypoints = if photo_spacing > 0.0 {
+      Self::densify_photo_waypoints(&waypoints, photo_spacing)
+    } else {
+      waypoints
+    };
+
+    // Split into files of at most max_waypoints (DJI Fly caps missions at 200
+    // waypoints and real RCs degrade well below that)
+    let n_files = (waypoints.len() + max_waypoints - 1) / max_waypoints;
+    if n_files > 10 {
+      return Err("Mission too large: would split into more than 10 KMZ files; increase PhotoSpacing or reduce waypoints");
+    }
+
     let timestamp = Self::get_timestamp_ms();
-    let template_kml = self.generate_template_kml(finish_action, default_speed, timestamp, drone_enum, drone_sub_enum);
-    let waylines_wpml = self.generate_waylines_wpml(&waypoints, finish_action, default_speed, drone_enum, drone_sub_enum, turn_damping_dist);
+    let base = path.strip_suffix(".kmz").unwrap_or(path);
 
-    // Create KMZ file (ZIP with wpmz/ folder)
-    let file = std::fs::File::create(path).map_err(|_| "Failed to create KMZ file")?;
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default();
+    for (file_idx, chunk) in waypoints.chunks(max_waypoints).enumerate() {
+      let file_path = if n_files == 1 {
+        format!("{}.kmz", base)
+      } else {
+        format!("{}_{}of{}.kmz", base, file_idx + 1, n_files)
+      };
 
-    zip
-      .start_file("wpmz/template.kml", options)
-      .map_err(|_| "Failed to create template.kml in KMZ")?;
-    zip
-      .write_all(template_kml.as_bytes())
-      .map_err(|_| "Failed to write template.kml")?;
+      let template_kml = self.generate_template_kml(
+        chunk,
+        finish_action,
+        default_speed,
+        timestamp,
+        drone_enum,
+        drone_sub_enum,
+        payload_enum,
+        takeoff_security_height,
+      );
+      let waylines_wpml = self.generate_waylines_wpml(
+        chunk,
+        finish_action,
+        default_speed,
+        drone_enum,
+        drone_sub_enum,
+        payload_enum,
+        takeoff_security_height,
+        turn_damping_dist,
+      );
 
-    zip
-      .start_file("wpmz/waylines.wpml", options)
-      .map_err(|_| "Failed to create waylines.wpml in KMZ")?;
-    zip
-      .write_all(waylines_wpml.as_bytes())
-      .map_err(|_| "Failed to write waylines.wpml")?;
+      // Create KMZ file (ZIP with wpmz/ folder)
+      let file = std::fs::File::create(&file_path).map_err(|_| "Failed to create KMZ file")?;
+      let mut zip = ZipWriter::new(file);
+      let options = SimpleFileOptions::default();
 
-    zip.finish().map_err(|_| "Failed to finalize KMZ file")?;
+      zip
+        .start_file("wpmz/template.kml", options)
+        .map_err(|_| "Failed to create template.kml in KMZ")?;
+      zip
+        .write_all(template_kml.as_bytes())
+        .map_err(|_| "Failed to write template.kml")?;
+
+      zip
+        .start_file("wpmz/waylines.wpml", options)
+        .map_err(|_| "Failed to create waylines.wpml in KMZ")?;
+      zip
+        .write_all(waylines_wpml.as_bytes())
+        .map_err(|_| "Failed to write waylines.wpml")?;
+
+      zip.finish().map_err(|_| "Failed to finalize KMZ file")?;
+    }
 
     // Passthrough input
     Ok(Some(*input))
@@ -1221,6 +1427,7 @@ impl Shard for ToGoogleEarthShard {
         speed,
         gimbal_pitch: 0.0,
         heading: 0.0,
+        take_photo: false,
       });
     }
 
@@ -1398,6 +1605,7 @@ impl Shard for ToGeoJsonShard {
         speed,
         gimbal_pitch: 0.0,
         heading: 0.0,
+        take_photo: false,
       });
     }
 
@@ -1565,6 +1773,7 @@ impl Shard for ToLitchiCsvShard {
         speed,
         gimbal_pitch,
         heading,
+        take_photo: false,
       });
     }
 
