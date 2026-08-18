@@ -38,7 +38,10 @@ struct Model {
 
   SHVar activate(SHContext *context, const SHVar &input) {
     auto params = llama_model_default_params();
-    params.use_mmap = _useMmap.get().payload.boolValue;
+    // llama.cpp (as of b10472) replaced the use_mmap/use_mlock/use_direct_io
+    // booleans with a single llama_load_mode enum. Keep the UseMmap param
+    // semantics: true maps to mmap, false to a plain (buffered) read.
+    params.load_mode = _useMmap.get().payload.boolValue ? LLAMA_LOAD_MODE_MMAP : LLAMA_LOAD_MODE_NONE;
     params.n_gpu_layers = _gpuLayers.get().payload.intValue;
 
     if (_data) {

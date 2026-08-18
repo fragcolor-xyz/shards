@@ -448,9 +448,16 @@ struct ChatAddImage {
     }
     DEFER({ mtmd_bitmap_free(bitmap); });
 
-    // Create input text and chunks for tokenization
+    // Create input text and chunks for tokenization.
+    // NOTE: as of b10472 mtmd_input_text has an explicit text_len field, and
+    // mtmd_tokenize consumes it via assign(text->text, text->text_len) with no
+    // strlen() fallback. Leaving it unset makes the media-marker scan read a
+    // garbage-length string and fail with "number of media markers in text (0)
+    // does not match number of bitmaps".
+    const char *marker = mtmd_default_marker();
     mtmd_input_text text;
-    text.text = mtmd_default_marker();
+    text.text = marker;
+    text.text_len = std::char_traits<char>::length(marker);
     text.add_special = false;
     text.parse_special = true;
 

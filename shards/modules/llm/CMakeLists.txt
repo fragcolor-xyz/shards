@@ -14,6 +14,7 @@ if(LLM_ENABLED AND NOT EMSCRIPTEN AND NOT WATCHOS)
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-audio.cpp
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-image.cpp
     ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-helper.cpp
+    ${llama.cpp_SOURCE_DIR}/tools/mtmd/mtmd-helper-gen.cpp
     ${MTMD_MODEL_SOURCES}
     ${whisper.cpp_SOURCE_DIR}/src/whisper.cpp
   )
