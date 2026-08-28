@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "repair/parse-and-increment",
+  "title": "Repair a string-to-integer flow",
+  "track": "repair",
+  "difficulty": "easy",
+  "tags": ["repair", "type-mismatch", "string", "integer"],
+  "timeout_seconds": 5,
+  "starter": "starter.shs"
+}

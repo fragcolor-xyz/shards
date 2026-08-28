@@ -1,0 +1,3 @@
+@wire(solution {
+  ParseInt | Add(1)
+})

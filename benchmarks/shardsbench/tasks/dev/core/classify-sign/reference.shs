@@ -1,0 +1,7 @@
+@wire(solution {
+  If({IsMore(0)} {
+    "positive"
+  } {
+    If({Is(0)} {"zero"} {"negative"})
+  })
+})

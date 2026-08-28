@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "repair/uppercase-shard",
+  "title": "Repair an unknown string shard",
+  "track": "repair",
+  "difficulty": "easy",
+  "tags": ["repair", "unknown-shard", "string"],
+  "timeout_seconds": 5,
+  "starter": "starter.shs"
+}

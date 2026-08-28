@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "apps/ui-gfx-dashboard",
+  "title": "Build a bounded UI and GFX dashboard",
+  "track": "app",
+  "difficulty": "hard",
+  "tags": ["app", "gfx", "ui", "rendering", "state", "wire"],
+  "timeout_seconds": 20,
+  "requirements": {
+    "shards": [
+      "GFX.MainWindow",
+      "GFX.BuiltinMesh",
+      "GFX.BuiltinFeature",
+      "GFX.DrawQueue",
+      "GFX.DrawablePass",
+      "GFX.Drawable",
+      "GFX.Draw",
+      "GFX.UIPass",
+      "GFX.Render",
+      "UI",
+      "UI.TopPanel",
+      "UI.CentralPanel",
+      "UI.Label",
+      "UI.ProgressBar",
+      "UI.Button",
+      "UI.Render"
+    ]
+  }
+}
