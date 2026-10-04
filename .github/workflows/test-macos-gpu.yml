@@ -130,8 +130,25 @@ jobs:
           build/shards new shards/tests/hot-reload.shs
 
           echo "Running audio tests"
-          build/shards new shards/tests/audio.shs test-device:true
-          build/shards new shards/tests/audio2.shs test-device:true
+          # audio.shs opens a duplex device, which fails when the default source has no
+          # usable input (the runner has no mic). Same fallback as run-tests.sh: capture
+          # from the default sink's monitor. parecord exits at once on failure; timeout
+          # returns 124 when capture is actually running.
+          TEST_DEVICE=false
+          if command -v pactl > /dev/null && command -v parecord > /dev/null; then
+            rc=0; timeout 1 parecord /dev/null > /dev/null 2>&1 || rc=$?
+            if [ $rc -ne 124 ]; then
+              export PULSE_SOURCE="$(pactl get-default-sink).monitor"
+              echo "No usable audio input, using PULSE_SOURCE=$PULSE_SOURCE"
+              rc=0; timeout 1 parecord /dev/null > /dev/null 2>&1 || rc=$?
+            fi
+            [ $rc -eq 124 ] && TEST_DEVICE=true
+          fi
+          if [ "$TEST_DEVICE" != true ]; then
+            echo "::warning::No usable audio capture on this runner, skipping audio device tests"
+          fi
+          build/shards new shards/tests/audio.shs test-device:$TEST_DEVICE
+          build/shards new shards/tests/audio2.shs test-device:$TEST_DEVICE
           build/shards new shards/tests/math_audio.shs
 
           echo "Running crdts"

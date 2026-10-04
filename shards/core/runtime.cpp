@@ -1292,7 +1292,8 @@ SHComposeResult internalComposeWire(const std::vector<ShardPtr> &wire, SHInstanc
     SHLOG_TRACE("Composing wire: {}, shard: {}, {}", data.wire ? data.wire->name : "(unwired)", data.shard->name(data.shard),
                 formatShardSourceLocation(data.shard));
   } else {
-    if (wire.size() > 0) {
+    // wire vectors carry a trailing nullptr terminator, so an empty wire has size 1 with a null front
+    if (wire.size() > 0 && wire.front()) {
       SHLOG_TRACE("Composing wire: {}, ", data.wire ? data.wire->name : "(unwired)", formatShardSourceLocation(wire.front()));
     } else {
       SHLOG_TRACE("Composing wire: {}", data.wire ? data.wire->name : "(unwired)");
