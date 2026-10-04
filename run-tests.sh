@@ -347,6 +347,7 @@ echo "========================================"
 
 PASSED_COUNT=$(wc -l < "$LOG_DIR/passed.txt" | tr -d ' ')
 FAILED_COUNT=$(wc -l < "$LOG_DIR/failed.txt" | tr -d ' ')
+TOTAL_TESTS=$((PASSED_COUNT + FAILED_COUNT)) # includes samples, which are not in TESTS
 
 echo -e "${GREEN}Passed:${NC} $PASSED_COUNT / $TOTAL_TESTS"
 echo -e "${RED}Failed:${NC} $FAILED_COUNT / $TOTAL_TESTS"
