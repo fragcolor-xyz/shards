@@ -74,6 +74,8 @@ When working on Rust modules or the graphics subsystem:
 
 **CRITICAL — Async in Rust shards**: NEVER use `block_on()`, `BlockingModel`, or any thread-blocking call inside a shard's `activate()`. Shards uses coroutine scheduling — blocking stalls the entire wire. Use `shards::core::run_future(context, async { ... }, on_cancel)` with a shared `TOKIO_RUNTIME`. See `shards/modules/http/src/lib.rs` for the canonical pattern.
 
+**Every await in that future must race the cancellation token.** When a wire is stopped, `awaitne` (`shards/core/async.hpp`) calls the cancel callback and then spins on the mesh thread until the future finishes, so an await that ignores the token blocks the whole mesh until it completes or times out. Race each await of in-flight work, as `until_cancelled` in `shards/modules/http/src/lib.rs` does (regression test: `shards/tests/http-cancel.shs`). Also note that each in-flight `run_future`/`awaitne` operation occupies a worker of the shared async pool (`TidePool`: 8 workers, up to 32), so at most 32 can be in flight at once.
+
 ### Testing
 - **Test Files**: `shards/tests/*.shs` contain language-level tests
 - **Test Runner**: `just tests` runs the test suite through shards executable

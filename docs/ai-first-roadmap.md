@@ -5,6 +5,8 @@
 **Scope:** Strategic repositioning and concrete engineering plan for making Shards the reference runtime for AI-generated programs.
 
 > **Update (2026-10-04):** The **Shards 2.0 Rust core** is now the top engineering priority: a new repo and a new runtime implementation, designed in [`shards-2-compose-split.md`](shards-2-compose-split.md). The strategy in this document still holds. Items that touch the runtime (3.5 residency, 3.6 capabilities, 3.7 performance) target the 2.0 core rather than 1.x. 1.x work that is already shipped (3.1 `check`, 3.2 agent CLI and skill) carries over. See §6 for the updated sequencing.
+>
+> **Progress (2026-10-04):** the 2.0 core prototype exists in the private `sinkingsugar/shards2` repo and validates the design: compose output is shared across instances, two schedulers (stackful and stackless) pass the same acceptance suite, and real async I/O works through one shared implementation. **The stackless scheduler is the default; both are maintained**, one backend per mesh. Results, including matched comparisons with 1.x, are in that repo's `docs/stackless-experiment.md`.
 
 ---
 
@@ -319,14 +321,20 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ### Next proof milestone
 
-**First: the 2.0 core prototype**, in the new repo. Take the CPU-only 1.x baseline benchmark, then prototype the compiled/state split with a small shard subset and many independent instances ([`shards-2-compose-split.md`](shards-2-compose-split.md), §5). Acceptance includes two instances of one shared compiled sub-wire suspended at different points: cancel one, verify cleanup runs exactly once, and resume the other with its state and result unaffected. This decides whether the 2.0 core design holds before any module porting. It does not require a complete Rust port, a new scheduler, vsh, or a training corpus. The gfx/physics baseline is required before graphics porting, not before this CPU prototype.
+**Done (2026-10-04): the 2.0 core prototype.** The CPU-only 1.x baseline was taken (`shards/tests/bench-instances.sh`), then the compiled/state split was prototyped in the new repo with a small shard subset, including the nested suspend/cancel/resume acceptance test. It passed, and was followed by a bounded stackless-scheduler experiment, shared shard APIs for both schedulers (`LeafShard`, `AsyncShard`), and real async I/O (`Http.Get`). Matched prototype benchmarks against 1.x (scoped to those benchmarks, not general guarantees):
+
+- instance creation about 20-40× faster and memory per instance about 40-50× smaller, with one compose for N instances instead of N;
+- steady-state cost per instance: 1.x is faster at 100 instances, the 2.0 stackless scheduler is faster from 1000 on (about 5× at 10,000); stackful 2.0 resumes deep nesting at constant cost, like 1.x, while stackless resume grows with depth;
+- 1000 concurrent HTTP requests: about 110 ms with 5 threads in 2.0, against 2.49 s with 38 threads in 1.x, whose async pool keeps at most 32 requests in flight.
+
+Next on the 2.0 track: porting the language front end and the first real modules, keeping both schedulers and the gfx/physics baseline (required before graphics porting). Runtime tracing of real workloads informs optimization; it no longer gates the scheduler choice.
 
 **Alongside it, on 1.x:** build one small stateful application through the existing discover → read → check → repair loop. Explore live changes using only existing building blocks (`WireComposer` and variable-backed `Spawn`), and record where they fall short of §3.5's replacement contract as input for 2.0. Implementing that contract belongs to the 2.0 track. Record first-pass check success, repair rounds, check latency, prompt-to-usable latency, and observed state retention/reset behavior. Passing compose is one measurement; task behavior needs its own acceptance checks.
 
 ### Broader roadmap
 
 ```
-P0 (now):           Shards 2.0 Rust core (new repo)               [prototype first — shards-2-compose-split.md §5]
+P0 (now):           Shards 2.0 Rust core (new repo)               [prototype ✅; stackless default; next: front end + first modules]
                     3.1 shards check (JSON diagnostics)            ✅ shipped (initial)
                     3.2 agent interface (CLI verbs + skills/shards/ skill) ✅ shipped (initial)
                     3.3 canonical-form decision + generation benchmark
