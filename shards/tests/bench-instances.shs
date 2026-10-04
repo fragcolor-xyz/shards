@@ -1,0 +1,67 @@
+// Baseline benchmark: the cost of N identical wire instances in Shards 1.x.
+// Spawns `instances` copies of one entity-like wire (core shards only: state,
+// tables, sequences, vector math, Match, Regex, and a nested Do that suspends),
+// then holds them alive so bench-instances.sh can sample memory.
+//
+// This is the CPU-only 1.x baseline for the Shards 2.0 prototype, see
+// docs/shards-2-compose-split.md §5. Run through bench-instances.sh, or directly:
+//   shards shards/tests/bench-instances.shs instances:100 hold:1.0
+
+@define(instances "100" IgnoreRedefined: true)
+@define(hold "1.0" IgnoreRedefined: true)
+
+@mesh(root)
+
+// Nested sub-wire that runs inline (shares the caller's variables) and
+// suspends in the middle of the call.
+@wire(entity-think {
+  energy | Add(0.5) | Update(energy)
+  Pause(0.0)
+  energy | When({IsMore(100.0)} {0.0 | Update(energy)})
+})
+
+@wire(entity {
+  Once({
+    0.0 | Set(energy)
+    @f3(0 0 0) | Set(pos)
+    1 | Set(waypoint)
+    [@f3(0 0 0) @f3(10 0 0) @f3(10 0 10) @f3(0 0 10)] | Set(waypoints)
+    {kind: "walker" speed: 2.5 tags: ["enemy" "ground"]} | Set(config)
+    "walker-42" | Set(entity-name)
+    Inc(ready-count) // mesh global: counts instances that reached their first activation
+  })
+
+  waypoints | Take(waypoint) | Sub(pos) | Math.Normalize | Mul(@f3(0.1 0.1 0.1)) | Add(pos) | Update(pos)
+  waypoint | Add(1) | Math.Mod(4) | Update(waypoint)
+
+  config | Take("kind") | ExpectString | Match([
+    "walker" {pos | Add(@f3(0 0.01 0)) | Update(pos)}
+    "flyer" {pos | Add(@f3(0 0.1 0)) | Update(pos)}
+  ] Passthrough: true)
+
+  entity-name | Regex.Match("[a-z]+-[0-9]+")
+
+  Do(entity-think)
+} Looped: true)
+
+@wire(spawner {
+  @instances | ParseInt | Set(n)
+  0 | Set(ready-count Global: true)
+  @hold | ParseFloat | Set(hold-secs)
+
+  // Clone + compose + schedule, measured synchronously
+  Time.NowMs | Set(t0)
+  Repeat({Spawn(entity Joint: true)} Times: n)
+  Time.NowMs | Sub(t0) | Set(spawn-ms)
+
+  // Wait until every new instance has warmed up and run its first activation
+  Repeat({Pause(0.0)} Until: {ready-count | IsMoreEqual(n)})
+  Time.NowMs | Sub(t0) | Set(ready-ms)
+
+  ["BENCH instances=" n " spawn_ms=" spawn-ms " ready_ms=" ready-ms] | String.Format | Log
+  "READY" | Log
+  Pause(hold-secs)
+})
+
+@schedule(root spawner)
+@run(root) | Assert.Is(true)
