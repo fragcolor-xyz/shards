@@ -9,7 +9,7 @@
 
 @wire(llm-test {
   ; Download/resolve GGUF to local cache path
-  "" | Process.Run("hf" ["download" @gguf-model-id @gguf-filename]) | String.Trim = gguf-path
+  "" | Process.Run("hf" ["download" "--quiet" @gguf-model-id @gguf-filename]) | String.Trim = gguf-path
   gguf-path | Log("GGUF path")
 
   ; Load model via llama.cpp

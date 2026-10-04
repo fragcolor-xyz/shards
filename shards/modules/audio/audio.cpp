@@ -484,8 +484,9 @@ struct Device {
     deviceConfig.coreaudio.allowNominalSampleRateChange = 1;
 #endif
 
-    if (ma_device_init(&_context, &deviceConfig, &_device) != MA_SUCCESS) {
-      throw WarmupError("Failed to open default audio device");
+    if (ma_result res = ma_device_init(&_context, &deviceConfig, &_device); res != MA_SUCCESS) {
+      throw WarmupError(fmt::format("Failed to open default audio device ({}, backend: {})", ma_result_description(res),
+                                    ma_get_backend_name(_context.backend)));
     }
 
     // fix up the actual sample rate

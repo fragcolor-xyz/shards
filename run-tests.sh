@@ -90,6 +90,18 @@ fi
 export LOG_GFX=debug
 export RUST_BACKTRACE=full
 
+# Linux: audio.shs opens a duplex device, which fails when the default source
+# has no usable input (e.g. no mic plugged in). Fall back to the default sink's
+# monitor so capture still works. parecord exits immediately on failure, and
+# timeout returns 124 when capture is actually running.
+if [ "$(uname)" = "Linux" ] && [ -z "$PULSE_SOURCE" ] && command -v pactl > /dev/null && command -v parecord > /dev/null; then
+    timeout 1 parecord /dev/null > /dev/null 2>&1
+    if [ $? -ne 124 ]; then
+        export PULSE_SOURCE="$(pactl get-default-sink).monitor"
+        echo "No usable audio input, using PULSE_SOURCE=$PULSE_SOURCE"
+    fi
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
