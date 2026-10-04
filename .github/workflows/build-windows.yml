@@ -155,6 +155,12 @@ jobs:
         run: |
           mkdir build
           cd build
+          # Sub-builds that pick their own compiler (llama.cpp's vulkan-shaders-gen
+          # ExternalProject) would otherwise find the runner's MinGW g++ first and link
+          # its libstdc++ dynamically; that exe then dies with 0xC0000139 (entry point
+          # not found) against whichever libstdc++-6.dll comes first on PATH.
+          export CC="C:/Program Files/LLVM/bin/clang.exe"
+          export CXX="C:/Program Files/LLVM/bin/clang++.exe"
           VULKAN_FLAG=""
           if [ "${{ github.event.inputs.vulkan || inputs.vulkan }}" == "true" ]; then
             VULKAN_FLAG="-DGGML_VULKAN=ON"

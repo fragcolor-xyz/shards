@@ -15,6 +15,17 @@ tracy = ["tracy-client"]
 [dependencies]
 ${CARGO_CRATE_DEPS} 
 tracy-client = { version = "0.17.4", optional = true }
+# profiling >= 1.0.17 (egui 0.34, wgpu 29) pulls a second tracy-client on the 0.18 line.
+# Left unpinned, cargo resolves it to the newest 0.18.x, whose tracy-client-sys targets a
+# newer Tracy ABI (___tracy_emit_logString) than our C++ Tracy fork in deps/CMakeLists.txt,
+# and TRACY_ENABLE builds fail to link. 0.18.0 shares tracy-client-sys 0.24 with the 0.17
+# line. Optional and never enabled: it exists only to constrain resolution. Bump together
+# with the C++ Tracy GIT_TAG.
+tracy-client-018 = { package = "tracy-client", version = "=0.18.0", optional = true, default-features = false }
+# libc 0.2.190 dropped the mach/proc APIs that sysinfo 0.36 (via mistral.rs) uses on iOS,
+# breaking the iOS build. Optional and never enabled: it only caps resolution. Drop once
+# sysinfo no longer needs them on iOS.
+libc-cap = { package = "libc", version = ">=0.2.155, <0.2.190", optional = true }
 
 [patch.crates-io]
 chrono = { git = "https://github.com/shards-lang/chrono", rev = "5aaf74235778120b5984b46ced47478c1431d9a0" }

@@ -42,7 +42,10 @@ struct Wireframe {
     code = blocks::makeCompoundBlock();
     code->appendLine("var bary = ", blocks::ReadInput("barycentricCoord"));
     code->appendLine("var deltas = fwidth(bary)");
-    code->appendLine("bary = smoothstep(deltas, deltas * 1.0, bary)");
+    // Hard threshold at one pixel from the edge. This used to be smoothstep(deltas, deltas, bary),
+    // which WGSL leaves undefined (low == high divides by zero): Mesa evaluates it so that no
+    // edge pixels survive and the wireframe disappears. step() is the well-defined equivalent.
+    code->appendLine("bary = step(deltas, bary)");
     code->appendLine("var distance = min(bary.x, min(bary.y, bary.z))");
     code->appendLine("var wire = max(0.0, 1.0 - round(distance))");
     code->append(blocks::WriteGlobal("color", Types::Float4, "wire * ", blocks::ReadBuffer("baseColor", Types::Float4)));
