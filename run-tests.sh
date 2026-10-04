@@ -261,6 +261,7 @@ if [ "$WITH_CPU" = true ]; then
         "shards/tests/fs-security.shs||"
         "shards/tests/fileops.shs||"
         "shards/tests/http.shs||"
+        "shards/tests/http-cancel.shs||"
         "shards/tests/imaging.shs||"
         "shards/tests/localshell.shs||"
         # Compression and encoding tests

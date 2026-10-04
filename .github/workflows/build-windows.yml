@@ -300,6 +300,8 @@ jobs:
           ./shards new ../shards/tests/channels.shs
           echo "Running http"
           ./shards new ../shards/tests/http.shs
+          echo "Running http-cancel"
+          ./shards new ../shards/tests/http-cancel.shs
           echo "Running brotli"
           ./shards new ../shards/tests/brotli.shs
           echo "Running snappy"

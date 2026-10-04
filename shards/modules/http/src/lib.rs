@@ -63,6 +63,23 @@ fn print_error(e: &dyn std::error::Error) {
   }
 }
 
+/// Runs `fut` unless `cancel` fires first, in which case it fails with
+/// "Request cancelled".
+///
+/// Every await on an in-flight request must go through this (or an
+/// equivalent `select!`): cancelling a wire waits for the request's future to
+/// finish (`awaitne` spins until the worker completes), so an await that
+/// ignores the token blocks the mesh until the request ends or times out.
+async fn until_cancelled<T>(
+  cancel: &CancellationToken,
+  fut: impl std::future::Future<Output = T>,
+) -> Result<T, String> {
+  tokio::select! {
+    value = fut => Ok(value),
+    _ = cancel.cancelled() => Err("Request cancelled".to_string()),
+  }
+}
+
 lazy_static! {
   static ref TOKIO_RUNTIME: Arc<Mutex<tokio::runtime::Runtime>> = Arc::new(Mutex::new(
     tokio::runtime::Builder::new_multi_thread()
@@ -477,13 +494,15 @@ impl RequestBase {
 
             if !full_response && !response.status().is_success() {
               let status = response.status();
-              let err_text = response.text().await.map_err(|e| {
-                format!(
-                  "Request failed with status {}, error: {}",
-                  status,
-                  e.to_string()
-                )
-              })?;
+              let err_text = until_cancelled(&cancel_token_async, response.text())
+                .await?
+                .map_err(|e| {
+                  format!(
+                    "Request failed with status {}, error: {}",
+                    status,
+                    e.to_string()
+                  )
+                })?;
               let err_text = if err_text.len() > 1024 {
                 format!("{}...", err_text.chars().take(1024).collect::<String>())
               } else {
@@ -535,16 +554,14 @@ impl RequestBase {
             }
 
             let content: ClonedVar = if as_bytes {
-              let bytes = response
-                .bytes()
-                .await
+              let bytes = until_cancelled(&cancel_token_async, response.bytes())
+                .await?
                 .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?;
 
               bytes.as_ref().into()
             } else {
-              let str = response
-                .text()
-                .await
+              let str = until_cancelled(&cancel_token_async, response.text())
+                .await?
                 .map_err(|e| format!("Failed to decode the response: {}", e.to_string()))?;
 
               let shards_str = Var::ephemeral_string(str.as_str());

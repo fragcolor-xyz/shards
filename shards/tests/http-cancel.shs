@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright © 2026 Fragcolor Pte. Ltd.
+
+// Regression test: cancelling (stopping) a wire with an in-flight Http.Get
+// must release the request promptly, both while waiting for the response
+// headers and while reading the response body.
+//
+// Cancellation waits for the request's future to finish (awaitne spins
+// until the worker completes), so an await inside the request that ignores
+// the cancellation token blocks the mesh thread until the request ends or
+// its timeout (30 s here) expires. This used to happen for body reads.
+//
+// A local server streams a chunked response: 30 small chunks, 50 ms apart,
+// after a 1 s stall (before the headers for /slow-headers, after the first
+// chunk for /slow-body). The client is stopped 0.3 s into the stall. Checks:
+// - Stop returns quickly (it used to block the mesh until the timeout);
+// - the server never completes the response: a later write fails because the
+//   client released the connection, and Http.Server stops the handler. If
+//   the client kept reading, every write would succeed and it would log
+//   "completed".
+// A control phase (no cancellation) must complete within the same window, so
+// the checks cannot pass just because the window is too short.
+
+@mesh(root)
+
+@wire(http-cancel-init {
+  "" | Set(server-log Global: true)
+  "" | Set(client-log Global: true)
+  "" | Set(target-url Global: true)
+})
+
+@wire(http-cancel-handler {
+  Maybe({
+    Http.Read | Take("target") | ExpectString = target
+    ["started " target ";"] | String.Format | AppendTo(server-log)
+    0 >= i
+    Repeat({
+      When({i | Is(0)} {
+        When({target | Is("/slow-headers")} {Pause(1.0)})
+      })
+      // One Http.Chunk instance writes the headers once, then every chunk;
+      // an empty chunk ends the response.
+      i | If({Is(29)} {""} {"x"})
+      Http.Chunk(Status: 200 Headers: {"Content-Type": "text/plain"})
+      When({i | Is(0)} {
+        When({target | Is("/slow-body")} {Pause(1.0)})
+      })
+      Pause(0.05)
+      Inc(i)
+    } Times: 30)
+    ["completed " target ";"] | String.Format | AppendTo(server-log)
+  } {
+    Pass
+  })
+} Looped: true)
+
+@wire(http-cancel-server {
+  Http.Server(http-cancel-handler Port: 18089)
+} Looped: true)
+
+@wire(http-cancel-client {
+  none
+  Http.Get(URL: target-url Timeout: 30)
+  "client-completed;" | AppendTo(client-log)
+})
+
+// Longer than the server needs to finish a response (about 2.5 s).
+@define(window 3.5)
+
+@template(control-phase [path] {
+  ["http://127.0.0.1:18089" path] | String.Format > target-url
+  "" > server-log
+  "" > client-log
+  Detach(http-cancel-client)
+  Pause(@window)
+  server-log | Log(["control " path] | String.Format)
+  server-log | Assert.Is(["started " path ";completed " path ";"] | String.Format)
+  client-log | Assert.Is("client-completed;")
+})
+
+@template(cancel-phase [path] {
+  ["http://127.0.0.1:18089" path] | String.Format > target-url
+  "" > server-log
+  "" > client-log
+  Detach(http-cancel-client)
+  Pause(0.3)
+  Time.NowMs = stop-start
+  Stop(http-cancel-client)
+  Time.NowMs | Sub(stop-start) | Log(["stop ms " path] | String.Format)
+  IsLess(1000.0) | Assert.Is(true)
+  Pause(@window)
+  server-log | Log(["cancel " path] | String.Format)
+  // Started, but never completed: the connection was released.
+  server-log | Assert.Is(["started " path ";"] | String.Format)
+  client-log | Assert.Is("")
+})
+
+@wire(http-cancel-test {
+  false >= passed
+  Pause(0.2) // let the server start
+  // Catch a failing check so the looped server can still be stopped and the
+  // run ends (with a failure) instead of hanging.
+  Maybe({
+    @control-phase("/slow-body")
+    @cancel-phase("/slow-headers")
+    @cancel-phase("/slow-body")
+    true > passed
+  } {
+    Msg("http-cancel: a phase failed")
+  })
+  Stop(http-cancel-server)
+  passed | Assert.Is(true)
+  Msg("http-cancel: all phases passed")
+})
+
+@schedule(root http-cancel-init)
+@schedule(root http-cancel-server)
+@schedule(root http-cancel-test)
+@run(root FPS: 100) | Assert.Is(true)
