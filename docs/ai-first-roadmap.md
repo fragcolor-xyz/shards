@@ -319,9 +319,9 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ### Next proof milestone
 
-**First: the 2.0 core prototype**, in the new repo. Take the 1.x baseline benchmark, then prototype the compiled/state split with a small shard subset and many independent instances ([`shards-2-compose-split.md`](shards-2-compose-split.md), §5). This decides whether the 2.0 core design holds before any module porting. It does not require a complete Rust port, a new scheduler, vsh, or a training corpus.
+**First: the 2.0 core prototype**, in the new repo. Take the CPU-only 1.x baseline benchmark, then prototype the compiled/state split with a small shard subset and many independent instances ([`shards-2-compose-split.md`](shards-2-compose-split.md), §5). Acceptance includes two instances of one shared compiled sub-wire suspended at different points: cancel one, verify cleanup runs exactly once, and resume the other with its state and result unaffected. This decides whether the 2.0 core design holds before any module porting. It does not require a complete Rust port, a new scheduler, vsh, or a training corpus. The gfx/physics baseline is required before graphics porting, not before this CPU prototype.
 
-**Alongside it, on 1.x:** build one small stateful application through the existing discover → read → check → repair loop, then demonstrate the bounded replacement contract in §3.5. Record first-pass check success, repair rounds, check latency, prompt-to-usable latency, and which state survives replacement. Passing compose is one measurement; task behavior needs its own acceptance checks. What this teaches about residency feeds into the 2.0 core design.
+**Alongside it, on 1.x:** build one small stateful application through the existing discover → read → check → repair loop. Explore live changes using only existing building blocks (`WireComposer` and variable-backed `Spawn`), and record where they fall short of §3.5's replacement contract as input for 2.0. Implementing that contract belongs to the 2.0 track. Record first-pass check success, repair rounds, check latency, prompt-to-usable latency, and observed state retention/reset behavior. Passing compose is one measurement; task behavior needs its own acceptance checks.
 
 ### Broader roadmap
 
