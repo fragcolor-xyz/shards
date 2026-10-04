@@ -24,8 +24,11 @@ use crate::eval::eval;
 use crate::read::read;
 use crate::Program;
 use shards::core::{getShards, Core};
-use shards::types::{AutoShardRef, ComposeDiagnostic, Mesh};
-use std::collections::HashMap;
+use shards::shardsc::{SHType_Seq, SHType_ShardRef, SHType_Wire};
+use shards::types::{
+  AutoShardRef, CheckResult, ComposeDiagnostic, Mesh, SeqVar, ShardRef, Var, WireRef,
+};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -465,7 +468,38 @@ pub fn check_command(
   for d in &result.diagnostics {
     diagnostics.push(compose_diag_to_json(d, &display_file, &mut index));
   }
-  // If compose failed but produced no structured diagnostics, surface the raw error.
+  push_raw_compose_error(&result, &display_file, &mut diagnostics);
+
+  // Phase 3b: wires that are only reachable through `Schedule` (`@schedule`) are NOT
+  // composed by the root compose — `Schedule` composes its target lazily, on the
+  // mesh, when it activates. Compose each of them here the same way a real schedule
+  // does (as a root wire against a fresh mesh environment), so a type error inside a
+  // mesh-scheduled wire fails the check instead of surfacing only at run time.
+  for target in collect_scheduled_wires(wire.0) {
+    let mesh = Mesh::default();
+    let result = mesh.compose_check(target);
+    for d in &result.diagnostics {
+      let jd = compose_diag_to_json(d, &display_file, &mut index);
+      // A wire both `Do`ne from root and scheduled can report the same error twice.
+      let dup = diagnostics.iter().any(|x| {
+        x.line == jd.line && x.column == jd.column && x.file == jd.file && x.message == jd.message
+      });
+      if !dup {
+        diagnostics.push(jd);
+      }
+    }
+    push_raw_compose_error(&result, &display_file, &mut diagnostics);
+  }
+
+  finish_report(display_file, diagnostics, json)
+}
+
+/// If compose failed but produced no structured diagnostics, surface the raw error.
+fn push_raw_compose_error(
+  result: &CheckResult,
+  display_file: &str,
+  diagnostics: &mut Vec<JsonDiagnostic>,
+) {
   if result.failed && result.diagnostics.is_empty() {
     diagnostics.push(JsonDiagnostic {
       phase: "compose",
@@ -476,7 +510,7 @@ pub fn check_command(
       } else {
         result.error.clone()
       },
-      file: display_file.clone(),
+      file: display_file.to_string(),
       line: 0,
       column: 0,
       shard: None,
@@ -487,8 +521,66 @@ pub fn check_command(
       candidates: Vec::new(),
     });
   }
+}
 
-  finish_report(display_file, diagnostics, json)
+/// Walk the wire graph reachable from `root` (through every wire / shard / shard-seq
+/// parameter) and return, in discovery order, the wires targeted by a `Schedule`
+/// shard with a constant `Wire` parameter. Wires behind a context variable can't be
+/// resolved without running, so they are skipped.
+fn collect_scheduled_wires(root: WireRef) -> Vec<WireRef> {
+  let mut visited: HashSet<usize> = HashSet::new();
+  let mut scheduled: Vec<WireRef> = Vec::new();
+  let mut scheduled_set: HashSet<usize> = HashSet::new();
+  let mut stack: Vec<WireRef> = vec![root];
+
+  // Push every wire / shard reachable from a parameter value.
+  fn visit_var(v: &Var, wires: &mut Vec<WireRef>, shards: &mut Vec<ShardRef>) {
+    if v.valueType == SHType_Wire {
+      if let Ok(w) = WireRef::try_from(v) {
+        wires.push(w);
+      }
+    } else if v.valueType == SHType_ShardRef {
+      if let Ok(s) = ShardRef::try_from(v) {
+        shards.push(s);
+      }
+    } else if v.valueType == SHType_Seq {
+      if let Ok(seq) = SeqVar::try_from(v) {
+        for item in seq.iter() {
+          visit_var(&item, wires, shards);
+        }
+      }
+    }
+  }
+
+  while let Some(wire) = stack.pop() {
+    if !visited.insert(wire.0 as usize) {
+      continue;
+    }
+    let info = unsafe { (*Core).getWireInfo.unwrap_unchecked()(wire.0) };
+    let mut shards: Vec<ShardRef> = (0..info.shards.len as usize)
+      .map(|i| ShardRef(unsafe { *info.shards.elements.add(i) }))
+      .collect();
+    while let Some(shard) = shards.pop() {
+      if shard.0.is_null() {
+        continue;
+      }
+      let n_params = shard.parameters().len() as i32;
+      for i in 0..n_params {
+        let p = shard.get_parameter(i);
+        let mut wires = Vec::new();
+        visit_var(&p, &mut wires, &mut shards);
+        if shard.name() == "Schedule" {
+          for w in &wires {
+            if scheduled_set.insert(w.0 as usize) {
+              scheduled.push(*w);
+            }
+          }
+        }
+        stack.extend(wires);
+      }
+    }
+  }
+  scheduled
 }
 
 /// Extract the shard name out of the "Shard X does not exist" construct error.

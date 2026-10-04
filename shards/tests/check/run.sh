@@ -147,6 +147,20 @@ assert "parse diagnostic has a location (line > 0)" \
   "$(jq_true "$OUT" '[.diagnostics[] | select(.phase=="parse" and .line > 0)] | length > 0'; echo $?)"
 echo
 
+# ---- scheduled-mismatch: error inside a wire reachable only via @schedule ---
+run_case scheduled-mismatch
+assert "exit code 1" "$([[ $CODE -eq 1 ]]; echo $?)"
+assert "mismatch in scheduled wire is reported at its source line" \
+  "$(jq_true "$OUT" '[.diagnostics[] | select(.kind=="input-type-mismatch" and .line==5)] | length > 0'; echo $?)"
+echo
+
+# ---- struct-key-typo: unknown key on a fixed struct table ------------------
+run_case struct-key-typo
+assert "exit code 1" "$([[ $CODE -eq 1 ]]; echo $?)"
+assert "unknown struct key reported at its line, listing available keys" \
+  "$(jq_true "$OUT" '[.diagnostics[] | select(.phase=="compose" and .line==6 and (.message | contains("available keys")))] | length > 0'; echo $?)"
+echo
+
 # ---- summary ---------------------------------------------------------------
 echo "================================================================"
 echo "assertions: $PASS passed, $FAIL failed"

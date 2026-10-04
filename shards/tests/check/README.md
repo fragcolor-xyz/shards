@@ -28,6 +28,8 @@ Requires `jq`. Exit code is non-zero if any assertion fails.
 | `define.shs` | construct | — | parity: `check file.shs key:value` injects defines like `run` |
 | `inc/sub/main.shs` | parse | — | parity: relative `-I` resolves against the invocation cwd like `run` |
 | `syntax-error.shs` | parse | syntax | precise location |
+| `struct-key-typo.shs` | compose | compose-error | unknown key on a `Type:`-declared table lists the valid keys |
+| `scheduled-mismatch.shs` | compose | input-type-mismatch | wires reachable only via `@schedule` are composed too |
 
 All three phases (parse, construct, compose) carry precise `line`/`column`.
 

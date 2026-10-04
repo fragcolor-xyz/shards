@@ -1,0 +1,6 @@
+; A misspelled key on a fixed struct table (declared with Type:) must fail at compose
+; time instead of silently composing to Any.
+@define(rec @type({base: Type::Int name: Type::String}))
+Table(t Type: @rec)
+t.base | Math.Add(1) | Log
+t.bsae | Log

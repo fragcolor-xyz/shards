@@ -1,0 +1,8 @@
+; A type error inside a wire that is only reachable through @schedule (never Do'd
+; from root). `Schedule` composes its target lazily on the mesh, so `check` must
+; compose scheduled wires itself for this to be caught.
+@mesh(main)
+@wire(inner { "abc" | Math.Add(1) })
+@wire(ticker { true | If(Is(true) { Do(inner) } { Pass }) } Looped: true)
+@schedule(main ticker)
+@run(main FPS: 30)

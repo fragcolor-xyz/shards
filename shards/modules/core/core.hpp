@@ -3336,6 +3336,21 @@ struct Take {
   std::optional<uint32_t> fixedTableIdx;
   Shard *_shard;
 
+  // Fixed struct tables (e.g. Table(Type: @type({...}))) cannot gain keys, so a key not in
+  // the type is a typo: fail at compose time instead of silently composing to Any.
+  static void throwIfNotStructKey(const SHTypeInfo &tableType, const SHVar &key) {
+    std::string available;
+    for (uint32_t i = 0; i < tableType.table.keys.len; i++) {
+      auto &k = tableType.table.keys.elements[i];
+      if (k == key)
+        return;
+      if (!available.empty())
+        available += ", ";
+      available += fmt::format("{}", k);
+    }
+    throw shards::Error(fmt::format("Take: key {} does not exist in fixed struct table, available keys: {}", key, available));
+  }
+
   SHTypeInfo compose(const SHInstanceData &data) {
     bool valid = false;
     bool isTable = data.inputType.basicType == SHType::Table;
@@ -3496,6 +3511,12 @@ struct Take {
                 }
               }
             }
+            // a fixed struct table has exactly its declared keys, so any unknown key is a typo
+            if (data.inputType.table.fixedStructTable && _seqOutputTypes.size() != _indices.payload.seqValue.len) {
+              for (uint32_t j = 0; j < _indices.payload.seqValue.len; j++) {
+                throwIfNotStructKey(data.inputType, _indices.payload.seqValue.elements[j]);
+              }
+            }
             // if types is 0 we did not match any
             if (_seqOutputTypes.size() == 0) {
               SHLOG_ERROR("Table input type: {} missing keys: {}", data.inputType, _indices);
@@ -3517,7 +3538,11 @@ struct Take {
               }
             }
             // we didn't match any key...
-            // and so we just return any type to allow extra keys
+            // a fixed struct table cannot have extra keys, so this is a compose error
+            if (data.inputType.table.fixedStructTable) {
+              throwIfNotStructKey(data.inputType, _indices);
+            }
+            // otherwise we just return any type to allow extra keys
             return CoreInfo::AnyType;
           }
         } else {
