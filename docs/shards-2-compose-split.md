@@ -1,8 +1,8 @@
 # Shards 2.0: Compose Once, Instantiate Many
 
-**Status:** Proposed (design only, nothing implemented)
+**Status:** Proposed (design only, nothing implemented). Top engineering priority as of 2026-10-04.
 **Audience:** Core team / contributors
-**Scope:** The main structural change planned for Shards 2.0: compose output becomes a shared, read-only artifact, separate from the small runtime state each instance owns. Also covers how this fits a Rust-hosted core.
+**Scope:** The core design for Shards 2.0, a new Rust runtime in a new repo. Compose output becomes a shared, read-only artifact, separate from the small runtime state each instance owns. Also covers what carries over from 1.x (§3.6) and how to validate the design before porting (§5).
 
 Related: [`ai-first-roadmap.md`](ai-first-roadmap.md). Surface syntax (§3.3) and compose-time optimization (§3.7) are covered there. This doc is the runtime model those build on.
 
@@ -69,7 +69,7 @@ Composing once is not enough on its own. Several subsystems recognize resources 
 - **`GFX.glTF Copy:`** clones only the node tree and shares `MeshPtr` / `MaterialPtr`. This is the 2.0 model on a small scale.
 - Already shared: HTTP clients (per mesh, keyed by proxy/cert config), SQLite connections (per mesh by db name), channels, and the `Expect` input-type cache.
 - `TypeCache` (`shards/core/type_cache.hpp`) is a global hash-interned `TypeInfo` store. It has one call site today and is the natural building block for shared types.
-- Clone composes are already deterministic: same input type, same shared variables. That makes a compose-result cache sound.
+- Clone composes commonly receive the same input type and shared-variable types. Cache soundness still requires auditing all other compose dependencies and making them explicit (§3.2).
 
 ## 3. Design
 
@@ -94,10 +94,10 @@ trait Shard {
 }
 ```
 
-The compiler enforces the split rather than leaving it to convention:
+The API makes the split explicit and gives the compiler useful ownership checks:
 
-- `activate` receives `&Compiled`, so a shard cannot quietly mutate shared compose output.
-- `Compiled: Send + Sync` guarantees it can be shared across threads and meshes.
+- `activate` receives `&Compiled`, preventing ordinary mutable access. Interior mutability is still possible: the contract must forbid instance-dependent semantic changes through shared compiled data.
+- `Compiled: Send + Sync` permits safe cross-thread sharing in safe Rust; it does not prove immutability or make a device-bound resource valid in another context.
 - Each shard type gets one static vtable, replacing per-instance function pointers.
 
 A **compiled wire** is an immutable graph of `Arc<Compiled>` nodes plus wire-level types (input, output, requirements, stack size). It owns every type it exposes, so nothing points into instance memory (this fixes §2.2). An **instance** is a flat state block, ideally one allocation sized at compile time, plus a reference to its compiled wire.
@@ -106,17 +106,22 @@ A **compiled wire** is an immutable graph of `Arc<Compiled>` nodes plus wire-lev
 
 Cache compiled wires and shards by a **structural key**:
 
-- shard id
+- shard identity and implementation version (or an equivalent cache scope tied to an immutable registry)
 - parameter values (hashed)
 - input type
-- the types of the variables the shard reads from its environment
+- the resolved bindings and types of the variables the shard reads from its environment
+- any compose-visible host configuration, target features, and policy assumptions
 
-Names, ids and runtime variable values are excluded (this fixes the §2.1 hashing issue). Consequences:
+Incidental instance names and ids are excluded (this fixes the §2.1 hashing issue). Variable names may be normalized only when the binding representation preserves their meaning. Runtime values are excluded only if compose cannot observe them.
+
+**Compose contract:** output is a deterministic function of declared inputs. `ComposeCtx` must expose dependencies explicitly; ambient filesystem, clock, registry, or host-state reads cannot silently affect a cached result. A shard whose dependencies cannot yet be represented must bypass caching. Capability approval must not be inherited from an artifact compiled under another policy: either key the relevant policy or repeat admission checks for the receiving host.
+
+Hashes index cache entries; structural equality must resolve collisions before reuse. Invalidation must follow dependency changes, including nested compiled artifacts. Under this contract:
 
 - 100 `Spawn`s of one template → one compose, 100 `instantiate` calls.
 - Identical sub-wires used in different places share one compiled artifact.
 - Hot reload recompiles only shards whose keys changed.
-- Loading the same script twice in one process is free the second time.
+- Loading the same script twice can reuse compose output when dependencies match; parsing, admission checks, and instantiation may still cost work.
 
 The 1.x XXH3/XXH128 hashing and `TypeCache` interning carry over as the implementation.
 
@@ -130,7 +135,9 @@ For §2.3, a `Compiled` value may hold handles to **shared resources**, which ar
 - **Models:** keyed by path plus load parameters. Per-instance state is the context or KV cache.
 - **Compiled regexes, templates and prepared statements:** keyed by source text (statements per connection).
 
-Resources that actually need to change and be shared (e.g. a texture cache that streams in) become explicit **services** that shards call. They are never mutated through `&Compiled`.
+Keep portable compiled descriptions separate from device- or connection-bound realizations. Resolve the latter through services scoped to the owning device/context/connection, with explicit teardown and invalidation. A reusable compiled wire must not retain a handle that only works in the host that first composed it.
+
+Resources that actually need to change and be shared (e.g. a texture cache that streams in) become explicit **services** that shards call. Their synchronization and lifetime rules are separate from the immutable compiled artifact contract.
 
 ### 3.4 Scheduling (hypothesis)
 
@@ -143,8 +150,27 @@ This is **unproven**. The hard cases are shards that call other shards (`Do`, `B
 The 2.0 core is Rust: runtime, scheduler, type system, composer. C++ is no longer the host. It remains as libraries called from Rust: llama.cpp, whisper.cpp, JoltPhysics, miniaudio, tracy and others, behind thin binding crates. This reverses 1.x's arrangement, where C++ hosts and calls Rust modules. Benefits:
 
 - One build system and one toolchain for the core.
-- No ownership bugs at the language boundary like the recent http use-after-free.
-- The `Compiled`/`State` contract can be enforced by Rust's type system across the whole core.
+- More ownership and lifetime checks within the Rust core; C++ bindings and unsafe code still require explicit lifetime contracts and auditing.
+- The `Compiled`/`State` separation is expressed in the type system, with additional contracts for interior mutability and resource scope.
+
+### 3.6 New repo, new core, carried-over parts
+
+2.0 is a new implementation in a **new repository**, not an in-place migration. The compiled/state split changes the shard contract, the ABI, the clone path and possibly the scheduler. Migrating 1.x step by step would mean keeping both models working at every step, which costs more than a new core. A new repo also starts as a plain Cargo workspace, without 1.x's CMake setup, submodules and C++ build workarounds. 1.x stays maintained in this repo for existing users.
+
+New implementation:
+
+- runtime, scheduler, type system and composer
+- the shard trait and registry (§3.1), the compose cache (§3.2) and resource services (§3.3)
+
+Carried over and adapted, not rewritten:
+
+- **Language front end:** `shards/lang` (pest grammar, parser, AST, formatter, `shards check` with its did-you-mean and candidate engines) is already Rust. Changes follow 2.0's syntax decisions ([`ai-first-roadmap.md`](ai-first-roadmap.md) §3.3).
+- **Agent tooling:** the `check` / `docs` / `enumerate` / `search` CLI surface and the `skills/shards/` skill (roadmap §3.1-3.2).
+- **Rust modules** (`http`, egui, the gfx Rust backend, candle and others): the domain logic carries over, and the shard binding layer is ported to the new trait.
+- **C++ libraries** (§3.5): consumed through binding crates.
+- **Tests and samples:** the conformance suite (§5), converted mechanically if the syntax changes.
+
+**Scope guard.** A clean rewrite invites every feature ever wanted, which is how second systems fail to ship. The first milestone in the new repo is the narrow prototype in §5, before any gfx, physics or AI porting.
 
 ## 4. Open questions
 
@@ -156,6 +182,12 @@ The 2.0 core is Rust: runtime, scheduler, type system, composer. C++ is no longe
 
 ## 5. Validation
 
-- **Benchmark first.** Before any 2.0 work, add a 1.x benchmark that spawns 100 identical entity-like wires (gfx feature + mesh + physics body + some logic) and records compose time, memory and pipeline count. It is the baseline, and the acceptance test: in 2.0, adding instances 2-100 should cost roughly `sizeof(State)` each and create zero additional pipelines.
+In order:
+
+1. **1.x baseline benchmark.** Before any 2.0 work, add a 1.x benchmark that spawns 100 identical entity-like wires (gfx feature + mesh + physics body + some logic) and records compose time, memory and pipeline count. Include a CPU-only variant (logic and core shards only), so the narrow prototype in step 2 has a directly comparable baseline. In 2.0, the full benchmark is the acceptance test: adding instances 2-100 should cost roughly `sizeof(State)` each and create zero additional pipelines.
+2. **Narrow prototype before a full port** (the first milestone in the new repo). Implement a small shard subset with shared compiled artifacts and independent state, using the simplest scheduler that works. For 100 instances, measure compose count, creation latency, live memory, and state isolation against the CPU-only baseline. Include cache misses for changed bindings/types, host configuration, and policy assumptions, plus equivalent instances that should hit. A forced hash collision must not reuse the wrong artifact. This validates the split without requiring a scheduler rewrite or graphics port.
+
+Throughout:
+
 - **Conformance.** The existing suite (`./run-tests.sh --with-cpu`: ~110 test scripts plus ~260 doc samples, 370/370 passing on Linux Debug as of 2026-10-04) becomes the 2.0 conformance suite, ported mechanically if the syntax changes.
 - **Possible 1.x step.** Content-keyed feature hashing (§3.3, first bullet) can land in 1.x on its own. It collapses N pipelines to one for identical entities and restores instanced batching. It is optional now that Formable is no longer a driver, but it is a cheap way to validate the keying scheme.

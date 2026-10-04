@@ -4,6 +4,8 @@
 **Audience:** Core team / contributors
 **Scope:** Strategic repositioning and concrete engineering plan for making Shards the reference runtime for AI-generated programs.
 
+> **Update (2026-10-04):** The **Shards 2.0 Rust core** is now the top engineering priority: a new repo and a new runtime implementation, designed in [`shards-2-compose-split.md`](shards-2-compose-split.md). The strategy in this document still holds. Items that touch the runtime (3.5 residency, 3.6 capabilities, 3.7 performance) target the 2.0 core rather than 1.x. 1.x work that is already shipped (3.1 `check`, 3.2 agent CLI and skill) carries over. See §6 for the updated sequencing.
+
 ---
 
 ## 1. Thesis
@@ -16,9 +18,11 @@ The era in which a programming language competed on *human* ergonomics is ending
 - Can the runtime host **long-lived, concurrent, stateful agents**?
 - Is it **fast and embeddable** enough for domains scripting languages cannot enter (real-time, mobile, web, embedded)?
 
-Shards already has all five properties as engineering facts. None of them is currently packaged, announced, or productized as such. This document sets the plan to do so.
+Shards already has compose-time type checking, live API introspection, wire/mesh concurrency, and an embeddable runtime. Capability enforcement and a supported live-editing interface remain proposed work. This document sets the plan to turn those foundations into a product and validate the missing guarantees.
 
-> **The moat, in one sentence:** *AI-written Shards can be verified, constrained, and trusted in ways AI-written Python never can — and it runs at 60fps on a phone.*
+> **The intended moat, in one sentence:** *Check AI-written programs before activation, constrain their authority, and let users change them while they run on-device.*
+
+Here, **verification means the checks compose actually performs**, not proof of program correctness. Passing `check` does not establish termination, bounded resource use, or safe effects. Checking itself also needs an authority boundary: parsing, includes, construction, and compose hooks must be audited before treating checks of untrusted input as harmless. Capability enforcement (§3.6) and runtime limits are separate contracts.
 
 ### What is explicitly no longer the pitch
 
@@ -30,7 +34,7 @@ Shards already has all five properties as engineering facts. None of them is cur
 
 | Asset | Where | Why it matters |
 |---|---|---|
-| Three-phase model: parse → compose → activate | `shards/lang/src/eval.rs`, `shards/core/runtime.cpp` (`validateConnection`) | Whole-program type validation **before any side effect** — a free, milliseconds-cheap verification oracle for agent repair loops |
+| Three-phase model: parse → compose → activate | `shards/lang/src/eval.rs`, `shards/core/runtime.cpp` (`validateConnection`) | Type validation before activation — structured feedback for agent repair loops; checking latency and checking-time effects need measurement and auditing |
 | Full API introspection | `Shards.Enumerate`, `Shards.Help`, `Shards.EnumTypes` (`shards/modules/core/core.cpp`), `PARAM_IMPL` reflection (`shards/core/params.hpp`) | The entire stdlib signature surface is machine-readable ground truth |
 | Closed-world stdlib (~1k shards) + complete language guide | `skills/shards/` (SKILL.md + GUIDE.md + examples); shard catalog is **live** via `shards enumerate` / `shards docs --json` | The **whole language fits in a model context window**, the catalog is queried live (zero drift), hallucinated APIs are detectable and preventable. Replaces the former static `lib/shards-{guide,reference}.md`. |
 | Formal PEG grammar | `shards/lang/src/shards.pest` | Mechanical path to constrained decoding (GBNF) and tooling |
@@ -49,7 +53,7 @@ The default trajectory of every niche language in the AI era is death by **train
 The moat does not exist passively. It must be built. Every item below is in service of one loop:
 
 ```
-agent generates → shards verifies (compose) → structured errors → agent repairs → verified program runs sandboxed
+agent generates → shards checks (compose) → structured errors → agent repairs → host admits program under an enforced policy → program runs
 ```
 
 ---
@@ -142,11 +146,13 @@ Also in this item:
 
 The agent surface and the skill exist:
 
-- CLI verbs: `shards docs --json` (drill-down: full signature, recursive types, param defaults), `shards enumerate [--filter] [--json]` (Tier-1 one-line index), `shards search` (keyword over name + summary). Progressive disclosure: a compact always-loaded index, expand on demand, ground truth served live from the binary.
+- CLI verbs: `shards docs --json` (drill-down: full signature, recursive types, param defaults), `shards enumerate [--filter] [--json]` (Tier-1 one-line index), `shards search [--json]` (ranked fuzzy/keyword search). Discovery is also available inside programs as `Shards.Index` and `Shards.Search`; the CLI and shards share the core index and ranking implementation. Progressive disclosure: a compact always-loaded index, expand on demand, ground truth served live from the binary.
 - `skills/shards/` — the consolidated, portable skill (`SKILL.md` + `GUIDE.md` + runnable, `check`-passing `examples/`). Replaces the static guide/reference/pack.
 - A mistyped subcommand now suggests the right one (`shards doc` → "did you mean 'docs'"); the `// (C-style)` comment guidance is corrected.
 
 Not yet: keyword search via embeddings (`AI.Embed`); the broader docs-*site* `lisp/` URL cleanup; retiring the legacy `docs/generate.shs` Notion pipeline; `vsh` (P1).
+
+Quick checkout audit (2026-10-04): the existing `build/Debug/shards` passed all 22 assertions in `shards/tests/check/run.sh` and the `shards/tests/discovery.shs` script (`discovery OK`). CLI source has no `attach` verb or `run --caps` / `--timeout` options. Only the local PTY and SSH implementations of `ShellTransport` were found. This was a source inspection plus tests of the existing binary, not a fresh build or a full roadmap audit.
 
 ### 3.3 Surface syntax: keep the language, bless the word forms, measure the rest
 
@@ -193,25 +199,36 @@ We own a generator-verifier pair: introspection enumerates valid constructions; 
 
 **Effort: months. Priority: P1. The flagship demo.**
 
+Existing building blocks include runtime wire composition (`WireComposer`, with extra variable types) and variable-backed `Spawn` that detects a changed wire and composes its template (`shards/modules/core/wires.cpp`). These are partial foundations for residency; the attach/inspect/swap CLI and the replacement contract below were not found in the quick checkout audit.
+
 Let an agent attach to a **running** mesh:
 
 - Inspect scheduled wires, their states, and live variable values (the reflection machinery exists; it needs a protocol surface — the daemon + `shards attach` CLI verbs from 3.2).
 - Compose a replacement wire **against the live environment's actual types** — compose-time checking applied to hot code.
 - Hot-swap wires in a running mesh.
 
-This is the Smalltalk-image story reborn for agents: the agent doesn't edit dead text and restart a process — it operates on a living program. No mainstream language can offer this without heroics; the wire/mesh architecture is most of the way there. Combined with 3.2, this is a demo no other language can replicate.
+This is the Smalltalk-image story applied to agents: the agent operates on a living program. The first version needs an explicit replacement contract:
+
+- Prepare and check the replacement before disturbing the running instance. At commit, confirm that the live environment still matches the checked assumptions.
+- Commit only at a defined scheduler boundary with no active calls into the old instance. Suspended calls must drain or be cancelled under a documented policy; changing their instruction pointers is out of scope.
+- Preserve only explicitly declared, compatible application state. Reset other state and define cleanup for connections, handles, and pending work. Arbitrary state migration is out of scope initially.
+- Failed preparation leaves the old instance running. Define what happens if resource acquisition fails during commit; do not promise rollback of external effects.
+
+Acceptance is a small stateful tool that can change behavior while retaining declared user data, with visible reset behavior and a rejected replacement that leaves the tool usable.
 
 ### 3.6 Capability manifests — the safety story
 
 **Effort: months (design-heavy, mechanically cheap). Priority: P1.**
 
-Because all effects flow through a finite, enumerable shard set, Shards can offer what no ambient-authority language can: **compose-time capability enforcement**.
+The enumerable shard registry provides a starting point for **compose-time capability checks**. A namespace allow-list is useful admission control, but is not by itself a sandbox.
 
 - A wire (or schedule, or embedding host) declares an allowed shard set / namespace whitelist (e.g. `deny: [FS.* Process.* Network.*]` or allow-list style).
 - `compose` rejects violations — *before execution*, with structured diagnostics (3.1).
-- This is the answer to "run AI-generated code on an end user's device": fast enough for real-time, sandboxable by construction, verified before execution, embeddable everywhere (desktop, iOS/visionOS, wasm, RISC-V).
+- The policy must cover transitive calls, dynamically loaded code, and native extensions. Newly introduced code must pass the same admission checks; native implementations remain part of the trusted computing base.
+- Resource authority must be scoped by the host: permitted filesystem roots, network destinations, and process access, rather than just whether an `FS.*` or network shard exists. Enforce runtime-dependent decisions at the resource boundary.
+- Execution budgets, cancellation, and memory limits are separate runtime work. A program can pass type and capability checks and still exhaust resources.
 
-Target scenario: AI-generated interactive content (UGC) running on someone's phone at 60fps. That intersection — real-time + sandboxable + verifiable + embeddable — is empty of competitors.
+Target scenario: AI-generated interactive content running on a user's device within a documented authority and resource budget. Acceptance must include attempted escapes through nested calls, dynamic loading, and resource paths, as well as allowed programs that still work.
 
 ### 3.7 Performance — keep the lead, spend it wisely
 
@@ -234,7 +251,7 @@ New metric: **`shards check` latency is a first-class performance target** — i
 
 A closed world is only a virtue with a pressure valve. ~800 shards is not an ecosystem; agents will hit walls (the payment API, the niche driver). Without a sanctioned escape hatch, users fall back to Python and never return.
 
-- First-class, **sandbox-preserving** extension story. The wasm component model is the natural fit: extensions are capability-scoped by construction, keeping the 3.6 guarantees intact.
+- First-class, **policy-preserving** extension story. The wasm component model is the natural fit: extensions can be capability-scoped at the component boundary, so they fall under the same §3.6 admission and resource policy as native shards.
 - Extensions must register full type signatures so they participate in compose-time verification and introspection like native shards — no opaque escape hatches.
 
 ---
@@ -247,7 +264,7 @@ So the PMF question decomposes into: *what host product makes Shards unavoidable
 
 ### The buyer
 
-Verify-before-run, sandbox-by-construction, fast-without-JIT, hot-swap, embedded inference — these describe one buyer: **a platform operator who is liable for running untrusted, machine-generated code on other people's devices, in real time.** Developers writing their own code don't need capability manifests; they trust themselves. The moat properties only become purchasing triggers when the code's author is an AI and the executor is an end user's phone.
+Check-before-run, host-enforced capability policy (§3.6, proposed), fast-without-JIT, hot-swap (§3.5, proposed), embedded inference — these describe one buyer: **a platform operator who is liable for running untrusted, machine-generated code on other people's devices, in real time.** Developers writing their own code don't need capability manifests; they trust themselves. The moat properties only become purchasing triggers when the code's author is an AI and the executor is an end user's phone.
 
 ### Use cases, ranked by "where do alternatives structurally fail"
 
@@ -256,7 +273,7 @@ Verify-before-run, sandbox-by-construction, fast-without-JIT, hot-swap, embedded
 - **1a. Personal software** — the "home-cooked software" thesis: a user prompts a personal tool, dashboard, automation, or agent; it runs native-speed on their device, sandboxed, hot-swappable, with the agent *resident in the runtime* (3.5). This is not hypothetical: the runtime is already dogfooded this way today — local-first, CRDT-synced, agent-resident applications, with shell/SSH/inference shards as the agents' hands. The funnel sentence barely changes: *"say what you want, use it ten seconds later, change it while using it."*
 - **1b. Games & interactive UGC** — where Shards was born, and structurally the strongest market. But it does not require operating a first-party consumer platform: the Luau path has an embed/partner variant — be the runtime that someone else's "Roblox-but-AI" platform ships inside. The moat keeps; the platform-operations burden goes to whoever has the funding and appetite for it.
 
-One structural argument applies to both and deserves to be explicit because it is the hardest part of the moat to replicate: **iOS bans JIT compilation.** You cannot ship V8-with-JIT in an App Store app; JavaScriptCore runs dynamic code interpreted/bytecode-only; wasm JIT is similarly constrained. Every "AI generates software, runs on iPhone" product hits this wall. A *fast interpreter* with the engine built in is not a nice-to-have there — it is the only App-Store-legal way to run dynamically generated logic fast on the largest consumer compute platform on earth. The benchmark lead is not a vanity metric; it is store compliance for the entire category. Nobody else has assembled fast-sans-JIT + sandbox + verify-before-run + gfx/physics/audio in one runtime.
+One structural argument applies to both and deserves to be explicit because it is the hardest part of the moat to replicate: **iOS bans JIT compilation.** You cannot ship V8-with-JIT in an App Store app; JavaScriptCore runs dynamic code interpreted/bytecode-only; wasm JIT is similarly constrained. Every "AI generates software, runs on iPhone" product hits this wall. Interpretation is the App-Store-legal way to run dynamically generated logic on the largest consumer compute platform on earth, so among interpreters, speed with the engine built in is not a nice-to-have. The benchmark lead is not a vanity metric; it decides what the category can ship. The target is one runtime that combines fast-sans-JIT, compose-time checking, an enforced capability policy and gfx/physics/audio. The policy part is still proposed work (§3.6).
 
 **2. The embeddable "safe AI-codegen substrate" — the AI-era Lua play.** Horizontal: any app that wants "user prompts → app extends itself" needs this stack (generate → verify → run sandboxed, in-process). Honest counter: **V8 isolates are the entrenched incumbent** (Figma plugins, Cloudflare Workers) and are good enough for most automation-shaped extension. Shards wins this only where real-time/native/graphics matters or where iOS rules bite. Real market, slow infra-sales grind — it's the hedge, not the wedge.
 
@@ -266,7 +283,7 @@ A note on ranking: structural fit is one axis; **builder fit is the other**, and
 
 ### The real competitor
 
-It is not Python. It is **Luau**. Roblox already proved the category: sandboxed, fast-without-JIT, gradually typed, embedded in a UGC engine, with a creator economy. Shards' edge over Luau is whole-program compose-time verification (Luau's typing is gradual and advisory — generated code can still fail at runtime), the canonical AST / visual audit surface, and inference inside the runtime. Luau's edge is a host product with tens of millions of daily users. That is the distance between a moat and a market, in one example.
+It is not Python. It is **Luau**. Roblox already proved the category: sandboxed, fast-without-JIT, gradually typed, embedded in a UGC engine, with a creator economy. Shards' edge over Luau is whole-program compose-time type checking (Luau's typing is gradual and advisory — generated code can still fail at runtime on type errors), the canonical AST / visual audit surface, and inference inside the runtime. Luau's edge is a host product with tens of millions of daily users. That is the distance between a moat and a market, in one example.
 
 ### The PMF test
 
@@ -274,8 +291,8 @@ The moat properties map directly onto a product funnel:
 
 | Property | Funnel effect |
 |---|---|
-| compose-time verification | generation repair-loop converges in ms → prompt-to-playable in seconds |
-| capability sandbox | remixing strangers' AI-generated content is safe → store compliance, user trust |
+| compose-time checking | generation repair-loop converges in ms → prompt-to-playable in seconds |
+| capability policy (3.6) | remixing strangers' AI-generated content runs within a documented authority → store compliance, user trust |
 | live-mesh hot-swap (3.5) | "change it while I'm playing it" — an iteration loop no engine offers |
 | fast interpreter, no JIT | runs on the phone in your hand, not a cloud session |
 
@@ -292,7 +309,7 @@ If the host product doesn't find PMF, this roadmap makes Shards the best-prepare
 Rewrite the public pitch around **verification and trust**, not flow and intuition:
 
 - Headline: the one-sentence moat (§1).
-- Lead with: complete spec in one context window; verify-before-run; capability sandboxing; agent-shaped concurrency; embedded inference; real-time everywhere.
+- Lead with: complete spec in one context window; check-before-run; agent-shaped concurrency; embedded inference; real-time everywhere, including phones. Add capability policy to the pitch only once 3.6 ships.
 - The visual layer is presented as the *human audit surface* for AI-built programs.
 - "AI-Ready" stops being aspirational the day 3.1 + 3.2 ship; until then, don't claim it louder than the code supports.
 
@@ -300,17 +317,26 @@ Rewrite the public pitch around **verification and trust**, not flow and intuiti
 
 ## 6. Sequencing summary
 
+### Next proof milestone
+
+**First: the 2.0 core prototype**, in the new repo. Take the 1.x baseline benchmark, then prototype the compiled/state split with a small shard subset and many independent instances ([`shards-2-compose-split.md`](shards-2-compose-split.md), §5). This decides whether the 2.0 core design holds before any module porting. It does not require a complete Rust port, a new scheduler, vsh, or a training corpus.
+
+**Alongside it, on 1.x:** build one small stateful application through the existing discover → read → check → repair loop, then demonstrate the bounded replacement contract in §3.5. Record first-pass check success, repair rounds, check latency, prompt-to-usable latency, and which state survives replacement. Passing compose is one measurement; task behavior needs its own acceptance checks. What this teaches about residency feeds into the 2.0 core design.
+
+### Broader roadmap
+
 ```
-P0 (now, weeks):    3.1 shards check (JSON diagnostics)            ✅ shipped (initial)
+P0 (now):           Shards 2.0 Rust core (new repo)               [prototype first — shards-2-compose-split.md §5]
+                    3.1 shards check (JSON diagnostics)            ✅ shipped (initial)
                     3.2 agent interface (CLI verbs + skills/shards/ skill) ✅ shipped (initial)
                     3.3 canonical-form decision + generation benchmark
-P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze]
-                    3.5 agent residency (live mesh attach/swap)   [flagship demo]
-                    3.6 capability manifests
+P1 (next, months):  3.4 synthetic corpus + open-model fine-tune   [after 3.3 freeze; in 2.0 syntax]
+                    3.5 agent residency (live mesh attach/swap)   [flagship demo; 2.0 core]
+                    3.6 capability manifests                       [2.0 core]
                     3.2/vsh virtual shell (in-process ShellTransport, iOS/wasm)
-P2 (ongoing):       3.7 fusion → specialization → COW → (maybe) JIT
+P2 (ongoing):       3.7 fusion → specialization → COW → (maybe) JIT [passes over 2.0 compiled artifacts]
                     3.8 wasm-component extension story
                     §5 public repositioning                        [after 3.1+3.2]
 ```
 
-The pieces are roughly 70% built. What was missing is the assembly and the thesis — this document is the thesis; the P0 items are the assembly.
+The agent-facing tooling (3.1, 3.2) is built and carries over to 2.0. The runtime guarantees (3.5, 3.6) and the 2.0 core are new work. This document is the thesis; the 2.0 core is the foundation the rest is assembled on.
