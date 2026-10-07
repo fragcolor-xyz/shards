@@ -1,0 +1,8 @@
+@wire(solution {
+  Set(numbers)
+  0 | Set(total)
+  numbers | ForEach({
+    ExpectInt | Add(total) | Update(total)
+  })
+  total
+})

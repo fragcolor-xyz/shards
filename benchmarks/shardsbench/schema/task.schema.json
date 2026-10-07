@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shards.dev/shardsbench/task.schema.json",
+  "title": "ShardsBench task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "track",
+    "difficulty",
+    "tags"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9./-]*$"},
+    "title": {"type": "string", "minLength": 1},
+    "track": {"enum": ["generation", "repair", "agent", "app"]},
+    "difficulty": {"enum": ["easy", "medium", "hard"]},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "timeout_seconds": {"type": "number", "exclusiveMinimum": 0},
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shards": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        }
+      }
+    },
+    "prompt": {"type": "string"},
+    "starter": {"type": "string"},
+    "tests": {
+      "oneOf": [
+        {"type": "string"},
+        {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      ]
+    },
+    "reference": {"type": "string"}
+  }
+}

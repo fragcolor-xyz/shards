@@ -1,0 +1,6 @@
+@include("candidate.shs" Once: true)
+
+0 | Do(solution) | Assert.Is(0)
+1 | Do(solution) | Assert.Is(2)
+-7 | Do(solution) | Assert.Is(-14)
+123456 | Do(solution) | Assert.Is(246912)

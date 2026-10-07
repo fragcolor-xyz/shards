@@ -1,0 +1,17 @@
+@include("candidate.shs" Once: true)
+
+@mesh(root)
+
+@wire(observer {
+  Once({
+    0 | Set(observer-frame)
+  })
+  observer-frame | Add(1) | Update(observer-frame)
+  observer-frame | When({Is(8)} {
+    none | Get(app-frame-count Global: true Default: -1) | Assert.Is(8)
+  })
+} Looped: true)
+
+@schedule(root solution)
+@schedule(root observer)
+@run(root FPS: 60 Iterations: 8) | Assert.Is(true)

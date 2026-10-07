@@ -1,0 +1,3 @@
+@include("candidate.shs" Once: true)
+
+[] | Do(solution) | Assert.Is(0)

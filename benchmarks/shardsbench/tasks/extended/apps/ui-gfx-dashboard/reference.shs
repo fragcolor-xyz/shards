@@ -1,0 +1,49 @@
+@wire(solution {
+  Once({
+    0 | Set(app-frame-count Global: true)
+
+    GFX.BuiltinMesh(Type: BuiltinMeshType::Cube) | Set(cube-mesh)
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::Transform) | Push(scene-features)
+    GFX.BuiltinFeature(Id: BuiltinFeatureId::BaseColor) | Push(scene-features)
+    GFX.DrawQueue | Set(scene-queue)
+    GFX.DrawablePass(Features: scene-features Queue: scene-queue) | Push(render-steps)
+
+    GFX.DrawQueue | Set(ui-queue)
+    GFX.UIPass(ui-queue) | Push(render-steps)
+
+    {Position: @f3(0 0 8) Target: @f3(0 0 0)} | Math.LookAt | Set(view-transform)
+    GFX.View(View: view-transform) | Set(view)
+  })
+
+  none | Get(app-frame-count Global: true Default: 0)
+  Add(1) | Update(app-frame-count Global: true)
+
+  GFX.MainWindow(
+    Title: "ShardsBench Dashboard"
+    Width: 640
+    Height: 480
+    Contents: {
+      none | Get(app-frame-count Global: true Default: 0)
+      ToFloat | Mul(0.1) | Math.AxisAngleY | Math.Rotation
+      GFX.Drawable(Mesh: cube-mesh Params: {baseColor: @f4(0.1 0.8 0.2 1.0)})
+      GFX.Draw(scene-queue)
+
+      UI({
+        UI.TopPanel(Contents: {
+          "ShardsBench Dashboard" | UI.Label
+        })
+        UI.CentralPanel(Contents: {
+          none | Get(app-frame-count Global: true Default: 0) | Set(current-frame)
+          ["Frame: " current-frame] | String.Format | UI.Label
+          current-frame | ToFloat | Div(8.0) | Min(1.0)
+          UI.ProgressBar(Overlay: "Eight-frame benchmark")
+          UI.Button(Label: "Reset" Action: {
+            0 | Update(app-frame-count Global: true)
+          })
+        })
+      }) | UI.Render(ui-queue)
+
+      GFX.Render(Steps: render-steps View: view)
+    }
+  )
+} Looped: true)

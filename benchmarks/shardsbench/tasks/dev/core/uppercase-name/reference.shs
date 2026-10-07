@@ -1,0 +1,3 @@
+@wire(solution {
+  Take("name") | String.ToUpper
+})

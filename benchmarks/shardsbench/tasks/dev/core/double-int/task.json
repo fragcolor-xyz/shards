@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "core/double-int",
+  "title": "Double an integer",
+  "track": "generation",
+  "difficulty": "easy",
+  "tags": ["core", "integer", "flow"],
+  "timeout_seconds": 5
+}

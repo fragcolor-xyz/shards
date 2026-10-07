@@ -1,0 +1,6 @@
+@wire(solution {
+  Once({
+    0 | Set(total)
+  })
+  Add(total) | Update(total)
+})
